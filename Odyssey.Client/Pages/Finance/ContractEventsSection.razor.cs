@@ -132,7 +132,9 @@ public partial class ContractEventsSection : IAsyncDisposable
         }
 
         if (NewEventRequestToken is not { } token || token == _handledNewEventToken)
+        {
             return;
+        }
 
         _handledNewEventToken = token;
         OpenNew();
@@ -166,7 +168,9 @@ public partial class ContractEventsSection : IAsyncDisposable
         var response = await _listLoader.RunAsync(ct =>
             Contracts.ListEventsAsync(Contract.ContractId, page: _page, pageSize: PageSize, ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var page = response.Value.PagedOrToast(Snackbar, "events");
 
@@ -193,7 +197,9 @@ public partial class ContractEventsSection : IAsyncDisposable
     private async Task GoToPageAsync(int page)
     {
         if (page == _page)
+        {
             return;
+        }
 
         _page = page;
         await LoadAsync();
@@ -212,13 +218,17 @@ public partial class ContractEventsSection : IAsyncDisposable
         var confirmed = await _confirm.AskAsync("Delete event?", $"Remove “{ev.Title}” from this contract's log? This can’t be undone.", "Delete");
 
         if (!confirmed)
+        {
             return;
+        }
 
         var ok = (await Contracts.DeleteEventAsync(Contract.ContractId, ev.ContractEventId))
             .Toast(Snackbar, "Unable to delete event", "Event deleted.");
 
         if (!ok)
+        {
             return;
+        }
 
         await LoadAsync();
 

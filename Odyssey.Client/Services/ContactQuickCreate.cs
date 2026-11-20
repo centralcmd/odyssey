@@ -82,7 +82,9 @@ public sealed class ContactQuickCreate(
     public OdsOption? Begin(string name, string? kind)
     {
         if (QuickCreateLedger.CleanName(name, MaxNameLength) is not { } clean)
+        {
             return null;
+        }
 
         var type = kind == nameof(ContactType.Person) ? ContactType.Person : ContactType.Organization;
         var meta = OdsTypeRegistries.ContactTypeOf(type.ToString());
@@ -105,7 +107,10 @@ public sealed class ContactQuickCreate(
                 // The session-wide contact cache is now stale — the next picker must re-fetch.
                 referenceData.InvalidateContacts();
                 if (result.CreatedId is { } id)
+                {
                     ledger.Complete(tempId, id);
+                }
+
                 return;
             }
 

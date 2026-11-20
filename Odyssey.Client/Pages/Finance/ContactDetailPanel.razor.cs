@@ -81,18 +81,26 @@ public partial class ContactDetailPanel
         get
         {
             foreach (var a in _addresses)
+            {
                 yield return new("address", "location_on", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)", "Address",
                     AddressSummary(a), OdsTypeRegistries.AddressLabelOf(a.Label.ToString()).Label, a.IsPrimary, a.Id, "1 / -1",
                     () => OpenEditAddressAsync(a), () => SetPrimaryAddress(a), () => DeleteAddress(a),
                     SharedLineFor(a, _addressPermissions));
+            }
+
             foreach (var e in _emails)
+            {
                 yield return new("email", "alternate_email", "oklch(0.72 0.16 295)", "oklch(0.72 0.16 295 / 0.15)", "Email",
                     e.Value, OdsTypeRegistries.EmailLabelOf(e.Label.ToString()).Label, e.IsPrimary, e.Id, "span 2",
                     () => OpenEditEmailAsync(e), () => SetPrimaryEmail(e), () => DeleteEmail(e));
+            }
+
             foreach (var p in _phones)
+            {
                 yield return new("phone", "call", "oklch(0.78 0.13 200)", "oklch(0.78 0.13 200 / 0.15)", "Phone number",
                     p.Value, OdsTypeRegistries.PhoneLabelOf(p.Label.ToString()).Label, p.IsPrimary, p.Id, "span 1",
                     () => OpenEditPhoneAsync(p), () => SetPrimaryPhone(p), () => DeletePhone(p));
+            }
         }
     }
 
@@ -106,9 +114,15 @@ public partial class ContactDetailPanel
             new() { Icon = "content_copy", Label = $"Copy {KindNoun(t.Kind)}", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Value, OdsCopied.Value(t.KindTitle))) },
         };
         if (editable && !t.IsPrimary)
+        {
             items.Add(new() { Icon = "star", Label = "Set as primary", OnClick = EventCallback.Factory.Create(this, t.SetPrimary) });
+        }
+
         if (editable)
+        {
             items.Add(new() { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, t.Edit) });
+        }
+
         items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Id.ToString(), OdsCopied.Id(t.KindTitle)))));
         if (editable)
         {
@@ -174,44 +188,59 @@ public partial class ContactDetailPanel
         };
 
         if (ok)
+        {
             await ReloadAsync();
+        }
+
         return ok;
     }
 
     private async Task SetPrimaryAddress(ExistingAddress a)
     {
         if ((await Contacts.UpdateAddressAsync(Id, a.Id, ContactMethodDraft.PrimaryAddressBody(a))).Toast(Snackbar, "Update failed", "Primary address updated."))
+        {
             await ReloadAsync();
+        }
     }
     private async Task SetPrimaryEmail(ExistingEmailAddress e)
     {
         var body = ContactMethodDraft.FromEmail(e);
         body.IsPrimary = true;
         if ((await Contacts.UpdateEmailAsync(Id, e.Id, body.ToNewEmail())).Toast(Snackbar, "Update failed", "Primary email updated."))
+        {
             await ReloadAsync();
+        }
     }
     private async Task SetPrimaryPhone(ExistingPhoneNumber p)
     {
         var body = ContactMethodDraft.FromPhone(p);
         body.IsPrimary = true;
         if ((await Contacts.UpdatePhoneAsync(Id, p.Id, body.ToNewPhone())).Toast(Snackbar, "Update failed", "Primary phone updated."))
+        {
             await ReloadAsync();
+        }
     }
 
     private async Task DeleteAddress(ExistingAddress a)
     {
         if ((await Contacts.DeleteAddressAsync(Id, a.Id)).Toast(Snackbar, "Delete failed", "Address deleted."))
+        {
             await ReloadAsync();
+        }
     }
     private async Task DeleteEmail(ExistingEmailAddress e)
     {
         if ((await Contacts.DeleteEmailAsync(Id, e.Id)).Toast(Snackbar, "Delete failed", "Email deleted."))
+        {
             await ReloadAsync();
+        }
     }
     private async Task DeletePhone(ExistingPhoneNumber p)
     {
         if ((await Contacts.DeletePhoneAsync(Id, p.Id)).Toast(Snackbar, "Delete failed", "Phone deleted."))
+        {
             await ReloadAsync();
+        }
     }
 
     // Re-fetch all three collections after a mutation (the server owns primary arbitration), then let

@@ -49,9 +49,15 @@ public partial class WeatherDayHours
             var day = Response?.Day;
             var title = WeatherVisuals.DayLong(day?.Date ?? Date);
             if (day is { IsToday: true })
+            {
                 title += " — rest of today";
+            }
+
             if (Response?.Steps is { Count: > 0 } steps && OffsetDiffersFromViewer(steps))
+            {
                 title += $" · times at {PointName}";
+            }
+
             return title;
         }
     }
@@ -73,12 +79,17 @@ public partial class WeatherDayHours
     internal static IEnumerable<Row> Rows(IReadOnlyList<WeatherStep> steps, WeatherHourlyDay? day)
     {
         if (day is { IsToday: false, FromUtc: { } dayStart } && steps.Count > 0 && Utc(steps[0].TimeUtc) > Utc(dayStart))
+        {
             yield return new Row(null, $"No forecast before {Hour(Start(steps[0]))}", false);
+        }
 
         for (var i = 0; i < steps.Count; i++)
         {
             if (i > 0 && Utc(steps[i].TimeUtc) > Utc(End(steps[i - 1]).UtcDateTime))
+            {
                 yield return new Row(null, $"No forecast for {Hour(End(steps[i - 1]))}–{Hour(Start(steps[i]))}", false);
+            }
+
             yield return new Row(steps[i], null, i == 0);
         }
     }

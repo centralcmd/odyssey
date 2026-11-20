@@ -69,7 +69,9 @@ public sealed class PropertiesController : ControllerBase
     {
         // Ordering by value discloses how the properties rank by worth, which is estimate data.
         if (query.SortBy == PropertySortBy.Value && !CanReadEstimates())
+        {
             return Forbid();
+        }
 
         var result = await propertyService.ListAsync(
             query, includeEstimates: CanReadEstimates(), cancellationToken,
@@ -109,7 +111,9 @@ public sealed class PropertiesController : ControllerBase
             id, includeEstimates: CanReadEstimates(), cancellationToken,
             includeContractCount: CanReadContracts(), claims: User.LocationClaims());
         if (property is null)
+        {
             return this.NotFoundProblem($"Property ID {id} not found.");
+        }
 
         return Ok(property);
     }
@@ -130,7 +134,9 @@ public sealed class PropertiesController : ControllerBase
     {
         var contracts = await contractService.ListForPropertyAsync(propertyId, cancellationToken);
         if (contracts is null)
+        {
             return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
 
         return Ok(contracts);
     }
@@ -179,7 +185,9 @@ public sealed class PropertiesController : ControllerBase
         var property = await propertyService.Update(
             id, putProperty, userId, cancellationToken, User.LocationClaims());
         if (property is null)
+        {
             return this.NotFoundProblem($"Property ID {id} not found.");
+        }
 
         return NoContent();
     }
@@ -203,7 +211,9 @@ public sealed class PropertiesController : ControllerBase
         }
         var deleted = await propertyService.Delete(id, userId, cancellationToken);
         if (!deleted)
+        {
             return this.NotFoundProblem($"Property ID {id} not found.");
+        }
 
         return NoContent();
     }

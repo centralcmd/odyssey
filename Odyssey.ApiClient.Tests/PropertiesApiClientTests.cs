@@ -164,7 +164,9 @@ public class PropertiesApiClientTests
 
         var query = handler.LastRequest!.RequestUri!.Query;
         foreach (var part in new[] { "search=storgata", "types=RealEstate", "types=Vehicle", "statuses=Owned", "sortBy=value", "sortDir=desc" })
+        {
             Assert.Contains(part, query, StringComparison.Ordinal);
+        }
     }
 
     /// <summary>Both smart-tag writes are identified entirely by the path; there is no body to forge.</summary>

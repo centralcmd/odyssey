@@ -54,7 +54,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser()) return;
+        if (!OperatingSystem.IsBrowser())
+        {
+            return;
+        }
         await LoadTransactionsAsync();
     }
 
@@ -63,7 +66,9 @@
         _isOpen = !_isOpen;
         // Lazy-load on first expand if the initial fetch was skipped (e.g. prerender).
         if (_isOpen && _transactions.Count == 0 && !_isLoading)
+        {
             await LoadTransactionsAsync();
+        }
     }
 
     // A row write changes this section's rows AND the host's transaction count, so both reload.

@@ -226,7 +226,9 @@ public class ContactService
         var contact = await ReadQuery()
             .FirstOrDefaultAsync(value => value.ContactId == contactId, cancellationToken);
         if (contact is null)
+        {
             return null;
+        }
 
         var dto = MapWithOrderedContacts(contact);
         await FillOtherUsesAsync(dto.Addresses, claims, cancellationToken);
@@ -830,9 +832,14 @@ public class ContactService
     {
         var personExpected = source.Type == ContactType.Person;
         if (personExpected && (source.PersonDetails is null || source.OrganizationDetails is not null))
+        {
             throw new DomainValidationException("A Person contact requires person details and no organization details.");
+        }
+
         if (!personExpected && (source.OrganizationDetails is null || source.PersonDetails is not null))
+        {
             throw new DomainValidationException("An Organization contact requires organization details and no person details.");
+        }
     }
 
     private void ApplyBaseAndDetails(Contact contact, NewContact source)
@@ -897,15 +904,22 @@ public class ContactService
         DateOnly? death = dateOfDeath is { } d ? DateOnly.FromDateTime(d) : null;
 
         if (birth > today)
+        {
             throw new DomainValidationException("Date of birth cannot be in the future.", code: null, field: "dateOfBirth");
+        }
+
         if (death > today)
+        {
             throw new DomainValidationException("Date of death cannot be in the future.", code: null, field: "dateOfDeath");
+        }
 
         // The pair error is attributed to whichever field the caller is most likely to have just
         // changed. A write carries both, so there is no way to tell here — and the death date is the
         // later, more specific one, so it is where the message renders.
         if (birth is { } bv && death is { } dv && dv < bv)
+        {
             throw new DomainValidationException("Date of death cannot be before the date of birth.", code: null, field: "dateOfDeath");
+        }
 
         return (birth, death);
     }
@@ -923,11 +937,19 @@ public class ContactService
         DateOnly? to = dissolved is { } d ? DateOnly.FromDateTime(d) : null;
 
         if (from > today)
+        {
             throw new DomainValidationException("Established date cannot be in the future.", code: null, field: "establishedDate");
+        }
+
         if (to > today)
+        {
             throw new DomainValidationException("Dissolved date cannot be in the future.", code: null, field: "dissolvedDate");
+        }
+
         if (from is { } fv && to is { } tv && tv < fv)
+        {
             throw new DomainValidationException("Dissolved date cannot be before the established date.", code: null, field: "dissolvedDate");
+        }
 
         return (from, to);
     }
@@ -936,11 +958,15 @@ public class ContactService
     {
         var cleaned = CleanOptional(website, 2048, "Website");
         if (cleaned is null)
+        {
             return null;
+        }
 
         if (!Uri.TryCreate(cleaned, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
             throw new DomainValidationException("Website must be an absolute http:// or https:// URL.");
+        }
 
         return cleaned;
     }
@@ -949,25 +975,46 @@ public class ContactService
     {
         var cleaned = MultiWhitespaceRegex.Replace((value ?? string.Empty).Trim(), " ");
         if (cleaned.Length is < 1)
+        {
             throw new DomainValidationException($"{label} is required.");
+        }
+
         if (cleaned.Length > maxLength)
+        {
             throw new DomainValidationException($"{label} cannot exceed {maxLength} characters.");
+        }
+
         if (cleaned.Any(char.IsControl))
+        {
             throw new DomainValidationException($"{label} cannot contain control characters.");
+        }
+
         return cleaned;
     }
 
     private static string? CleanOptional(string? value, int maxLength, string label)
     {
         if (value is null)
+        {
             return null;
+        }
+
         var cleaned = value.Trim();
         if (cleaned.Length == 0)
+        {
             return null;
+        }
+
         if (cleaned.Length > maxLength)
+        {
             throw new DomainValidationException($"{label} cannot exceed {maxLength} characters.");
+        }
+
         if (cleaned.Any(char.IsControl))
+        {
             throw new DomainValidationException($"{label} cannot contain control characters.");
+        }
+
         return cleaned;
     }
 
@@ -975,9 +1022,13 @@ public class ContactService
     {
         var currentArchived = contact.Archived is not null;
         if (!currentArchived && requestedArchived)
+        {
             contact.Archived = timeProvider.GetUtcNow().UtcDateTime;
+        }
         else if (currentArchived && !requestedArchived)
+        {
             contact.Archived = null;
+        }
     }
 
     // ── Alias sub-resource (issue #48 §7) ─────────────────────────────────────
@@ -1003,7 +1054,9 @@ public class ContactService
     public async Task<IReadOnlyList<ExistingContactAlias>?> GetAliases(Guid contactId, CancellationToken cancellationToken = default)
     {
         if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
+        {
             return null;
+        }
 
         // Ordered by the column's own collation, then id — which is why the inline
         // ExistingContact.Aliases list (sorted in memory with OrdinalIgnoreCase) matches this only
@@ -1019,17 +1072,24 @@ public class ContactService
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
+        {
             return null;
+        }
 
         var value = CleanAliasValue(request.Value);
         var label = CleanAliasLabel(request.Label);
 
         var siblings = await context.ContactAliases.Where(a => a.ContactId == contactId).ToListAsync(cancellationToken);
         if (siblings.Any(a => AliasEquals(a.Value, value)))
+        {
             throw DuplicateAlias();
+        }
+
         if (siblings.Count >= ContactAliasRules.MaxPerContact)
+        {
             throw new DomainUnprocessableException(
                 $"A contact can have at most {ContactAliasRules.MaxPerContact} aliases.", "value");
+        }
 
         var alias = new ContactAlias { ContactId = contactId, Value = value, Label = label };
         context.ContactAliases.Add(alias);
@@ -1042,13 +1102,17 @@ public class ContactService
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
+        {
             return false;
+        }
 
         // Containment: the alias is resolved SCOPED to the parent, so an id belonging to another
         // contact is a 404 rather than a cross-parent write (§10.1).
         var alias = await FindChildAsync(context.ContactAliases, contactId, aliasId, cancellationToken);
         if (alias is null)
+        {
             return false;
+        }
 
         var value = CleanAliasValue(request.Value);
         var label = CleanAliasLabel(request.Label);
@@ -1057,7 +1121,9 @@ public class ContactService
             .Where(a => a.ContactId == contactId && a.Id != aliasId)
             .ToListAsync(cancellationToken);
         if (siblings.Any(a => AliasEquals(a.Value, value)))
+        {
             throw DuplicateAlias();
+        }
 
         alias.Value = value;
         // A replace, not a patch: an omitted or blank label CLEARS a previously-set one, matching the
@@ -1073,11 +1139,15 @@ public class ContactService
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
+        {
             return false;
+        }
 
         var alias = await FindChildAsync(context.ContactAliases, contactId, aliasId, cancellationToken);
         if (alias is null)
+        {
             return false;
+        }
 
         context.ContactAliases.Remove(alias);
         Touch(contact);
@@ -1125,30 +1195,50 @@ public class ContactService
     {
         var cleaned = MultiWhitespaceRegex.Replace((value ?? string.Empty).Trim(), " ");
         if (cleaned.Length == 0)
+        {
             throw new DomainValidationException("An alias is required.", code: null, field: "value");
+        }
+
         if (cleaned.Length > ContactAliasRules.MaxValueLength)
+        {
             throw new DomainValidationException(
                 $"An alias cannot exceed {ContactAliasRules.MaxValueLength} characters.", code: null, field: "value");
+        }
         // Defence-in-depth behind ContactAliasRules.Pattern, which rejects the same set in model
         // validation on the HTTP path — this one covers direct, non-HTTP callers.
         if (cleaned.Any(char.IsControl))
+        {
             throw new DomainValidationException(ContactAliasRules.ValueErrorMessage, code: null, field: "value");
+        }
+
         return cleaned;
     }
 
     private static string? CleanAliasLabel(string? label)
     {
         if (label is null)
+        {
             return null;
+        }
+
         var cleaned = MultiWhitespaceRegex.Replace(label.Trim(), " ");
         // Empty collapses to null so "" and absent are never two states.
         if (cleaned.Length == 0)
+        {
             return null;
+        }
+
         if (cleaned.Length > ContactAliasRules.MaxLabelLength)
+        {
             throw new DomainValidationException(
                 $"An alias label cannot exceed {ContactAliasRules.MaxLabelLength} characters.", code: null, field: "label");
+        }
+
         if (cleaned.Any(char.IsControl))
+        {
             throw new DomainValidationException(ContactAliasRules.LabelErrorMessage, code: null, field: "label");
+        }
+
         return cleaned;
     }
 
@@ -1163,7 +1253,9 @@ public class ContactService
         Guid contactId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
+        {
             return null;
+        }
 
         var rows = await context.Addresses.AsNoTracking()
             .Include(a => a.Location)
@@ -1194,7 +1286,9 @@ public class ContactService
         claims ??= LocationClaims.None;
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
+        {
             return (null, false);
+        }
 
         RequireLabelValidFor(request.Label, contact.Type);
         var resolver = NewResolver();
@@ -1251,11 +1345,15 @@ public class ContactService
             found = false;
             var contact = await LoadForChildMutation(contactId, cancellationToken);
             if (contact is null)
+            {
                 return;
+            }
 
             var address = await FindChildAsync(context.Addresses, contactId, addressId, cancellationToken);
             if (address is null)
+            {
                 return;
+            }
 
             found = true;
             RequireLabelValidFor(request.Label, contact.Type);
@@ -1371,16 +1469,24 @@ public class ContactService
         CheckLength(fields.City, ContactMethodLimits.CityMaxLength, "City");
         CheckLength(fields.Region, ContactMethodLimits.RegionMaxLength, "Region");
         if (fields.CountryCode is { } country && !CountryCodeRegex.IsMatch(country))
+        {
             throw new DomainValidationException("Country code must be two letters.", code: null, field: "countryCode");
+        }
+
         if (fields.FirstMissingRequiredField is { } missing)
+        {
             throw new DomainUnprocessableException("Give line 1, a city and a country, or choose a place.", missing);
+        }
+
         return fields;
     }
 
     private static void CheckLength(string? value, int maxLength, string label)
     {
         if (value is { } text && text.Length > maxLength)
+        {
             throw new DomainValidationException($"{label} cannot exceed {maxLength} characters.");
+        }
     }
 
     /// <summary>
@@ -1418,7 +1524,9 @@ public class ContactService
     private async Task FillOtherUsesAsync(IReadOnlyCollection<ExistingAddress> dtos, LocationClaims? claims, CancellationToken cancellationToken)
     {
         if (dtos.Count == 0)
+        {
             return;
+        }
 
         claims ??= LocationClaims.None;
         var counts = await new LocationReferenceGuard(context).CountAsync(dtos.Select(d => d.LocationId).ToList(), cancellationToken);
@@ -1493,7 +1601,9 @@ public class ContactService
         where TMethod : class, IContactMethod
     {
         if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
+        {
             return null;
+        }
 
         var rows = await set.AsNoTracking()
             .Where(m => m.ContactId == contactId)
@@ -1514,7 +1624,9 @@ public class ContactService
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
+        {
             return null;
+        }
 
         requireLabelValid(contact);
 
@@ -1539,11 +1651,15 @@ public class ContactService
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
+        {
             return false;
+        }
 
         var method = await FindChildAsync(set, contactId, methodId, cancellationToken);
         if (method is null)
+        {
             return false;
+        }
 
         requireLabelValid(contact);
         apply(method);
@@ -1562,11 +1678,15 @@ public class ContactService
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
+        {
             return false;
+        }
 
         var method = await FindChildAsync(set, contactId, methodId, cancellationToken);
         if (method is null)
+        {
             return false;
+        }
 
         set.Remove(method);
         var remaining = await set.Where(m => m.ContactId == contactId && m.Id != methodId).ToListAsync(cancellationToken);
@@ -1603,24 +1723,30 @@ public class ContactService
     private static void RequireLabelValidFor(AddressLabel label, ContactType type)
     {
         if (!ContactLabelScope.IsValidFor(label, type))
+        {
             throw new DomainUnprocessableException(
                 LabelScopeMessage(label, type, ContactLabelScope.AddressLabelsFor(type)), "label");
+        }
     }
 
     /// <inheritdoc cref="RequireLabelValidFor(AddressLabel, ContactType)"/>
     private static void RequireLabelValidFor(EmailLabel label, ContactType type)
     {
         if (!ContactLabelScope.IsValidFor(label, type))
+        {
             throw new DomainUnprocessableException(
                 LabelScopeMessage(label, type, ContactLabelScope.EmailLabelsFor(type)), "label");
+        }
     }
 
     /// <inheritdoc cref="RequireLabelValidFor(AddressLabel, ContactType)"/>
     private static void RequireLabelValidFor(PhoneLabel label, ContactType type)
     {
         if (!ContactLabelScope.IsValidFor(label, type))
+        {
             throw new DomainUnprocessableException(
                 LabelScopeMessage(label, type, ContactLabelScope.PhoneLabelsFor(type)), "label");
+        }
     }
 
     // Names the offending label, the contact type and the valid set — all closed-vocabulary constants
@@ -1650,7 +1776,10 @@ public class ContactService
         {
             var clamped = ContactLabelScope.Clamp(address.Label, newType);
             if (clamped == address.Label)
+            {
                 continue;
+            }
+
             address.Label = clamped;
             remappedAddresses++;
         }
@@ -1660,7 +1789,10 @@ public class ContactService
         {
             var clamped = ContactLabelScope.Clamp(email.Label, newType);
             if (clamped == email.Label)
+            {
                 continue;
+            }
+
             email.Label = clamped;
             remappedEmails++;
         }
@@ -1670,7 +1802,10 @@ public class ContactService
         {
             var clamped = ContactLabelScope.Clamp(phone.Label, newType);
             if (clamped == phone.Label)
+            {
                 continue;
+            }
+
             phone.Label = clamped;
             remappedPhones++;
         }
@@ -1700,7 +1835,9 @@ public class ContactService
         if (makePrimary)
         {
             foreach (var sibling in siblings)
+            {
                 sibling.IsPrimary = false;
+            }
         }
     }
 
@@ -1712,7 +1849,10 @@ public class ContactService
         if (requestedPrimary)
         {
             foreach (var item in collection)
+            {
                 item.IsPrimary = item.Id == updated.Id;
+            }
+
             return;
         }
 
@@ -1721,7 +1861,9 @@ public class ContactService
         {
             var first = collection.OrderBy(item => item.Id).FirstOrDefault();
             if (first is not null)
+            {
                 first.IsPrimary = true;
+            }
         }
     }
 
@@ -1729,7 +1871,10 @@ public class ContactService
         where T : IContactMethod
     {
         if (!removedWasPrimary || remaining.Count == 0 || remaining.Any(item => item.IsPrimary))
+        {
             return;
+        }
+
         remaining.OrderBy(item => item.Id).First().IsPrimary = true;
     }
 }

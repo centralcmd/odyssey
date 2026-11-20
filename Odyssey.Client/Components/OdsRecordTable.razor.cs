@@ -189,7 +189,10 @@ public partial class OdsRecordTable<TRow>
     private string SlotFor(object key)
     {
         if (!_rowSlots.TryGetValue(key, out var slot))
+        {
             _rowSlots[key] = slot = _nextSlot++;
+        }
+
         return $"{_tableId}-{slot}";
     }
 
@@ -198,30 +201,45 @@ public partial class OdsRecordTable<TRow>
     protected override void OnParametersSet()
     {
         if (_rowSlots.Count == 0)
+        {
             return;
+        }
+
         var present = Rows.Select(RowKey).ToHashSet();
         foreach (var gone in _rowSlots.Keys.Where(k => !present.Contains(k)).ToList())
+        {
             _rowSlots.Remove(gone);
+        }
     }
 
     protected override async Task OnParametersSetAsync()
     {
         var next = RowBusy is null ? [] : Rows.Where(RowBusy).Select(RowKey).ToHashSet();
         if (next.SetEquals(_busyKeys))
+        {
             return;
+        }
+
         foreach (var key in next.Where(k => !_busyKeys.Contains(k)))
         {
             // Read where focus sits while the row's menu is still in the DOM.
             try
             {
                 if (await Js.InvokeAsync<bool>("odsRecFocusInMenu", MenuIdFor(key)))
+                {
                     _focusToHead.Add(key);
+                }
             }
             catch (JSException) { }
         }
         foreach (var key in _busyKeys.Where(k => !next.Contains(k)))
+        {
             if (_movedToHead.Remove(key))
+            {
                 _focusBackToMenu.Add(key);
+            }
+        }
+
         _busyKeys = next;
     }
 
@@ -235,7 +253,10 @@ public partial class OdsRecordTable<TRow>
     public async Task<bool> FocusRowHeaderAsync(object key)
     {
         if (!_rowSlots.ContainsKey(key))
+        {
             return false;
+        }
+
         try
         { return await Js.InvokeAsync<bool>("odsRecFocusCell", HeadIdFor(key)); }
         catch (JSException) { return false; }
@@ -274,7 +295,10 @@ public partial class OdsRecordTable<TRow>
 
         var (move, key) = _pendingFocus;
         if (move == FocusMove.None || key is null)
+        {
             return;
+        }
+
         _pendingFocus = (FocusMove.None, null);
         try
         {
@@ -301,7 +325,10 @@ public partial class OdsRecordTable<TRow>
     private async Task MoveBusyFocusAsync()
     {
         if (_focusToHead.Count == 0 && _focusBackToMenu.Count == 0)
+        {
             return;
+        }
+
         var toHead = _focusToHead.ToList();
         var toMenu = _focusBackToMenu.ToList();
         _focusToHead.Clear();
@@ -315,7 +342,9 @@ public partial class OdsRecordTable<TRow>
             }
             // Back to the trigger only if focus is still where the busy state put it.
             foreach (var key in toMenu)
+            {
                 await Js.InvokeVoidAsync("odsRecFocusMenuFromHead", HeadIdFor(key), MenuIdFor(key));
+            }
         }
         catch (JSException) { }
     }
@@ -369,9 +398,15 @@ public partial class OdsRecordTable<TRow>
     {
         var parts = new List<string>(2);
         if (expanded)
+        {
             parts.Add("expanded");
+        }
+
         if (editing)
+        {
             parts.Add("editing");
+        }
+
         return parts.Count == 0 ? null : string.Join(' ', parts);
     }
 
@@ -379,9 +414,15 @@ public partial class OdsRecordTable<TRow>
     {
         var parts = new List<string>(2);
         if (col.Align == OdsAlign.End)
+        {
             parts.Add("odc-rec-numeric");
+        }
+
         if (!string.IsNullOrEmpty(col.CellClass))
+        {
             parts.Add(col.CellClass!);
+        }
+
         return parts.Count == 0 ? null : string.Join(' ', parts);
     }
 
@@ -395,12 +436,20 @@ public partial class OdsRecordTable<TRow>
         {
             // Server already ordered the rows — render them verbatim (headers still show aria-sort).
             if (ServerSort)
+            {
                 return Rows;
+            }
+
             if (EffectiveSort?.Key is not { } key)
+            {
                 return Rows;
+            }
+
             var col = Columns.FirstOrDefault(c => c.Key == key);
             if (col?.SortValue is not { } sortValue)
+            {
                 return Rows;
+            }
 
             var mul = EffectiveSort.Dir == OdsSortDirection.Asc ? 1 : -1;
             return Rows.Select((row, index) => (row, index))
@@ -408,9 +457,15 @@ public partial class OdsRecordTable<TRow>
                 {
                     var cmp = mul * CompareValues(sortValue(a.row), sortValue(b.row));
                     if (cmp != 0)
+                    {
                         return cmp;
+                    }
+
                     if (Tiebreak is not null && (cmp = Tiebreak(a.row, b.row)) != 0)
+                    {
                         return cmp;
+                    }
+
                     return a.index - b.index;
                 }))
                 .Select(x => x.row);
@@ -420,9 +475,15 @@ public partial class OdsRecordTable<TRow>
     private static int CompareValues(IComparable? a, IComparable? b)
     {
         if (a is null)
+        {
             return b is null ? 0 : -1;
+        }
+
         if (b is null)
+        {
             return 1;
+        }
+
         return a.CompareTo(b);
     }
 
@@ -441,21 +502,29 @@ public partial class OdsRecordTable<TRow>
                 Columns.FirstOrDefault(c => c.Key == key), current, KeepDirOnColumnChange));
 
         if (Controlled)
+        {
             _ = SortChanged.InvokeAsync(next);
+        }
         else
+        {
             _sort = next;
+        }
     }
 
     // ── Open / edit state ─────────────────────────────────────────────────────
     private async Task OnRowClickAsync(object id, bool editing)
     {
         if (editing || !CanExpand)
+        {
             return;
+        }
         // A click on a control inside a cell (a switch, a link) belongs to that control.
         try
         {
             if (await Js.InvokeAsync<bool>("odsRecClickWasInteractive", _tableId))
+            {
                 return;
+            }
         }
         catch (JSException) { }
         ToggleRow(id, fromMenu: false);
@@ -467,18 +536,25 @@ public partial class OdsRecordTable<TRow>
     private void ToggleRow(object id, bool fromMenu)
     {
         if (!CanExpand)
+        {
             return;
+        }
+
         if (_openIds.Contains(id))
         {
             _openIds.Remove(id);
             if (fromMenu)
+            {
                 _pendingFocus = (FocusMove.Chevron, id);
+            }
         }
         else
         {
             OpenRow(id);
             if (fromMenu)
+            {
                 _pendingFocus = (FocusMove.IntoPanel, id);
+            }
         }
     }
 
@@ -486,7 +562,10 @@ public partial class OdsRecordTable<TRow>
     {
         // Accordion: collapse other rows that aren't mid-edit.
         if (!MultiOpen)
+        {
             _openIds.RemoveWhere(x => !_editIds.Contains(x));
+        }
+
         _openIds.Add(id);
     }
 
@@ -500,7 +579,9 @@ public partial class OdsRecordTable<TRow>
     private void EndEdit(object id)
     {
         if (_editIds.Remove(id))
+        {
             _pendingFocus = (FocusMove.MenuTrigger, id);
+        }
     }
 
     // Leaves edit mode and flashes "Saved" only when the host did not report a failure (issue #252).
@@ -513,7 +594,9 @@ public partial class OdsRecordTable<TRow>
         try
         {
             if (OnSave.HasDelegate)
+            {
                 await OnSave.InvokeAsync(args);
+            }
         }
         catch (Exception ex)
         {

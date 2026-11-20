@@ -351,9 +351,21 @@ public class PhotoMetadataExtractorTests
             bytes.AddRange(data);
         }
 
-        if (objectName is not null) DataSet(0x02, 0x05, objectName);       // 2:05 Object Name (title)
-        if (caption is not null) DataSet(0x02, 0x78, caption);             // 2:120 Caption/Abstract
-        foreach (var k in keywords) DataSet(0x02, 0x19, k);                // 2:25 Keywords (repeatable)
+        if (objectName is not null)
+        {
+            DataSet(0x02, 0x05, objectName);       // 2:05 Object Name (title)
+        }
+
+        if (caption is not null)
+        {
+            DataSet(0x02, 0x78, caption);             // 2:120 Caption/Abstract
+        }
+
+        foreach (var k in keywords)
+        {
+            DataSet(0x02, 0x19, k);                // 2:25 Keywords (repeatable)
+        }
+
         return [.. bytes];
     }
 

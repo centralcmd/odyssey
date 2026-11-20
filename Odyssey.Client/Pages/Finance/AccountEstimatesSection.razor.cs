@@ -76,7 +76,10 @@ public partial class AccountEstimatesSection
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
+
         await LoadAsync();
     }
 
@@ -84,7 +87,9 @@ public partial class AccountEstimatesSection
     {
         _isOpen = !_isOpen;
         if (_isOpen && _estimates.Count == 0 && !_isLoading)
+        {
             await LoadAsync();
+        }
     }
 
     private async Task LoadAsync()
@@ -121,7 +126,9 @@ public partial class AccountEstimatesSection
             .ToList();
         _changes = [];
         for (var i = 0; i < ascending.Count; i++)
+        {
             _changes[ascending[i].AccountEstimateId] = i == 0 ? null : ascending[i].Value - ascending[i - 1].Value;
+        }
 
         _hero = BuildHero(ascending);
         _chartSeries = BuildHistorySeries(ascending);
@@ -155,13 +162,17 @@ public partial class AccountEstimatesSection
         var confirmed = await _confirm.AskAsync("Delete estimate?", $"Remove the estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? This can’t be undone.", "Delete");
 
         if (!confirmed)
+        {
             return;
+        }
 
         var ok = (await Accounts.DeleteEstimateAsync(Account.AccountId, estimate.AccountEstimateId))
             .Toast(Snackbar, "Unable to delete estimate", "Estimate deleted.");
 
         if (ok)
+        {
             await OnEstimateChanged();
+        }
     }
 
     private static string MonthYear(DateTime date) =>
@@ -174,7 +185,9 @@ public partial class AccountEstimatesSection
     private HeroModel? BuildHero(List<ExistingAccountEstimate> ascending)
     {
         if (ascending.Count == 0)
+        {
             return null;
+        }
 
         var points = ascending
             .Select(e => (Date: e.EffectiveFrom.Date, Value: e.Value))
@@ -191,7 +204,9 @@ public partial class AccountEstimatesSection
         var currentIndex = points.FindLastIndex(p => p.Date <= asOf);
         var scheduledOnly = currentIndex < 0;
         if (scheduledOnly)
+        {
             currentIndex = 0;
+        }
 
         var current = points[currentIndex];
         var prev = !scheduledOnly && currentIndex > 0 ? points[currentIndex - 1] : ((DateTime Date, decimal Value)?)null;
@@ -243,9 +258,15 @@ public partial class AccountEstimatesSection
         { lo *= 0.97; hi *= 1.03; }
         var padV = (hi - lo) * 0.28;
         if (padV == 0)
+        {
             padV = hi * 0.05;
+        }
+
         if (padV == 0)
+        {
             padV = 1;
+        }
+
         lo = Math.Max(0, lo - padV);
         hi += padV;
         double Y(double v) => padT + plotH - (v - lo) / (hi - lo) * plotH;
@@ -257,7 +278,9 @@ public partial class AccountEstimatesSection
             var sx = X(Days(series[i].Date));
             var sy = Y((double)series[i].Value);
             if (i == 0)
+            {
                 step.Add((sx, sy));
+            }
             else
             { step.Add((sx, step[^1].Y)); step.Add((sx, sy)); }
         }
@@ -292,7 +315,9 @@ public partial class AccountEstimatesSection
         }
         sb.Append($"<path class=\"line\" d=\"{PtsToPath(solid)}\" stroke=\"{color}\" />");
         if (dashed.Count > 1)
+        {
             sb.Append($"<path class=\"line future\" d=\"{PtsToPath(dashed)}\" stroke=\"{color}\" />");
+        }
 
         // Today marker.
         sb.Append($"<line class=\"nowline\" x1=\"{F(nowX)}\" y1=\"{F(padT - 4)}\" x2=\"{F(nowX)}\" y2=\"{F(baseY)}\" />");
@@ -346,7 +371,9 @@ public partial class AccountEstimatesSection
                 }
             }
             if (inside)
+            {
                 outPts.Add(p);
+            }
         }
         return outPts;
     }

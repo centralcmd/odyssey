@@ -121,11 +121,15 @@ public sealed class CurrenciesController : ControllerBase
     {
         var updated = await currencyService.Update(code, newCurrency, User.ActingUserId(), cancellationToken);
         if (updated is null)
+        {
             return this.NotFoundProblem($"Currency {code} not found.");
+        }
 
         // After the save: an audit line must not record a change that did not commit.
         if (updated.SyncStopped)
+        {
             syncCurrencies.LogStoppedByArchive(updated.Currency.CurrencyCode, User.ActingUserId());
+        }
 
         return NoContent();
     }

@@ -116,7 +116,10 @@ public partial class OdsTransactionTagPicker
         {
             var description = SelectedTag?.Description;
             if (!string.IsNullOrWhiteSpace(description))
+            {
                 return description!;
+            }
+
             return string.IsNullOrWhiteSpace(Help) ? DefaultHelp : Help!;
         }
     }
@@ -142,7 +145,9 @@ public partial class OdsTransactionTagPicker
             // exists removes no capability, while making a new one does.
             var selected = SelectedTag;
             if (selected is { Archived: not null })
+            {
                 options.Add(OptionFor(selected, used));
+            }
 
             options.AddRange(Tags
                 .Where(tag => tag.Archived is null)
@@ -203,7 +208,9 @@ public partial class OdsTransactionTagPicker
     {
         var clean = (text ?? string.Empty).Trim();
         if (clean.Length == 0)
+        {
             return null;
+        }
 
         // Archived rows included: the unique index covers them, so an archived clash is a real one —
         // and it has no inline remedy, which the message has to say.
@@ -223,7 +230,9 @@ public partial class OdsTransactionTagPicker
         _duplicateError = null;
         var created = OnCreateTag!(clean);
         if (created is null)
+        {
             return null;
+        }
 
         var staged = created with { Icon = created.Icon ?? "local_offer" };
         _staged.Add(staged);

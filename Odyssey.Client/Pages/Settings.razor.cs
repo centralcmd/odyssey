@@ -173,7 +173,9 @@ public partial class Settings : IDisposable
     protected override async Task OnInitializedAsync()
     {
         if (!InteractiveCheck())
+        {
             return;
+        }
 
         await PageState.RestoreOrSeedAsync<SettingsPageState>(PageStateKey, ApplyPageState, BuildPageState);
 
@@ -217,7 +219,10 @@ public partial class Settings : IDisposable
         // weather.read, not a settings claim: the options endpoint serves the same picker the dashboard
         // uses. Without it the row still shows its stored value, it just offers nothing else to pick.
         if (!(await Auth.GetUserAsync()).HasPermission(PermissionClaims.WeatherRead))
+        {
             return;
+        }
+
         var options = await WeatherOptions.GetAsync();
         _weatherOptions = options.IsSuccess && options.Value is { } value ? [.. value.Points.Where(p => p.ForecastEnabled)] : [];
     }
@@ -232,7 +237,10 @@ public partial class Settings : IDisposable
         options.AddRange(_weatherOptions.Select(p => new OdsOption(p.WeatherPointId.ToString("D"), p.Name)));
         var stored = _texts.TryGetValue("weatherDefaultPointId", out var state) ? state.Saved : "";
         if (stored.Length > 0 && options.All(o => !string.Equals(o.Value, stored, StringComparison.OrdinalIgnoreCase)))
+        {
             options.Add(new OdsOption(stored, "A weather point that is no longer selectable"));
+        }
+
         return options;
     }
 
@@ -1720,35 +1728,53 @@ public partial class Settings : IDisposable
     private string? ErrorFor(SettingItem item)
     {
         if (!Editable(item.Claim))
+        {
             return null;
+        }
 
         // A server rejection outranks the client's own view: it is newer, and it is the one the user
         // just failed to save against.
         if (_serverErrors.TryGetValue(item.Key, out var fromServer))
+        {
             return fromServer;
+        }
 
         if (IsTileOnly(item.Control))
+        {
             return null;
+        }
 
         // The shared rule owns length, characters and the reserved delimiter, measured on the normalised
         // value — the same pipeline and the same messages as the server's 400.
         if (item.Control == SettingControl.LongText)
+        {
             return item.Rule?.Invoke(GetText(item.Key));
+        }
 
         if (item.Control is SettingControl.Text or SettingControl.Date)
         {
             var text = GetText(item.Key).Trim();
             if (text.Length == 0)
+            {
                 return item.AllowEmpty ? null : "Enter a value";
+            }
+
             if (item.Max > 0 && text.Length > item.Max)
+            {
                 return $"Must be {item.Max:N0} characters or fewer";
+            }
             // Length first, then shape: a 300-character URL should be told it is too long rather than
             // handed the rule's own sentence about schemes and fragments.
             if (item.Rule?.Invoke(text) is { } ruleError)
+            {
                 return ruleError;
+            }
             // A Date row is also bounded above by today (UTC); the server enforces it with its own clock.
             if (item.Control == SettingControl.Date && GetDate(item.Key) is { } date && date.Date > Time.GetUtcNow().UtcDateTime.Date)
+            {
                 return "Enter a date on or before today.";
+            }
+
             return null;
         }
 
@@ -1756,7 +1782,10 @@ public partial class Settings : IDisposable
         {
             var value = GetDecimal(item.Key);
             if (value is null)
+            {
                 return "Enter a value";
+            }
+
             if (value < item.DecimalMin || value > item.DecimalMax)
             {
                 // Phrased in the unit the field actually shows. A percent row displays 1-100, so
@@ -1774,13 +1803,22 @@ public partial class Settings : IDisposable
         {
             var cap = Capacity(item.Key);
             if (cap.Unlimited)
+            {
                 return null;
+            }
+
             if (cap.Value is null)
+            {
                 return "Enter a value";
+            }
+
             var capMin = MinFor(item);
             var capMax = MaxFor(item);
             if (cap.Value < capMin || cap.Value > capMax)
+            {
                 return $"Must be between {capMin:N0} and {capMax:N0}";
+            }
+
             return null;
         }
 
@@ -1788,11 +1826,17 @@ public partial class Settings : IDisposable
         {
             var value = GetInt(item.Key);
             if (value is null)
+            {
                 return "Enter a value";
+            }
+
             var numMin = MinFor(item);
             var numMax = MaxFor(item);
             if (value < numMin || value > numMax)
+            {
                 return $"Must be between {numMin:N0} and {numMax:N0}";
+            }
+
             return null;
         }
 
@@ -1809,14 +1853,21 @@ public partial class Settings : IDisposable
     private string? RoundTripError(SettingSection section)
     {
         if (section.RoundTrip is not { } rt)
+        {
             return null;
+        }
 
         var export = EffectiveCount(rt.ExportKey);
         var import = EffectiveCount(rt.ImportKey);
         if (import is null) // unlimited import never violates, regardless of export
+        {
             return null;
+        }
+
         if (export is not null && export <= import)
+        {
             return null;
+        }
 
         var exportLabel = export is null ? "no limit" : export.Value.ToString("N0");
         var importLabel = import.Value.ToString("N0");
@@ -1829,7 +1880,9 @@ public partial class Settings : IDisposable
     private bool GroupPartial(SettingSection section)
     {
         if (!CanSave)
+        {
             return false;
+        }
 
         var claims = section.Items.Where(i => i.Claim != SettingClaim.None).ToList();
         return claims.Any(i => Editable(i.Claim)) && claims.Any(i => !Editable(i.Claim));
@@ -3000,7 +3053,9 @@ public partial class Settings : IDisposable
     private async Task Save()
     {
         if (_isSaving || !CanSave || _phase != Phase.Ready)
+        {
             return;
+        }
 
         // A blocked attempt is the right moment to announce what is wrong — once, politely. Announcing
         // from ErrorFor instead would fire on every keystroke.
@@ -3153,7 +3208,9 @@ public partial class Settings : IDisposable
     {
         const string prefix = "system-settings.invalid.round-trip.";
         if (code is null || !code.StartsWith(prefix, StringComparison.Ordinal))
+        {
             return null;
+        }
 
         var pair = code[prefix.Length..];
         return pair switch
@@ -3181,7 +3238,9 @@ public partial class Settings : IDisposable
     private void ApplyServerFieldErrors(ApiProblem? problem)
     {
         if (problem is null || problem.Errors.Count == 0)
+        {
             return;
+        }
 
         foreach (var item in AllItems)
         {
@@ -3217,7 +3276,9 @@ public partial class Settings : IDisposable
         get
         {
             if (!HasErrors)
+            {
                 return null;
+            }
 
             var groups = VisibleSections
                 .Where(section => RoundTripError(section) is not null
@@ -3343,7 +3404,9 @@ public partial class Settings : IDisposable
             : ErroredSections.Count > 0 ? RoundTripAlertId(ErroredSections[0].Group) : null;
 
         if (targetId is null)
+        {
             return;
+        }
 
         try
         {
@@ -3377,7 +3440,9 @@ public partial class Settings : IDisposable
     internal CapacityLimit? CapacityRequest(string key)
     {
         if (!CanEdit(key))
+        {
             return null;
+        }
 
         var cap = Capacity(key);
         return cap.Unlimited ? new CapacityLimit { Unlimited = true } : new CapacityLimit { Value = cap.Value };

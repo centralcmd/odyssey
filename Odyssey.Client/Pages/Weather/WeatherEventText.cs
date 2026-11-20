@@ -37,13 +37,25 @@ internal static class WeatherEventText
             : (forecast?.MinTempC, forecast?.MaxTempC, forecast?.PrecipitationMm);
         var parts = new List<string>();
         if (WeatherVisuals.SymbolOf(forecast?.SymbolCode) is { } symbol)
+        {
             parts.Add(symbol.Label);
+        }
+
         if (max is not null)
+        {
             parts.Add($"high {WeatherVisuals.Temp(max)}");
+        }
+
         if (min is not null)
+        {
             parts.Add($"low {WeatherVisuals.Temp(min)}");
+        }
+
         if (PrecipitationWords(mm, forecast?.SymbolCode) is { } rain)
+        {
             parts.Add(rain);
+        }
+
         parts.Add(day.Observed is not null ? "measured" : "forecast");
         return $"Weather: {string.Join(", ", parts)}";
     }
@@ -52,7 +64,9 @@ internal static class WeatherEventText
     public static string? Where(WeatherResolvedFrom? from, WeatherPointRef? point, WeatherLinkedLocationRef? linked, int? distanceKm, string noun)
     {
         if (point is null)
+        {
             return null;
+        }
 
         return from switch
         {

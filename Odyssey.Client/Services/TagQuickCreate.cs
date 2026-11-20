@@ -60,7 +60,9 @@ public sealed class TagQuickCreate<TTag>(
     public OdsOption? Begin(string name)
     {
         if (QuickCreateLedger.CleanName(name, TagWrite.MaxNameLength) is not { } clean)
+        {
             return null;
+        }
 
         var tempId = ledger.Stage(id => CreateAsync(clean, id));
         return new OdsOption(tempId, clean);
@@ -106,6 +108,8 @@ public sealed class TagQuickCreate<TTag>(
     private void InvalidateCachedTags()
     {
         if (typeof(TTag) == typeof(ExistingTransactionTag))
+        {
             referenceData.InvalidateTransactionTags();
+        }
     }
 }

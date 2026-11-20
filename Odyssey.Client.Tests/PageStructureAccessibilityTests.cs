@@ -321,7 +321,10 @@ public class PageStructureAccessibilityTests
             builder.AddComponentParameter(4, nameof(OdsModal.HideHeader), HideHeader);
             builder.AddComponentParameter(5, nameof(OdsModal.AriaLabel), AriaLabel);
             if (Title is { } title)
+            {
                 builder.AddComponentParameter(6, nameof(OdsModal.Title), (RenderFragment)(b => b.AddContent(0, title)));
+            }
+
             builder.AddComponentParameter(7, nameof(OdsModal.ChildContent), (RenderFragment)(b => b.AddContent(0, "Body")));
             builder.CloseComponent();
         }

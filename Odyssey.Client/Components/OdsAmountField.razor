@@ -162,7 +162,10 @@
             var options = Directions;
             for (var i = 0; i < options.Count; i++)
             {
-                if (string.Equals(options[i].Value, Direction, StringComparison.Ordinal)) return i;
+                if (string.Equals(options[i].Value, Direction, StringComparison.Ordinal))
+                {
+                    return i;
+                }
             }
             return 0;
         }
@@ -206,7 +209,10 @@
         {
             var hasHelp = HelpContent is not null || !string.IsNullOrEmpty(Help);
             var hasError = !string.IsNullOrEmpty(Error);
-            if (!hasHelp && !hasError) return null;
+            if (!hasHelp && !hasError)
+            {
+                return null;
+            }
             // OdsFieldShell gives the error its own id only when a help node renders alongside it.
             return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
         }

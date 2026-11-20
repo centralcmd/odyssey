@@ -197,8 +197,14 @@
             var paused = Summary.CountsByStatus.Paused;
             var unsigned = Summary.CountsByStatus.Draft + Summary.CountsByStatus.Ready;
             var excluded = new List<string>(2);
-            if (paused > 0) excluded.Add($"{paused} paused");
-            if (unsigned > 0) excluded.Add($"{unsigned} unsigned");
+            if (paused > 0)
+            {
+                excluded.Add($"{paused} paused");
+            }
+            if (unsigned > 0)
+            {
+                excluded.Add($"{unsigned} unsigned");
+            }
 
             return excluded.Count > 0 ? $"{basis} · {string.Join(", ", excluded)} excluded" : basis;
         }

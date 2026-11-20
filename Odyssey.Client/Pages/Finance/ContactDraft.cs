@@ -38,27 +38,61 @@ public sealed class ContactDraft
         var today = DateTime.Today;
         if (Type == ContactType.Person)
         {
-            if (string.IsNullOrWhiteSpace(FirstName)) errors["firstName"] = "First name is required.";
-            if (string.IsNullOrWhiteSpace(LastName)) errors["lastName"] = "Last name is required.";
+            if (string.IsNullOrWhiteSpace(FirstName))
+            {
+                errors["firstName"] = "First name is required.";
+            }
+
+            if (string.IsNullOrWhiteSpace(LastName))
+            {
+                errors["lastName"] = "Last name is required.";
+            }
             // The birth/death pair is checked from BOTH sides so the invariant cannot be broken by
             // editing either field — which is why both controls are OdsDateFields with their own
             // error channel (issue #48 §9).
-            if (DateOfBirth > today) errors["dateOfBirth"] = "Cannot be in the future.";
-            if (DateOfDeath > today) errors["dateOfDeath"] = "Cannot be in the future.";
+            if (DateOfBirth > today)
+            {
+                errors["dateOfBirth"] = "Cannot be in the future.";
+            }
+
+            if (DateOfDeath > today)
+            {
+                errors["dateOfDeath"] = "Cannot be in the future.";
+            }
+
             if (DateOfBirth is { } birth && DateOfDeath is { } death && death < birth)
+            {
                 errors["dateOfDeath"] = "Cannot be before the date of birth.";
+            }
         }
         else
         {
-            if (string.IsNullOrWhiteSpace(LegalName)) errors["legalName"] = "Legal name is required for an organization.";
+            if (string.IsNullOrWhiteSpace(LegalName))
+            {
+                errors["legalName"] = "Legal name is required for an organization.";
+            }
+
             if (!string.IsNullOrWhiteSpace(Website)
                 && !Website.Trim().StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                 && !Website.Trim().StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
                 errors["website"] = "Must start with http:// or https://";
-            if (EstablishedDate > today) errors["establishedDate"] = "Cannot be in the future.";
-            if (DissolvedDate > today) errors["dissolvedDate"] = "Cannot be in the future.";
+            }
+
+            if (EstablishedDate > today)
+            {
+                errors["establishedDate"] = "Cannot be in the future.";
+            }
+
+            if (DissolvedDate > today)
+            {
+                errors["dissolvedDate"] = "Cannot be in the future.";
+            }
+
             if (EstablishedDate is { } from && DissolvedDate is { } to && to < from)
+            {
                 errors["dissolvedDate"] = "Cannot be before the established date.";
+            }
         }
         return errors;
     }

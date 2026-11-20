@@ -163,7 +163,9 @@ public class OdsMoneyFieldTests : IAsyncLifetime
         cut.Find("button.odc-money-cur").Click();
 
         if (query is not null)
+        {
             cut.Find(".odc-money-search input").Input(query);
+        }
 
         return cut;
     }

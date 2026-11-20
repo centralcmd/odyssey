@@ -153,7 +153,9 @@ public partial class WeatherPointDialog
             {
                 var parts = key.Split(':');
                 if (parts.Length == 3)
+                {
                     links[key] = $"hw-{_uid}-{parts[1]}-{(parts[2] == "to" ? "to" : "from")}";
+                }
             }
 
             return links;
@@ -193,7 +195,10 @@ public partial class WeatherPointDialog
                 .Select(id => new OdsOption(id, id) { Note = LocationVisuals.UtcOffset(id, now) })
                 .ToList();
             if (!string.IsNullOrEmpty(_tz) && !options.Any(o => o.Value == _tz))
+            {
                 options.Insert(0, new OdsOption(_tz, _tz) { Note = "not recognised here" });
+            }
+
             return options;
         }
     }
@@ -248,7 +253,10 @@ public partial class WeatherPointDialog
     private void ApplyPoint(ExistingWeatherPoint p, bool keepEdits)
     {
         if (keepEdits)
+        {
             return;
+        }
+
         _name = p.Name;
         _lat = p.Site.Latitude;
         _lng = p.Site.Longitude;
@@ -281,7 +289,9 @@ public partial class WeatherPointDialog
         _rows = WeatherHistoryWindows.RowsFrom(_loadedWindows);
         _windowsLoad = WindowsLoad.Ready;
         if (focusHead)
+        {
             await FocusAsync(WindowsHeadId);
+        }
     }
 
     private Task RetryWindowsAsync() => LoadWindowsAsync(focusHead: true);
@@ -297,15 +307,23 @@ public partial class WeatherPointDialog
         {
             _rowErrors = [];
             foreach (var stale in _errors.Keys.Where(k => k.StartsWith("hw:", StringComparison.Ordinal)).ToList())
+            {
                 _errors.Remove(stale);
+            }
+
             _rowCountAtErrors = _rows.Count;
         }
 
         _rowErrors.Remove(key);
         foreach (var stale in _errors.Keys.Where(k => k.StartsWith($"hw:{key}:", StringComparison.Ordinal) || (k == "hw:list" && _rows.Count > 0)).ToList())
+        {
             _errors.Remove(stale);
+        }
+
         if (_rows.Count > 0)
+        {
             _listError = null;
+        }
 
         var shrinks = !Creating && WeatherHistoryWindows.Shrinks(_loadedWindows, _rows);
         if (shrinks != _shrinks)
@@ -324,14 +342,21 @@ public partial class WeatherPointDialog
         _listError = null;
         _rowCountAtErrors = _rows.Count;
         if (!_history || _windowsLoad != WindowsLoad.Ready)
+        {
             return;
+        }
 
         var today = DateOnly.FromDateTime(DateTime.Today);
         var violations = WeatherHistoryWindows.Validate(_rows, today, out var toMissing);
         foreach (var i in toMissing)
+        {
             AddWindowError(i, WindowField.To, WeatherHistoryWindows.ToMissingMessage);
+        }
+
         foreach (var v in violations)
+        {
             AddWindowError(v.Index, v.Field, WeatherHistoryWindows.Message(v, today));
+        }
     }
 
     private void AddWindowError(int index, WindowField field, string message)
@@ -383,13 +408,22 @@ public partial class WeatherPointDialog
         _conflict = null;
         _source = null;
         if (pick?.Id is not { } id)
+        {
             return;
+        }
+
         var result = await Locations.GetAsync(id);
         if (result.Value is not { } place || _pick?.Id != id)
+        {
             return;
+        }
+
         _source = place;
         if (!_nameTouched)
+        {
             _name = place.Name;
+        }
+
         if (!WeatherVisuals.HasPosition(place))
         {
             _submitted = true;
@@ -407,7 +441,10 @@ public partial class WeatherPointDialog
         _candidate = picked;
         _focusSearch = false;
         if (!_nameTouched)
+        {
             _name = c.Name.Length > WeatherRules.PointNameMaxLength ? c.Name[..WeatherRules.PointNameMaxLength] : c.Name;
+        }
+
         _lat = WeatherRules.RoundCoordinate(c.Latitude);
         _lng = WeatherRules.RoundCoordinate(c.Longitude);
         _alt = c.AltitudeMeters;
@@ -439,16 +476,24 @@ public partial class WeatherPointDialog
         _errors.Clear();
         var name = _name.Trim();
         if (name.Length == 0 && !FromLocation)
+        {
             _errors["name"] = "Enter a name for the weather point.";
+        }
         else if (name.Length > WeatherRules.PointNameMaxLength)
+        {
             _errors["name"] = $"Use at most {WeatherRules.PointNameMaxLength} characters.";
+        }
 
         if (FromLocation)
         {
             if (_source is null)
+            {
                 _errors["fromLocationId"] = "Choose the place to copy the position from.";
+            }
             else if (!WeatherVisuals.HasPosition(_source))
+            {
                 _errors["fromLocationId"] = FromLocationUnusable;
+            }
         }
         else if (Searching && _candidate is null)
         {
@@ -457,14 +502,24 @@ public partial class WeatherPointDialog
         else
         {
             if (_lat is null || _lng is null)
+            {
                 _errors["latitude"] = "Enter both latitude and longitude.";
+            }
             else if (_lat < (decimal)WeatherRules.LatitudeMin || _lat > (decimal)WeatherRules.LatitudeMax
                 || _lng < (decimal)WeatherRules.LongitudeMin || _lng > (decimal)WeatherRules.LongitudeMax)
+            {
                 _errors["latitude"] = $"Latitude is {WeatherRules.LatitudeMin}…{WeatherRules.LatitudeMax} and longitude {WeatherRules.LongitudeMin}…{WeatherRules.LongitudeMax}.";
+            }
+
             if (_alt is { } alt && (alt < LocationRules.AltitudeMin || alt > LocationRules.AltitudeMax))
+            {
                 _errors["altitudeMeters"] = $"Altitude must be between {LocationRules.AltitudeMin} and {LocationRules.AltitudeMax:N0} m.";
+            }
+
             if (string.IsNullOrWhiteSpace(_tz))
+            {
                 _errors["timeZoneId"] = "Choose the time zone.";
+            }
         }
 
         ValidateWindows();
@@ -475,7 +530,9 @@ public partial class WeatherPointDialog
     private async Task SaveAsync()
     {
         if (_saving || NothingToTurnOn || _stale || _purgeBlocked || WindowsBlocked)
+        {
             return;
+        }
 
         _submitted = true;
         _conflict = null;
@@ -493,9 +550,13 @@ public partial class WeatherPointDialog
         try
         {
             if (Creating)
+            {
                 await CreateAsync();
+            }
             else
+            {
                 await UpdateAsync();
+            }
         }
         finally
         {
@@ -549,7 +610,10 @@ public partial class WeatherPointDialog
         {
             // Re-read so the card shows the position the server compared against; the next save sends it.
             if ((await Locations.GetAsync(_source.LocationId)).Value is { } fresh)
+            {
                 _source = fresh;
+            }
+
             _conflict = "The location’s position changed while this dialog was open. Check the position below, then create the weather point again.";
             _announce = _conflict;
             return;
@@ -633,7 +697,10 @@ public partial class WeatherPointDialog
         foreach (var (key, messages) in problem?.Errors ?? new Dictionary<string, string[]>())
         {
             if (!key.StartsWith("HistoryWindows", StringComparison.OrdinalIgnoreCase) || messages.Length == 0)
+            {
                 continue;
+            }
+
             var (index, field) = WeatherHistoryWindows.ParseKey(key, _rows.Count);
             AddWindowError(index, field, messages[0]);
             any = true;
@@ -664,7 +731,10 @@ public partial class WeatherPointDialog
     private async Task ReloadAsync()
     {
         if (Point is null || _reloading)
+        {
             return;
+        }
+
         _reloading = true;
         var result = await Weather.PointAsync(Point.WeatherPointId);
         await OnStatus.InvokeAsync(result.Status);

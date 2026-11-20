@@ -28,6 +28,15 @@
   </PropertyGroup>
 
   <!--
+    Code-style rules in .editorconfig are checked by the build, not only in the IDE, so a rule there
+    is a rule the code follows (braces on every if/else/for/foreach/while body, IDE0011, among them).
+    Analyzers do not see the C# inside .razor files; those follow the same rules by review.
+  -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!--
     XML doc comments are compiled so a stale reference breaks the build: a <see cref> or <paramref>
     naming a type, member or parameter that was removed or renamed (CS1574, CS1734), badly formed
     XML (CS1570) and a doc comment on nothing (CS1587). Without this the compiler never reads doc

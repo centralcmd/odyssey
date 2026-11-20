@@ -211,6 +211,11 @@ dotnet_naming_rule.members_should_be_pascal_case.severity = warning
 [Odyssey.Client/{Pages,Components,Layout}/**.cs]
 dotnet_naming_rule.private_instance_fields_should_be_camel_case.severity = suggestion
 
+# EF Core scaffolds migrations with block-scoped namespaces and its own layout. They are generated
+# code: style rules (IDE0161 file-scoped namespaces, among others) would only fight the tool.
+[Odyssey.Context/Migrations/**.cs]
+generated_code = true
+
 [*.{json,xml,yml,yaml}]
 indent_size = 2
 

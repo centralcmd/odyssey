@@ -128,7 +128,9 @@
         {
             var parts = new List<string> { WeatherVisuals.KmAway(o.DistanceKm) };
             if (!o.ForecastEnabled)
+            {
                 parts.Add(o.HistoryEnabled ? "history only" : "weather off");
+            }
             var linked = o.WeatherPointId == current;
             return new OdsOption(o.WeatherPointId.ToString("D"), o.Name)
             {
@@ -148,7 +150,9 @@
     private async Task SaveAsync()
     {
         if (_saving)
+        {
             return;
+        }
         if (Blocked)
         {
             if (!_loading && !NoPoints)
@@ -188,7 +192,9 @@
             _announce = _error;
             await LoadOptionsAsync();
             if (_options.Any(o => o.Value == _value) is false && _value is not null)
+            {
                 _options = [.. _options, new OdsOption(_value, "A weather point that is no longer available")];
+            }
             return;
         }
 

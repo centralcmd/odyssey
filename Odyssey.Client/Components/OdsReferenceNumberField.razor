@@ -88,7 +88,10 @@
         {
             var hasHelp = !string.IsNullOrEmpty(Help);
             var hasError = !string.IsNullOrEmpty(ShownError);
-            if (!hasHelp && !hasError) return null;
+            if (!hasHelp && !hasError)
+            {
+                return null;
+            }
             return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
         }
     }

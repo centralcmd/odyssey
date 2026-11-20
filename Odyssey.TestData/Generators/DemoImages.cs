@@ -181,7 +181,10 @@ public static class DemoImages
         {
             var c = n;
             for (var k = 0; k < 8; k++)
+            {
                 c = (c & 1) != 0 ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+            }
+
             table[n] = c;
         }
         return table;
@@ -191,9 +194,15 @@ public static class DemoImages
     {
         var crc = 0xFFFFFFFFu;
         foreach (var value in first)
+        {
             crc = CrcTable[(crc ^ value) & 0xFF] ^ (crc >> 8);
+        }
+
         foreach (var value in second)
+        {
             crc = CrcTable[(crc ^ value) & 0xFF] ^ (crc >> 8);
+        }
+
         return crc ^ 0xFFFFFFFFu;
     }
 }

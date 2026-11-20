@@ -72,11 +72,19 @@ public static class TaxStatementStatusVisuals
     {
         var parts = new List<string>();
         if (s.Archived is { } archivedAt)
+        {
             parts.Add(OdsDates.Long(archivedAt));
+        }
         else if (s.StatusChangedAt != default)
+        {
             parts.Add(OdsDates.Long(s.StatusChangedAt));
+        }
+
         if (!string.IsNullOrWhiteSpace(s.StatusComment))
+        {
             parts.Add("see note above");
+        }
+
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 

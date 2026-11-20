@@ -54,8 +54,13 @@ public class ControlContrastTests
     {
         var data = new TheoryData<Theme, Fill>();
         foreach (var theme in Enum.GetValues<Theme>())
+        {
             foreach (var fill in Enum.GetValues<Fill>())
+            {
                 data.Add(theme, fill);
+            }
+        }
+
         return data;
     }
 
@@ -792,8 +797,16 @@ public class ControlContrastTests
         var previous = css.LastIndexOfAny(['}', ';'], open);
         var selector = css[(previous + 1)..open];
 
-        if (NamesTheme(selector, "dark")) return Theme.Dark;
-        if (NamesTheme(selector, "light")) return Theme.Light;
+        if (NamesTheme(selector, "dark"))
+        {
+            return Theme.Dark;
+        }
+
+        if (NamesTheme(selector, "light"))
+        {
+            return Theme.Light;
+        }
+
         return null;
     }
 

@@ -185,7 +185,9 @@ public partial class InstrumentsPage : IDisposable
     protected override async Task OnInitializedAsync()
     {
         if (!InteractiveCheck())
+        {
             return;
+        }
 
         await LoadPermissionsAsync();
         await PageState.RestoreOrSeedAsync<InstrumentsPageState>(PageStateKey, ApplyPageState, BuildPageState);
@@ -198,11 +200,15 @@ public partial class InstrumentsPage : IDisposable
     protected override async Task OnParametersSetAsync()
     {
         if (!_initialized || _handledQuery == InstrumentQuery)
+        {
             return;
+        }
 
         _handledQuery = InstrumentQuery;
         if (InstrumentQuery is not null)
+        {
             await HandleDeepLinkAsync(InstrumentQuery);
+        }
     }
 
     private async Task LoadPermissionsAsync()
@@ -305,7 +311,9 @@ public partial class InstrumentsPage : IDisposable
         var filter = CurrentFilter;
         var response = await _listLoader.RunAsync(ct => Instruments.ListAsync(1, OdsPageSizes.All, filter, ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "instruments");
         if (load.IsSuccess)
@@ -337,7 +345,9 @@ public partial class InstrumentsPage : IDisposable
     {
         var result = await Instruments.GetSummaryAsync();
         if (result.IsSuccess)
+        {
             _summary = result.Value;
+        }
     }
 
     private async Task RefreshAsync()
@@ -350,7 +360,9 @@ public partial class InstrumentsPage : IDisposable
     private async Task LoadSourcesStatusAsync()
     {
         if (!_canReadSources)
+        {
             return;
+        }
 
         var result = await PriceSources.GetStatusAsync();
         _sourcesFailed = !result.IsSuccess;
@@ -430,15 +442,25 @@ public partial class InstrumentsPage : IDisposable
         }
 
         if (claims.CanReadPrices)
+        {
             items.Add(new OdsMenuItem { Icon = "query_stats", Label = "View prices", OnClick = act(i, "prices") });
+        }
+
         if (claims.CanCreatePrices && !archived)
+        {
             items.Add(new OdsMenuItem { Icon = "add_chart", Label = "Add price", OnClick = act(i, "add-price") });
+        }
 
         items.Add(new OdsMenuItem { Divider = true });
         if (claims.CanDeletePrices && HasPrices(i))
+        {
             items.Add(new OdsMenuItem { Icon = "delete_sweep", Label = "Delete all prices…", Danger = true, OnClick = act(i, "purge") });
+        }
+
         if (claims.CanDelete && !HasPrices(i))
+        {
             items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = act(i, "delete") });
+        }
 
         // A menu of nothing but a divider has no trigger at all.
         return items.Any(item => !item.Divider) ? items : [];
@@ -475,7 +497,10 @@ public partial class InstrumentsPage : IDisposable
     private void NewClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
+
         _editing = null;
         _dialogReturnFocusId = null;
         _dialogKey = Guid.NewGuid();
@@ -485,7 +510,10 @@ public partial class InstrumentsPage : IDisposable
     private Task Edit(ExistingInstrument i)
     {
         if (!_canUpdate)
+        {
             return Task.CompletedTask;
+        }
+
         _editing = i;
         _dialogReturnFocusId = MenuIdFor(i.InstrumentId);
         _dialogKey = Guid.NewGuid();
@@ -506,7 +534,10 @@ public partial class InstrumentsPage : IDisposable
         Snackbar.Add($"{updated.Symbol} saved", Severity.Success);
         Announce($"{updated.Symbol} saved");
         if (_pinned?.InstrumentId == updated.InstrumentId)
+        {
             _pinned = updated;
+        }
+
         await RefreshAsync();
     }
 
@@ -527,7 +558,9 @@ public partial class InstrumentsPage : IDisposable
     private async Task ToggleArchiveAsync(ExistingInstrument i)
     {
         if (!_canUpdate || !_busy.Add(i.InstrumentId))
+        {
             return;
+        }
 
         var before = i.Archived;
         var archiving = before is null;
@@ -553,7 +586,9 @@ public partial class InstrumentsPage : IDisposable
     private async Task ToggleDashboardAsync(ExistingInstrument i)
     {
         if (!_canUpdate || !_busy.Add(i.InstrumentId))
+        {
             return;
+        }
 
         var show = !i.ShowOnDashboard;
         i.ShowOnDashboard = show;
@@ -593,7 +628,10 @@ public partial class InstrumentsPage : IDisposable
     private Task Purge(ExistingInstrument i)
     {
         if (!_canDeletePrices)
+        {
             return Task.CompletedTask;
+        }
+
         _purging = i;
         _purgeOpen = true;
         return Task.CompletedTask;
@@ -606,7 +644,9 @@ public partial class InstrumentsPage : IDisposable
         Announce(message);
         await RefreshAsync();
         if (_pinned is { } pin && _purging?.InstrumentId == pin.InstrumentId)
+        {
             await RefreshPinnedAsync(pin.InstrumentId);
+        }
     }
 
     // ── Delete ────────────────────────────────────────────────────────────────────────────────────
@@ -618,7 +658,10 @@ public partial class InstrumentsPage : IDisposable
     private Task Delete(ExistingInstrument i)
     {
         if (!_canDelete)
+        {
             return Task.CompletedTask;
+        }
+
         _deleting = i;
         _deleteReturnFocusIds = RemovalFocusChain(ListedInstruments, i.InstrumentId);
         _deleteOpen = true;
@@ -633,25 +676,39 @@ public partial class InstrumentsPage : IDisposable
     {
         var index = rows.ToList().FindIndex(r => r.InstrumentId == removed);
         if (index < 0)
+        {
             return string.Empty;
+        }
+
         var chain = new List<string>(2);
         if (index + 1 < rows.Count)
+        {
             chain.Add(RecordIdFor(rows[index + 1].InstrumentId));
+        }
+
         if (index > 0)
+        {
             chain.Add(RecordIdFor(rows[index - 1].InstrumentId));
+        }
+
         return string.Join(' ', chain);
     }
 
     private async Task<string?> ConfirmDeleteAsync()
     {
         if (_deleting is not { } doomed || !_canDelete)
+        {
             return null;
+        }
 
         var result = await Instruments.DeleteAsync(doomed.InstrumentId);
         if (!result.IsSuccess)
         {
             if (result.Status == HttpStatusCode.Forbidden)
+            {
                 return $"You don't have permission to delete {doomed.Symbol}.";
+            }
+
             return string.IsNullOrWhiteSpace(result.Error) ? "The instrument couldn't be deleted." : result.Error;
         }
 
@@ -663,7 +720,10 @@ public partial class InstrumentsPage : IDisposable
             _sourcesDirty = false;
         }
         if (_pinned?.InstrumentId == doomed.InstrumentId)
+        {
             _pinned = null;
+        }
+
         await RefreshAsync();
         return null;
     }
@@ -682,9 +742,14 @@ public partial class InstrumentsPage : IDisposable
         if (!result.IsSuccess || result.Value is not { } instrument)
         {
             if (result.Status == HttpStatusCode.NotFound || result.IsSuccess)
+            {
                 UnknownLink();
+            }
             else
+            {
                 Fail(result.Status, "open that instrument", result.Error);
+            }
+
             return;
         }
 
@@ -705,7 +770,10 @@ public partial class InstrumentsPage : IDisposable
     {
         var result = await Instruments.GetAsync(id);
         if (result.IsSuccess && result.Value is { } fresh)
+        {
             _pinned = fresh;
+        }
+
         StateHasChanged();
     }
 
@@ -764,7 +832,10 @@ public partial class InstrumentsPage : IDisposable
     private void OnBindingCountChanged(Guid id, int count)
     {
         if (_bindingCounts.TryGetValue(id, out var known) && known == count)
+        {
             return;
+        }
+
         _bindingCounts[id] = count;
         StateHasChanged();
     }
@@ -774,13 +845,17 @@ public partial class InstrumentsPage : IDisposable
         // HasEnabledSource and IdentityLocked follow the bindings, so the record re-reads.
         await ReloadAsync();
         if (_pinned?.InstrumentId == id)
+        {
             await RefreshPinnedAsync(id);
+        }
     }
 
     private void OnBeforeInternalNavigation(LocationChangingContext context)
     {
         if (!_sourcesDirty)
+        {
             return;
+        }
 
         context.PreventNavigation();
         _pendingNavigation = context.TargetLocation;
@@ -793,7 +868,9 @@ public partial class InstrumentsPage : IDisposable
     {
         _discardOpen = open;
         if (!open)
+        {
             _pendingNavigation = null;
+        }
     }
 
     private Task<bool> DiscardSourcesAsync()

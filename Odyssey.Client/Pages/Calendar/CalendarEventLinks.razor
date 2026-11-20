@@ -68,8 +68,12 @@ else
     private void Changed(AttachmentLinkKind kind)
     {
         if (kind == AttachmentLinkKind.Photos)
+        {
             Draft.PhotosChanged = true;
+        }
         else
+        {
             Draft.FilesChanged = true;
+        }
     }
 }

@@ -66,24 +66,34 @@ public sealed class PageStateService : IPageStateService
     /// </summary>
     internal int PendingSaveCount
     {
-        get { lock (gate) return debounce.Count; }
+        get { lock (gate)
+            {
+                return debounce.Count;
+            }
+        }
     }
 
     public async Task<T?> LoadAsync<T>(string pageKey) where T : class
     {
         if (!enabled || string.IsNullOrWhiteSpace(pageKey))
+        {
             return null;
+        }
 
         try
         {
             // 404 (no preference yet), 403 (no permission), anything non-2xx → use defaults.
             var result = await preferences.GetAsync<UserPreferenceResponse>(pageKey);
             if (!result.IsSuccess)
+            {
                 return null;
+            }
 
             var payload = result.Value;
             if (string.IsNullOrWhiteSpace(payload?.PreferencesJson))
+            {
                 return null;
+            }
 
             return JsonSerializer.Deserialize<T>(payload.PreferencesJson, JsonOptions);
         }
@@ -98,13 +108,17 @@ public sealed class PageStateService : IPageStateService
     public void QueueSave<T>(string pageKey, T state) where T : class
     {
         if (!enabled || string.IsNullOrWhiteSpace(pageKey))
+        {
             return;
+        }
 
         string json;
         try { json = JsonSerializer.Serialize(state, JsonOptions); }
         catch { return; }
         if (string.IsNullOrWhiteSpace(json))
+        {
             return;
+        }
 
         CancellationTokenSource cts;
         lock (gate)
@@ -153,7 +167,9 @@ public sealed class PageStateService : IPageStateService
         lock (gate)
         {
             if (!debounce.TryGetValue(pageKey, out var current) || !ReferenceEquals(current, cts))
+            {
                 return;
+            }
 
             debounce.Remove(pageKey);
             cts.Dispose();

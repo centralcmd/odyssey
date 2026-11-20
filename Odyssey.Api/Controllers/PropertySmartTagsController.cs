@@ -47,7 +47,9 @@ public sealed class PropertySmartTagsController : ControllerBase
     {
         var tags = await propertySmartTagService.GetSmartTags(propertyId, cancellationToken);
         if (tags is null)
+        {
             return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
 
         return Ok(tags);
     }
@@ -80,8 +82,10 @@ public sealed class PropertySmartTagsController : ControllerBase
     {
         var removed = await propertySmartTagService.RemoveSmartTag(propertyId, tagId, cancellationToken);
         if (!removed)
+        {
             return this.NotFoundProblem(
                 $"Tag ID {tagId} is not a smart tag for property ID {propertyId}.");
+        }
 
         return NoContent();
     }

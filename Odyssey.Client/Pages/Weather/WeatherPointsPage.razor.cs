@@ -104,7 +104,9 @@ public partial class WeatherPointsPage
     protected override async Task OnInitializedAsync()
     {
         if (!InteractiveCheck())
+        {
             return;
+        }
 
         _weatherReads = new WeatherPointReads(Weather, ClockOrNull);
         await ReadClaimsAsync();
@@ -123,7 +125,9 @@ public partial class WeatherPointsPage
         _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
         if (!_canReadLocations && _sort.Key == "linked")
+        {
             _sort = DefaultSort;
+        }
     }
 
     private bool _canReadSettings;
@@ -185,7 +189,9 @@ public partial class WeatherPointsPage
         var response = await _listLoader.RunAsync(ct => Weather.PointsAsync(
             1, PagedQuery.SizeAll, search, SortByFor(_sort.Key), _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc", ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
         await OnStatusAsync(result.Status);
@@ -216,9 +222,14 @@ public partial class WeatherPointsPage
     private async Task LoadCapAsync()
     {
         if (!_canReadSettings)
+        {
             return;
+        }
+
         if ((await SystemSettings.GetAsync()).Value is { } settings)
+        {
             _cap = settings.WeatherMaxTrackedPoints;
+        }
     }
 
     /// <summary>
@@ -228,7 +239,9 @@ public partial class WeatherPointsPage
     private async Task OpenDeepLinkAsync()
     {
         if (OpenId is not { } id)
+        {
             return;
+        }
 
         if (_points.Any(p => p.WeatherPointId == id))
         {
@@ -265,9 +278,15 @@ public partial class WeatherPointsPage
     {
         _quietLinkedId = null;
         if (_expandedId is { } open && open != id)
+        {
             _moveNotes.Remove(open);
+        }
+
         if (_expandedId == id)
+        {
             _moveNotes.Remove(id);
+        }
+
         _expandedId = _expandedId == id ? null : id;
     }
 
@@ -290,7 +309,10 @@ public partial class WeatherPointsPage
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusPending)
+        {
             return;
+        }
+
         _focusPending = false;
         try
         {
@@ -305,7 +327,10 @@ public partial class WeatherPointsPage
     {
         var index = rows.ToList().FindIndex(r => r.WeatherPointId == id);
         if (index < 0)
+        {
             return null;
+        }
+
         return index + 1 < rows.Count ? rows[index + 1].WeatherPointId
             : index > 0 ? rows[index - 1].WeatherPointId
             : null;
@@ -329,7 +354,9 @@ public partial class WeatherPointsPage
     private void AnnounceLinked(Guid id, string message)
     {
         if (_quietLinkedId != id)
+        {
             Announce(message);
+        }
     }
 
     /// <summary>A 403 from a point endpoint asks the bounded claims refresher, then redraws from the new claims.</summary>
@@ -379,7 +406,10 @@ public partial class WeatherPointsPage
         if (p.PurgeInProgress)
         {
             if (canDelete)
+            {
                 items.Add(new OdsMenuItem { Icon = "delete_sweep", Label = "Continue deleting…", AriaLabel = $"Continue deleting {p.Name}", Danger = true, OnClick = delete });
+            }
+
             return items;
         }
 
@@ -387,18 +417,28 @@ public partial class WeatherPointsPage
         {
             items.Add(new OdsMenuItem { Icon = "tune", Label = "Weather settings…", AriaLabel = $"Weather settings for {p.Name}", OnClick = settings });
             if (p.ForecastEnabled)
+            {
                 items.Add(new OdsMenuItem { Icon = "refresh", Label = "Refresh forecast", AriaLabel = $"Refresh forecast for {p.Name}", OnClick = refresh });
+            }
         }
 
         var canDeletePoint = !p.ForecastEnabled && !p.HistoryEnabled && !p.IsHouseholdDefault;
         if (canDelete && (!p.HistoryEnabled || canDeletePoint))
         {
             if (items.Count > 0)
+            {
                 items.Add(new OdsMenuItem { Divider = true });
+            }
+
             if (!p.HistoryEnabled)
+            {
                 items.Add(new OdsMenuItem { Icon = "delete_sweep", Label = "Delete weather history…", AriaLabel = $"Delete weather history of {p.Name}", Danger = true, OnClick = purgeHistory });
+            }
+
             if (canDeletePoint)
+            {
                 items.Add(new OdsMenuItem { Icon = "delete_forever", Label = "Delete weather point…", AriaLabel = $"Delete weather point {p.Name}", Danger = true, OnClick = delete });
+            }
         }
 
         return items;
@@ -426,7 +466,9 @@ public partial class WeatherPointsPage
     private void NewClicked()
     {
         if (_canUpdate)
+        {
             Show(Dialog.Create, null);
+        }
     }
 
     private void OpenSettings(ExistingWeatherPoint p) => Show(Dialog.Settings, p);
@@ -434,7 +476,10 @@ public partial class WeatherPointsPage
     private void OpenPurge(ExistingWeatherPoint p, WeatherPurgeMode mode)
     {
         if (!_canDelete)
+        {
             return;
+        }
+
         _purgeMode = mode;
         _purgeNeighbour = NeighbourOf(VisibleRows, p.WeatherPointId);
         Show(Dialog.Purge, Current(p.WeatherPointId) ?? p);
@@ -452,9 +497,14 @@ public partial class WeatherPointsPage
     {
         var index = _points.FindIndex(p => p.WeatherPointId == point.WeatherPointId);
         if (index >= 0)
+        {
             _points[index] = point;
+        }
+
         if (_pinned?.WeatherPointId == point.WeatherPointId)
+        {
             _pinned = point;
+        }
     }
 
     private async Task OnCreatedAsync((ExistingWeatherPoint Point, bool FromLocation) created)
@@ -486,7 +536,9 @@ public partial class WeatherPointsPage
             var followText = follow is null ? null : WeatherVisuals.AdvisoryText(follow, point.Name);
             message = $"{point.Name} moved.{(followText is null ? "" : $" {followText}")}";
             if (followText is not null)
+            {
                 _moveNotes[point.WeatherPointId] = message;
+            }
         }
         else
         {
@@ -506,7 +558,10 @@ public partial class WeatherPointsPage
         {
             var linked = target.LinkedLocationCount;
             if (_pinned?.WeatherPointId == target.WeatherPointId)
+            {
                 _pinned = null;
+            }
+
             await LoadAsync();
             Announce($"Weather point {target.Name} deleted.{(linked is > 0 ? linked == 1 ? " 1 location was unlinked." : $" {linked} locations were unlinked." : "")}");
             FocusAfterRender(_purgeNeighbour is { } next ? MenuId(next) : null);
@@ -533,7 +588,10 @@ public partial class WeatherPointsPage
     private async Task RefreshAsync(ExistingWeatherPoint p)
     {
         if (!_refreshing.Add(p.WeatherPointId))
+        {
             return;
+        }
+
         try
         {
             var result = await Weather.RefreshPointAsync(p.WeatherPointId);

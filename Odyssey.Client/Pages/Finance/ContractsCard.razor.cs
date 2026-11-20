@@ -124,7 +124,9 @@ public partial class ContractsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -225,7 +227,9 @@ public partial class ContractsCard
             _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
 
@@ -272,7 +276,9 @@ public partial class ContractsCard
     private async Task LoadPropertyOptions()
     {
         if (!_canViewProperties)
+        {
             return;
+        }
 
         var properties = (await PropertiesApi.ListAllAsync()).ItemsOrToast(Snackbar, "properties");
         _propertyOptions = PropertyVisuals.PartyOptions(properties);
@@ -313,7 +319,9 @@ public partial class ContractsCard
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
         if (_minorUnitsCache.TryGetValue(key, out var cached))
+        {
             return cached;
+        }
 
         _currenciesByCode.TryGetValue(key, out var currency);
         var units = OdsMoney.MinorUnitsOf(currency);
@@ -548,11 +556,16 @@ public partial class ContractsCard
     private async Task EnsureDetail(Guid id)
     {
         if (_details.ContainsKey(id))
+        {
             return;
+        }
 
         var contract = await Contracts.GetAsync(id);
         if (contract is not null)
+        {
             _details[id] = contract;
+        }
+
         StateHasChanged();
     }
 
@@ -565,7 +578,10 @@ public partial class ContractsCard
     private void ApplyContractFiles(Guid id, List<ExistingContractFile> files)
     {
         if (_details.TryGetValue(id, out var contract))
+        {
             contract.Files = files;
+        }
+
         StateHasChanged();
     }
 
@@ -573,7 +589,10 @@ public partial class ContractsCard
     {
         var contract = await Contracts.GetAsync(id);
         if (contract is not null)
+        {
             _details[id] = contract;
+        }
+
         await LoadContracts();
         await LoadSummary();
         StateHasChanged();
@@ -585,7 +604,11 @@ public partial class ContractsCard
 
     private void AddClicked()
     {
-        if (!_canCreate) return;
+        if (!_canCreate)
+        {
+            return;
+        }
+
         _createKey = Guid.NewGuid();
         _createOpen = true;
     }
@@ -603,11 +626,16 @@ public partial class ContractsCard
 
     private async Task EditClicked(ContractListItem c)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
 
         await EnsureDetail(c.ContractId);
         if (!_details.TryGetValue(c.ContractId, out var detail))
+        {
             return;
+        }
 
         _editContract = detail;
         _editContractKey = Guid.NewGuid();
@@ -624,11 +652,16 @@ public partial class ContractsCard
 
     private async Task EditScopeClicked(ContractListItem c)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
 
         await EnsureDetail(c.ContractId);
         if (!_details.TryGetValue(c.ContractId, out var detail))
+        {
             return;
+        }
 
         _scopeContract = detail;
         _scopeContractKey = Guid.NewGuid();
@@ -644,10 +677,16 @@ public partial class ContractsCard
     //    hidden by default, and drop out of the active summary counts) ──────────────────────
     private async Task ToggleArchive(ContractListItem c)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         await EnsureDetail(c.ContractId);
         if (!_details.TryGetValue(c.ContractId, out var d))
+        {
             return;
+        }
 
         var archiving = c.Archived is null;
         var update = new UpdateContract
@@ -688,10 +727,16 @@ public partial class ContractsCard
     //    by-type split and the next charges) ──────────────────────────────────────────────────────
     private async Task TogglePause(ContractListItem c)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         await EnsureDetail(c.ContractId);
         if (!_details.TryGetValue(c.ContractId, out var d))
+        {
             return;
+        }
 
         var pausing = d.Paused is null;
         var update = new UpdateContract
@@ -786,10 +831,16 @@ public partial class ContractsCard
         Func<ExistingContract, DateTime, (DateTime? Ready, DateTime? Signed)> next,
         string failure, string success)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         await EnsureDetail(c.ContractId);
         if (!_details.TryGetValue(c.ContractId, out var d))
+        {
             return;
+        }
 
         var (ready, signed) = next(d, DateTime.UtcNow);
         var update = new UpdateContract
@@ -820,14 +871,22 @@ public partial class ContractsCard
     // ── Delete (permanent; the API hard-deletes the contract + its party/file links) ──────
     private async Task ConfirmDelete(ContractListItem c)
     {
-        if (!_canDelete) return;
+        if (!_canDelete)
+        {
+            return;
+        }
+
         var confirmed = await _confirm.AskAsync("Delete contract", $"Permanently delete '{c.Name}' and all its party and document links? This cannot be undone.", "Delete");
 
         if (confirmed && (await Contracts.DeleteAsync(c.ContractId)).Toast(Snackbar, "Delete failed", "Contract deleted."))
         {
             _contracts.Remove(c);
             _details.Remove(c.ContractId);
-            if (_expandedId == c.ContractId) _expandedId = null;
+            if (_expandedId == c.ContractId)
+            {
+                _expandedId = null;
+            }
+
             if (_editContract?.ContractId == c.ContractId) { _editContract = null; _editContractOpen = false; }
             await LoadSummary();
             StateHasChanged();
@@ -922,9 +981,17 @@ public partial class ContractsCard
 
     private async Task OpenPartyDialog(Guid contractId, ExistingContractParty? party)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         await EnsureDetail(contractId);
-        if (!_details.TryGetValue(contractId, out var d)) return;
+        if (!_details.TryGetValue(contractId, out var d))
+        {
+            return;
+        }
+
         _expandedId = contractId;
         _partyContract = d;
         _editingParty = party;
@@ -961,16 +1028,27 @@ public partial class ContractsCard
     private async Task<bool> AttachContractFileAsync(AttachDocumentItem item)
     {
         if (_uploadContract is null)
+        {
             return false;
+        }
+
         return (await Contracts.AttachFileAsync(_uploadContract.ContractId, AttachDocumentRequests.Contract(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
 
     private async Task AttachDocument(Guid contractId)
     {
-        if (!CanAttachDocuments) return;
+        if (!CanAttachDocuments)
+        {
+            return;
+        }
+
         await EnsureDetail(contractId);
-        if (!_details.TryGetValue(contractId, out var d)) return;
+        if (!_details.TryGetValue(contractId, out var d))
+        {
+            return;
+        }
+
         _expandedId = contractId;
         _uploadContract = d;
         _uploadKey = Guid.NewGuid();
@@ -1247,7 +1325,10 @@ public partial class ContractsCard
         if (c.CompletionDate is { } completion)
         {
             if (c.Status == ContractStatus.Archived)
+            {
                 return (true, OdsDates.Long(completion), "archived", "archived");
+            }
+
             var toGo = (completion.Date - Today).Days;
             var oneOffWord = toGo > 0
                 ? $"completes in {toGo} day{(toGo == 1 ? "" : "s")}"

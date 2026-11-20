@@ -36,14 +36,18 @@ public static class OdsMoneyText
 
         // A second decimal separator is ambiguous.
         if (kept.Count(ch => ch is '.' or ',') > 1)
+        {
             return null;
+        }
 
         // A minus is only ever leading, and only ever one: testing the FIRST index alone would let a
         // second one through at index 0 ("--5"), which is how it reaches the field on an ordinary
         // double keypress.
         var minus = kept.IndexOf('-');
         if (minus > 0 || kept.LastIndexOf('-') != minus)
+        {
             return null;
+        }
 
         return kept;
     }

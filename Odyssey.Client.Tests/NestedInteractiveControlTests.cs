@@ -179,7 +179,9 @@ public class NestedInteractiveControlTests
     private static IEnumerable<IElement> Ancestors(IElement element, IElement root)
     {
         for (var parent = element.ParentElement; parent is not null && parent != root.ParentElement; parent = parent.ParentElement)
+        {
             yield return parent;
+        }
     }
 
     private static void AssertNoNesting(IRenderedComponent<IComponent> cut)

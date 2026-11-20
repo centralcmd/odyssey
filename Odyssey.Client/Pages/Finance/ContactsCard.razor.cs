@@ -98,7 +98,9 @@ public partial class ContactsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -194,7 +196,9 @@ public partial class ContactsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "contacts");
         if (load.IsSuccess)
@@ -207,7 +211,9 @@ public partial class ContactsCard
 
             // A card that scrolled out of the filtered set must not stay open behind the filter.
             if (_openId is { } open && _contacts.All(c => c.ContactId != open))
+            {
                 _openId = null;
+            }
         }
         else
         {
@@ -376,7 +382,9 @@ public partial class ContactsCard
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _createKey = Guid.NewGuid();
         _createOpen = true;
@@ -387,7 +395,9 @@ public partial class ContactsCard
     private void EditClicked(ExistingContact contact)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editTarget = contact;
         _editKey = Guid.NewGuid();
@@ -397,7 +407,9 @@ public partial class ContactsCard
     private void ConvertClicked(ExistingContact contact)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _convertTarget = contact;
         _convertKey = Guid.NewGuid();
@@ -414,7 +426,10 @@ public partial class ContactsCard
     private async Task OnEditSaved()
     {
         if (_editTarget is not null)
+        {
             await RefreshContactAsync(_editTarget.ContactId);
+        }
+
         _allContacts = (await Contacts.ListAllAsync()).ItemsOrToast(Snackbar, "contacts");
         StateHasChanged();
     }
@@ -440,7 +455,9 @@ public partial class ContactsCard
     private async Task PutContact(ExistingContact contact, NewContact body)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         if ((await Contacts.UpdateAsync(contact.ContactId, body)).Toast(Snackbar, "Update failed", "Contact updated."))
         {
@@ -462,7 +479,9 @@ public partial class ContactsCard
 
         var fresh = (await Contacts.GetAsync(contactId)).OrToast(Snackbar, "Unable to load contact");
         if (fresh is null)
+        {
             return;
+        }
 
         var index = _contacts.FindIndex(c => c.ContactId == contactId);
         if (index >= 0)
@@ -479,11 +498,15 @@ public partial class ContactsCard
     private async Task HandleDelete(ExistingContact contact)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var confirmed = await _confirm.AskAsync("Delete contact", DeleteMessage(contact.ResolvedDisplayName), "Delete");
         if (!confirmed)
+        {
             return;
+        }
 
         // On success, a full refresh rather than a local Remove: the delete changes the header counts
         // and the overview breakdowns, which read the unfiltered set. A refusal may instead be a
@@ -546,7 +569,9 @@ public partial class ContactsCard
     private async Task<DetachedContactLinks?> DetachAndDeleteAsync()
     {
         if (_blockedContact is not { } contact)
+        {
             return null;
+        }
 
         var result = await Contacts.DeleteWithDetachAsync(contact.ContactId);
         if (!result.IsSuccess)
@@ -653,14 +678,18 @@ public partial class ContactsCard
     private async Task ExportRowAsync(ExistingContact c, bool includeImages)
     {
         if (_exporting)
+        {
             return;
+        }
 
         _exporting = true;
         try
         {
             var result = await VCardApi.ExportOneAsync(c.ContactId, includeImages);
             if (result.OrToast(Snackbar, "Unable to export the contact") is not { } file)
+            {
                 return;
+            }
 
             await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
@@ -678,7 +707,9 @@ public partial class ContactsCard
     private async Task ExportAsync(bool filtered, bool includeImages = false)
     {
         if (_exporting)
+        {
             return;
+        }
 
         _exporting = true;
         try
@@ -687,7 +718,9 @@ public partial class ContactsCard
                 ? await VCardApi.ExportManyAsync(_search, _typeFilter, _statusFilter, includeImages)
                 : await VCardApi.ExportManyAsync(includeImages: includeImages);
             if (result.OrToast(Snackbar, "Unable to export contacts") is not { } file)
+            {
                 return;
+            }
 
             await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
@@ -701,7 +734,9 @@ public partial class ContactsCard
     private void OpenImportDialog()
     {
         if (!_canImport)
+        {
             return;
+        }
 
         _importOpen = true;
     }

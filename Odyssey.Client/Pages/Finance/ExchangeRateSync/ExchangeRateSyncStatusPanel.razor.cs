@@ -77,7 +77,10 @@ public partial class ExchangeRateSyncStatusPanel
     public async Task RefreshAsync()
     {
         if (_refreshing)
+        {
             return;
+        }
+
         _refreshing = true;
         StateHasChanged();
         _stale = null;
@@ -91,7 +94,10 @@ public partial class ExchangeRateSyncStatusPanel
         {
             // A read that already went stale, or lost permission, announced it; say it once.
             if (_stale is null && !_permissionLost)
+            {
                 await OnAnnounce.InvokeAsync("Couldn’t refresh status");
+            }
+
             _stale = StaleReason.Errors;
         }
         else if (_status is { } status)
@@ -141,7 +147,9 @@ public partial class ExchangeRateSyncStatusPanel
     public async Task RunNowAsync()
     {
         if (RunNowReason is not null)
+        {
             return;
+        }
 
         var result = await Sync.RunNowAsync();
         if (result.IsSuccess)
@@ -187,7 +195,10 @@ public partial class ExchangeRateSyncStatusPanel
     private void StartPolling()
     {
         if (IsPolling)
+        {
             return;
+        }
+
         _stale = null;
         _consecutiveFailures = 0;
         _pollCts?.Dispose();
@@ -206,11 +217,16 @@ public partial class ExchangeRateSyncStatusPanel
             {
                 // A tick that lands while the previous read is still out is skipped, never queued.
                 if (_readsInFlight > 0)
+                {
                     continue;
+                }
+
                 var keepGoing = true;
                 await InvokeAsync(async () => keepGoing = await PollOnceAsync());
                 if (!keepGoing)
+                {
                     return;
+                }
             }
         }
         catch (OperationCanceledException) { }
@@ -240,7 +256,9 @@ public partial class ExchangeRateSyncStatusPanel
 
         // Superseded: the newer read applies its own outcome; polling carries on while a run is shown.
         if (sequence != _readSequence)
+        {
             return _status?.CurrentRun is not null;
+        }
 
         if (!result.IsSuccess || result.Value is null)
         {
@@ -276,9 +294,13 @@ public partial class ExchangeRateSyncStatusPanel
             if (announce && _status.LastRun is { } last)
             {
                 if (last.Status == ExchangeRateSyncRunStatus.Failed)
+                {
                     await OnAnnounceAssertive.InvokeAsync($"Run failed: {ErrorText(last)}");
+                }
                 else
+                {
                     await OnAnnounce.InvokeAsync($"Run finished: {last.RowsInserted:N0} rate{(last.RowsInserted == 1 ? "" : "s")} added");
+                }
             }
         }
 
@@ -288,7 +310,9 @@ public partial class ExchangeRateSyncStatusPanel
     private async Task<bool> OnReadFailedAsync(HttpStatusCode status, bool announce)
     {
         if (_status is null)
+        {
             _loadFailed = true;
+        }
 
         switch (status)
         {
@@ -315,7 +339,9 @@ public partial class ExchangeRateSyncStatusPanel
     {
         _stale = reason;
         if (announce)
+        {
             await OnAnnounce.InvokeAsync(reason == StaleReason.Errors ? "Couldn’t refresh status" : "Status not current");
+        }
     }
 
     // ── Text, built only from status fields ───────────────────────────────────────────────────────

@@ -94,7 +94,10 @@ public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransa
         {
             var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             foreach (var tag in db.TransactionTags)
+            {
                 tag.Icon = "bolt";
+            }
+
             await db.SaveChangesAsync();
         }
 
@@ -189,7 +192,10 @@ public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransa
         var row = summary.GetProperty("byCurrency")[0];
         Assert.Equal(["currencyCode", "net", "totalIn", "totalOut", "transactionCount"], Names(row));
         foreach (var amount in new[] { "net", "totalIn", "totalOut" })
+        {
             Assert.Equal(JsonValueKind.Number, row.GetProperty(amount).ValueKind);
+        }
+
         Assert.Equal(["items", "limit", "offset", "totalCount"], Names(root.GetProperty("page")));
     }
 
@@ -293,7 +299,9 @@ public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransa
 
         Assert.Contains("Hafslund", body);
         foreach (var leaked in new[] { "organizationNumber", "legalName", "aliases", "notes", "personDetails" })
+        {
             Assert.DoesNotContain(leaked, body, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     // ── AC 21: GET /api/transactions pinned across the extraction ─────────────
@@ -389,10 +397,13 @@ public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransa
         await db.SaveChangesAsync();
 
         if (withSmartTag)
+        {
             db.ContractSmartTags.Add(new ContractSmartTag
             {
                 ContractId = contract.ContractId, TransactionTagId = tag.TransactionTagId, AddedAt = DateTime.UtcNow,
             });
+        }
+
         db.ContractParties.AddRange(
             new ContractParty { ContractId = contract.ContractId, ContactId = supplier.ContactId, Role = ContractPartyRole.Other },
             new ContractParty { ContractId = contract.ContractId, ContactId = landlord.ContactId, Role = ContractPartyRole.Guarantor });

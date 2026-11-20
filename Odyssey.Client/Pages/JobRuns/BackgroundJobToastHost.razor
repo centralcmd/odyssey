@@ -35,7 +35,9 @@
     {
         var toast = new Toast(Guid.NewGuid(), severity, text);
         if (severity == OdsToastSeverity.Success)
+        {
             toast.Timer = Time.CreateTimer(_ => InvokeAsync(() => Dismiss(toast.Id)), null, SuccessLifetime, Timeout.InfiniteTimeSpan);
+        }
 
         _toasts.Insert(0, toast);
         while (_toasts.Count > MaxVisible)
@@ -52,7 +54,9 @@
     {
         var toast = _toasts.FirstOrDefault(t => t.Id == id);
         if (toast is null)
+        {
             return;
+        }
         toast.Timer?.Dispose();
         _toasts.Remove(toast);
         StateHasChanged();
@@ -61,7 +65,9 @@
     public void Dispose()
     {
         foreach (var toast in _toasts)
+        {
             toast.Timer?.Dispose();
+        }
     }
 
     internal sealed record Toast(Guid Id, OdsToastSeverity Severity, string Text)

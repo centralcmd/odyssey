@@ -481,7 +481,10 @@ public class PropertyFileServiceTests
     {
         var data = new TheoryData<DtoPropertyFileType>();
         foreach (var member in Enum.GetValues<DtoPropertyFileType>())
+        {
             data.Add(member);
+        }
+
         return data;
     }
 

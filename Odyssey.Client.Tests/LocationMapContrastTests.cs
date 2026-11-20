@@ -173,7 +173,9 @@ public class LocationMapContrastTests
         var value = declarations.FirstOrDefault(d => d.Dark == dark).Value ?? declarations.First(d => !d.Dark).Value;
 
         if (Regex.IsMatch(value, "^#[0-9A-Fa-f]{6}$"))
+        {
             return Hex(value);
+        }
 
         return Token(Var(value), dark);
     }

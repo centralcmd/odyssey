@@ -69,7 +69,9 @@ public static class OdsSortHelpers
         OdsRecordColumn<TRow>? column, OdsTableSort? current, bool keepDir)
     {
         if (keepDir && current is not null)
+        {
             return current.Dir;
+        }
 
         return column is null
             ? OdsSortDirection.Asc
@@ -99,9 +101,17 @@ public static class OdsSortHelpers
     public static OdsTableSort Resolve<TRow>(
         IReadOnlyList<OdsSortField<TRow>> fields, string? key, OdsSortDirection? dir, OdsTableSort fallback)
     {
-        if (string.IsNullOrEmpty(key)) return fallback;
+        if (string.IsNullOrEmpty(key))
+        {
+            return fallback;
+        }
+
         var field = fields.FirstOrDefault(f => f.Key == key);
-        if (field is null) return fallback;
+        if (field is null)
+        {
+            return fallback;
+        }
+
         var direction = dir is { } d && Enum.IsDefined(d) ? d : DefaultDir(field);
         return new OdsTableSort(field.Key, direction);
     }
@@ -118,9 +128,16 @@ public static class OdsSortHelpers
         Func<TRow, string> getId)
     {
         var list = rows as IReadOnlyList<TRow> ?? rows.ToList();
-        if (sort?.Key is not { } key) return list;
+        if (sort?.Key is not { } key)
+        {
+            return list;
+        }
+
         var field = fields.FirstOrDefault(f => f.Key == key);
-        if (field?.SortValue is not { } sortValue) return list;
+        if (field?.SortValue is not { } sortValue)
+        {
+            return list;
+        }
 
         var mul = sort.Dir == OdsSortDirection.Asc ? 1 : -1;
         return [.. list
@@ -131,9 +148,8 @@ public static class OdsSortHelpers
                 var vb = sortValue(b.row);
                 var ea = IsEmpty(va);
                 var eb = IsEmpty(vb);
-                if (ea || eb)
-                    return ea && eb ? Tie(a, b) : (ea ? 1 : -1);   // empties last, both directions
-                var cmp = mul * CompareValues(va, vb);
+                if (ea || eb) { return ea && eb ? Tie(a, b) : (ea ? 1 : -1);   // empties last, both directions
+} var cmp = mul * CompareValues(va, vb);
                 return cmp != 0 ? cmp : Tie(a, b);
             }))
             .Select(x => x.row)];
@@ -150,8 +166,16 @@ public static class OdsSortHelpers
 
     private static int CompareValues(IComparable? a, IComparable? b)
     {
-        if (a is null) return b is null ? 0 : -1;
-        if (b is null) return 1;
+        if (a is null)
+        {
+            return b is null ? 0 : -1;
+        }
+
+        if (b is null)
+        {
+            return 1;
+        }
+
         return a.CompareTo(b);
     }
 }

@@ -59,7 +59,9 @@ public class TermService
     private async Task<int> ResolveTermCap(CancellationToken cancellationToken)
     {
         if (systemSettingsLookup is null)
+        {
             return SystemSettingsDefaults.ContractMaxTermsPerContract;
+        }
 
         return (await systemSettingsLookup.GetRequestCapsAsync(cancellationToken)).MaxTermsPerContract;
     }
@@ -74,7 +76,9 @@ public class TermService
     public async Task<IList<ExistingTerm>?> GetContractHistory(Guid contractId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         if (!await ContractExists(contractId, cancellationToken))
+        {
             return null;
+        }
 
         var query = context.Terms.AsNoTracking().Where(term => term.ContractId == contractId);
 
@@ -101,7 +105,9 @@ public class TermService
     public async Task<IList<CurrentTerm>?> GetContractCurrent(Guid contractId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         if (!await ContractExists(contractId, cancellationToken))
+        {
             return null;
+        }
 
         var cutoff = NormalizeToUtc(asOf ?? timeProvider.GetUtcNow().UtcDateTime);
 
@@ -127,7 +133,9 @@ public class TermService
         Guid contractId, NewTerm newTerm, string? userId, CancellationToken cancellationToken = default)
     {
         if (!await ContractExists(contractId, cancellationToken))
+        {
             throw new DomainNotFoundException($"Contract ID {contractId} not found.");
+        }
 
         var term = new Term
         {
@@ -144,8 +152,10 @@ public class TermService
         var cap = await ResolveTermCap(cancellationToken);
         var count = await context.Terms.CountAsync(t => t.ContractId == contractId, cancellationToken);
         if (count >= cap)
+        {
             throw new DomainUnprocessableException(
                 $"This contract already has the maximum of {cap} terms.");
+        }
 
         context.Terms.Add(term);
 
@@ -177,7 +187,9 @@ public class TermService
         Guid contractId, Guid termId, NewTerm putTerm, string? userId, CancellationToken cancellationToken = default)
     {
         if (!await ContractExists(contractId, cancellationToken))
+        {
             return false;
+        }
 
         // Both halves are captured by this closure, which also tells the wrapper whether the delegate
         // ran at all — it does not when the term id matches no row on this contract.
@@ -193,7 +205,9 @@ public class TermService
         });
 
         if (updated)
+        {
             LogTermWrite("changed", contractId, before, after, userId);
+        }
 
         return updated;
     }
@@ -214,7 +228,9 @@ public class TermService
         var term = await context.Terms
             .FirstOrDefaultAsync(t => t.ContractId == contractId && t.TermId == termId, cancellationToken);
         if (term is null)
+        {
             return false;
+        }
 
         await ApplyAndValidate(term, putTerm, excludeTermId: termId, cancellationToken);
 
@@ -234,7 +250,9 @@ public class TermService
         Guid contractId, Guid termId, string? userId, CancellationToken cancellationToken = default)
     {
         if (!await ContractExists(contractId, cancellationToken))
+        {
             return false;
+        }
 
         TermSnapshot? before = null;
         var deleted = await DeleteFor(contractId, termId, cancellationToken, term =>
@@ -248,7 +266,9 @@ public class TermService
         // A delete hard-deletes the row (Non-Goal 10), so once the TermChanged event is itself deleted
         // this line is the only surviving record of what the term used to say. Hence the empty "after".
         if (deleted)
+        {
             LogTermWrite("removed", contractId, before, after: null, userId);
+        }
 
         return deleted;
     }
@@ -259,7 +279,9 @@ public class TermService
         var term = await context.Terms
             .FirstOrDefaultAsync(t => t.ContractId == contractId && t.TermId == termId, cancellationToken);
         if (term is null)
+        {
             return false;
+        }
 
         // Before Remove, for readability rather than correctness: Remove() only flips the tracked state
         // and does not clear the entity's properties, so either order would in fact work. Stated so
@@ -354,7 +376,9 @@ public class TermService
         string action, Guid contractId, TermSnapshot? before, TermSnapshot? after, string? userId)
     {
         if (before is null && after is null)
+        {
             return;
+        }
 
         var subject = after ?? before!;
 
@@ -398,7 +422,9 @@ public class TermService
     private static string LogCurrency(string? code)
     {
         if (code is not { Length: 3 } || !code.All(char.IsAsciiLetter))
+        {
             return NoTermValue;
+        }
 
         // The shape check above already makes this a no-op — three ASCII letters contain no line
         // break. It is here because it is the form CodeQL recognises as a barrier for
@@ -422,22 +448,28 @@ public class TermService
         // this, an undefined ordinal would fall through the Mapster converter's `_ => OneTime` arm
         // and be PERSISTED as OneTime, a write-path fail-open rather than a read-path degradation.
         if (source.Interval is not null && !Enum.IsDefined(source.Interval.Value))
+        {
             throw new DomainValidationException(
                 $"Interval '{(int)source.Interval.Value}' is not a recognised value.");
+        }
 
         if (source.IntervalCount is { } requestedCount
             && (requestedCount < TermIntervalCount.Min || requestedCount > TermIntervalCount.Max))
+        {
             throw new DomainValidationException(
                 $"IntervalCount must be between {TermIntervalCount.Min} and {TermIntervalCount.Max}.");
+        }
 
         // Same fail-closed reasoning as the Interval check above: the HTTP path is bounded by
         // [EnumDataType], but a direct caller never reaches model validation, and an undefined ordinal
         // would otherwise be persisted through the Mapster converter as whichever member it defaults to.
         if (!Enum.IsDefined(source.Direction))
+        {
             throw new DomainValidationException(
                 $"Direction '{(int)source.Direction}' is not a recognised value.",
                 code: null,
                 field: nameof(NewTerm.Direction));
+        }
 
         // The label IS the series, so it is required: two unnamed terms on one contract could not be
         // told apart.
@@ -447,8 +479,10 @@ public class TermService
                 code: null,
                 field: nameof(NewTerm.Label));
         if (label.Length > TermLabel.MaxLength)
+        {
             throw new DomainValidationException(
                 $"A term label must be {TermLabel.MaxLength} characters or fewer.");
+        }
 
         // Derived here and only here — LabelKey is on no request DTO and is never bound from one.
         var labelKey = TermLabel.Key(label);
@@ -456,10 +490,12 @@ public class TermService
         // Rule 1 (issue #192 §8) — fail closed for a direct caller, like Direction above: an undefined
         // ordinal would otherwise reach the Mapster converter, which throws rather than guessing.
         if (!Enum.IsDefined(source.ValueUnit))
+        {
             throw new DomainValidationException(
                 $"ValueUnit '{(int)source.ValueUnit}' is not a recognised value.",
                 code: null,
                 field: nameof(NewTerm.ValueUnit));
+        }
 
         var unit = source.ValueUnit.Adapt<ContextTermValueUnit>();
 
@@ -482,24 +518,46 @@ public class TermService
 
             // Rule 3 — exactly one value field, the one the unit names. Never echo the submitted text.
             if (source.Value is not null)
+            {
                 throw ShapeInvalid(kind, nameof(NewTerm.Value));
+            }
+
             if (unit == ContextTermValueUnit.Text && source.DateTimeValue is not null)
+            {
                 throw ShapeInvalid(kind, nameof(NewTerm.DateTimeValue));
+            }
+
             if (unit == ContextTermValueUnit.DateTime && source.TextValue is not null)
+            {
                 throw ShapeInvalid(kind, nameof(NewTerm.TextValue));
+            }
 
             // Rule 4 — fields that do not apply are REFUSED, each under its own key, never silently
             // cleared: clearing would hide a client bug on a read-modify-write that changed the kind.
             if (source.CurrencyCode is not null)
+            {
                 throw NotApplicable(kind, nameof(NewTerm.CurrencyCode));
+            }
+
             if (source.Interval is not null)
+            {
                 throw NotApplicable(kind, nameof(NewTerm.Interval));
+            }
+
             if (source.IntervalCount is not null)
+            {
                 throw NotApplicable(kind, nameof(NewTerm.IntervalCount));
+            }
+
             if (source.AnchorDate is not null)
+            {
                 throw NotApplicable(kind, nameof(NewTerm.AnchorDate));
+            }
+
             if (direction != ContextTermDirection.Outgoing)
+            {
                 throw NotApplicable(kind, nameof(NewTerm.Direction));
+            }
 
             if (unit == ContextTermValueUnit.Text)
             {
@@ -507,33 +565,44 @@ public class TermService
                 // names the rule and never the value (§7.12).
                 textValue = TermTextValue.Normalize(source.TextValue);
                 if (textValue is null)
+                {
                     throw new DomainValidationException(
                         "A Text term requires textValue and must not carry value or dateTimeValue.",
                         code: null,
                         field: nameof(NewTerm.TextValue));
+                }
+
                 if (!TermTextValue.IsValid(textValue))
+                {
                     throw new DomainValidationException(
                         $"textValue must be 1–{TermTextValue.MaxLength} characters with no control characters.",
                         code: null,
                         field: nameof(NewTerm.TextValue));
+                }
             }
             else
             {
                 if (source.DateTimeValue is not { } requested)
+                {
                     throw new DomainValidationException(
                         "A date-time term requires dateTimeValue and must not carry value or textValue.",
                         code: null,
                         field: nameof(NewTerm.DateTimeValue));
+                }
 
                 // Rule 6 — an instant with no offset is REFUSED, not read as UTC: every other term date
                 // does read it as UTC, but here that would silently shift the user's intended time by
                 // their offset.
                 if (requested.Kind == DateTimeKind.Unspecified)
+                {
                     throw DateTimeInvalid();
+                }
 
                 var utc = requested.Kind == DateTimeKind.Local ? requested.ToUniversalTime() : requested;
                 if (!TermDateTimeValue.IsInRange(utc))
+                {
                     throw DateTimeInvalid();
+                }
 
                 dateTimeValue = utc;
             }
@@ -542,20 +611,28 @@ public class TermService
         {
             // Rule 3 for the two numeric kinds: value is required, and the other two value fields are refused.
             if (source.Value is not { } number)
+            {
                 throw new DomainValidationException(
                     "A percentage or amount term requires value and must not carry textValue or dateTimeValue.",
                     code: null,
                     field: nameof(NewTerm.Value));
+            }
+
             if (source.TextValue is not null)
+            {
                 throw new DomainValidationException(
                     "A percentage or amount term must not carry textValue.",
                     code: null,
                     field: nameof(NewTerm.TextValue));
+            }
+
             if (source.DateTimeValue is not null)
+            {
                 throw new DomainValidationException(
                     "A percentage or amount term must not carry dateTimeValue.",
                     code: null,
                     field: nameof(NewTerm.DateTimeValue));
+            }
 
             value = number;
 
@@ -585,15 +662,19 @@ public class TermService
             if (unit == ContextTermValueUnit.Percentage)
             {
                 if (number < -1m || number > 1m)
+                {
                     throw new DomainValidationException(
                         "A percentage value must be a fraction within [-1, 1] (e.g. 0.0325 for 3.25%).");
+                }
 
                 // Currency is meaningless for a percentage; it is always stored null.
             }
             else
             {
                 if (number < 0m)
+                {
                     throw new DomainValidationException("An amount value must be greater than or equal to zero.");
+                }
 
                 // A contract has no currency of its own, so an explicit code is required. The two
                 // rejected defaulting alternatives (its first account party's currency, an
@@ -601,10 +682,12 @@ public class TermService
                 // changes retroactively when parties are detached or re-ordered.
                 var requested = source.CurrencyCode;
                 if (string.IsNullOrWhiteSpace(requested))
+                {
                     throw new DomainValidationException(
                         "A money-valued term on a contract must name its currency — a contract has no currency of its own to fall back to.",
                         code: null,
                         field: nameof(NewTerm.CurrencyCode));
+                }
 
                 var normalized = CurrencyValidationService.Normalize(requested);
                 await CurrencyValidationService.EnsureSupportedAndActive(context, normalized, nameof(source.CurrencyCode));
@@ -622,8 +705,10 @@ public class TermService
             && existing.EffectiveFrom == effectiveFrom
             && (excludeTermId == null || existing.TermId != excludeTermId), cancellationToken);
         if (duplicateExists)
+        {
             throw new DomainConflictException(
                 $"'{label}' already has an entry effective from {effectiveFrom:yyyy-MM-dd} on this contract.");
+        }
 
         term.Label = label;
         term.LabelKey = labelKey;

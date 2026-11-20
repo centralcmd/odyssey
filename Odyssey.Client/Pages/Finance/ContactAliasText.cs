@@ -43,13 +43,25 @@ internal static class ContactAliasText
     public static string? Validate(string value, string? label)
     {
         if (string.IsNullOrEmpty(value))
+        {
             return "Enter an alias.";
+        }
+
         if (value.Length > ContactAliasRules.MaxValueLength)
+        {
             return $"Keep the alias to {ContactAliasRules.MaxValueLength} characters or fewer.";
+        }
+
         if (value.Any(char.IsControl) || (label?.Any(char.IsControl) ?? false))
+        {
             return "Remove the line breaks and control characters.";
+        }
+
         if (label is { Length: > ContactAliasRules.MaxLabelLength })
+        {
             return $"Keep the label to {ContactAliasRules.MaxLabelLength} characters or fewer.";
+        }
+
         return null;
     }
 }

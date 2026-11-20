@@ -638,12 +638,16 @@ public class OdsTypeRegistriesTests
     private static void AssertResolvesEveryMember<TEnum>(Func<TEnum, OdsTypeOption> lookup) where TEnum : struct, Enum
     {
         foreach (var value in Enum.GetValues<TEnum>())
+        {
             Assert.Equal(value.ToString(), lookup(value).Key);
+        }
     }
 
     private static void AssertResolvesEveryKey<TEnum>(Func<string?, OdsTypeOption> lookup) where TEnum : struct, Enum
     {
         foreach (var value in Enum.GetValues<TEnum>())
+        {
             Assert.Equal(value.ToString(), lookup(value.ToString()).Key);
+        }
     }
 }

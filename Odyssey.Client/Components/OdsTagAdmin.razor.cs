@@ -110,7 +110,9 @@ public partial class OdsTagAdmin<TRow>
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -199,7 +201,9 @@ public partial class OdsTagAdmin<TRow>
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, Noun);
         if (load.IsSuccess)
@@ -302,7 +306,9 @@ public partial class OdsTagAdmin<TRow>
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _editId = Guid.Empty;
         _editArchived = false;
@@ -319,7 +325,9 @@ public partial class OdsTagAdmin<TRow>
     private void EditClicked(TRow tag)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editId = Id(tag);
         _editArchived = Archived(tag) is not null;
@@ -337,7 +345,9 @@ public partial class OdsTagAdmin<TRow>
     private async Task<bool> SaveAsync()
     {
         if (_isEditing ? !_canUpdate : !_canCreate)
+        {
             return false;
+        }
 
         if (string.IsNullOrWhiteSpace(_draftName))
         {
@@ -353,7 +363,10 @@ public partial class OdsTagAdmin<TRow>
             _draftColorShowErrors = true;
             StateHasChanged();
             if (_colorPicker is not null)
+            {
                 await _colorPicker.FocusErrorAsync();
+            }
+
             return false;
         }
 
@@ -403,7 +416,10 @@ public partial class OdsTagAdmin<TRow>
             _draftColorError = colorError;
             StateHasChanged();
             if (_colorPicker is not null)
+            {
                 await _colorPicker.FocusErrorAsync();
+            }
+
             return false;
         }
 
@@ -445,7 +461,9 @@ public partial class OdsTagAdmin<TRow>
     {
         _draftColorValid = valid;
         if (valid)
+        {
             _draftColorShowErrors = false;
+        }
     }
 
     private void OnDraftIconChanged(string? value)
@@ -467,9 +485,15 @@ public partial class OdsTagAdmin<TRow>
     private bool Invalidated(bool saved)
     {
         if (saved && typeof(TRow) == typeof(ExistingTransactionTag))
+        {
             ReferenceData.InvalidateTransactionTags();
+        }
+
         if (saved)
+        {
             OnTagsChanged?.Invoke();
+        }
+
         return saved;
     }
 
@@ -482,12 +506,16 @@ public partial class OdsTagAdmin<TRow>
     private async Task ToggleArchive(TRow tag)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         // The icon rides along: a full-replacement PUT without it would reset the tag to the default.
         var body = WriteFor(Name(tag), Description(tag), archived: Archived(tag) is null, icon: IconOf?.Invoke(tag), color: ColorOf(tag));
         if (Invalidated((await Tags.UpdateAsync(Id(tag), body)).Toast(Snackbar, "Update failed", "Tag updated.")))
+        {
             await RefreshCurrentPageAsync();
+        }
 
         StateHasChanged();
     }
@@ -495,11 +523,15 @@ public partial class OdsTagAdmin<TRow>
     private async Task HandleDelete(object key)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var tag = _tags.FirstOrDefault(t => Id(t).Equals(key));
         if (tag is null)
+        {
             return;
+        }
 
         if (Invalidated((await Tags.DeleteAsync(Id(tag))).Toast(Snackbar, "Delete failed", "Tag deleted.")))
         {

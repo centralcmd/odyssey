@@ -23,7 +23,10 @@ internal sealed class QuickCreateLedger
     {
         var clean = (name ?? string.Empty).Trim();
         if (clean.Length == 0)
+        {
             return null;
+        }
+
         return clean.Length > maxLength ? clean[..maxLength] : clean;
     }
 
@@ -49,9 +52,15 @@ internal sealed class QuickCreateLedger
     public string? Resolve(string? id)
     {
         if (string.IsNullOrEmpty(id))
+        {
             return null;
+        }
+
         if (!staged.Contains(id))
+        {
             return id;
+        }
+
         return resolved.GetValueOrDefault(id);
     }
 }

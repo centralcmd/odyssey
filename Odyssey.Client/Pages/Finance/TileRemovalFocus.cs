@@ -97,8 +97,16 @@ internal sealed class TileRemovalFocus : IAsyncDisposable
             if (string.Equals(keys[i], key, StringComparison.Ordinal)) { index = i; break; }
         }
 
-        if (index < 0) return null;
-        if (index + 1 < keys.Count) return keys[index + 1];
+        if (index < 0)
+        {
+            return null;
+        }
+
+        if (index + 1 < keys.Count)
+        {
+            return keys[index + 1];
+        }
+
         return index > 0 ? keys[index - 1] : null;
     }
 

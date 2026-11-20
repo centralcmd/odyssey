@@ -28,27 +28,33 @@ public class ContactLabelScopeTests
     public void Every_address_label_is_offered_to_at_least_one_contact_type()
     {
         foreach (var label in Enum.GetValues<AddressLabel>())
+        {
             Assert.True(
                 BothTypes.Any(t => ContactLabelScope.IsValidFor(label, t)),
                 $"AddressLabel.{label} is offered to neither contact type — it can never be written.");
+        }
     }
 
     [Fact]
     public void Every_email_label_is_offered_to_at_least_one_contact_type()
     {
         foreach (var label in Enum.GetValues<EmailLabel>())
+        {
             Assert.True(
                 BothTypes.Any(t => ContactLabelScope.IsValidFor(label, t)),
                 $"EmailLabel.{label} is offered to neither contact type — it can never be written.");
+        }
     }
 
     [Fact]
     public void Every_phone_label_is_offered_to_at_least_one_contact_type()
     {
         foreach (var label in Enum.GetValues<PhoneLabel>())
+        {
             Assert.True(
                 BothTypes.Any(t => ContactLabelScope.IsValidFor(label, t)),
                 $"PhoneLabel.{label} is offered to neither contact type — it can never be written.");
+        }
     }
 
     [Theory]
@@ -89,19 +95,25 @@ public class ContactLabelScopeTests
     public void Clamp_resolves_every_invalid_member_to_Other_and_leaves_every_valid_one_alone(ContactType type)
     {
         foreach (var label in Enum.GetValues<AddressLabel>())
+        {
             Assert.Equal(
                 ContactLabelScope.IsValidFor(label, type) ? label : AddressLabel.Other,
                 ContactLabelScope.Clamp(label, type));
+        }
 
         foreach (var label in Enum.GetValues<EmailLabel>())
+        {
             Assert.Equal(
                 ContactLabelScope.IsValidFor(label, type) ? label : EmailLabel.Other,
                 ContactLabelScope.Clamp(label, type));
+        }
 
         foreach (var label in Enum.GetValues<PhoneLabel>())
+        {
             Assert.Equal(
                 ContactLabelScope.IsValidFor(label, type) ? label : PhoneLabel.Other,
                 ContactLabelScope.Clamp(label, type));
+        }
     }
 
     /// <summary>An undefined ordinal reaching the clamp resolves to <c>Other</c> like any other
@@ -219,7 +231,9 @@ public class ContactLabelScopeTests
         };
 
         if (!claims.Contains(PermissionClaims.ContactsUpdate))
+        {
             return;
+        }
 
         Assert.Contains(PermissionClaims.ContactsRead, claims);
         Assert.Contains(PermissionClaims.ContactsCreate, claims);

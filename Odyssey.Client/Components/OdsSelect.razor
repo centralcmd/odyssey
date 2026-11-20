@@ -102,7 +102,10 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         var label = EffectiveAriaLabel;
-        if (string.Equals(label, _appliedAriaLabel, StringComparison.Ordinal)) return;
+        if (string.Equals(label, _appliedAriaLabel, StringComparison.Ordinal))
+        {
+            return;
+        }
         try
         {
             await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", label);

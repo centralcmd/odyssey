@@ -147,12 +147,17 @@ public sealed class FileAnalysisController : ControllerBase
         // answer: every poll must see the job as it is now.
         Response.Headers.CacheControl = "no-store";
         if (job is null)
+        {
             return this.NotFoundProblem($"Analysis job {analysisJobId} not found.");
+        }
 
         // Advisory polling interval while the job can still change.
         if (job.Status is Odyssey.Dtos.Finance.FileAnalysisJobStatus.New or Odyssey.Dtos.Finance.FileAnalysisJobStatus.Queued
             or Odyssey.Dtos.Finance.FileAnalysisJobStatus.Running)
+        {
             Response.Headers.RetryAfter = PollIntervalSeconds;
+        }
+
         return Ok(job);
     }
 

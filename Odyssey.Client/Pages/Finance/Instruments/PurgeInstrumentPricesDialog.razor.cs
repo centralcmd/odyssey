@@ -105,7 +105,9 @@ public partial class PurgeInstrumentPricesDialog
         var opening = Open && !_wasOpen;
         _wasOpen = Open;
         if (opening)
+        {
             await CountAsync();
+        }
     }
 
     /// <summary>The scope's count: <c>GET /api/instrument-prices</c> filtered, one row, read off <c>TotalCount</c>.</summary>
@@ -122,7 +124,9 @@ public partial class PurgeInstrumentPricesDialog
 
         var result = await Prices.ListAsync(1, 1, FilterFor(Instrument.InstrumentId, _scope));
         if (version != _countVersion)
+        {
             return;
+        }
 
         if (result.IsSuccess && result.Value is { } page)
         {
@@ -151,7 +155,10 @@ public partial class PurgeInstrumentPricesDialog
     private async Task OnScopeChanged(string value)
     {
         if (_deleting || !Enum.TryParse<InstrumentPricePurgeScope>(value, out var scope) || scope == _scope)
+        {
             return;
+        }
+
         _scope = scope;
         await CountAsync();
     }
@@ -161,7 +168,9 @@ public partial class PurgeInstrumentPricesDialog
     private async Task DeleteAsync()
     {
         if (_deleting || !Matches || _count is not { } expected)
+        {
             return;
+        }
 
         _deleting = true;
         _error = null;
@@ -226,7 +235,10 @@ public partial class PurgeInstrumentPricesDialog
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusField)
+        {
             return;
+        }
+
         _focusField = false;
         try { await Js.InvokeVoidAsync("odsFocusById", FieldId); }
         catch (JSException) { }

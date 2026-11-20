@@ -115,7 +115,9 @@ public partial class AccountsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -217,7 +219,9 @@ public partial class AccountsCard
             }
 
             if (!result.IsSuccess)
+            {
                 return;
+            }
 
             _totals = result.Value;
             BuildProblems();
@@ -239,7 +243,9 @@ public partial class AccountsCard
     {
         _problems = new();
         if (_totals is null)
+        {
             return;
+        }
 
         var main = _totals.MainCurrencyCode;
         foreach (var unconverted in _totals.UnconvertedAccounts)
@@ -316,7 +322,9 @@ public partial class AccountsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
 
@@ -387,7 +395,10 @@ public partial class AccountsCard
     private async Task<IReadOnlyCollection<Guid>> LoadAccountFileIds()
     {
         if (_uploadAccount is null)
+        {
             return [];
+        }
+
         var result = await Accounts.ListFilesAsync(_uploadAccount.AccountId);
         return [.. result.ValueOr([]).Select(f => f.FileMetadata.Id)];
     }
@@ -395,7 +406,10 @@ public partial class AccountsCard
     private async Task<bool> AttachAccountFileAsync(AttachDocumentItem item)
     {
         if (_uploadAccount is null)
+        {
             return false;
+        }
+
         return (await Accounts.AttachFileAsync(_uploadAccount.AccountId, AttachDocumentRequests.Account(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
@@ -403,7 +417,9 @@ public partial class AccountsCard
     private void AddFile(ExistingAccount account)
     {
         if (!CanAttachFiles)
+        {
             return;
+        }
 
         _uploadAccount = account;
         _uploadKey = Guid.NewGuid();
@@ -413,7 +429,9 @@ public partial class AccountsCard
     private async Task OnFilesUploaded(IReadOnlyList<AttachDocumentItem> _)
     {
         if (_uploadAccount is null)
+        {
             return;
+        }
 
         // Expand the account and force its files section to reload by changing its @key.
         _expandedId = _uploadAccount.AccountId;
@@ -429,7 +447,9 @@ public partial class AccountsCard
     private void EditClicked(ExistingAccount account)
     {
         if (!_canUpdateAccounts)
+        {
             return;
+        }
 
         _editAccount = account;
         _editAccountKey = Guid.NewGuid();
@@ -450,7 +470,11 @@ public partial class AccountsCard
 
     private void AddClicked()
     {
-        if (!_canCreateAccounts) return;
+        if (!_canCreateAccounts)
+        {
+            return;
+        }
+
         _createAccountKey = Guid.NewGuid();
         _createAccountOpen = true;
     }
@@ -481,7 +505,11 @@ public partial class AccountsCard
 
     private void AddEstimate(ExistingAccount account)
     {
-        if (!_canWriteEstimates) return;
+        if (!_canWriteEstimates)
+        {
+            return;
+        }
+
         _estimateAccount = account;
         _estimateKey = Guid.NewGuid();
         _estimateOpen = true;
@@ -517,7 +545,11 @@ public partial class AccountsCard
 
     private async Task ToggleCloseAccount(ExistingAccount account)
     {
-        if (!_canUpdateAccounts) return;
+        if (!_canUpdateAccounts)
+        {
+            return;
+        }
+
         var targetClosed = account.Closed is null ? (DateTime?)DateTime.UtcNow : null;
         var update = ToNewAccount(account, targetClosed, account.Archived is not null);
         if ((await Accounts.UpdateAsync(account.AccountId, update)).Toast(Snackbar, "Update failed",
@@ -531,7 +563,11 @@ public partial class AccountsCard
 
     private async Task ToggleArchive(ExistingAccount account)
     {
-        if (!_canUpdateAccounts) return;
+        if (!_canUpdateAccounts)
+        {
+            return;
+        }
+
         var targetArchived = account.Archived is null;
         var update = ToNewAccount(account, account.Closed, targetArchived);
         if ((await Accounts.UpdateAsync(account.AccountId, update)).Toast(Snackbar, "Update failed",
@@ -547,10 +583,16 @@ public partial class AccountsCard
 
     private async Task ConfirmDeleteAccount(ExistingAccount account)
     {
-        if (!_canDeleteAccounts) return;
+        if (!_canDeleteAccounts)
+        {
+            return;
+        }
+
         var confirmed = await _confirm.AskAsync("Delete account", $"Delete '{account.Name}'? This cannot be undone.", "Delete");
         if (confirmed)
+        {
             await DeleteAccount(account);
+        }
     }
 
     private async Task DeleteAccount(ExistingAccount account)
@@ -674,8 +716,16 @@ public partial class AccountsCard
 
     private static string GetStatusLabel(ExistingAccount a)
     {
-        if (a.Archived != null) return "Archived";
-        if (a.Closed   != null) return "Closed";
+        if (a.Archived != null)
+        {
+            return "Archived";
+        }
+
+        if (a.Closed   != null)
+        {
+            return "Closed";
+        }
+
         return "Open";
     }
 
@@ -683,8 +733,16 @@ public partial class AccountsCard
     // AccountStatusChip: Open (income) · Closed (pending) · Archived (outline).
     private static OdsChipTone GetStatusChipTone(ExistingAccount a)
     {
-        if (a.Archived != null) return OdsChipTone.Outline;
-        if (a.Closed   != null) return OdsChipTone.Pending;
+        if (a.Archived != null)
+        {
+            return OdsChipTone.Outline;
+        }
+
+        if (a.Closed   != null)
+        {
+            return OdsChipTone.Pending;
+        }
+
         return OdsChipTone.Income;
     }
 
@@ -693,8 +751,16 @@ public partial class AccountsCard
     private static string GetLifecycle(ExistingAccount a)
     {
         var parts = new List<string> { $"Opened {OdsDates.Long(a.Opened)}" };
-        if (a.Closed   is { } closed)   parts.Add($"Closed {OdsDates.Long(closed)}");
-        if (a.Archived is { } archived) parts.Add($"Archived {OdsDates.Long(archived)}");
+        if (a.Closed   is { } closed)
+        {
+            parts.Add($"Closed {OdsDates.Long(closed)}");
+        }
+
+        if (a.Archived is { } archived)
+        {
+            parts.Add($"Archived {OdsDates.Long(archived)}");
+        }
+
         return string.Join(" · ", parts);
     }
 
@@ -718,7 +784,9 @@ public partial class AccountsCard
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
         if (_minorUnitsCache.TryGetValue(key, out var cached))
+        {
             return cached;
+        }
 
         _currenciesByCode.TryGetValue(key, out var currency);
         var units = OdsMoney.MinorUnitsOf(currency);

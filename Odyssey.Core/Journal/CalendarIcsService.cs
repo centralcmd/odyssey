@@ -1066,13 +1066,41 @@ public class CalendarIcsService
     private static List<WeekDay> ToWeekDays(DaysOfWeekFlags flags)
     {
         var days = new List<WeekDay>();
-        if (flags.HasFlag(DaysOfWeekFlags.Monday)) days.Add(new WeekDay(DayOfWeek.Monday));
-        if (flags.HasFlag(DaysOfWeekFlags.Tuesday)) days.Add(new WeekDay(DayOfWeek.Tuesday));
-        if (flags.HasFlag(DaysOfWeekFlags.Wednesday)) days.Add(new WeekDay(DayOfWeek.Wednesday));
-        if (flags.HasFlag(DaysOfWeekFlags.Thursday)) days.Add(new WeekDay(DayOfWeek.Thursday));
-        if (flags.HasFlag(DaysOfWeekFlags.Friday)) days.Add(new WeekDay(DayOfWeek.Friday));
-        if (flags.HasFlag(DaysOfWeekFlags.Saturday)) days.Add(new WeekDay(DayOfWeek.Saturday));
-        if (flags.HasFlag(DaysOfWeekFlags.Sunday)) days.Add(new WeekDay(DayOfWeek.Sunday));
+        if (flags.HasFlag(DaysOfWeekFlags.Monday))
+        {
+            days.Add(new WeekDay(DayOfWeek.Monday));
+        }
+
+        if (flags.HasFlag(DaysOfWeekFlags.Tuesday))
+        {
+            days.Add(new WeekDay(DayOfWeek.Tuesday));
+        }
+
+        if (flags.HasFlag(DaysOfWeekFlags.Wednesday))
+        {
+            days.Add(new WeekDay(DayOfWeek.Wednesday));
+        }
+
+        if (flags.HasFlag(DaysOfWeekFlags.Thursday))
+        {
+            days.Add(new WeekDay(DayOfWeek.Thursday));
+        }
+
+        if (flags.HasFlag(DaysOfWeekFlags.Friday))
+        {
+            days.Add(new WeekDay(DayOfWeek.Friday));
+        }
+
+        if (flags.HasFlag(DaysOfWeekFlags.Saturday))
+        {
+            days.Add(new WeekDay(DayOfWeek.Saturday));
+        }
+
+        if (flags.HasFlag(DaysOfWeekFlags.Sunday))
+        {
+            days.Add(new WeekDay(DayOfWeek.Sunday));
+        }
+
         return days;
     }
 

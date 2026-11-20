@@ -100,13 +100,24 @@ public partial class OdsTermHistoryChart
         var taken = new HashSet<string>(StringComparer.Ordinal);
         foreach (var x in _picked)
         {
-            if (_leases.GetValueOrDefault(x.Key) is not { } held) continue;
-            if (!taken.Add(held)) _leases[x.Key] = null;
+            if (_leases.GetValueOrDefault(x.Key) is not { } held)
+            {
+                continue;
+            }
+
+            if (!taken.Add(held))
+            {
+                _leases[x.Key] = null;
+            }
         }
         var fallback = Palette.Count > 0 ? Palette[0] : "var(--chart-1)";
         foreach (var x in _picked)
         {
-            if (_leases.GetValueOrDefault(x.Key) is not null) continue;
+            if (_leases.GetValueOrDefault(x.Key) is not null)
+            {
+                continue;
+            }
+
             var own = x.Color ?? fallback;
             var hue = !taken.Contains(own) ? own : (Palette.FirstOrDefault(h => !taken.Contains(h)) ?? fallback);
             _leases[x.Key] = hue;
@@ -143,14 +154,22 @@ public partial class OdsTermHistoryChart
     {
         var added = proposed.Where(k => !current.Contains(k)).ToList();
         if (added.Count == 0)
+        {
             return proposed.Count > 0 ? current.Where(proposed.Contains).ToList() : current.Take(1).ToList();
+        }
 
         var x = list.First(y => y.Key == added[^1]);
         var first = list.First(y => y.Key == current[0]);
         if ((x.Group ?? "") != (first.Group ?? ""))
+        {
             return [x.Key];
+        }
+
         if (current.Count >= cap)
+        {
             return [.. current];
+        }
+
         return [.. current, x.Key];
     }
 

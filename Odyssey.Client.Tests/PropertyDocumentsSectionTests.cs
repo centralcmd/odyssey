@@ -146,7 +146,9 @@ public class PropertyDocumentsSectionTests
         // OnInitializedAsync early-returns outside the browser: the two seams are the way in.
         cut.InvokeAsync(() => section.Instance.UseContacts(contacts ?? [], canReadContacts)).GetAwaiter().GetResult();
         if (load)
+        {
             cut.InvokeAsync(() => section.Instance.LoadAsync()).GetAwaiter().GetResult();
+        }
 
         return harness;
     }

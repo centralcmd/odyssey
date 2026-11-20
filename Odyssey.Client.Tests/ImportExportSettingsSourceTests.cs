@@ -150,9 +150,14 @@ public class ImportExportSettingsSourceTests
         {
             var line = ClientSource.LineAt(text, tag.Index);
             if (!tag.Value.Contains("LabelId=", StringComparison.Ordinal))
+            {
                 violations.Add($"Settings.razor:{line} — missing LabelId");
+            }
+
             if (!tag.Value.Contains("HelpId=", StringComparison.Ordinal))
+            {
                 violations.Add($"Settings.razor:{line} — missing HelpId");
+            }
         }
 
         Assert.True(violations.Count == 0,

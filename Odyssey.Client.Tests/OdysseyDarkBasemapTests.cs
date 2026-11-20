@@ -50,17 +50,23 @@ public class OdysseyDarkBasemapTests
             var id = layer.GetProperty("id").GetString()!;
             // The continent label fades out by zoom 3 and never appears at the zooms the map allows.
             if (layer.GetProperty("type").GetString() != "symbol" || id == "place_continent")
+            {
                 continue;
+            }
 
             var paint = layer.GetProperty("paint");
             if (paint.TryGetProperty("text-opacity", out var opacity) && opacity.ValueKind == JsonValueKind.Number && opacity.GetDouble() < 1)
+            {
                 failures.Add($"{id}: text-opacity {opacity.GetDouble()} blends the label into the ground");
+            }
 
             foreach (var color in Colors(paint.GetProperty("text-color")))
             {
                 var worst = grounds.Min(g => Ratio(color, g));
                 if (worst < 4.5)
+                {
                     failures.Add($"{id}: {worst.ToString("0.00", CultureInfo.InvariantCulture)}:1");
+                }
             }
         }
 
@@ -120,13 +126,17 @@ public class OdysseyDarkBasemapTests
     private static (double R, double G, double B) Parse(string color)
     {
         if (color.StartsWith('#'))
+        {
             return Hex(color);
+        }
 
         var hsl = Regex.Match(color, @"^hsl\((?<h>\d+),\s*(?<s>\d+)%,\s*(?<l>\d+)%\)$");
         if (hsl.Success)
+        {
             return Hsl(double.Parse(hsl.Groups["h"].Value, CultureInfo.InvariantCulture),
                 double.Parse(hsl.Groups["s"].Value, CultureInfo.InvariantCulture) / 100,
                 double.Parse(hsl.Groups["l"].Value, CultureInfo.InvariantCulture) / 100);
+        }
 
         var rgb = Regex.Match(color, @"^rgb\((?<r>\d+),\s*(?<g>\d+),\s*(?<b>\d+)\)$");
         Assert.True(rgb.Success, $"Unrecognised label colour '{color}'.");

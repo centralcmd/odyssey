@@ -218,9 +218,15 @@ public partial class OdsTagMultiSelect
         {
             var cls = "odc-field";
             if (!string.IsNullOrEmpty(Error))
+            {
                 cls += " error";
+            }
+
             if (!string.IsNullOrEmpty(Class))
+            {
                 cls += " " + Class;
+            }
+
             return cls;
         }
     }
@@ -231,11 +237,20 @@ public partial class OdsTagMultiSelect
         {
             var cls = "odc-tagms-control";
             if (_open)
+            {
                 cls += " open";
+            }
+
             if (_selected.Count == 0)
+            {
                 cls += " placeholder";
+            }
+
             if (Disabled)
+            {
                 cls += " disabled";
+            }
+
             return cls;
         }
     }
@@ -350,7 +365,9 @@ public partial class OdsTagMultiSelect
     {
         var adding = !_selected.Remove(value);
         if (adding)
+        {
             _selected.Add(value);
+        }
 
         var option = Options.FirstOrDefault(o => o.Value == value) ?? new OdsOption(value, UnknownLabel);
         Say($"{LabelOf(option)} {(adding ? "added" : "removed")}. {_selected.Count} {Plural(_selected.Count)} selected.");
@@ -360,7 +377,9 @@ public partial class OdsTagMultiSelect
     private Task Remove(string value, int index)
     {
         if (IsLocked(value))
+        {
             return Task.CompletedTask;
+        }
 
         var option = Selected.FirstOrDefault(o => o.Value == value) ?? new OdsOption(value, UnknownLabel);
         _selected.Remove(value);
@@ -387,13 +406,17 @@ public partial class OdsTagMultiSelect
     private Task Create(OdsCreateKind? kind)
     {
         if (OnCreate is null || string.IsNullOrWhiteSpace(_query))
+        {
             return Task.CompletedTask;
+        }
 
         var created = OnCreate(_query.Trim(), kind?.Key);
         _query = string.Empty;
         _lastBlocked = null;
         if (created is null)
+        {
             return Task.CompletedTask;
+        }
 
         _selected.Add(created.Value);
         Say($"{created.Label} created and added.");
@@ -405,7 +428,10 @@ public partial class OdsTagMultiSelect
         // Enter takes the FIRST create row — the same row the popover leads with, so the keyboard and
         // the pointer land on one kind rather than two.
         if (e.Key == "Enter" && ShowCreate)
+        {
             return Create(CreateRows[0]);
+        }
+
         return Task.CompletedTask;
     }
 

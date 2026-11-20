@@ -190,7 +190,10 @@ public partial class OdsMultiSelect
         if (!_selected.Remove(value))
         {
             if (AtMax)
+            {
                 return Task.CompletedTask;
+            }
+
             _selected.Add(value);
         }
         return ValuesChanged.InvokeAsync([.. _selected]);

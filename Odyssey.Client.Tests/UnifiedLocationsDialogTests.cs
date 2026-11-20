@@ -188,7 +188,9 @@ public class UnifiedLocationsDialogTests
         {
             var text = announcer.Find("[role=status]").TextContent;
             if (spoken.Count == 0 || spoken[^1] != text)
+            {
                 spoken.Add(text);
+            }
         };
 
         Click(h.Cut, "Create event");

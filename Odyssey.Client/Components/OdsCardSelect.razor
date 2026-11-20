@@ -108,7 +108,9 @@
     protected override void OnParametersSet()
     {
         if (_buttonRefs.Length != Options.Count)
+        {
             _buttonRefs = new ElementReference[Options.Count];
+        }
     }
 
     private string GroupStyle
@@ -152,11 +154,15 @@
     {
         var selected = SelectedIndex;
         if (selected >= 0)
+        {
             return index == selected;
+        }
         for (var i = 0; i < Options.Count; i++)
         {
             if (!Options[i].Disabled)
+            {
                 return i == index;
+            }
         }
         return false;
     }
@@ -168,7 +174,9 @@
             for (var i = 0; i < Options.Count; i++)
             {
                 if (Options[i].Value == Value)
+                {
                     return i;
+                }
             }
             return -1;
         }
@@ -182,7 +190,9 @@
         {
             var candidate = ((from + direction * offset) % count + count) % count;
             if (!Options[candidate].Disabled)
+            {
                 return candidate;
+            }
         }
         return -1;
     }
@@ -190,7 +200,9 @@
     private Task Select(OdsCardSelectOption option)
     {
         if (option.Disabled || option.Value == Value)
+        {
             return Task.CompletedTask;
+        }
         Value = option.Value;
         return ValueChanged.InvokeAsync(option.Value);
     }
@@ -208,7 +220,9 @@
             _ => -1,
         };
         if (nextIndex < 0)
+        {
             return;
+        }
 
         await Select(Options[nextIndex]);
         // APG radiogroup: selection and DOM focus move together (WCAG 2.1.1 / 4.1.2).

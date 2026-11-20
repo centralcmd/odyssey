@@ -127,7 +127,10 @@ public class BackgroundJobsPageTests
     private static IRenderedComponent<BackgroundJobs> Render(Fixture f, string? uri = null)
     {
         if (uri is not null)
+        {
             f.Ctx.Services.GetRequiredService<NavigationManager>().NavigateTo(uri);
+        }
+
         var cut = f.Ctx.Render<BackgroundJobs>();
         cut.WaitForAssertion(() => Assert.NotEmpty(f.Requests));
         return cut;
@@ -506,7 +509,10 @@ public class BackgroundJobsPageTests
         var cut = Render(f);
         cut.WaitForAssertion(() => Assert.Equal(BackgroundJobPresentation.Jobs.Count, cut.FindAll("h3.bgj-tile-h").Count));
         if (steps is not null)
+        {
             await cut.InvokeAsync(() => cut.Instance.FollowDelay = steps.Delay);
+        }
+
         return cut;
     }
 

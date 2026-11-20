@@ -55,7 +55,9 @@ public class ContractSmartTagTransactionService
             .Select(c => new { c.SmartTagScopeStart, c.SmartTagScopeEnd })
             .FirstOrDefaultAsync(cancellationToken);
         if (contract is null)
+        {
             return null;
+        }
 
         var smartTagCount = await context.ContractSmartTags
             .CountAsync(s => s.ContractId == contractId, cancellationToken);
@@ -109,9 +111,14 @@ public class ContractSmartTagTransactionService
             t.ContactId != null &&
             partyContactIds.Contains(t.ContactId));
         if (from is { } lower)
+        {
             matched = matched.Where(t => t.TimeStamp >= lower);
+        }
+
         if (toExclusive is { } upper)
+        {
             matched = matched.Where(t => t.TimeStamp < upper);
+        }
 
         var summary = await SummarizeAsync(matched, cancellationToken);
         var page = await transactionService.ListFilteredAsync(

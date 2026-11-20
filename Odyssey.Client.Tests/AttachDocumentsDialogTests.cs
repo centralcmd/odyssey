@@ -115,8 +115,16 @@ public class AttachDocumentsDialogTests
         ctx.Services.AddSingleton(uploadLimits.Object);
 
         var claims = new List<string>();
-        if (canUpload) claims.Add(PermissionClaims.FilesCreate);
-        if (canBrowse) claims.Add(PermissionClaims.FilesRead);
+        if (canUpload)
+        {
+            claims.Add(PermissionClaims.FilesCreate);
+        }
+
+        if (canBrowse)
+        {
+            claims.Add(PermissionClaims.FilesRead);
+        }
+
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn(claims));
 
         var posted = new List<AttachDocumentItem>();
@@ -551,7 +559,10 @@ public class AttachDocumentsDialogTests
         var h = Render(canUpload: true, attachWhen: item =>
         {
             if (item.FileId != deedId || !failOnce)
+            {
                 return true;
+            }
+
             failOnce = false;
             return false;
         });
@@ -580,7 +591,11 @@ public class AttachDocumentsDialogTests
         var stored = Guid.NewGuid();
         var h = Render(canUpload: true, attachWhen: _ =>
         {
-            if (!failOnce) return true;
+            if (!failOnce)
+            {
+                return true;
+            }
+
             failOnce = false;
             return false;
         });

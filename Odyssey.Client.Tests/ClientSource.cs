@@ -77,7 +77,10 @@ internal static class ClientSource
         {
             var candidate = Path.Combine(dir, "Odyssey.Client");
             if (Directory.Exists(candidate) && File.Exists(Path.Combine(dir, "Odyssey.sln")))
+            {
                 return candidate;
+            }
+
             dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
         }
 

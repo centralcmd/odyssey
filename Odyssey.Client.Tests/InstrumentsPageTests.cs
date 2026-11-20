@@ -329,7 +329,9 @@ public sealed class InstrumentsPageTests : IDisposable
         Assert.DoesNotContain("Shown from a link", cut.Markup);
         Assert.DoesNotContain(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusChainOrHeading");
         if (!Guid.TryParse(value, out var __))
+        {
             h.Api.Verify(a => a.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 
     // ── Row removal focus (§3.3) ─────────────────────────────────────────────────────────────────

@@ -74,7 +74,9 @@ public partial class CurrenciesCard
     protected override async Task OnInitializedAsync()
     {
         if (!InteractiveCheck())
+        {
             return;
+        }
 
         await LoadPermissionsAsync();
         await RestorePageStateAsync();
@@ -122,7 +124,10 @@ public partial class CurrenciesCard
         _overviewOpen = open;
         // Collapsing the Overview withdraws a Run now still waiting for its panel to mount.
         if (!open)
+        {
             _runNowWhenMounted = false;
+        }
+
         PersistPageState();
     }
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
@@ -173,7 +178,9 @@ public partial class CurrenciesCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "currencies");
         if (load.IsSuccess)
@@ -219,7 +226,10 @@ public partial class CurrenciesCard
             Text(Example(c)),
         };
         if (_canReadSync && CoverageText(c.Sync) is { } coverage)
+        {
             meta.Add(Text(coverage));
+        }
+
         return meta;
     }
 
@@ -241,7 +251,9 @@ public partial class CurrenciesCard
         var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
+        {
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
+        }
 
         items.AddRange(SyncActions(c));
 
@@ -259,11 +271,19 @@ public partial class CurrenciesCard
 
         var purge = PurgeAction(c);
         if (_canDelete || purge is not null)
+        {
             items.Add(new OdsMenuItem { Divider = true });
+        }
+
         if (purge is not null)
+        {
             items.Add(purge);
+        }
+
         if (_canDelete)
+        {
             items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, () => DeleteClicked(c)) });
+        }
 
         return items;
     }
@@ -278,7 +298,9 @@ public partial class CurrenciesCard
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _createKey = Guid.NewGuid();
         _createOpen = true;
@@ -289,7 +311,9 @@ public partial class CurrenciesCard
     private void EditClicked(ExistingCurrency currency)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editCurrency = currency;
         _editCurrencyKey = Guid.NewGuid();
@@ -310,7 +334,9 @@ public partial class CurrenciesCard
     private async Task PutCurrency(ExistingCurrency currency, string name, string symbol, int minorUnits, bool archived)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -346,7 +372,9 @@ public partial class CurrenciesCard
             {
                 await GetCurrencies();
                 if (stopsSync)
+                {
                     await ReloadStatusAsync();
+                }
             }
         }
 
@@ -360,7 +388,10 @@ public partial class CurrenciesCard
     private void DeleteClicked(ExistingCurrency currency)
     {
         if (!_canDelete)
+        {
             return;
+        }
+
         _deleting = currency;
         _deleteOpen = true;
     }
@@ -371,16 +402,22 @@ public partial class CurrenciesCard
     private async Task<string?> ConfirmDeleteAsync()
     {
         if (_deleting is not { } currency || !_canDelete)
+        {
             return null;
+        }
 
         var result = await Currencies.DeleteAsync(currency.CurrencyCode);
         if (!result.IsSuccess)
+        {
             return string.IsNullOrWhiteSpace(result.Error) ? "The currency couldn’t be deleted." : result.Error;
+        }
 
         Snackbar.Add("Currency deleted.", Severity.Success);
         ReferenceData.InvalidateCurrencies();
         if (_openCode == currency.CurrencyCode)
+        {
             _openCode = null;
+        }
         // Full refresh, not a local Remove: the delete changes the overview's totals too.
         await RefreshAsync();
         return null;

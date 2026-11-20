@@ -48,7 +48,9 @@ public class PutUnknownIdApiTests(PutUnknownIdApiTests.Host host) : SharedApiHos
         {
             var permissions = new List<string> { UpdateClaimFor(resource) };
             if (withCreate)
+            {
                 permissions.Add(createClaim);
+            }
 
             var factory = Factory.ForCaller(permissions);
             await EnsureCreatedAsync(factory);

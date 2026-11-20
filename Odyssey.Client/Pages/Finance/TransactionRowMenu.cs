@@ -73,7 +73,10 @@ public static class TransactionRowMenu
                     OnClick = EventCallback.Factory.Create(receiver, () =>
                     {
                         if (!ctx.Expanded)
+                        {
                             ctx.Toggle();
+                        }
+
                         return onAttach(transaction);
                     }),
                 });

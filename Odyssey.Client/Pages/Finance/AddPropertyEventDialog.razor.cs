@@ -163,7 +163,9 @@ public partial class AddPropertyEventDialog
     private async Task SubmitAsync()
     {
         if (_isSaving)
+        {
             return;
+        }
 
         _errors.Clear();
 
@@ -197,7 +199,9 @@ public partial class AddPropertyEventDialog
         }
 
         if (_errors.Count > 0 || occurredAt is not { } value)
+        {
             return;
+        }
 
         _isSaving = true;
         try
@@ -238,7 +242,9 @@ public partial class AddPropertyEventDialog
                 IsEdit ? "Unable to update event" : "Unable to add event",
                 IsEdit ? "Event updated." : "Event recorded.");
             if (!ok)
+            {
                 return;
+            }
 
             await OnSaved.InvokeAsync();
             await OpenChanged.InvokeAsync(false);
@@ -264,7 +270,9 @@ public partial class AddPropertyEventDialog
     private static (string Field, string Message)? InlineErrorFor(ApiProblem? problem)
     {
         if (problem?.Errors is not { } errors)
+        {
             return null;
+        }
 
         foreach (var field in (string[])["type", "title", "occurredAt"])
         {

@@ -116,7 +116,10 @@ public partial class AttachPhotosDialog
         {
             var n = _tab == UploadTab ? _uploads.Count : _picked.Count;
             if (UploadOnly)
+            {
                 return n > 1 ? $"Upload {n} photos" : "Upload";
+            }
+
             return _tab == UploadTab
                 ? (n > 1 ? $"Upload and add {n}" : "Upload and add")
                 : (n > 1 ? $"Add {n} photos" : "Add photo");
@@ -131,14 +134,20 @@ public partial class AttachPhotosDialog
         _canBrowse = !UploadOnly && user.HasPermission(PermissionClaims.PhotosRead);
         _imageAccess = PhotoImageAccess.From(user);
         if (!_canUpload && _canBrowse)
+        {
             _tab = LibraryTab;
+        }
 
         _uploadLimits = await UploadLimits.GetAsync();
         if (SurfaceMaxMegabytes is { } surface)
+        {
             _uploadLimits = _uploadLimits.TightenTo(surface);
+        }
 
         if (_tab == LibraryTab)
+        {
             await LoadLibraryAsync();
+        }
     }
 
     private async Task OnTabChanged(string? tab)
@@ -147,7 +156,9 @@ public partial class AttachPhotosDialog
         _error = null;
         Notice(null);
         if (_tab == LibraryTab && !_libraryLoaded)
+        {
             await LoadLibraryAsync();
+        }
     }
 
     private async Task OnQueryChanged(string? query)
@@ -160,7 +171,9 @@ public partial class AttachPhotosDialog
     public async Task LoadLibraryAsync()
     {
         if (!_canBrowse)
+        {
             return;
+        }
 
         var version = ++_searchVersion;
         _libraryLoading = true;
@@ -168,7 +181,9 @@ public partial class AttachPhotosDialog
         var result = await Photos.ListAsync(1, LibraryPageSize,
             search: string.IsNullOrWhiteSpace(_query) ? null : _query.Trim());
         if (version != _searchVersion)
+        {
             return;
+        }
 
         _libraryFailed = !result.IsSuccess;
         _library = result.IsSuccess && result.Value is { } page ? [.. page.Items] : [];
@@ -194,12 +209,20 @@ public partial class AttachPhotosDialog
     private void TogglePick(PhotoSummary photo)
     {
         if (IsAttached(photo))
+        {
             return;
+        }
+
         var existing = _picked.FindIndex(p => p.PhotoId == photo.PhotoId);
         if (existing >= 0)
+        {
             _picked.RemoveAt(existing);
+        }
         else
+        {
             _picked.Add(photo);
+        }
+
         _error = null;
     }
 
@@ -226,7 +249,9 @@ public partial class AttachPhotosDialog
 
         _uploads = kept;
         if (_error is not null && _uploads.Count > 0)
+        {
             _error = null;
+        }
 
         // Every rejection of one pick in one alert (WCAG 3.3.1); a pick or removal with none clears a stale one.
         Notice(rejected.Count > 0 ? UploadFailureText.Several(rejected, itemised: true, "can’t be added") : null);
@@ -235,7 +260,9 @@ public partial class AttachPhotosDialog
     private async Task SubmitAsync()
     {
         if (_busy)
+        {
             return;
+        }
 
         if (_tab == LibraryTab)
         {
@@ -299,7 +326,9 @@ public partial class AttachPhotosDialog
             }
 
             if (Announce && added.Count > 0)
+            {
                 Snackbar.Add(added.Count == 1 ? "Photo added." : $"{added.Count} photos added.", Severity.Success);
+            }
 
             if (failed.Count == 0)
             {
@@ -310,7 +339,10 @@ public partial class AttachPhotosDialog
             // Partly failed: hand over what worked, keep only the failures for a retry, and say so —
             // closing would discard the failed rows, and staying silent would read as a dead button.
             if (added.Count > 0)
+            {
                 await OnSubmit.InvokeAsync(added);
+            }
+
             _uploads = failed;
             // The alert line carries the reasons (issue #449 §6); no toast while the dialog is open.
             Notice(stoppedText is not null
@@ -335,7 +367,9 @@ public partial class AttachPhotosDialog
     {
         _notice = text;
         if (text is not null)
+        {
             _noticeKey++;
+        }
     }
 
     private async Task FinishAsync(IReadOnlyList<AttachPhotoItem> items)

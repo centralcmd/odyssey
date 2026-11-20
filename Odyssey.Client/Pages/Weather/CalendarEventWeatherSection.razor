@@ -56,7 +56,9 @@
     private RenderFragment Ready => __builder =>
     {
         if (_response is not { } r)
+        {
             return;
+        }
 
         var name = r.Point?.Name ?? "this point";
         switch (r.Status)

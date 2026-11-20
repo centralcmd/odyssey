@@ -128,7 +128,9 @@ public static class ApiLocation
     public static Guid? ExtractId(Uri? location)
     {
         if (location is null)
+        {
             return null;
+        }
 
         var segment = location.OriginalString.TrimEnd('/').Split('/').LastOrDefault();
         return Guid.TryParse(segment, out var id) ? id : null;
@@ -147,10 +149,14 @@ public static class ApiRetryAfter
     {
         var header = response.Headers.RetryAfter;
         if (header is null)
+        {
             return null;
+        }
 
         if (header.Delta is { } delta)
+        {
             return delta < TimeSpan.Zero ? TimeSpan.Zero : delta;
+        }
 
         if (header.Date is { } date)
         {

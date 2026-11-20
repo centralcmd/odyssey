@@ -142,7 +142,9 @@ public class PropertyClientTests
         var curve = OdsStepChart.Monotone(entries);
 
         foreach (var entry in entries)
+        {
             Assert.Contains(curve, p => Math.Abs(p.X - entry.X) < 1e-9 && Math.Abs(p.Y - entry.Y) < 1e-9);
+        }
 
         for (var i = 0; i < entries.Length - 1; i++)
         {

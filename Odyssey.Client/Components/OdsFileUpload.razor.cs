@@ -120,7 +120,10 @@ public partial class OdsFileUpload
     private Task Commit(List<OdsUploadFile> next)
     {
         if (!Controlled)
+        {
             _internal = next;
+        }
+
         return FilesChanged.InvokeAsync(next);
     }
 
@@ -130,7 +133,9 @@ public partial class OdsFileUpload
     private Task OnFilesChanged(IReadOnlyList<IBrowserFile> incoming)
     {
         if (incoming is null || incoming.Count == 0)
+        {
             return Task.CompletedTask;
+        }
 
         // Multiple=false is a genuine single-file field: a new pick/drop REPLACES the current file
         // rather than accumulating (the old logic ignored the flag and silently piled files up).

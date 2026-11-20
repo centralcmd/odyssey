@@ -240,9 +240,15 @@ public sealed class CalendarAttachmentReflowTests(StackFixture fixture) : IAsync
             }
 
             if (eventId is { } e)
+            {
                 await SendAsync(api, "DELETE", $"/api/calendar-events/{e}");
+            }
+
             if (seriesId is { } s)
+            {
                 await SendAsync(api, "DELETE", $"/api/recurrence-patterns/{s}");
+            }
+
             await SendAsync(api, "DELETE", $"/api/calendars/{calendarId}");
         }
     }
