@@ -13,13 +13,13 @@
     <ProjectReference Include="..\Odyssey.ApiClient\Odyssey.ApiClient.csproj" />
     <!-- The shared image fixtures (issue #86): real, decodable containers the avatar tests upload. -->
     <ProjectReference Include="..\Odyssey.TestData\Odyssey.TestData.csproj" />
-    <!-- Several tests exercise the migrations job's seeders directly (RoleSeedTests, and the two
-         factories that must run RoleClaimSeeder after EnsureCreated or their principals carry a role
+    <!-- Several tests exercise the migrations job's seeders directly (the factories and session
+         tests that must run RoleClaimSeeder after EnsureCreated or their principals carry a role
          with no permissions). Odyssey.IntegrationTests already references both projects, so the
          combination is precedented.
          Aliased because both projects expose a top-level `Program`, and an unaliased reference makes
          every `WebApplicationFactory<Program>` in this assembly ambiguous (CS0433). The alias keeps the
-         migrations assembly out of the global namespace; only the one file that says
+         migrations assembly out of the global namespace; only a file that says
          `extern alias migrations;` can see it. -->
     <ProjectReference Include="..\Odyssey.MigrationService\Odyssey.MigrationService.csproj"
                       Aliases="migrations" />
@@ -31,6 +31,7 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Xunit.SkippableFact" />
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 

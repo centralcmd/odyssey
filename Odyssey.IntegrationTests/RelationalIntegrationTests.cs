@@ -130,7 +130,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
-    public async Task Deleting_an_account_cascades_to_its_transactions()
+    public async Task Deleting_an_account_cascades_to_its_transactions_and_estimates()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await EnsureRelationalSchemaAsync();
@@ -138,6 +138,17 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         var accountId = Guid.NewGuid();
         await using (var context = NewRelationalContext())
         {
+            // AccountService.Delete removes the account alone and relies on this cascade for the estimate
+            // history, so an InMemory test (which enforces no keys) cannot be what proves it.
+            context.AccountEstimates.Add(new AccountEstimate
+            {
+                AccountEstimateId = Guid.NewGuid(),
+                AccountId = accountId,
+                Value = 300_000m,
+                CurrencyCode = "USD",
+                EffectiveFrom = DateTime.UtcNow.Date,
+                CreatedAtUtc = DateTime.UtcNow,
+            });
             context.Accounts.Add(new Account
             {
                 AccountId = accountId,
@@ -171,6 +182,84 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         await using (var context = NewRelationalContext())
         {
             Assert.Equal(0, await context.Transactions.CountAsync(transaction => transaction.AccountId == accountId));
+            Assert.Equal(0, await context.AccountEstimates.CountAsync(estimate => estimate.AccountId == accountId));
+        }
+    }
+
+    /// <summary>
+    /// <see cref="TransactionService.Delete"/> removes the transaction row alone; its file links go through
+    /// <c>TransactionFiles.TransactionId</c>'s ON DELETE CASCADE, and the file itself — shared, and reachable
+    /// from other records — stays.
+    /// </summary>
+    [SkippableFact]
+    public async Task Deleting_a_transaction_cascades_its_file_links_but_keeps_the_file()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await EnsureRelationalSchemaAsync();
+
+        var accountId = Guid.NewGuid();
+        var transactionId = Guid.NewGuid();
+        var blobId = Guid.NewGuid();
+        var fileId = Guid.NewGuid();
+        await using (var context = NewRelationalContext())
+        {
+            StoredFileFixtures.AddStoredObjectRow(context, blobId);
+            context.FileMetadata.Add(new FileMetadata
+            {
+                Id = fileId,
+                UploadedByUserId = "integration-user",
+                FileName = "receipt.pdf",
+                ContentType = "application/pdf",
+                SizeBytes = 3,
+                Sha256Hash = Guid.NewGuid().ToString("N"),
+                FinanceStoredObjectId = blobId,
+                UploadedAtUtc = DateTime.UtcNow,
+            });
+            context.Accounts.Add(new Account
+            {
+                AccountId = accountId,
+                Name = "Transaction file cascade",
+                Description = "cascade",
+                Opened = DateTime.UtcNow,
+                AccountType = AccountType.CheckingAccount,
+                CurrencyCode = "USD",
+            });
+            context.Transactions.Add(new Transaction
+            {
+                TransactionId = transactionId,
+                Description = "with receipt",
+                Amount = 10m,
+                TimeStamp = DateTime.UtcNow,
+                AccountId = accountId,
+                CurrencyCode = "USD",
+                Status = TransactionStatus.New,
+                StatusChangedAt = DateTime.UtcNow,
+            });
+            context.TransactionFiles.Add(new TransactionFile
+            {
+                TransactionId = transactionId,
+                FileMetadataId = fileId,
+                AttachedByUserId = "integration-user",
+                AttachedAtUtc = DateTime.UtcNow,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        // A fresh context tracks no link row, so nothing but the constraint can remove it.
+        await using (var context = NewRelationalContext())
+        {
+            await new TransactionService(context, new ContactLookup(context)).Delete(transactionId);
+        }
+
+        await using (var context = NewRelationalContext())
+        {
+            Assert.False(await context.TransactionFiles.AnyAsync(link => link.TransactionId == transactionId));
+            Assert.True(await context.FileMetadata.AnyAsync(file => file.Id == fileId));
+
+            // cleanup so the shared database stays reusable
+            await context.Accounts.Where(account => account.AccountId == accountId).ExecuteDeleteAsync();
+            await context.FileMetadata.Where(file => file.Id == fileId).ExecuteDeleteAsync();
+            await StoredFileFixtures.RemoveStoredObjectRowAsync(context, blobId);
         }
     }
 

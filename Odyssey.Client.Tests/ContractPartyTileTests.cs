@@ -33,8 +33,9 @@ namespace Odyssey.Client.Tests;
 /// </remarks>
 public class ContractPartyTileTests
 {
-    // See InsurancePolicyPartyTileTests for why this ceiling is raised: it is about scheduling
-    // starvation on a contended runner, not about how long an assertion takes to settle.
+    // The ceiling is raised above bUnit's default for scheduling starvation on a contended runner,
+    // where a render continuation can wait that long for a thread; it is not about how long an
+    // assertion takes to settle.
     static ContractPartyTileTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 
     private static readonly Guid ContractId = Guid.Parse("33333333-3333-3333-3333-333333333333");

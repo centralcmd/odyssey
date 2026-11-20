@@ -239,6 +239,9 @@ public class PropertyEventAutomationTests
         var created = await Service(context).Create(PropertyTestData.House(), Actor, claims: LocationClaims.Trusted);
         Assert.Single(Events(context, created.PropertyId));
 
+        // Untrack what Create left behind, so the cascade is the delete's own Include of the events — the
+        // only thing that removes them on a provider that enforces no keys — and not leftover tracking.
+        context.ChangeTracker.Clear();
         Assert.True(await Service(context).Delete(created.PropertyId, Actor));
 
         Assert.Empty(context.PropertyEvents);

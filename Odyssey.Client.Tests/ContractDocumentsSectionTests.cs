@@ -27,8 +27,9 @@ namespace Odyssey.Client.Tests;
 /// </remarks>
 public class ContractDocumentsSectionTests
 {
-    // See InsurancePolicyPartyTileTests for why this ceiling is raised: scheduling starvation on a
-    // contended runner, not how long an assertion takes to settle.
+    // The ceiling is raised above bUnit's default for scheduling starvation on a contended runner,
+    // where a render continuation can wait that long for a thread; it is not about how long an
+    // assertion takes to settle.
     static ContractDocumentsSectionTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 
     private const string EmptyLine = "No documents yet";
