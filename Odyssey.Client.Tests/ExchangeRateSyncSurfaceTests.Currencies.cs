@@ -715,10 +715,10 @@ public partial class ExchangeRateSyncSurfaceTests
     private void FillNewCurrency(string code)
     {
         var fields = Dialogs.FindAll("input");
-        // The code field is Immediate: it binds on input, not change.
+        // OdsField is Immediate: every field binds on input, not change.
         fields[0].Input(code);
-        fields[1].Change("¤");
-        fields[2].Change(code + " name");
+        fields[1].Input("¤");
+        fields[2].Input(code + " name");
     }
 
     [Fact]

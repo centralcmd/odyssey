@@ -23,15 +23,11 @@
                OnSubmit="SaveAsync">
 
     <!-- Account name -->
-    <MudTextField @bind-Value="_name"
-                  Label="Account name"
-                  Required="true"
-                  Placeholder="e.g. Chase Sapphire"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Error="@_nameError"
-                  ErrorText="Give the account a name."
-                  Immediate="true" />
+    <OdsField @bind-Value="_name"
+              Label="Account name"
+              Required="true"
+              Placeholder="e.g. Chase Sapphire"
+              Error="@(_nameError ? "Give the account a name." : null)" />
 
     <!-- Account type picker (colored glyphs, grouped popover) -->
     <OdsAccountTypeSelect Value="_accountType" ValueChanged="OnAccountTypeChanged" Required="true"
@@ -61,12 +57,10 @@
     }
 
     <!-- Account number -->
-    <MudTextField @bind-Value="_accountNumber"
-                  Label="Account number"
-                  Placeholder="As it appears on your statement"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  MaxLength="64" />
+    <OdsField @bind-Value="_accountNumber"
+              Label="Account number"
+              Placeholder="As it appears on your statement"
+              MaxLength="64" />
 
     <!-- Custodian — the contact that holds this account -->
     <OdsCustodianSelect Value="@_custodianId" ValueChanged="OnCustodianChanged"

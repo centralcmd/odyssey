@@ -33,34 +33,25 @@
 
     <!-- Code + Symbol -->
     <OdsFormRow>
-        <MudTextField @bind-Value="_currencyCode"
-                      Label="Code"
-                      Placeholder="e.g. USD"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      MaxLength="3"
-                      ReadOnly="@IsEdit"
-                      HelperText="@(IsEdit ? "ISO-4217 code — can't be changed" : null)"
-                      Error="@_codeError"
-                      ErrorText="Enter an ISO 4217 code."
-                      Immediate="true" />
-        <MudTextField @bind-Value="_symbol"
-                      Label="Symbol"
-                      Placeholder="e.g. $"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      Error="@_symbolError"
-                      ErrorText="Enter a symbol." />
+        @* ReadOnly is not an OdsField parameter; it is captured and reaches the inner MudTextField. *@
+        <OdsField @bind-Value="_currencyCode"
+                  Label="Code"
+                  Placeholder="e.g. USD"
+                  MaxLength="3"
+                  ReadOnly="@IsEdit"
+                  Help="@(IsEdit ? "ISO-4217 code — can't be changed" : null)"
+                  Error="@(_codeError ? "Enter an ISO 4217 code." : null)" />
+        <OdsField @bind-Value="_symbol"
+                  Label="Symbol"
+                  Placeholder="e.g. $"
+                  Error="@(_symbolError ? "Enter a symbol." : null)" />
     </OdsFormRow>
 
     <!-- Name -->
-    <MudTextField @bind-Value="_name"
-                  Label="Name"
-                  Placeholder="e.g. US Dollar"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Error="@_nameError"
-                  ErrorText="Give the currency a name." />
+    <OdsField @bind-Value="_name"
+              Label="Name"
+              Placeholder="e.g. US Dollar"
+              Error="@(_nameError ? "Give the currency a name." : null)" />
 
     <!-- Minor units -->
     <MudNumericField T="int"
