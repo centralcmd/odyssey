@@ -14,7 +14,12 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-/// <summary>Single event / series / aggregate .ics export endpoints (issue #340).</summary>
+/// <summary>
+/// Single event / series / aggregate .ics export endpoints (issue #340): what only the HTTP surface shows — headers,
+/// file names, 404s, claim gates, the 400 and its problem-details code, and the aborted over-cap stream — plus a
+/// happy-path export of each scope. Which VEVENTs each scope writes, the aggregate's filters and its caps are pinned at
+/// the service tier, in <c>Odyssey.Core.Tests/Ics/CalendarEventsIcsServiceTests</c>.
+/// </summary>
 public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : SharedApiHostTests<CalendarEventsIcsApiTests.Host>(host)
 {
     private const string ActorUserId = "calendar-events-ics-actor-id";
@@ -59,31 +64,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
         var body = await response.Content.ReadAsStringAsync();
         Assert.Equal(1, CountOccurrences(body, "BEGIN:VEVENT"));
         Assert.Contains("SUMMARY:Dentist", body);
-        Assert.DoesNotContain("RRULE:", body);
-    }
-
-    // The PR's headline single-event flow — exporting one dated occurrence that belongs to a series,
-    // as opposed to the standalone-event case above — was previously untested at any tier. GET
-    // /calendar-events/{id}/ics doesn't know or care about RecurrencePatternId; it always emits a
-    // standalone VEVENT for that one row (the occurrence-vs-series choice lives client-side, in
-    // ExportEventScopeDialog — the series path is /recurrence-patterns/{id}/ics instead).
-    [Fact]
-    public async Task ExportEvent_OccurrenceOfSeries_ReturnsStandaloneVEvent()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "OccurrenceExport");
-        var pattern = await CreatePatternAsync(client, calendar.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
-            frequency: RecurrenceFrequency.Weekly, daysOfWeek: DaysOfWeekFlags.Monday);
-        var occurrenceId = await FirstGeneratedEventAsync(factory, pattern.RecurrencePatternId);
-
-        var response = await client.GetAsync($"{CalendarEventsPath}/{occurrenceId}/ics");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Equal(1, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.Contains("SUMMARY:Standup", body);
         Assert.DoesNotContain("RRULE:", body);
     }
 
@@ -136,22 +116,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
     }
 
     [Fact]
-    public async Task ExportPattern_ClampedSeries_FlattensToStandaloneVEvents()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "Clamped");
-        var pattern = await CreatePatternAsync(client, calendar.CalendarId, "Month end",
-            new DateTime(2030, 1, 31, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
-            frequency: RecurrenceFrequency.Monthly, dayOfMonth: 31);
-
-        var body = await (await client.GetAsync($"{RecurrencePatternsPath}/{pattern.RecurrencePatternId}/ics")).Content.ReadAsStringAsync();
-
-        Assert.Equal(4, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.DoesNotContain("RRULE:", body);
-    }
-
-    [Fact]
     public async Task ExportPattern_UnknownId_ReturnsNotFound()
     {
         var factory = Factory;
@@ -189,64 +153,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
         Assert.Contains("RRULE:", body);
     }
 
-    // Security review (PR #345 F1): a degenerate rule whose requested day never exists (Feb 30 every
-    // year) used to make GenerateRfcLiteral's strict-RFC projection climb years without ever hitting
-    // its own step guard, eventually throwing ArgumentOutOfRangeException out of CanExportAsRule —
-    // and because the unfiltered aggregate export runs CanExportAsRule over every pattern in every
-    // calendar, one such rule anywhere 500'd this endpoint for every caller. The pattern itself is
-    // buildable via the API (NewRecurrencePattern has no DayOfMonth/MonthOfYear existence
-    // cross-check), so this only needs a plain POST + GET, no direct DB manipulation.
-    [Fact]
-    public async Task ExportAggregate_NoFilter_DegenerateYearlyRule_FlattensInsteadOf500()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "Degenerate");
-        await CreatePatternAsync(client, calendar.CalendarId, "Never happens",
-            new DateTime(2030, 2, 28, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 3,
-            frequency: RecurrenceFrequency.Yearly, dayOfMonth: 30);
-
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.DoesNotContain("RRULE:", body);
-        Assert.True(CountOccurrences(body, "BEGIN:VEVENT") > 0);
-    }
-
-    // Same degenerate rule via the single-series export endpoint, whose CanExportAsRule call is the
-    // same shared method — proves the fix isn't aggregate-path-specific.
-    [Fact]
-    public async Task ExportPattern_DegenerateYearlyRule_FlattensInsteadOf500()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "DegeneratePattern");
-        var pattern = await CreatePatternAsync(client, calendar.CalendarId, "Never happens",
-            new DateTime(2030, 2, 28, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 3,
-            frequency: RecurrenceFrequency.Yearly, dayOfMonth: 30);
-
-        var response = await client.GetAsync($"{RecurrencePatternsPath}/{pattern.RecurrencePatternId}/ics");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.DoesNotContain("RRULE:", body);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_ZeroMatches_ReturnsOkWithEmptyValidIcs()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("BEGIN:VCALENDAR", body);
-        Assert.DoesNotContain("BEGIN:VEVENT", body);
-    }
-
     [Fact]
     public async Task ExportAggregate_FileName_IsFixedName()
     {
@@ -260,290 +166,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
         Assert.Matches(@"^\d{8}_calendar-events\.ics$", fileName!);
     }
 
-    [Fact]
-    public async Task ExportAggregate_EachVEvent_CarriesSourceCalendarCategory()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "Categorized");
-        await CreateEventAsync(client, calendar.CalendarId, "Tagged", new DateTime(2030, 2, 1, 9, 0, 0, DateTimeKind.Utc));
-
-        var body = await (await client.GetAsync($"{CalendarEventsPath}/ics")).Content.ReadAsStringAsync();
-
-        Assert.Contains("CATEGORIES:Categorized", body);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_DuplicateExternalUidAcrossCalendars_EmitsDistinctUids()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendarA = await CreateCalendarAsync(client, "ImportA");
-        var calendarB = await CreateCalendarAsync(client, "ImportB");
-
-        var ics = Vcalendar(Vevent("shared-uid", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:Shared"));
-        (await PostIcsAsync(client, calendarA.CalendarId, ics)).EnsureSuccessStatusCode();
-        (await PostIcsAsync(client, calendarB.CalendarId, ics)).EnsureSuccessStatusCode();
-
-        var body = await (await client.GetAsync($"{CalendarEventsPath}/ics")).Content.ReadAsStringAsync();
-
-        var uids = ExtractUidLines(body);
-        Assert.Equal(2, uids.Count);
-        Assert.Equal(2, uids.Distinct().Count());
-        Assert.DoesNotContain(uids, u => u == "UID:shared-uid");
-    }
-
-    // ------------------------------------------------------------------ aggregate: cross-calendar (AC 4, 5)
-
-    [Fact]
-    public async Task ExportAggregate_CalendarFilterNoDate_MatchesWholeCalendarExport_WhenNothingMoved()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "Equivalence");
-        await CreatePatternAsync(client, calendar.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
-            frequency: RecurrenceFrequency.Weekly, daysOfWeek: DaysOfWeekFlags.Monday);
-        await CreateEventAsync(client, calendar.CalendarId, "Solo", new DateTime(2030, 2, 1, 9, 0, 0, DateTimeKind.Utc));
-
-        var wholeCalendarBody = await (await client.GetAsync($"{CalendarsPath}/{calendar.CalendarId}/ics")).Content.ReadAsStringAsync();
-        var aggregateBody = await (await client.GetAsync($"{CalendarEventsPath}/ics?calendarIds={calendar.CalendarId}")).Content.ReadAsStringAsync();
-
-        Assert.Equal(CountOccurrences(wholeCalendarBody, "BEGIN:VEVENT"), CountOccurrences(aggregateBody, "BEGIN:VEVENT"));
-        Assert.Equal(CountOccurrences(wholeCalendarBody, "RRULE:"), CountOccurrences(aggregateBody, "RRULE:"));
-    }
-
-    [Fact]
-    public async Task ExportAggregate_OccurrenceMovedOutOfFilteredCalendar_FlattensAndExcludesMovedRow()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendarA = await CreateCalendarAsync(client, "MoveOutA");
-        var calendarB = await CreateCalendarAsync(client, "MoveOutB");
-        var pattern = await CreatePatternAsync(client, calendarA.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 3,
-            frequency: RecurrenceFrequency.Weekly, daysOfWeek: DaysOfWeekFlags.Monday);
-
-        var movedRow = await FirstGeneratedEventAsync(factory, pattern.RecurrencePatternId);
-        await MoveEventToCalendarAsync(client, movedRow, calendarB.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), new DateTime(2030, 1, 7, 9, 30, 0, DateTimeKind.Utc));
-
-        var body = await (await client.GetAsync($"{CalendarEventsPath}/ics?calendarIds={calendarA.CalendarId}")).Content.ReadAsStringAsync();
-
-        // Row-count mismatch (2 of 3 fetched) forces the flattened fallback; the moved row (now in B) is excluded.
-        Assert.Equal(2, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.DoesNotContain("RRULE:", body);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_OccurrenceMovedIntoFilteredCalendar_IncludesItAsStandaloneVEvent()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendarA = await CreateCalendarAsync(client, "MoveInA");
-        var calendarB = await CreateCalendarAsync(client, "MoveInB");
-        var pattern = await CreatePatternAsync(client, calendarB.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 3,
-            frequency: RecurrenceFrequency.Weekly, daysOfWeek: DaysOfWeekFlags.Monday);
-
-        var movedRow = await FirstGeneratedEventAsync(factory, pattern.RecurrencePatternId);
-        await MoveEventToCalendarAsync(client, movedRow, calendarA.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), new DateTime(2030, 1, 7, 9, 30, 0, DateTimeKind.Utc));
-
-        var body = await (await client.GetAsync($"{CalendarEventsPath}/ics?calendarIds={calendarA.CalendarId}")).Content.ReadAsStringAsync();
-
-        Assert.Equal(1, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.DoesNotContain("RRULE:", body);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_EntirePatternRelocated_StaysFlat()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendarA = await CreateCalendarAsync(client, "RelocateA");
-        var calendarB = await CreateCalendarAsync(client, "RelocateB");
-        var pattern = await CreatePatternAsync(client, calendarA.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 3,
-            frequency: RecurrenceFrequency.Weekly, daysOfWeek: DaysOfWeekFlags.Monday);
-
-        // Reassign every generated row to calendar B, individually, preserving each row's own
-        // Start/End — CanExportAsRule alone would still pass (no compared field changed), but the
-        // CalendarId-uniformity guard now agrees on B.
-        List<(Guid Id, DateTime Start, DateTime End)> generatedRows;
-        using (var scope = factory.Services.CreateScope())
-        {
-            var ctx = scope.ServiceProvider.GetRequiredService<CalendarContext>();
-            generatedRows = ctx.CalendarEvents.Where(e => e.RecurrencePatternId == pattern.RecurrencePatternId)
-                .OrderBy(e => e.StartDateTime)
-                .Select(e => new { e.CalendarEventId, e.StartDateTime, e.EndDateTime })
-                .AsEnumerable()
-                .Select(e => (e.CalendarEventId, e.StartDateTime, e.EndDateTime))
-                .ToList();
-        }
-
-        foreach (var row in generatedRows)
-        {
-            await MoveEventToCalendarAsync(client, row.Id, calendarB.CalendarId, "Standup", row.Start, row.End);
-        }
-
-        var body = await (await client.GetAsync($"{CalendarEventsPath}/ics?calendarIds={calendarB.CalendarId}")).Content.ReadAsStringAsync();
-
-        // Each moved row is an override (issue #519 §3 component 4), and the aggregate stays flat for a series with any
-        // exception (§8.3): three standalone events, each attributed to B.
-        Assert.Equal(3, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.DoesNotContain("RRULE:", body);
-        Assert.Equal(3, CountOccurrences(body, "CATEGORIES:RelocateB"));
-    }
-
-    [Fact]
-    public async Task ExportAggregate_PatternSplitAcrossCalendars_FlattensDespiteCanExportAsRulePassing()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendarA = await CreateCalendarAsync(client, "SplitA");
-        var calendarB = await CreateCalendarAsync(client, "SplitB");
-        var pattern = await CreatePatternAsync(client, calendarA.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
-            frequency: RecurrenceFrequency.Weekly, daysOfWeek: DaysOfWeekFlags.Monday);
-
-        List<Guid> rowIds;
-        using (var scope = factory.Services.CreateScope())
-        {
-            var ctx = scope.ServiceProvider.GetRequiredService<CalendarContext>();
-            rowIds = ctx.CalendarEvents.Where(e => e.RecurrencePatternId == pattern.RecurrencePatternId)
-                .OrderBy(e => e.StartDateTime).Select(e => e.CalendarEventId).ToList();
-        }
-
-        // Move only the first row to B; the rest stay in A. All 4 still individually pass
-        // CanExportAsRule's field comparison — only the uniformity guard catches the split.
-        var starts = new[]
-        {
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), new DateTime(2030, 1, 14, 9, 0, 0, DateTimeKind.Utc),
-            new DateTime(2030, 1, 21, 9, 0, 0, DateTimeKind.Utc), new DateTime(2030, 1, 28, 9, 0, 0, DateTimeKind.Utc),
-        };
-        await MoveEventToCalendarAsync(client, rowIds[0], calendarB.CalendarId, "Standup", starts[0], starts[0].AddMinutes(30));
-
-        // No calendar filter: both calendars' rows are fetched, so the whole (still-linked) group is
-        // considered together and must flatten because it disagrees on CalendarId.
-        var body = await (await client.GetAsync($"{CalendarEventsPath}/ics")).Content.ReadAsStringAsync();
-
-        Assert.Equal(4, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.DoesNotContain("RRULE:", body);
-    }
-
-    // ------------------------------------------------------------------ aggregate: date/search filter (AC 6)
-
-    [Fact]
-    public async Task ExportAggregate_DateRangeFilter_NeverCollapsesEvenAnIntactSeries()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "Windowed");
-        await CreatePatternAsync(client, calendar.CalendarId, "Standup",
-            new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
-            frequency: RecurrenceFrequency.Weekly, daysOfWeek: DaysOfWeekFlags.Monday);
-
-        var from = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var to = new DateTime(2030, 1, 31, 0, 0, 0, DateTimeKind.Utc);
-        var body = await (await client.GetAsync(
-            $"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}"))
-            .Content.ReadAsStringAsync();
-
-        Assert.Equal(4, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.DoesNotContain("RRULE:", body);
-    }
-
-    // Mirrors CalendarEventsApiTests' List_ReturnsEventOverlappingWindowStart — the aggregate export's
-    // date filter documents the same overlap (not start-only) semantics as the plain list endpoint
-    // (CalendarIcsService.cs: "Overlap, not start-only — matches ListAsync's semantics (AC 6)"), but
-    // every prior date-filter test here seeded events entirely inside the window, so a start-only
-    // mutant would have gone undetected.
-    [Fact]
-    public async Task ExportAggregate_DateFilter_IncludesEventOverlappingWindowStart()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "Overlap");
-
-        // Spans midnight across the window boundary: starts before From but is still in progress.
-        var overnight = await CreateEventAsync(client, calendar.CalendarId, "Overnight shift",
-            new DateTime(2030, 8, 4, 22, 0, 0, DateTimeKind.Utc));
-        var updated = await client.PutAsJsonAsync($"{CalendarEventsPath}/{overnight.CalendarEventId}", new NewCalendarEvent
-        {
-            CalendarId = calendar.CalendarId,
-            Title = "Overnight shift",
-            StartDateTime = new DateTime(2030, 8, 4, 22, 0, 0, DateTimeKind.Utc),
-            EndDateTime = new DateTime(2030, 8, 5, 6, 0, 0, DateTimeKind.Utc),
-        });
-        updated.EnsureSuccessStatusCode();
-
-        var from = new DateTime(2030, 8, 5, 0, 0, 0, DateTimeKind.Utc);
-        var to = new DateTime(2030, 8, 6, 0, 0, 0, DateTimeKind.Utc);
-        var body = await (await client.GetAsync(
-            $"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}"))
-            .Content.ReadAsStringAsync();
-
-        Assert.Contains("SUMMARY:Overnight shift", body);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_SearchFilter_MatchesTitleOnly()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "Search");
-        await CreateEventAsync(client, calendar.CalendarId, "Team Standup", new DateTime(2030, 2, 1, 9, 0, 0, DateTimeKind.Utc));
-        await CreateEventAsync(client, calendar.CalendarId, "Dentist", new DateTime(2030, 2, 2, 9, 0, 0, DateTimeKind.Utc));
-        // Negative case: "standup" appears in Location, not Title — must NOT match (the aggregate
-        // export's search is Title-only, unlike the Calendar page's own client-side live filter).
-        await client.PostAsJsonAsync(CalendarEventsPath, new NewCalendarEvent
-        {
-            CalendarId = calendar.CalendarId,
-            Title = "Team sync",
-            Location = "Standup room",
-            StartDateTime = new DateTime(2030, 2, 3, 9, 0, 0, DateTimeKind.Utc),
-            EndDateTime = new DateTime(2030, 2, 3, 10, 0, 0, DateTimeKind.Utc),
-        });
-
-        var body = await (await client.GetAsync($"{CalendarEventsPath}/ics?search=standup")).Content.ReadAsStringAsync();
-
-        Assert.Equal(1, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.Contains("SUMMARY:Team Standup", body);
-        Assert.DoesNotContain("SUMMARY:Team sync", body);
-    }
-
-    // Filters were previously only ever exercised one at a time; the actual bulk-export dialog applies
-    // calendarIds + date range + search together, so the query conjunction itself (AND, not OR) was
-    // untested — a regression here (e.g. one filter silently overriding another) would pass every
-    // existing single-filter test.
-    [Fact]
-    public async Task ExportAggregate_CombinedFilters_AppliesAllConjunctively()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendarA = await CreateCalendarAsync(client, "CombinedA");
-        var calendarB = await CreateCalendarAsync(client, "CombinedB");
-
-        // Matches calendar + date + search (should be included).
-        await CreateEventAsync(client, calendarA.CalendarId, "Standup", new DateTime(2030, 3, 10, 9, 0, 0, DateTimeKind.Utc));
-        // Right calendar + search, wrong date (outside the window).
-        await CreateEventAsync(client, calendarA.CalendarId, "Standup", new DateTime(2030, 4, 10, 9, 0, 0, DateTimeKind.Utc));
-        // Right date + search, wrong calendar.
-        await CreateEventAsync(client, calendarB.CalendarId, "Standup", new DateTime(2030, 3, 11, 9, 0, 0, DateTimeKind.Utc));
-        // Right calendar + date, wrong search term.
-        await CreateEventAsync(client, calendarA.CalendarId, "Dentist", new DateTime(2030, 3, 12, 9, 0, 0, DateTimeKind.Utc));
-
-        var from = new DateTime(2030, 3, 1, 0, 0, 0, DateTimeKind.Utc);
-        var to = new DateTime(2030, 3, 31, 0, 0, 0, DateTimeKind.Utc);
-        var body = await (await client.GetAsync(
-            $"{CalendarEventsPath}/ics?calendarIds={calendarA.CalendarId}" +
-            $"&from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}&search=standup"))
-            .Content.ReadAsStringAsync();
-
-        Assert.Equal(1, CountOccurrences(body, "BEGIN:VEVENT"));
-    }
-
     // ------------------------------------------------------------------ aggregate: validation (AC 7)
 
     [Fact]
@@ -555,68 +177,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
         var response = await client.GetAsync($"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(DateTime.UtcNow.ToString("O"))}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_ToBeforeFrom_ReturnsBadRequest()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var from = new DateTime(2030, 2, 1, 0, 0, 0, DateTimeKind.Utc);
-        var to = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        var response = await client.GetAsync(
-            $"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_SpanOver92Days_ReturnsBadRequest()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var from = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var to = from.AddDays(93);
-
-        var response = await client.GetAsync(
-            $"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    // Boundary-pass companions to ToBeforeFrom/SpanOver92Days above: the rejecting side alone can't
-    // catch a `>` accidentally loosened to `>=` (or `<` to `<=`) — only a value exactly AT the boundary
-    // that must still succeed can.
-    [Fact]
-    public async Task ExportAggregate_ToEqualsFrom_ReturnsOk()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var same = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        var response = await client.GetAsync(
-            $"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(same.ToString("O"))}&to={Uri.EscapeDataString(same.ToString("O"))}");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task ExportAggregate_SpanExactly92Days_ReturnsOk()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "ExactSpan");
-        var from = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var to = from.AddDays(92);
-        await CreateEventAsync(client, calendar.CalendarId, "Edge event", to.AddHours(-1));
-
-        var response = await client.GetAsync(
-            $"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("SUMMARY:Edge event", body);
     }
 
     // ------------------------------------------------------------------ aggregate: caps (AC 8, 9; issue #516 AC 4)
@@ -644,72 +204,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
         await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents + 1, "Match");
 
         await AssertExportLimitAsync(await client.GetAsync($"{CalendarEventsPath}/ics?search=Match"));
-    }
-
-    // Boundary-pass companion: exactly the cap must succeed (the filtered path has a single cap — matched rows and
-    // output VEVENTs are 1:1, so this also proves the count is exact, not off by one in either direction).
-    [Fact]
-    public async Task ExportAggregate_FilteredMatchExactlyMaxVEvents_ReturnsOk()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWriteWithSizeCapControl);
-        await CapExportEventsAsync(client, TestMaxExportEvents);
-        var calendar = await CreateCalendarAsync(client, "ExactlyMaxFiltered");
-        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents, "Match");
-
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics?search=Match");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Equal(TestMaxExportEvents, CountOccurrences(body, "BEGIN:VEVENT"));
-    }
-
-    [Fact]
-    public async Task ExportAggregate_NoFilterRawRowsExceedFetchCap_ReturnsBadRequest()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "TooManyRaw");
-        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, Odyssey.Dtos.SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows + 1, "Row");
-
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-        Assert.Contains("would need to fetch", problem!.Detail);
-    }
-
-    // Boundary-pass companion: exactly the shipped fetch cap in raw rows must NOT trip it. With the event cap
-    // unlimited since issue #516, the export then streams every row; a `>` loosened to `>=` on the fetch check would
-    // instead surface the "would need to fetch" 400 here.
-    [Fact]
-    public async Task ExportAggregate_NoFilterRawRowsExactlyFetchCap_PassesFetchCheck()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWrite);
-        var calendar = await CreateCalendarAsync(client, "ExactlyFetchCap");
-        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, Odyssey.Dtos.SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows, "Row");
-
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(
-            Odyssey.Dtos.SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows,
-            int.Parse(response.Headers.GetValues("X-Odyssey-Export-Rows").Single()));
-    }
-
-    [Fact]
-    public async Task ExportAggregate_NoFilterPostCollapseCountExceedsOutputCap_ReturnsBadRequest()
-    {
-        var factory = Factory;
-        using var client = factory.ClientFor(ReadWriteWithSizeCapControl);
-        await CapExportEventsAsync(client, TestMaxExportEvents);
-        var calendar = await CreateCalendarAsync(client, "TooManyOutput");
-        // Under the fetch cap but over the output cap — all standalone, so nothing collapses and the raw count IS
-        // the eventual VEVENT count.
-        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents + 1, "Row");
-
-        await AssertExportLimitAsync(await client.GetAsync($"{CalendarEventsPath}/ics"));
     }
 
     // ------------------------------------------------------------------ aggregate: export byte-size cap (issue #516 AC 3)
@@ -803,26 +297,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
         return count;
     }
 
-    private static List<string> ExtractUidLines(string body) => body
-        .Split("\r\n", StringSplitOptions.RemoveEmptyEntries)
-        .Where(line => line.StartsWith("UID:", StringComparison.Ordinal))
-        .ToList();
-
-    private static string Vcalendar(params string[] vevents) =>
-        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n" + string.Concat(vevents) + "END:VCALENDAR\r\n";
-
-    private static string Vevent(string uid, params string[] lines) =>
-        "BEGIN:VEVENT\r\nUID:" + uid + "\r\n" + string.Join("\r\n", lines) + "\r\nEND:VEVENT\r\n";
-
-    private static async Task<HttpResponseMessage> PostIcsAsync(HttpClient client, Guid calendarId, string ics)
-    {
-        using var content = new MultipartFormDataContent();
-        var fileContent = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(ics));
-        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/calendar");
-        content.Add(fileContent, "file", "calendar.ics");
-        return await client.PostAsync($"{CalendarsPath}/{calendarId}/ics", content);
-    }
-
     private static async Task<ExistingCalendar> CreateCalendarAsync(HttpClient client, string name)
     {
         var post = await client.PostAsJsonAsync(CalendarsPath, new NewCalendar { Name = name, Color = "#0369A1" });
@@ -861,27 +335,6 @@ public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : Sh
         });
         post.EnsureSuccessStatusCode();
         return (await post.Content.ReadFromJsonAsync<ExistingRecurrencePattern>())!;
-    }
-
-    private static async Task<Guid> FirstGeneratedEventAsync(ApiFactory factory, Guid patternId)
-    {
-        using var scope = factory.Services.CreateScope();
-        var ctx = scope.ServiceProvider.GetRequiredService<CalendarContext>();
-        return ctx.CalendarEvents.Where(e => e.RecurrencePatternId == patternId)
-            .OrderBy(e => e.StartDateTime).First().CalendarEventId;
-    }
-
-    private static async Task MoveEventToCalendarAsync(
-        HttpClient client, Guid eventId, Guid newCalendarId, string title, DateTime start, DateTime end)
-    {
-        var response = await client.PutAsJsonAsync($"{CalendarEventsPath}/{eventId}", new NewCalendarEvent
-        {
-            CalendarId = newCalendarId,
-            Title = title,
-            StartDateTime = start,
-            EndDateTime = end,
-        });
-        response.EnsureSuccessStatusCode();
     }
 
     // Seeds standalone CalendarEvent rows directly through the DbContext — bulk-volume cap tests need
