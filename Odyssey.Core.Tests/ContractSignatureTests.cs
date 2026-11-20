@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
@@ -32,14 +33,8 @@ public class ContractSignatureTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class Caps : ISystemSettingsLookup
     {
-
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FinanceRequestCaps(25, 50, 500, 1000));
 
@@ -61,19 +56,19 @@ public class ContractSignatureTests
     }
 
     private ContractService CreateService(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             logger ?? NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new Caps(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
 
     private ContractFileService Files(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new Caps());
 
     private ContractSummaryService Summaries(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, new FixedTimeProvider(FixedToday), new Caps());
+        new(context, new FakeTimeProvider(FixedToday), new Caps());
 
     private static readonly DateTime ReadyOn = FixedToday.AddDays(-30);
     private static readonly DateTime SignedOn = FixedToday.AddDays(-28);
@@ -641,7 +636,7 @@ public class ContractSignatureTests
     {
         await using var context = TestContextFactory.Create();
         var contracts = CreateService(context);
-        var events = new ContractEventService(context, new FixedTimeProvider(FixedToday));
+        var events = new ContractEventService(context, new FakeTimeProvider(FixedToday));
 
         var created = await contracts.Create(New(FixedToday.AddDays(-10)), userId: null);
         Assert.Equal(ContractStatus.Draft, created.Status);

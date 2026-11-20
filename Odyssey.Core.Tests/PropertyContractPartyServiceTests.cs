@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -24,11 +25,6 @@ public class PropertyContractPartyServiceTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class StubCaps : ISystemSettingsLookup
     {
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
@@ -52,22 +48,22 @@ public class PropertyContractPartyServiceTests
     }
 
     private ContractService Contracts(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             logger ?? new RecordingLogger<ContractService>());
 
     private ContractPartyService Parties(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new StubCaps(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
 
     private ContractFileService Files(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new StubCaps());
 
     private ContractSummaryService Summaries(OdysseyContext context, ILogger<ContractService>? logger = null) =>
-        new(context, new FixedTimeProvider(FixedToday), new StubCaps());
+        new(context, new FakeTimeProvider(FixedToday), new StubCaps());
 
     private static PropertyService Properties(OdysseyContext context, ILogger<PropertyService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(FixedToday), logger);
+        new(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(FixedToday), logger);
 
     private static NewContract Contract(string name = "Agreement", DtoContractType type = DtoContractType.Other) => new()
     {

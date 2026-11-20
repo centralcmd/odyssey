@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -35,11 +36,6 @@ public class ContractEventAutomationTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     /// <summary>Captures the formatted line so the no-free-text assertions can read it back.</summary>
     private sealed class RecordingLogger<T> : ILogger<T>
     {
@@ -56,26 +52,26 @@ public class ContractEventAutomationTests
 
     private ContractService Contracts(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             logger ?? NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new FakeSystemSettingsLookup(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
 
     private ContractFileService Files(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new FakeSystemSettingsLookup());
 
     private ContractSummaryService Summaries(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, new FixedTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup());
+        new(context, new FakeTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup());
 
     private static TermService Terms(
         OdysseyContext context, ILogger<TermService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, new FixedTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup(),
+        new(context, new FakeTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup(),
             logger ?? NullLogger<TermService>.Instance);
 
     private static NewContract New(
@@ -361,7 +357,7 @@ public class ContractEventAutomationTests
         // later timezone produces, and one NormalizeSignature accepts because the DATE is not future.
         var at9am = FixedToday.AddHours(9);
         var service = new ContractService(
-            context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(at9am),
+            context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(at9am),
             NullLogger<ContractService>.Instance);
 
         var sameDay = await service.Create(

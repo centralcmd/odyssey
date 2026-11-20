@@ -3,6 +3,7 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -33,7 +34,7 @@ public class TermTextDateTimeServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var log = new RecordingLogger<TermService>();
-        var service = new TermService(context, new FixedTimeProvider(FixedToday), logger: log);
+        var service = new TermService(context, new FakeTimeProvider(FixedToday), logger: log);
 
         var created = await service.CreateForContract(contractId, Text(SecretText), userId: "u1");
         await service.UpdateForContract(contractId, created.TermId, Text(SecretText + " (revised)"), userId: "u1");
@@ -53,7 +54,7 @@ public class TermTextDateTimeServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var log = new RecordingLogger<TermService>();
-        var service = new TermService(context, new FixedTimeProvider(FixedToday), logger: log);
+        var service = new TermService(context, new FakeTimeProvider(FixedToday), logger: log);
         var instant = new DateTime(2027, 3, 31, 10, 0, 0, DateTimeKind.Utc);
 
         await service.CreateForContract(contractId, DateTimeTerm(instant), userId: "u1");
@@ -71,7 +72,7 @@ public class TermTextDateTimeServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var log = new RecordingLogger<TermService>();
-        var service = new TermService(context, new FixedTimeProvider(FixedToday), logger: log);
+        var service = new TermService(context, new FakeTimeProvider(FixedToday), logger: log);
 
         var created = await service.CreateForContract(contractId, Amount(45m), userId: "u1");
         log.Lines.Clear();
@@ -220,19 +221,19 @@ public class TermTextDateTimeServiceTests
     };
 
     private ContractService Summary(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
 
     private ContractFileService Files(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new FakeSystemSettingsLookup());
 
     private ContractSummaryService Summaries(OdysseyContext context) =>
-        new(context, new FixedTimeProvider(FixedToday), new FakeSystemSettingsLookup());
+        new(context, new FakeTimeProvider(FixedToday), new FakeSystemSettingsLookup());
 
     private static Guid SeedActiveContract(OdysseyContext context)
     {
@@ -289,11 +290,6 @@ public class TermTextDateTimeServiceTests
         context.Contracts.Add(contract);
         await context.SaveChangesAsync();
         return contract.ContractId;
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     private sealed class RecordingLogger<T> : ILogger<T>

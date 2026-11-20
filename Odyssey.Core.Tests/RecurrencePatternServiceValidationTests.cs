@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
@@ -22,7 +23,7 @@ public class RecurrencePatternServiceValidationTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(new NewRecurrencePattern
         {
@@ -46,7 +47,7 @@ public class RecurrencePatternServiceValidationTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
         var request = new NewRecurrencePattern
         {
             CalendarId = calendar.CalendarId,

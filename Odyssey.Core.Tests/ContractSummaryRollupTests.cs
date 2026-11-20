@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -27,25 +28,20 @@ public class ContractSummaryRollupTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private ContractService CreateService(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
 
     private ContractFileService Files(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new FakeSystemSettingsLookup());
 
     private ContractSummaryService Summaries(OdysseyContext context) =>
-        new(context, new FixedTimeProvider(FixedToday), new FakeSystemSettingsLookup());
+        new(context, new FakeTimeProvider(FixedToday), new FakeSystemSettingsLookup());
 
     private static Guid SeedContract(
         OdysseyContext context,
@@ -466,7 +462,7 @@ public class ContractSummaryRollupTests
         }
 
         var lookup = new FakeSystemSettingsLookup { ContractSummary = new ContractSummarySettings(45, 45, 2) };
-        var service = new ContractSummaryService(context, new FixedTimeProvider(FixedToday), lookup);
+        var service = new ContractSummaryService(context, new FakeTimeProvider(FixedToday), lookup);
 
         var summary = await service.GetSummary("USD");
 

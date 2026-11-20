@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -21,12 +22,7 @@ public class PropertyEventServiceTests
 
     private readonly OdysseyContext context = TestContextFactory.Create();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
-    private PropertyEventService Service() => new(context, new FixedTimeProvider(FixedNow));
+    private PropertyEventService Service() => new(context, new FakeTimeProvider(FixedNow));
 
     private async Task<Guid> SeedPropertyAsync(PropertyType type = PropertyType.RealEstate)
     {
@@ -209,7 +205,7 @@ public class PropertyEventServiceTests
         var created = (await Service().CreateAsync(
             propertyId, New(DtoPropertyEventType.Repair, description: "d", notes: "n"), Author))!;
 
-        var later = new PropertyEventService(context, new FixedTimeProvider(FixedNow.AddDays(3)));
+        var later = new PropertyEventService(context, new FakeTimeProvider(FixedNow.AddDays(3)));
         var updated = (await later.UpdateAsync(propertyId, created.Event.PropertyEventId, Update()))!;
 
         Assert.Equal(DtoPropertyEventType.Other, updated.Event.Type);

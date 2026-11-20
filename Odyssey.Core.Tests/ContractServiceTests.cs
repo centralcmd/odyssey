@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,33 +29,28 @@ public class ContractServiceTests
     // IContactLookup the service resolves through (xUnit creates a fresh test-class instance per test).
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     /// <summary>
     /// The contract caps moved into the settings store (issue #421 Wave 3), so the service takes a
     /// lookup rather than <c>IOptions&lt;ContractOptions&gt;</c> — that class is gone.
     /// </summary>
     private ContractService CreateService(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             logger ?? NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new StubFinanceCaps(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
 
     private ContractFileService Files(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new StubFinanceCaps());
 
     private ContractSummaryService Summaries(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, new FixedTimeProvider(FixedToday), caps ?? new StubFinanceCaps());
+        new(context, new FakeTimeProvider(FixedToday), caps ?? new StubFinanceCaps());
 
     /// <summary>
     /// Captures the formatted message of every line the service logs. Issue #121 §7.7's line is the

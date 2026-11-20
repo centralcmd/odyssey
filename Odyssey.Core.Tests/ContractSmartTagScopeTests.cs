@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -117,11 +118,6 @@ public class ContractSmartTagScopeServiceTests
 
     private readonly OdysseyContext context = TestContextFactory.Create();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class RecordingLogger : ILogger<ContractService>
     {
         public List<(LogLevel Level, string Message)> Lines { get; } = [];
@@ -136,7 +132,7 @@ public class ContractSmartTagScopeServiceTests
     }
 
     private ContractService Service(ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(FixedToday),
             logger ?? NullLogger<ContractService>.Instance);
 
     private static DateTime Day(int year, int month, int day) => new(year, month, day, 0, 0, 0, DateTimeKind.Utc);

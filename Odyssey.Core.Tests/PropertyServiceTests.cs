@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
@@ -17,13 +18,8 @@ public class PropertyServiceTests
 {
     private static readonly DateTimeOffset Now = new(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
 
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
-    }
-
     private static PropertyService Service(Odyssey.Context.OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
+        new(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(Now));
 
     [Fact]
     public async Task Create_RealEstate_RoundTripsEveryDetailField_AndNormalizesTheCountryCode()
@@ -261,7 +257,7 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = Service(context);
-        var estimates = new PropertyEstimateService(context, new FixedTimeProvider(Now));
+        var estimates = new PropertyEstimateService(context, new FakeTimeProvider(Now));
         var cheap = await service.Create(PropertyTestData.House("Cheap"), userId: null, claims: LocationClaims.Trusted);
         var dear = await service.Create(PropertyTestData.House("Dear"), userId: null, claims: LocationClaims.Trusted);
         await service.Create(PropertyTestData.House("Unvalued"), userId: null, claims: LocationClaims.Trusted);
