@@ -45,26 +45,43 @@ real migration chain once per container (`MigratedSchemaTemplate`). Locally a co
 a migration from empty about 2.8 s.
 
 A **migration test** (`MigrationSeam`) that needs the database *before* head calls
-`fixture.CreateDatabaseAtMigrationAsync(name, "_SomeMigration")` (or
-`CreateDatabaseBeforeMigrationAsync(name, "_ItsSubject")`) instead: the same copy, of a template migrated
-to exactly that migration with every later one pending. Each target gets its own template database
+`fixture.CreateDatabaseAtMigrationAsync(name, "_SomeMigration")` instead: the same copy, of a template
+migrated to exactly that migration with every later one pending. Each target gets its own template database
 (`odyssey_template_<16 hex digits of a hash of the migration id>`), built on first use and shared by every
-test asking for the same target; tests asking for different targets build theirs independently.
+test asking for the same target; tests asking for different targets build theirs independently. A data
+migration's seam test is temporary (see below). Today the only callers are `MigratedSchemaTemplateTests`,
+which uses an intermediate migration only as a fidelity sample, and the half-applied-Contract drift test in
+`LocationConversionMigrationTests`.
 
 Only tests whose point is that the chain applies from nothing still migrate for real: the **seeder
-test**, `MigrationDriftIntegrationTests` and the drift-guard tests in `TermRenameMigrationTests`, which
-need an empty database a copy cannot give them.
+test**, `MigrationDriftIntegrationTests`, the drift-guard tests in `TermRenameMigrationTests` and the
+fresh-database tests that drive `MigrationRunner` or the migrations job, which need an empty database a copy
+cannot give them.
 
 `MigratedSchemaTemplateTests` compares a copy with a database migrated the slow way, at head and at one
 intermediate migration: every column, index, constraint, foreign key and table option, and every row
 (`CHECKSUM TABLE`). A copy comes from `SHOW CREATE TABLE`, so the template refuses to build if a
 migration ever creates an object that does not reproduce: a view, trigger, routine, event or sequence.
 
-## Data migrations that shipped before production
+## Data migration tests are retired once production has applied them
 
-A data migration's seam tests (its backfill, remap or relocation over seeded rows, and its `Down()` over
-data) are retired once every production database has applied it: from then on the data path only ever
-runs over an empty database, and a rollback is a backup restore. The tests for migrations up to
-`v0.35.0` (`20260924202453_AddTextAndDateTimeTermKinds`) are gone for that reason. What a removed file
-also asserted about the *current* schema — a constraint, an index, a foreign key's delete rule — was
-kept, on a copy of head.
+A data migration's seam tests — its backfill, remap or relocation over seeded rows, an interrupted run
+resuming, its `Down()` over data, "pre-existing rows read back as X" — are retired once every production
+database has applied the migration. From then on the data path only ever runs over an empty database, and a
+rollback is a backup restore, so the tests pin behaviour no database will ever exercise again while costing a
+per-migration template build on every run.
+
+**The rule for a new data migration:** its seam tests ship with it, and are removed in the first PR after the
+release containing it reaches production. Removing them follows two rules:
+
+- **Keep every assertion about the current schema**, moved onto a copy of head
+  (`CreateMigratedDatabaseAsync`): a foreign key's delete rule, a `CHECK`, a unique index, a generated column,
+  a column's type or collation, a seeded row. A seeded settings value belongs in
+  `SystemSettingsSeedIntegrationTests`. Moving a check into a sibling file is fine; losing it is not.
+- **Keep the `MigrationRunner` guards** — the drift guard and the pre-migration checks a fresh database still
+  passes through — tested from an empty database or a head copy, since every fresh install runs them.
+
+Two rounds of this have happened. The tests for migrations up to `v0.35.0`
+(`20260924202453_AddTextAndDateTimeTermKinds`) went first. The rest went once production had applied
+`v0.48.0`, whose newest migration is `20261119224858_StoreFetchedRatesInPublishedDirectionOnly`: no seam test
+for a data migration remains in this project.

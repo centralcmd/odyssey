@@ -21,7 +21,7 @@ using ContextPropertyFileType = Odyssey.Context.PropertyFileType;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #210. AC 16: the purely additive migration, the four declared on-delete
+/// The relational half of issue #210. AC 16: the four declared on-delete
 /// behaviours observed firing at the engine (property and file <c>CASCADE</c>; issuer and attaching user
 /// <c>SET NULL</c>), the property delete leaving the files themselves in place, and the unique
 /// <c>(PropertyId, FileMetadataId)</c> index.
@@ -35,61 +35,11 @@ namespace Odyssey.IntegrationTests;
 public class PropertyFileRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_property_files";
-    private const string PreviousMigration = "_AddPropertyContractParties";
-    private const string ThisMigration = "_AddPropertyFiles";
     private const string Attacher = "property-doc-attacher";
 
     private static readonly DateTime Anchor = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    // ── Migration and schema ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// The migration applies to a populated database at the previous migration, adds exactly one table,
-    /// leaves every existing table's columns and indexes as they were, and <c>Down()</c> removes it again.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_migration_is_purely_additive_and_reversible_over_a_populated_database()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
-
-        await using (var context = NewContext())
-        {
-            await context.Database.ExecuteSqlRawAsync($"""
-                INSERT INTO `Properties` (`PropertyId`, `Name`, `Description`, `Type`, `CurrencyCode`, `CreatedAt`, `UpdatedAt`)
-                VALUES ('{Guid.NewGuid()}', 'Pre-existing', '', 0, 'USD', '2026-01-01', '2026-01-01')
-                """);
-        }
-
-        Snapshot before;
-        await using (var context = NewContext())
-        {
-            before = await SnapshotAsync(context);
-            Assert.DoesNotContain("PropertyFiles", before.Tables);
-            // To this migration, not the latest: a later one (issue #209's WidenEventsForProperties)
-            // renames ContractEvents, which would read as this migration touching another table.
-            await MigrationSeam.MigrateToAsync(context, ThisMigration);
-            Assert.True(await MigrationSeam.HasRunAsync(context, ThisMigration));
-        }
-
-        await using (var context = NewContext())
-        {
-            var after = await SnapshotAsync(context);
-
-            Assert.Equal(before.Tables.Append("PropertyFiles").OrderBy(t => t, StringComparer.Ordinal), after.Tables);
-            Assert.Equal(before.Columns, after.Columns.Where(c => !c.StartsWith("PropertyFiles.", StringComparison.Ordinal)).ToList());
-            Assert.Equal(before.Indexes, after.Indexes.Where(i => !i.StartsWith("PropertyFiles.", StringComparison.Ordinal)).ToList());
-            Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `Properties`"));
-
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-        }
-
-        await using (var context = NewContext())
-        {
-            Assert.False(await MigrationSeam.TableExistsAsync(context, "PropertyFiles"));
-            Assert.Equal(before.Tables, (await SnapshotAsync(context)).Tables);
-        }
-    }
+    // ── Schema ───────────────────────────────────────────────────────────────
 
     /// <summary>Every foreign key the table carries has the on-delete behaviour issue #210 §4 names.</summary>
     [SkippableFact]
@@ -432,31 +382,6 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
     }
 
     private sealed record ForeignKeyRule(string ColumnName, string ReferencedTable, string DeleteRule);
-
-    private sealed record Snapshot(List<string> Tables, List<string> Columns, List<string> Indexes);
-
-    private static async Task<Snapshot> SnapshotAsync(OdysseyContext context)
-    {
-        var tables = await context.Database.SqlQuery<string>($"""
-            SELECT TABLE_NAME AS Value FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '__EFMigrationsHistory'
-            ORDER BY BINARY TABLE_NAME
-            """).ToListAsync();
-        var columns = await context.Database.SqlQuery<string>($"""
-            SELECT CONCAT_WS('.', TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, IFNULL(COLUMN_DEFAULT, '<null>')) AS Value
-            FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '__EFMigrationsHistory'
-            ORDER BY BINARY TABLE_NAME, ORDINAL_POSITION
-            """).ToListAsync();
-        var indexes = await context.Database.SqlQuery<string>($"""
-            SELECT CONCAT_WS('.', TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, NON_UNIQUE) AS Value
-            FROM information_schema.STATISTICS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '__EFMigrationsHistory'
-            ORDER BY BINARY TABLE_NAME, BINARY INDEX_NAME, SEQ_IN_INDEX
-            """).ToListAsync();
-
-        return new Snapshot(tables, columns, indexes);
-    }
 
     /// <summary>Records the text of every command that reads, so the SQL itself can be asserted on.</summary>
     private sealed class CommandRecorder : DbCommandInterceptor

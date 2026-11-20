@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
+using Odyssey.Testing.FileStorage;
 using Xunit;
 using ContextContractType = Odyssey.Context.ContractType;
 
@@ -199,9 +200,21 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
 
     private static async Task<Guid> SeedFileMetadataAsync(OdysseyContext context, string uploaderId)
     {
-        var id = Guid.NewGuid();
-        await LegacyFileRows.InsertAsync(context, id, Anchor, "agreement.pdf", uploadedByUserId: uploaderId);
-        return id;
+        // A disk-backed Finance-area file: the FileMetadata row and the committed stored-object row it names.
+        var metadata = new FileMetadata
+        {
+            Id = Guid.NewGuid(),
+            UploadedByUserId = uploaderId,
+            FileName = "agreement.pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 3,
+            Sha256Hash = Guid.NewGuid().ToString("N"),
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
+            UploadedAtUtc = Anchor,
+        };
+        context.FileMetadata.Add(metadata);
+        await context.SaveChangesAsync();
+        return metadata.Id;
     }
 
     private static async Task<Guid> SeedContractFileAsync(
@@ -269,12 +282,9 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
         await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
-    // The seeded files are database-held (seeded below #448): the interceptor gives them the file move's end state just
-    // before RemoveLegacyFileBlobStorage's guard, as the worker did between the two releases.
     private OdysseyContext NewContext() =>
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .AddInterceptors(new LegacyFileRows.FinishTheFileMoveBeforeTheGuard())
             .Options);
 
     private async Task DropAsync()

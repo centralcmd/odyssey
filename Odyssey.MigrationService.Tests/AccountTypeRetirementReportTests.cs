@@ -6,8 +6,9 @@ namespace Odyssey.MigrationService.Tests;
 
 /// <summary>
 /// The fast-tier half of <see cref="AccountTypeRetirementReport"/> (issue #218 §9). The branches that
-/// need a schema — migration pending, already applied, an empty database — run against real MariaDB in
-/// <c>Odyssey.IntegrationTests</c>' <c>RetirePropertyAndVehicleAccountTypesMigrationTests</c>.
+/// need a schema — already applied, an empty database — run against real MariaDB in
+/// <c>Odyssey.IntegrationTests</c>' <c>RetirePropertyAndVehicleAccountTypesMigrationTests</c>. The
+/// migration-pending branch lost its test when production had applied the migration.
 /// </summary>
 public class AccountTypeRetirementReportTests
 {
