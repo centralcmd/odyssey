@@ -258,7 +258,7 @@ public partial class BudgetItemsSection
             return;
 
         var confirmed = await _confirm.AskAsync("Delete budget item", $"Delete '{item.Tag.Name}'? This cannot be undone.", "Delete");
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         _isBusy = true;

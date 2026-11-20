@@ -211,7 +211,7 @@ public partial class ContractEventsSection : IAsyncDisposable
         // Named by what the user called it, so a log with several entries says which one is going.
         var confirmed = await _confirm.AskAsync("Delete event?", $"Remove “{ev.Title}” from this contract's log? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         var ok = (await Contracts.DeleteEventAsync(Contract.ContractId, ev.ContractEventId))

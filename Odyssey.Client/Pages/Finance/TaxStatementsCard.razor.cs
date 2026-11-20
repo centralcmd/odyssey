@@ -438,7 +438,7 @@ public partial class TaxStatementsCard
     {
         if (!_canDelete) return;
         var confirmed = await _confirm.AskAsync("Delete tax statement", $"Delete '{s.Name}'? This cannot be undone.", "Delete");
-        if (confirmed == true && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
+        if (confirmed && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
         {
             _statements.Remove(s);
             _reports.Remove(s.TaxStatementId);

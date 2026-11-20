@@ -1045,7 +1045,7 @@ public partial class CalendarEventDialog
     private async Task<bool> ConfirmDeleteAsync(string noun)
     {
         var confirmed = await _deleteConfirm.AskAsync($"Delete {noun}", noun == "event" && OccurrenceOfSeries ? DeleteOccurrenceMessage(_draft.Title) : DeleteMessage(noun, _draft.Title), "Delete");
-        return confirmed == true;
+        return confirmed;
     }
 
     private async Task DeleteEventAsync()

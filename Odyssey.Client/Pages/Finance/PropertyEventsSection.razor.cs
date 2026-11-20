@@ -190,7 +190,7 @@ public partial class PropertyEventsSection : IAsyncDisposable
     {
         var confirmed = await _confirm.AskAsync("Delete event?", $"Remove “{ev.Title}” from this property's log? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         var ok = (await Properties.DeleteEventAsync(Property.PropertyId, ev.PropertyEventId))

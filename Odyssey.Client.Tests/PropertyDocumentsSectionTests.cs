@@ -333,8 +333,9 @@ public class PropertyDocumentsSectionTests
         h.Host.WaitForAssertion(() =>
             Assert.Contains("The file itself is kept in Files.", h.Markup, StringComparison.Ordinal));
         var confirm = h.Host.FindComponents<OdsConfirmDialog>().Single();
-        Assert.Equal("Detach", confirm.Instance.ConfirmLabel);
-        h.Host.InvokeAsync(() => confirm.Instance.OnConfirm());
+        Assert.Equal("Detach document", confirm.Instance.Title);
+        Assert.Equal("link_off", confirm.Instance.SubmitIcon);
+        h.Host.FindAll(".ods-modal button").Single(b => b.TextContent.Trim().EndsWith("Detach", StringComparison.Ordinal)).Click();
 
         h.Host.WaitForAssertion(() => h.Properties.Verify(
             p => p.DetachFileAsync(PropertyId, doc.FileMetadata.Id, It.IsAny<CancellationToken>()), Times.Once));

@@ -237,7 +237,7 @@ public partial class ContractTermsSection
         // Named by what the user called it, so a contract with several charges says which one is going.
         var confirmed = await _confirm.AskAsync("Delete term?", $"Remove the {TermVisuals.DisplayName(term)} entry effective {OdsDates.Long(term.EffectiveFrom)}? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         var ok = (await Contracts.DeleteTermAsync(Contract.ContractId, term.TermId))

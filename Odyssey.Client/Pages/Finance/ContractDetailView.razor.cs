@@ -348,7 +348,7 @@ public partial class ContractDetailView : IAsyncDisposable
         var r = Resolve(party);
         var confirmed = await _confirm.AskAsync("Detach party", $"Detach '{r.Name}' from this contract? The {r.KindLabel.ToLowerInvariant()} itself is not affected.", "Detach", "link_off");
 
-        if (confirmed != true) return;
+        if (!confirmed) return;
 
         // Armed BEFORE the write, while the list still holds the party: the tile that had focus is
         // gone by the time the re-fetched contract arrives.

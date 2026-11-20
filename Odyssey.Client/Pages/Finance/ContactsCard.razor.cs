@@ -482,7 +482,7 @@ public partial class ContactsCard
             return;
 
         var confirmed = await _confirm.AskAsync("Delete contact", DeleteMessage(contact.ResolvedDisplayName), "Delete");
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         // On success, a full refresh rather than a local Remove: the delete changes the header counts

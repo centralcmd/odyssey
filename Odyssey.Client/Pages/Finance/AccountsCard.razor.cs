@@ -549,7 +549,7 @@ public partial class AccountsCard
     {
         if (!_canDeleteAccounts) return;
         var confirmed = await _confirm.AskAsync("Delete account", $"Delete '{account.Name}'? This cannot be undone.", "Delete");
-        if (confirmed == true)
+        if (confirmed)
             await DeleteAccount(account);
     }
 

@@ -230,7 +230,7 @@ public partial class ContractFilesTable
     {
         var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileName}'? The file itself is kept in your files.", "Detach", "link_off");
 
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         if ((await Contracts.DetachFileAsync(ContractId, file.FileId)).Toast(Snackbar, "Detach failed", "Document detached."))

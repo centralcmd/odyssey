@@ -412,7 +412,7 @@ public partial class Files
     {
         var confirmed = await _confirm.AskAsync("Delete file", $"Permanently delete '{file.FileName}'? This can't be undone.", "Delete");
 
-        if (confirmed == true)
+        if (confirmed)
             await DeleteFileAsync(file);
     }
 

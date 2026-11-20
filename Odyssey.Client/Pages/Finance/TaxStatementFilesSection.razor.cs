@@ -210,7 +210,7 @@ public partial class TaxStatementFilesSection
     {
         var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileMetadata.FileName}' from this tax statement?", "Detach", "link_off");
 
-        if (confirmed == true
+        if (confirmed
             && (await TaxStatements.DetachFileAsync(StatementId, file.FileMetadata.Id)).Toast(Snackbar, "Detach failed", "Document detached."))
         {
             await OnChanged.InvokeAsync();

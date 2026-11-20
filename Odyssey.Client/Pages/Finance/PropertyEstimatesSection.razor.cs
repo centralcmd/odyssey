@@ -101,7 +101,7 @@ public partial class PropertyEstimatesSection
     private async Task DeleteAsync(ExistingPropertyEstimate estimate)
     {
         var confirmed = await _confirm.AskAsync("Delete estimate?", $"Delete the {Money(estimate.Value)} estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? The history keeps every other entry.", "Delete");
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         var ok = (await Properties.DeleteEstimateAsync(Property.PropertyId, estimate.PropertyEstimateId))

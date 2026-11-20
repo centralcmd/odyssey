@@ -445,7 +445,7 @@ public partial class BudgetsCard
             return;
 
         var confirmed = await _confirm.AskAsync("Delete budget", $"Delete '{budget.Name}'? This cannot be undone.", "Delete");
-        if (confirmed == true)
+        if (confirmed)
             await DeleteBudget(budget);
     }
 

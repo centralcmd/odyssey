@@ -332,7 +332,7 @@ public partial class TasksPage
         if (!_canDelete) return;
         var task = _allTasks.FirstOrDefault(t => t.JournalTaskId == id);
         var confirmed = await _confirm.AskAsync("Delete task", $"Permanently delete '{task?.Title}'? This cannot be undone.", "Delete");
-        if (confirmed == true && (await Tasks.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Task deleted."))
+        if (confirmed && (await Tasks.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Task deleted."))
         {
             _announce = "Task deleted.";
             _details.Remove(id);

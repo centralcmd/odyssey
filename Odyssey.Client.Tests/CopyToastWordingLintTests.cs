@@ -20,6 +20,15 @@ public class CopyToastWordingLintTests
             .Where(p => !p.EndsWith("OdsCopied.cs", StringComparison.Ordinal))
             .Select(p => (Path.GetRelativePath(ClientSource.Root, p), File.ReadAllText(p)));
 
+    /// <summary>A path-scoped lint that scans nothing passes for the wrong reason.</summary>
+    [Fact]
+    public void The_scan_reaches_the_client_and_its_copy_toasts()
+    {
+        var sources = Sources().ToList();
+        Assert.NotEmpty(sources);
+        Assert.Contains(sources, s => s.Text.Contains("OdsCopied.Id(", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void No_toast_says_to_clipboard()
     {

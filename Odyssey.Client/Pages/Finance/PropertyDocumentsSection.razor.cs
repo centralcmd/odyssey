@@ -297,7 +297,7 @@ public partial class PropertyDocumentsSection
     private async Task ConfirmDetachAsync(ExistingPropertyFile file)
     {
         var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileMetadata.FileName}' from {Property.Name}? The file itself is kept in Files.", "Detach", "link_off");
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         if ((await Properties.DetachFileAsync(Property.PropertyId, file.FileMetadata.Id)).Toast(Snackbar, "Detach failed", "Document detached."))

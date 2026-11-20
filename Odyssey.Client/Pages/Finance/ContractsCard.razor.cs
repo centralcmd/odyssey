@@ -823,7 +823,7 @@ public partial class ContractsCard
         if (!_canDelete) return;
         var confirmed = await _confirm.AskAsync("Delete contract", $"Permanently delete '{c.Name}' and all its party and document links? This cannot be undone.", "Delete");
 
-        if (confirmed == true && (await Contracts.DeleteAsync(c.ContractId)).Toast(Snackbar, "Delete failed", "Contract deleted."))
+        if (confirmed && (await Contracts.DeleteAsync(c.ContractId)).Toast(Snackbar, "Delete failed", "Contract deleted."))
         {
             _contracts.Remove(c);
             _details.Remove(c.ContractId);

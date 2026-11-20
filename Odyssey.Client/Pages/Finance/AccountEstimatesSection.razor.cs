@@ -154,7 +154,7 @@ public partial class AccountEstimatesSection
     {
         var confirmed = await _confirm.AskAsync("Delete estimate?", $"Remove the estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         var ok = (await Accounts.DeleteEstimateAsync(Account.AccountId, estimate.AccountEstimateId))

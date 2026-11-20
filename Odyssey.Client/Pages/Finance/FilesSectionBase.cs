@@ -216,7 +216,7 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
         var meta = MetadataOf(file);
         var confirmed = await confirm.AskAsync("Detach file", $"Detach '{meta.FileName}' from this {EntityNoun}?", "Detach", "link_off");
 
-        if (confirmed == true) await DeleteFileAsync(file);
+        if (confirmed) await DeleteFileAsync(file);
     }
 
     private async Task DeleteFileAsync(TFile file)

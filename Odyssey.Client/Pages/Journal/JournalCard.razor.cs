@@ -697,7 +697,7 @@ public partial class JournalCard
         if (!_canDelete) return;
         var confirmed = await _confirm.AskAsync("Delete entry", DeleteMessage(e.Title), "Delete");
 
-        if (confirmed == true && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
+        if (confirmed && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
         {
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
