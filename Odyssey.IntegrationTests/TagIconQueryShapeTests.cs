@@ -25,7 +25,7 @@ namespace Odyssey.IntegrationTests;
 /// the batched tag lookup.
 /// </para>
 /// </summary>
-[Collection(MariaDbSharedDatabaseCollection.Name)]
+[Collection(MariaDbCollection.Name)]
 public class TagIconQueryShapeTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_tag_icon_query_shape";

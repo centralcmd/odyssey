@@ -14,7 +14,7 @@ namespace Odyssey.IntegrationTests;
 /// relational purger handles coverage, the marker and the windows (AC 16), and the two order CHECKs and the cascade
 /// with the point hold (AC 18).
 /// </summary>
-[Collection(MariaDbSharedDatabaseCollection.Name)]
+[Collection(MariaDbCollection.Name)]
 public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_weather_windows_services";
