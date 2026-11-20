@@ -127,6 +127,8 @@ Out of scope and left as they are: comments in `Odyssey.TestData/Catalog/Contact
 1. O6, then M3: fix the stale doc references and enforce them in the build.
 2. M6: move the image fixtures to TestShared.
 3. U2: shared quick-create base.
+4. P3: rewrite the ~30 AwesomeAssertions calls in `Odyssey.Core.Tests/DemoDataSetTests.cs` with xUnit `Assert`, then remove `AwesomeAssertions` from `Odyssey.Core.Tests.csproj` and `Directory.Packages.props`. It is the only file using it; every other test uses `Assert`.
+5. The insurance comments in `Odyssey.TestData/Catalog/Contacts.cs`.
 
 **Phase 3: refactors and decisions**
 
