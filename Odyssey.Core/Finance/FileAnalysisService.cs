@@ -5,7 +5,6 @@ using Odyssey.Dtos.Finance;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using ContextJobStatus = Odyssey.Context.FileAnalysisJobStatus;
 using ContextReviewStatus = Odyssey.Context.CandidateTransactionReviewStatus;
 using ContextAnalyzerProvider = Odyssey.Context.AnalyzerProvider;
@@ -24,7 +23,6 @@ public class FileAnalysisService
     private readonly OdysseyContext context;
     private readonly IFileAnalysisProvider provider;
     private readonly IContactLookup contactLookup;
-    private readonly FileAnalysisOptions options;
     private readonly IFileAnalysisSettingsLookup settingsLookup;
     private readonly ILogger<FileAnalysisService> logger;
     private readonly TimeProvider timeProvider;
@@ -35,7 +33,6 @@ public class FileAnalysisService
         OdysseyContext context,
         IFileAnalysisProvider provider,
         IContactLookup contactLookup,
-        IOptions<FileAnalysisOptions> options,
         IFileAnalysisSettingsLookup settingsLookup,
         ILogger<FileAnalysisService> logger,
         FileAnalysisJobQueue queue,
@@ -47,7 +44,6 @@ public class FileAnalysisService
         this.context = context;
         this.provider = provider;
         this.contactLookup = contactLookup;
-        this.options = options.Value;
         this.settingsLookup = settingsLookup;
         this.logger = logger;
         this.timeProvider = timeProvider ?? TimeProvider.System;

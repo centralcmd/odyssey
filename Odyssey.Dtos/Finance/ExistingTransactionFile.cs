@@ -6,8 +6,6 @@ public sealed record ExistingTransactionFile : IAttributedFile
 
     public required Guid TransactionId { get; set; }
 
-    // public required Guid FileMetadataId { get; set; }
-
     public required ExistingFileMetadata FileMetadata { get; set; }
 
     public string? AttachedByUserId { get; set; }

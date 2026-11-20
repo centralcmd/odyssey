@@ -1211,7 +1211,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 context,
                 new NoopAnalysisProvider(),
                 new ContactLookup(journal),
-                Options.Create(new FileAnalysisOptions { Enabled = true }),
                 // The resumable-jobs read consults no setting; a defaults-only lookup is enough.
                 new StubFileAnalysisSettingsLookup(),
                 NullLogger<FileAnalysisService>.Instance,
