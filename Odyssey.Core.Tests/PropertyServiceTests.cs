@@ -197,6 +197,8 @@ public class PropertyServiceTests
         await new PropertySmartTagService(context, new FakePropertyLimitsLookup())
             .AddSmartTag(created.PropertyId, tag.TransactionTagId);
 
+        // The delete's own Includes must be what cascades on InMemory, not rows the setup left tracked.
+        context.ChangeTracker.Clear();
         Assert.True(await service.Delete(created.PropertyId, userId: null));
 
         Assert.Empty(context.Properties);
