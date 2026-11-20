@@ -544,7 +544,7 @@ public sealed class NewsOpmlServiceTests : IDisposable
     }
 
     /// <summary>
-    /// AC 28 at its stated volume, nightly: the 100,000-feed file is a perf-tier test (<see cref="PerfTier"/>). The
+    /// AC 28 at its stated volume, Release PR only: the 100,000-feed file is a perf-tier test (<see cref="PerfTier"/>). The
     /// per-PR run keeps the same import, its truncation and the memory bound on 5,000 feeds below.
     /// </summary>
     [SkippableFact]

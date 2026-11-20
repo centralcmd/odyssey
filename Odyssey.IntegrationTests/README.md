@@ -39,7 +39,7 @@ ODYSSEY_REQUIRE_TIER=integration dotnet test Odyssey.IntegrationTests
 **The perf tier.** The volume, memory and time-budget tests here (the 100,000-row calendar export, the
 50,000-event import, the 100,000-transaction net-worth budget, the weather batch P95 targets) are
 `[Trait("Category", "Perf")]` and skip unless `ODYSSEY_REQUIRE_TIER` names `perf`; with it named, a
-missing Docker daemon fails them. The nightly `perf.yml` workflow runs them; locally:
+missing Docker daemon fails them. The `perf.yml` workflow runs them on the release-please Release PR; locally:
 
 ```bash
 ODYSSEY_REQUIRE_TIER=integration,perf dotnet test Odyssey.IntegrationTests --filter Category=Perf

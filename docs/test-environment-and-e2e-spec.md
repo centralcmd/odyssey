@@ -479,7 +479,7 @@ budget, the weather batch P95 targets and the 100,000-feed OPML import — carry
 run stays fast. Each keeps a small per-PR sibling for its functional half (no export opens a transaction; a
 5,000-feed OPML import stays under the memory target). Once `perf` is named they run, and a prerequisite they
 also need — MariaDB, for the ones in `Odyssey.IntegrationTests` — being absent is a failure, never a skip
-(`TestShared/PerfTier.cs`). The nightly `perf.yml` workflow runs them with
+(`TestShared/PerfTier.cs`). The `perf.yml` workflow runs them on the release-please Release PR with
 `ODYSSEY_REQUIRE_TIER=integration,perf --filter Category=Perf` and fails if none ran. `all` includes `perf`.
 
 Three classification details:

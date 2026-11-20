@@ -59,7 +59,7 @@ internal sealed class TestTierUnavailableException(string message, Exception? in
 /// <para>
 /// <c>perf</c> is the one tier whose skip does not wait for a missing prerequisite: its tests (volume, memory
 /// and time-budget checks) skip whenever the tier is NOT named, so the per-PR run stays fast, and run only in
-/// the nightly job that names it. Once named, a prerequisite they also need — MariaDB, for the ones in
+/// the Release PR job (`perf.yml`) that names it. Once named, a prerequisite they also need — MariaDB, for the ones in
 /// <c>Odyssey.IntegrationTests</c> — failing to come up is a failure, as for any required tier.
 /// </para>
 /// </remarks>
@@ -84,7 +84,7 @@ internal static class TestTierGate
 
     /// <summary>
     /// The opt-in volume, memory and time-budget tests (<c>[Trait("Category", "Perf")]</c>) in
-    /// <c>Odyssey.Core.Tests</c> and <c>Odyssey.IntegrationTests</c>: skipped unless named, run nightly.
+    /// <c>Odyssey.Core.Tests</c> and <c>Odyssey.IntegrationTests</c>: skipped unless named, run on the Release PR.
     /// </summary>
     public const string Perf = "perf";
 
@@ -170,7 +170,7 @@ internal static class TestTierGate
         IsRequired(Perf, requireTierValue)
             ? null
             : $"A perf-tier test (volume, memory or time budget): it runs only when {RequireTierEnvVar} names " +
-              $"'{Perf}', as the nightly perf job does, so the per-PR run stays fast.";
+              $"'{Perf}', as perf.yml does on the Release PR, so the per-PR run stays fast.";
 
     public static string? PerfSkipReason() => PerfSkipReason(Environment.GetEnvironmentVariable(RequireTierEnvVar));
 

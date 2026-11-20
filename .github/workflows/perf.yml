@@ -1,17 +1,22 @@
-name: Perf (nightly)
+name: Perf (Release PR)
 
 # The perf tier (TestShared/PerfTier.cs): volume, memory and time-budget tests — the 100,000-row calendar
 # export, the 50,000-event import, the 100,000-transaction net-worth budget, the weather batch P95 targets and
 # the 100,000-feed OPML import. They skip in the per-PR CI run, where they cost minutes and say nothing a
-# small sibling does not, and run here once a night against main. Setup mirrors ci.yml.
+# small sibling does not, and run here on the release-please Release PR — the last gate before a release.
+#
+# Why workflow_dispatch and not pull_request: release-please opens and updates the Release PR with the default
+# GITHUB_TOKEN, and events that token causes start no workflow run — which is why ci.yml never runs on that PR
+# either. workflow_dispatch is the one exception, so release-please.yml dispatches this workflow on the Release
+# PR's branch each time it updates the PR, and this run reports a `perf` commit status on that branch's head,
+# where it shows on the PR. It can also be started by hand on any branch. Setup mirrors ci.yml.
 on:
-  schedule:
-    - cron: '23 2 * * *'
   workflow_dispatch:
 
+# A newer push to the Release PR supersedes an older run on the same branch.
 concurrency:
   group: perf-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   perf:
@@ -19,8 +24,17 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      statuses: write
 
     steps:
+      - name: Report perf as pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"
+          -f state=pending -f context=perf -f description="Perf tier running"
+          -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -73,3 +87,18 @@ jobs:
             TestResults/**/*.trx
             **/Sequence_*.xml
           retention-days: 14
+
+      - name: Report perf result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          case "$OUTCOME" in
+            success) state=success; text="Perf tier passed" ;;
+            cancelled) state=error; text="Perf tier cancelled" ;;
+            *) state=failure; text="Perf tier failed" ;;
+          esac
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state="$state" -f context=perf -f description="$text" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

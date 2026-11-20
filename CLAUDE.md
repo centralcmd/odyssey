@@ -26,7 +26,7 @@ dotnet test Odyssey.Worker.Tests             # background-job host
 # Real-engine integration (Testcontainers; needs Docker, else skips):
 dotnet test Odyssey.IntegrationTests
 
-# Perf tier — volume/memory/time-budget tests, skipped unless named; run nightly by perf.yml:
+# Perf tier — volume/memory/time-budget tests, skipped unless named; run on the Release PR by perf.yml:
 ODYSSEY_REQUIRE_TIER=integration,perf dotnet test Odyssey.IntegrationTests --filter Category=Perf
 ODYSSEY_REQUIRE_TIER=perf dotnet test Odyssey.Core.Tests --filter Category=Perf
 
@@ -1443,7 +1443,7 @@ Full plan and rationale: `docs/test-environment-and-e2e-spec.md`.
 | `Odyssey.IntegrationTests` | Real-engine checks InMemory can't do — actual migrations, FK cascade, decimal/datetime fidelity | **Docker** (Testcontainers-MariaDB); self-skips otherwise |
 | `Odyssey.E2ETests` | Playwright browser smoke (login → seeded data) | a **running, seeded stack**; self-skips otherwise (see its README) |
 | `Odyssey.E2ETests.Api` | API security/permissions/contracts over real HTTP + real login (permission matrix across the seeded role users) | a **running, seeded stack**; self-skips otherwise |
-| *perf* (`[Trait("Category", "Perf")]` in `Odyssey.Core.Tests` and `Odyssey.IntegrationTests`) | Volume, memory and time-budget checks (100,000-row exports, P95 targets, the 100,000-feed OPML import) | `ODYSSEY_REQUIRE_TIER` naming `perf` — **skips otherwise**, whatever else is present; run nightly by `perf.yml` |
+| *perf* (`[Trait("Category", "Perf")]` in `Odyssey.Core.Tests` and `Odyssey.IntegrationTests`) | Volume, memory and time-budget checks (100,000-row exports, P95 targets, the 100,000-feed OPML import) | `ODYSSEY_REQUIRE_TIER` naming `perf` — **skips otherwise**, whatever else is present; run on the release-please Release PR by `perf.yml` |
 
 **Only an ABSENT prerequisite self-skips** (issue #257): no Docker daemon, or nothing listening. A
 prerequisite that is present but broken — image pull, provisioning, a stack that answers but never

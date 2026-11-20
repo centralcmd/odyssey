@@ -21,7 +21,7 @@ namespace Odyssey.IntegrationTests;
 /// stays flat on a large export and import (AC 1, AC 16, at reduced scale). The EF InMemory provider honours neither
 /// transactions nor the execution strategy and runs no interceptor, so none of this is observable on the fast tiers.
 /// The two memory checks need 100,000- and 50,000-event calendars, so they are perf-tier tests (<see cref="PerfTier"/>)
-/// that run nightly; the per-PR run keeps the no-transaction assertion on a calendar small enough to seed in seconds.
+/// that run on the Release PR; the per-PR run keeps the no-transaction assertion on a calendar small enough to seed in seconds.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
@@ -40,7 +40,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
         await ExportEveryScopeAsync(rows: 3 * Odyssey.Core.Journal.Interop.ExportChunking.ChunkSize + 1, peakHeapBound: null);
     }
 
-    /// <summary>AC 1 at volume, nightly: a 100,000-row calendar streams in bounded memory, still without a transaction.</summary>
+    /// <summary>AC 1 at volume, Release PR only: a 100,000-row calendar streams in bounded memory, still without a transaction.</summary>
     [SkippableFact]
     [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
     public async Task A_large_calendar_export_streams_in_bounded_memory_and_opens_no_transaction()

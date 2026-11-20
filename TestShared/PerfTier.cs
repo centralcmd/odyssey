@@ -7,8 +7,8 @@ namespace Odyssey.Testing;
 
 /// <summary>
 /// The opt-in perf tier (<see cref="TestTierGate.Perf"/>): volume, memory and time-budget tests that skip in the
-/// per-PR run and run in the nightly job. A perf test is a <c>[SkippableFact]</c> carrying
-/// <c>[Trait(PerfTier.TraitName, PerfTier.TraitValue)]</c> — the filter the nightly job selects them by — whose first
+/// per-PR run and run on the release-please Release PR (`perf.yml`). A perf test is a <c>[SkippableFact]</c> carrying
+/// <c>[Trait(PerfTier.TraitName, PerfTier.TraitValue)]</c> — the filter `perf.yml` selects them by — whose first
 /// statement is <see cref="SkipUnlessRequested"/>.
 /// </summary>
 internal static class PerfTier
