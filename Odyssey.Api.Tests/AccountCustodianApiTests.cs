@@ -20,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// projection, invalid references map to 400 (not 500), and the write path cannot over-post
 /// contact fields.
 /// </summary>
-public class AccountCustodianApiTests
+public class AccountCustodianApiTests(AccountCustodianApiTests.Host host) : SharedApiHostTests<AccountCustodianApiTests.Host>(host)
 {
     private const string ActorUserId = "account-custodian-actor-id";
 
@@ -40,7 +40,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task Post_WithValidCustodian_PersistsAndGetReturnsProjection()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var custodianId = await SeedContactAsync(factory, "Vanguard");
         using var client = factory.CreateClient();
 
@@ -58,7 +58,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task GetSingle_SerializedCustodian_OmitsDescription()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var custodianId = await SeedContactAsync(factory, "DNB", description: "secret free-text notes");
         using var client = factory.CreateClient();
 
@@ -80,7 +80,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task Put_ChangesThenClearsCustodian()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var a = await SeedContactAsync(factory, "Bank A");
         var b = await SeedContactAsync(factory, "Bank B");
         using var client = factory.CreateClient();
@@ -103,7 +103,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task Post_NonExistentCustodian_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync("/api/accounts", NewAccount(Guid.NewGuid()));
@@ -117,7 +117,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task Post_ArchivedCustodian_ReturnsBadRequestWithDistinctMessage()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var archivedId = await SeedContactAsync(factory, "Old Bank", archived: true);
         using var client = factory.CreateClient();
 
@@ -131,7 +131,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task PutToNonExistentId_WithValidCustodian_CreatesWithLink()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var custodianId = await SeedContactAsync(factory, "Broker");
         using var client = factory.CreateClient();
 
@@ -146,7 +146,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task PutToNonExistentId_WithBadCustodian_ReturnsBadRequestAndCreatesNothing()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
 
         var put = await client.PutAsJsonAsync($"/api/accounts/{Guid.NewGuid()}", NewAccount(Guid.NewGuid()));
@@ -159,7 +159,7 @@ public class AccountCustodianApiTests
     [Fact]
     public async Task Post_WithNestedCustodianObject_DoesNotOverPostContact()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var custodianId = await SeedContactAsync(factory, "Real Bank", description: "original");
         using var client = factory.CreateClient();
 
@@ -206,7 +206,7 @@ public class AccountCustodianApiTests
     [InlineData(7)]
     public async Task PostAndPut_WithARetiredAccountType_Is400_KeyedOnAccountType(int retired)
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         await SeedContactAsync(factory, "Unrelated");
         using var client = factory.CreateClient();
 
@@ -268,6 +268,9 @@ public class AccountCustodianApiTests
         return id;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

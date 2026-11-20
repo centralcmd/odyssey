@@ -19,7 +19,7 @@ namespace Odyssey.Api.Tests;
 /// under the CALLER's own claims, that the id is still there (round-tripping needs it), and that a
 /// caller whose claims do not license the name gets the resolver's neutral label rather than an email.
 /// </summary>
-public sealed class FinanceFileAttributionApiTests
+public class FinanceFileAttributionApiTests(FinanceFileAttributionApiTests.Host host) : SharedApiHostTests<FinanceFileAttributionApiTests.Host>(host)
 {
     private const string UploaderUserId = "uploader-user-id";
     private const string UploaderEmail = "uploader@example.com";
@@ -27,7 +27,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task GetTransactionFiles_ResolvesAttacherAndUploaderNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.");
 
@@ -46,7 +46,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task GetTransaction_ResolvesAttachedFileNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.");
 
@@ -61,7 +61,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task ListTransactions_ResolvesAttachedFileNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         await SeedAsync(factory, displayName: "Ada L.");
 
@@ -75,7 +75,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task GetAccountFiles_ResolvesAttacherAndUploaderNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.");
 
@@ -94,7 +94,7 @@ public sealed class FinanceFileAttributionApiTests
         // No profile at all, so the resolver's only remaining candidate is the email — which it
         // withholds from a caller without users.read. This is the claim-conditional behaviour the fix
         // inherits; it must add no disclosure over the bare id it replaces.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: null);
 
@@ -128,7 +128,7 @@ public sealed class FinanceFileAttributionApiTests
         // The attribution foreign keys null these columns out when the account is deleted, so a null id
         // means "the author is gone" rather than "there was no author" — hence NameForAuthor, not
         // NameForOptional.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.", attributeToUser: false);
 
@@ -236,4 +236,7 @@ public sealed class FinanceFileAttributionApiTests
 
         return (account.AccountId, transaction.TransactionId);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

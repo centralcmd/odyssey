@@ -22,7 +22,7 @@ namespace Odyssey.Api.Tests;
 /// is rejected and the ceiling is published on the read DTO instead.
 /// </para>
 /// </summary>
-public class RequestCapSystemSettingsApiTests
+public class RequestCapSystemSettingsApiTests(RequestCapSystemSettingsApiTests.Host host) : SharedApiHostTests<RequestCapSystemSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string ActorUserId = "33333333-3333-3333-3333-333333333333";
@@ -37,7 +37,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Get_ServesTheCompiledDefaults()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -59,7 +59,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Get_PublishesTheTightenOnlyCeilings()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -71,7 +71,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Put_RoundTripsEveryCap()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -97,7 +97,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Put_LoweringATightenOnlyCap_IsAllowed()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -109,7 +109,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Put_AtTheCeilingExactly_IsAllowed()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -121,7 +121,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Put_RaisingPhotoLinksAboveItsCeiling_IsRejected_AndNamesTheCeiling()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -136,7 +136,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Put_RaisingAlbumMembersAboveItsCeiling_IsRejected()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -152,7 +152,7 @@ public class RequestCapSystemSettingsApiTests
     [Fact]
     public async Task Put_RaisingAnUnconstrainedCap_IsAllowed()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -171,7 +171,7 @@ public class RequestCapSystemSettingsApiTests
     {
         // The mirror image of the email settings: these nine take the ORDINARY write claim, so holding
         // only the stricter one is not enough. Asserted so the split cannot drift either way.
-        await using var factory = new ApiFactory(ReadAndSecurityOnly);
+        var factory = Factory.ForCaller(ReadAndSecurityOnly);
         using var client = factory.CreateClient();
 
         var update = new SystemSettingsUpdate();
@@ -196,7 +196,7 @@ public class RequestCapSystemSettingsApiTests
     [InlineData(100001)]
     public async Task Put_RejectsAnOutOfRangeCap(int value)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -205,6 +205,9 @@ public class RequestCapSystemSettingsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

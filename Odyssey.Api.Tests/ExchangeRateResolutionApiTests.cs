@@ -16,11 +16,11 @@ namespace Odyssey.Api.Tests;
 /// an inverted fetched row, and the new <c>GET /api/exchange-rates/resolved</c>. Both bind the shared
 /// <see cref="CurrencyPairQuery"/>, so a malformed code is a <c>400</c> before anything echoes it.
 /// </summary>
-public class ExchangeRateResolutionApiTests
+public class ExchangeRateResolutionApiTests(ExchangeRateResolutionApiTests.Host host) : SharedApiHostTests<ExchangeRateResolutionApiTests.Host>(host)
 {
     private const string ActorUserId = "exchange-rate-resolution-actor";
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     private static readonly DateTime AsOf = DateTime.UtcNow.AddDays(-2);
@@ -49,7 +49,7 @@ public class ExchangeRateResolutionApiTests
     [Fact] // AC 14
     public async Task Latest_returns_the_inverted_fetched_row_for_the_reverse_pair()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead]);
         var id = await SeedFetchedAsync(factory, "USD", 10m);
         using var client = factory.CreateClient();
 
@@ -69,7 +69,7 @@ public class ExchangeRateResolutionApiTests
     [Fact] // AC 16, AC 26, AC 27
     public async Task Latest_404s_without_a_hop_for_the_same_currency_and_for_an_unknown_one_echoing_only_codes()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead]);
         await SeedFetchedAsync(factory, "USD", 10m);
         await SeedFetchedAsync(factory, "EUR", 11m);
         using var client = factory.CreateClient();
@@ -100,7 +100,7 @@ public class ExchangeRateResolutionApiTests
     [InlineData("resolved", "to=EUR")]
     public async Task A_malformed_code_is_a_400(string endpoint, string query)
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/exchange-rates/{endpoint}?{query}");
@@ -111,7 +111,7 @@ public class ExchangeRateResolutionApiTests
     [Fact] // AC 19, AC 20
     public async Task Resolved_reports_a_hop_with_an_inverted_leg()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead]);
         var usd = await SeedFetchedAsync(factory, "USD", 9.3601m);
         var eur = await SeedFetchedAsync(factory, "EUR", 10.488m);
         using var client = factory.CreateClient();
@@ -133,7 +133,7 @@ public class ExchangeRateResolutionApiTests
     [Fact] // AC 21, AC 26
     public async Task Resolved_answers_the_same_currency_and_404s_an_unknown_or_unconvertible_pair()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead]);
         await SeedFetchedAsync(factory, "USD", 10m);
         using var client = factory.CreateClient();
 
@@ -210,4 +210,7 @@ public class ExchangeRateResolutionApiTests
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(path)).StatusCode);
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

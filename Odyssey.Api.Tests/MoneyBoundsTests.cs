@@ -27,7 +27,7 @@ namespace Odyssey.Api.Tests;
 /// move alone), the <c>[Range]</c> on every write DTO against the constants (so a new money property
 /// cannot ship unbounded), and the HTTP boundary itself (so the bound really yields a <c>400</c>).
 /// </remarks>
-public class MoneyBoundsTests
+public class MoneyBoundsTests(MoneyBoundsTests.Host host) : SharedApiHostTests<MoneyBoundsTests.Host>(host)
 {
     private const string ActorUserId = "money-bounds-actor";
 
@@ -40,7 +40,7 @@ public class MoneyBoundsTests
         PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisImport,
     ];
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     // ── The constants against the EF model ────────────────────────────────────
@@ -515,7 +515,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task CreateTransaction_AmountPastTheColumn_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         // The annotation 400 precedes the account lookup, so no account needs seeding.
@@ -527,7 +527,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task CreateTaxStatement_AmountAtTheColumnMax_IsAccepted()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -541,7 +541,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task CreateTaxStatement_AmountJustPastTheColumnMax_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/tax-statements", TaxStatement(1_000_000_000_000m));
@@ -554,7 +554,7 @@ public class MoneyBoundsTests
     [InlineData("9999999999.99999999")]
     public async Task CreateExchangeRate_RateAtTheColumnBounds_IsAccepted(string rate)
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -571,7 +571,7 @@ public class MoneyBoundsTests
     [InlineData("10000000000")]      // past decimal(18,8): was a 500
     public async Task CreateExchangeRate_RateOutsideTheColumn_Returns400(string rate)
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/exchange-rates", NewRate(Parse(rate)));
@@ -585,7 +585,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task ImportCandidates_AmountOverridePastTheColumn_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         // The attribute sits on a positional record's constructor parameter; this proves MVC honours it.
@@ -599,7 +599,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task ImportCandidates_AmountOverrideAtTheColumnMax_PassesModelValidation()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         // The control for the case above: the same body within bounds gets past model validation and
@@ -612,11 +612,14 @@ public class MoneyBoundsTests
     [Fact]
     public async Task UpdateExchangeRate_RateBelowTheColumnStep_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync($"/api/exchange-rates/{Guid.NewGuid()}", Rate(0.000000001m));
 
         await AssertBadRequestOn(response, nameof(UpdateExchangeRate.Rate));
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

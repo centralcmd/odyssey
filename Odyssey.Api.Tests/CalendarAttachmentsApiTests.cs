@@ -29,7 +29,7 @@ namespace Odyssey.Api.Tests;
 /// the import's dedupe, replace rule and claims. Cascades, locks and the 200,000-row copy run against MariaDB in
 /// <c>Odyssey.IntegrationTests</c>.
 /// </summary>
-public class CalendarAttachmentsApiTests
+public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) : SharedApiHostTests<CalendarAttachmentsApiTests.Host>(host)
 {
     private const string ActorUserId = "calendar-attachments-actor";
     private const string CalendarsPath = "/api/calendars";
@@ -56,8 +56,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_series_links_show_on_every_occurrence_and_a_standalone_event_shows_its_own()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var first = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var second = await SeedFileAsync(factory, "minutes.txt", Encoding.UTF8.GetBytes("Minutes"));
@@ -90,8 +90,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_put_with_null_arrays_keeps_the_links_and_an_empty_array_clears_them()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var photo = await SeedPhotoAsync(factory);
@@ -117,8 +117,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Without_files_read_a_put_may_keep_or_remove_files_but_not_add_one_and_the_same_for_photos()
     {
-        await using var owner = new ApiFactory(WithReads);
-        using var ownerClient = owner.CreateClient();
+        var owner = Factory;
+        using var ownerClient = owner.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(ownerClient);
         var kept = await SeedFileAsync(owner, "kept.txt", AgendaBytes);
         var other = await SeedFileAsync(owner, "other.txt", Encoding.UTF8.GetBytes("other"));
@@ -129,8 +129,8 @@ public class CalendarAttachmentsApiTests
             AttachmentFileIds = [kept, other], PhotoIds = [photo],
         });
 
-        await using var editor = new ApiFactory(Calendar, sharingStoreWith: owner);
-        using var client = editor.CreateClient();
+        var editor = Factory;
+        using var client = editor.ClientFor(Calendar);
         var id = created.CalendarEventId;
 
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{EventsPath}/{id}", Event(calendar.CalendarId) with
@@ -161,8 +161,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_photo_original_hidden_from_the_files_store_cannot_be_attached_as_a_file()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var (_, wrappedFileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg");
 
@@ -174,8 +174,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Links_on_a_generated_occurrence_are_refused_but_null_and_empty_arrays_are_accepted()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 2));
@@ -194,8 +194,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task The_cap_refuses_only_a_rise_so_an_over_cap_event_still_saves_a_title_change_and_a_removal()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var files = new List<Guid>();
         for (var i = 0; i < 5; i++)
@@ -222,8 +222,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Deleting_a_series_gives_each_past_row_a_copy_of_its_links_and_removes_the_series_links()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var photo = await SeedPhotoAsync(factory);
@@ -257,16 +257,16 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Without_the_read_claims_names_types_sizes_and_titles_are_withheld_but_ids_positions_and_counts_stay()
     {
-        await using var owner = new ApiFactory(WithReads);
-        using var ownerClient = owner.CreateClient();
+        var owner = Factory;
+        using var ownerClient = owner.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(ownerClient);
         var file = await SeedFileAsync(owner, "agenda.txt", AgendaBytes);
         var photo = await SeedPhotoAsync(owner, title: "Fjord");
         var created = await CreateEventAsync(ownerClient, Event(calendar.CalendarId) with { AttachmentFileIds = [file], PhotoIds = [photo] });
         Assert.Equal("Fjord", created.Photos![0].Title);
 
-        await using var reader = new ApiFactory([PermissionClaims.CalendarRead], sharingStoreWith: owner);
-        using var client = reader.CreateClient();
+        var reader = Factory;
+        using var client = reader.ClientFor([PermissionClaims.CalendarRead]);
         var seen = await GetEventAsync(client, created.CalendarEventId);
 
         var link = Assert.Single(seen.Attachments!);
@@ -283,16 +283,16 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task An_export_with_linked_files_or_photos_needs_their_read_claims_unless_attachments_are_omitted()
     {
-        await using var owner = new ApiFactory(WithReads);
-        using var ownerClient = owner.CreateClient();
+        var owner = Factory;
+        using var ownerClient = owner.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(ownerClient);
         var file = await SeedFileAsync(owner, "agenda.txt", AgendaBytes);
         var photo = await SeedPhotoAsync(owner);
         await CreateEventAsync(ownerClient, Event(calendar.CalendarId) with { AttachmentFileIds = [file] });
         await CreateEventAsync(ownerClient, Event(calendar.CalendarId) with { Title = "Photo", PhotoIds = [photo] });
 
-        await using var reader = new ApiFactory([PermissionClaims.CalendarRead], sharingStoreWith: owner);
-        using var client = reader.CreateClient();
+        var reader = Factory;
+        using var client = reader.ClientFor([PermissionClaims.CalendarRead]);
         var path = $"{CalendarsPath}/{calendar.CalendarId}/ics";
 
         foreach (var url in new[] { path, path + "/summary" })
@@ -316,8 +316,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_flattened_series_of_ten_rows_writes_its_file_inline_once_and_references_it_nine_times()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var patternId = await SeedLegacySeriesAsync(factory, calendar.CalendarId, 10);
@@ -336,8 +336,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task The_aggregate_export_carries_no_attachments_and_its_summary_counts_none()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         await CreateEventAsync(client, Event(calendar.CalendarId) with { AttachmentFileIds = [file] });
@@ -352,8 +352,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_single_event_export_of_a_generated_occurrence_carries_the_series_links_inline()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 2) with { AttachmentFileIds = [file] });
@@ -370,8 +370,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Re_importing_an_export_into_the_same_calendar_reuses_every_file_and_photo()
     {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var photo = await SeedPhotoAsync(factory, title: "Fjord");
@@ -427,8 +427,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Many_events_repeating_one_declared_inline_attachment_store_it_once_across_batches()
     {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var attach = InlineAttach(AgendaBytes, "agenda.txt", "text/plain",
             $";SIZE={AgendaBytes.Length};X-ODYSSEY-SHA256={Sha256(AgendaBytes)}");
@@ -447,8 +447,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Re_importing_the_aggregate_export_keeps_every_link()
     {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var created = await CreateEventAsync(client, Event(calendar.CalendarId) with { AttachmentFileIds = [file] });
@@ -462,14 +462,14 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_google_style_https_attachment_keeps_the_links_and_needs_no_file_claim()
     {
-        await using var owner = new ApiFactory(WithReads);
-        using var ownerClient = owner.CreateClient();
+        var owner = Factory;
+        using var ownerClient = owner.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(ownerClient);
         var file = await SeedFileAsync(owner, "agenda.txt", AgendaBytes);
         var created = await CreateEventAsync(ownerClient, Event(calendar.CalendarId) with { AttachmentFileIds = [file] });
 
-        await using var importer = new ApiFactory(Calendar, sharingStoreWith: owner);
-        using var client = importer.CreateClient();
+        var importer = Factory;
+        using var client = importer.ClientFor(Calendar);
         var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent(
             $"{created.CalendarEventId}@odyssey.local", "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Meeting",
             "ATTACH;FMTTYPE=application/pdf:https://drive.google.com/file/d/abc")));
@@ -482,8 +482,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task An_event_whose_only_reference_is_unresolvable_keeps_its_links_but_a_partly_resolving_set_replaces()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var kept = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var other = await SeedFileAsync(factory, "other.txt", Encoding.UTF8.GetBytes("other"));
@@ -514,8 +514,8 @@ public class CalendarAttachmentsApiTests
     {
         // Reads alone: a reference passes the read check, inline content also needs the create claims.
         var claims = shape.EndsWith("-ref", StringComparison.Ordinal) ? Calendar : WithReads;
-        await using var factory = new ApiFactory(claims);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(claims);
         var calendar = await CreateCalendarAsync(client);
         var attach = shape switch
         {
@@ -541,8 +541,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task An_unresolved_reference_reads_the_same_whether_its_content_is_unknown_or_not_visible()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var bytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
         var (_, hiddenFileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", bytes);
@@ -568,8 +568,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Attachment_skip_groups_carry_no_sample_titles_and_event_skip_groups_carry_at_least_one()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var unknown = $"ATTACH;VALUE=URI;X-ODYSSEY-SHA256={new string('a', 64)};SIZE=3:odyssey-file:{Guid.NewGuid():D}";
 
@@ -596,8 +596,8 @@ public class CalendarAttachmentsApiTests
     [InlineData("odyssey-file:9b0f9d4e-5c1a-4c7e-9a52-1f5b7d6c0a11;X")]
     public async Task A_malformed_reference_is_skipped_with_its_own_reason(string value)
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
 
         var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent("bad",
@@ -613,8 +613,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Attachments_on_a_modified_occurrence_or_on_an_event_resolving_to_a_generated_row_are_ignored_and_counted()
     {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 3));
@@ -642,8 +642,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task An_attachment_found_only_on_an_ignored_modified_occurrence_still_needs_its_claims()
     {
-        await using var factory = new ApiFactory(Calendar);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Calendar);
         var calendar = await CreateCalendarAsync(client);
         var uid = "series-claims";
 
@@ -660,8 +660,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task One_event_with_thousands_of_reference_lines_parses_at_most_twice_the_cap()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.CalendarEventMaxLinksPerKind, "5");
         var references = Enumerable.Range(0, 5_000)
@@ -707,8 +707,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Deleting_a_photo_keeps_its_file_while_a_calendar_event_also_links_it()
     {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var (photoId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg");
         var created = await CreateEventAsync(client, Event(calendar.CalendarId));
@@ -733,8 +733,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task The_import_limits_endpoint_publishes_the_calendar_link_cap()
     {
-        await using var factory = new ApiFactory(Calendar);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Calendar);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.CalendarEventMaxLinksPerKind, "7");
 
         var limits = (await client.GetFromJsonAsync<Odyssey.Dtos.Application.ImportLimitsDto>("/api/import-limits"))!;
@@ -751,8 +751,8 @@ public class CalendarAttachmentsApiTests
     {
         // Only the file claims: a head pass 1 read as a file but the spooler as a photo would get through. It must not.
         string[] filesOnly = [.. Calendar, PermissionClaims.FilesRead, PermissionClaims.FilesCreate];
-        await using var factory = new ApiFactory(filesOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(filesOnly);
         var calendar = await CreateCalendarAsync(client);
 
         var response = await PostIcsAsync(client, calendar.CalendarId, Vcalendar(Vevent("kind",
@@ -767,8 +767,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_kind_smuggled_inside_a_quoted_file_name_is_a_file_not_a_photo()
     {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
 
         var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent("smuggle",
@@ -784,8 +784,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Inline_content_that_fails_its_checksum_its_encoding_or_its_type_is_skipped_with_a_reason_and_stored_nowhere()
     {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var wrongHash = new string('d', 64);
 
@@ -808,8 +808,8 @@ public class CalendarAttachmentsApiTests
     public async Task A_wrong_declared_hash_never_enters_the_map_so_a_repeat_is_decoded_and_refused_on_its_own()
     {
         // v4 §2: the skip-decode map holds verified entries only, keyed on the hash computed while decoding.
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var attach = InlineAttach(AgendaBytes, "a.txt", "text/plain", $";SIZE={AgendaBytes.Length};X-ODYSSEY-SHA256={new string('e', 64)}");
 
@@ -824,9 +824,9 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task New_inline_content_over_the_admin_upload_cap_is_skipped_but_the_event_imports()
     {
-        await using var factory = new ApiFactory(WithUploads);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(WithUploads);
         var calendar = await CreateCalendarAsync(client);
         var large = Encoding.UTF8.GetBytes(new string('x', (1024 * 1024) + 10));
 
@@ -842,8 +842,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task A_series_write_follows_the_same_change_only_claims_visibility_cap_and_clearing_rules()
     {
-        await using var owner = new ApiFactory(WithReads);
-        using var ownerClient = owner.CreateClient();
+        var owner = Factory;
+        using var ownerClient = owner.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(ownerClient);
         var kept = await SeedFileAsync(owner, "kept.txt", AgendaBytes);
         var other = await SeedFileAsync(owner, "other.txt", Encoding.UTF8.GetBytes("other"));
@@ -855,8 +855,8 @@ public class CalendarAttachmentsApiTests
         Assert.Equal((2, 1), (series.AttachmentCount, series.PhotoCount)); // the duplicate collapsed
         var path = $"{PatternsPath}/{series.RecurrencePatternId}";
 
-        await using var editor = new ApiFactory(Calendar, sharingStoreWith: owner);
-        using var client = editor.CreateClient();
+        var editor = Factory;
+        using var client = editor.ClientFor(Calendar);
         var seen = (await client.GetFromJsonAsync<ExistingRecurrencePattern>(path))!;
         Assert.All(seen.Attachments!, a => Assert.Null(a.FileName));
         Assert.Null(Assert.Single(seen.Photos!).Title);
@@ -878,8 +878,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Photo_ids_keep_their_order_as_positions_and_a_duplicate_collapses()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var (a, b, c) = (await SeedPhotoAsync(factory), await SeedPhotoAsync(factory), await SeedPhotoAsync(factory));
 
@@ -899,8 +899,8 @@ public class CalendarAttachmentsApiTests
     [InlineData("series", "photos")]
     public async Task The_event_and_series_exports_each_need_exactly_the_read_claim_of_what_they_link(string scope, string kind)
     {
-        await using var owner = new ApiFactory(WithReads);
-        using var ownerClient = owner.CreateClient();
+        var owner = Factory;
+        using var ownerClient = owner.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(ownerClient);
         Guid[] files = kind == "files" ? [await SeedFileAsync(owner, "a.txt", AgendaBytes)] : [];
         Guid[] photos = kind == "photos" ? [await SeedPhotoAsync(owner)] : [];
@@ -954,8 +954,8 @@ public class CalendarAttachmentsApiTests
     [Fact]
     public async Task Deleting_a_series_copies_its_links_onto_a_past_override_too()
     {
-        await using var factory = new ApiFactory(WithReads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(WithReads);
         var calendar = await CreateCalendarAsync(client);
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 6) with
@@ -1186,10 +1186,13 @@ public class CalendarAttachmentsApiTests
         public const string InvalidReference = "An attachment reference is malformed.";
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string> permissions, OdysseyApiFactory? sharingStoreWith = null)
+    public class ApiFactory(IReadOnlyCollection<string> permissions, OdysseyApiFactory? sharingStoreWith = null)
         : OdysseyApiFactory(permissions, ActorUserId, configureServices: services =>
         {
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(new FakeTimeProvider(Now));
         }, sharingStoreWith: sharingStoreWith);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

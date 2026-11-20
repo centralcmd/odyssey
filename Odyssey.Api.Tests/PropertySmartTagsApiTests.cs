@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// 22): the add/remove status contract, the admin-editable cap and its eviction, the claim-free limits
 /// read, and the tag-delete blocker.
 /// </summary>
-public class PropertySmartTagsApiTests
+public class PropertySmartTagsApiTests(PropertySmartTagsApiTests.Host host) : SharedApiHostTests<PropertySmartTagsApiTests.Host>(host)
 {
     private const string ActorUserId = "property-smart-tags-actor-id";
 
@@ -28,7 +28,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task List_APropertyWithNoSmartTags_ReturnsOkAndEmpty()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -41,7 +41,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task List_AMissingProperty_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -52,7 +52,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task List_CarriesEachTagsIcon_NormalisingAnUnknownKey()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var iconned = await SeedTagAsync(factory, "Upkeep");
         var stale = await SeedTagAsync(factory, "Legacy");
@@ -74,7 +74,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task Post_TheSamePairTwice_ReturnsCreatedThenConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var tagId = await SeedTagAsync(factory, "Upkeep");
         using var client = factory.CreateClient();
@@ -93,7 +93,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task Post_AnArchivedTag_ReturnsUnprocessable_AndCreatesNoRow()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var tagId = await SeedTagAsync(factory, "Retired", archived: true);
         using var client = factory.CreateClient();
@@ -105,7 +105,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task Post_AMissingPropertyOrTag_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -122,7 +122,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task Post_AtTheConfiguredCap_ReturnsUnprocessable_AndNamesTheEffectiveCap()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.PropertyMaxSmartTagsPerProperty, "3");
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
@@ -194,7 +194,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task Delete_AnExistingLink_ReturnsNoContent_AndLeavesTheTagAndProperty()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var tagId = await SeedTagAsync(factory);
         await LinkSmartTagAsync(factory, propertyId, tagId);
@@ -213,7 +213,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task PropertyLimits_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(LimitsPath)).StatusCode);
@@ -223,7 +223,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task PropertyLimits_ForACallerWithNoClaims_ReturnsTheEffectiveCap()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(LimitsPath);
@@ -236,7 +236,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task PropertyLimits_WithAConfiguredValue_ReturnsIt()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.PropertyMaxSmartTagsPerProperty, "7");
         using var client = factory.CreateClient();
 
@@ -247,7 +247,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task PropertyLimits_WithAnUnusableStoredValue_Returns503()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.PropertyMaxSmartTagsPerProperty, "not-a-number");
         using var client = factory.CreateClient();
 
@@ -258,7 +258,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task Post_WithADegradedLimitsRead_IsStillRefusedAtTheConservativeCap()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.PropertyMaxSmartTagsPerProperty, "not-a-number");
         var propertyId = await SeedPropertyAsync(factory);
         for (var i = 0; i < SystemSettingsDefaults.PropertyMaxSmartTagsPerProperty; i++)
@@ -279,7 +279,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task DeletingATagThatIsAPropertySmartTag_ReturnsConflictNamingTheCountNotTheProperty()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.TransactionTagsDelete]);
+        var factory = Factory.ForCaller([.. ReadWrite, PermissionClaims.TransactionTagsDelete]);
         var propertyId = await SeedPropertyAsync(factory, "Fjellveien cabin");
         var tagId = await SeedTagAsync(factory, "Upkeep");
         await LinkSmartTagAsync(factory, propertyId, tagId);
@@ -298,7 +298,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task DeletingATagThatIsASmartTagOnTwoProperties_PluralisesTheCount()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.TransactionTagsDelete]);
+        var factory = Factory.ForCaller([.. ReadWrite, PermissionClaims.TransactionTagsDelete]);
         var first = await SeedPropertyAsync(factory, "First");
         var second = await SeedPropertyAsync(factory, "Second");
         var tagId = await SeedTagAsync(factory);
@@ -315,7 +315,7 @@ public class PropertySmartTagsApiTests
     [Fact]
     public async Task DeletingATagAfterItsLinkIsRemoved_Succeeds()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.TransactionTagsDelete]);
+        var factory = Factory.ForCaller([.. ReadWrite, PermissionClaims.TransactionTagsDelete]);
         var propertyId = await SeedPropertyAsync(factory);
         var tagId = await SeedTagAsync(factory);
         await LinkSmartTagAsync(factory, propertyId, tagId);
@@ -325,6 +325,9 @@ public class PropertySmartTagsApiTests
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/transaction-tags/{tagId}")).StatusCode);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

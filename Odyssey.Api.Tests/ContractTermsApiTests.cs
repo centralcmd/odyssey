@@ -30,7 +30,7 @@ namespace Odyssey.Api.Tests;
 /// issue #190), and the application-code delete cascade, which exists precisely
 /// because the EF InMemory provider this tier runs on enforces no database cascade.
 /// </remarks>
-public class ContractTermsApiTests
+public class ContractTermsApiTests(ContractTermsApiTests.Host host) : SharedApiHostTests<ContractTermsApiTests.Host>(host)
 {
     private const string ActorUserId = "contract-terms-actor-id";
     private const string Path = "/api/contracts";
@@ -59,7 +59,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Post_ValidFee_Returns201WithContractOwnerAndLocation()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -77,7 +77,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Post_ToAMissingContract_Returns404()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(Terms(Guid.NewGuid()), Rent(1m, new DateTime(2026, 1, 1)));
@@ -93,7 +93,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Post_BodyCarryingOwnerIdsAndDerivedFields_IgnoresThemEntirely()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var otherContractId = await CreateContractAsync(client, name: "Other");
@@ -139,7 +139,7 @@ public class ContractTermsApiTests
     [InlineData(ContractType.Other)]
     public async Task Post_AmountAndPercentageTerms_SucceedOnEveryContractType(ContractType type)
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, type: type);
 
@@ -153,7 +153,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Post_AmountWithoutCurrency_Returns400()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -170,7 +170,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Post_DuplicateSeriesEntry_Returns409WhileADifferentLabelIsAccepted()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var date = new DateTime(2026, 10, 1);
@@ -193,7 +193,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Post_OnAnArchivedContract_Succeeds_AndTheHistoryStillReads()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, start: FixedToday.AddDays(-30), end: FixedToday.AddDays(-1));
 
@@ -214,7 +214,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Post_BeyondTheCap_Returns422WhilePutStillSucceeds()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxTermsPerContract, "2");
         var contractId = await CreateContractAsync(client);
@@ -237,7 +237,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Get_History_IsNewestFirstAndCarriesOnlyThisContractsTerms()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var otherContractId = await CreateContractAsync(client, name: "Other");
@@ -257,7 +257,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Get_Current_ReturnsOneEntryPerSeries()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -277,7 +277,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Get_History_FiltersByAsOf()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -291,7 +291,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Get_OnAMissingContract_Returns404()
     {
-        await using var factory = await NewFactoryAsync(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
         var missing = Guid.NewGuid();
 
@@ -303,7 +303,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Get_OnAContractWithNoTerms_IsEmptyAndSuccessful()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -321,7 +321,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Get_Contract_CarriesCurrentTermsAndTheListCarriesRowCount()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -343,7 +343,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Put_ReplacesTheEntryAndKeepsItsOwner()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var term = await PostTermAsync(client, contractId, Rent(14500m, new DateTime(2026, 10, 1)));
@@ -361,7 +361,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Delete_RemovesTheEntryAndLeavesTheContract()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var term = await PostTermAsync(client, contractId, Rent(14500m, new DateTime(2026, 10, 1)));
@@ -380,7 +380,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task PutAndDelete_WithAForeignTermId_Return404AndChangeNothing()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var otherContractId = await CreateContractAsync(client, name: "Other");
@@ -403,7 +403,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task DeleteContract_RemovesItsTermsAndLeavesOtherContractsTermsUntouched()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var survivingContractId = await CreateContractAsync(client, name: "Survivor");
@@ -425,7 +425,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Endpoints_Unauthenticated_ReturnUnauthorized()
     {
-        await using var factory = await NewFactoryAsync(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
         var id = Guid.NewGuid();
 
@@ -443,7 +443,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Reads_WithEveryClaimButContractsRead_ReturnForbidden()
     {
-        await using var factory = await NewFactoryAsync(EverythingButContracts);
+        var factory = Factory.ForCaller(EverythingButContracts);
         using var client = factory.CreateClient();
         var id = Guid.NewGuid();
 
@@ -454,7 +454,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task Writes_WithEveryClaimButContractsUpdate_ReturnForbidden()
     {
-        await using var factory = await NewFactoryAsync(EverythingButContracts);
+        var factory = Factory.ForCaller(EverythingButContracts);
         using var client = factory.CreateClient();
         var id = Guid.NewGuid();
 
@@ -498,7 +498,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task List_MarksAContractWhoseInForceTermIsIncoming()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, name: "Sublet income");
 
@@ -511,7 +511,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task List_DoesNotMarkAnOutgoingOnlyContract()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -528,7 +528,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task List_DoesNotMarkAnIncomingTermThatHasBeenSuperseded()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -546,7 +546,7 @@ public class ContractTermsApiTests
     [Fact]
     public async Task List_DoesNotMarkAnIncomingTermThatStartsLater()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -712,7 +712,7 @@ public class ContractTermsApiTests
         public Dictionary<string, string[]>? Errors { get; init; }
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(
             IReadOnlyCollection<string>? permissions,
@@ -730,4 +730,7 @@ public class ContractTermsApiTests
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

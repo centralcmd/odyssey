@@ -13,7 +13,7 @@ namespace Odyssey.Api.Tests;
 /// claim-gated endpoints — the spec's thirteen plus the <c>/properties</c> page's summary is reachable by its gating claim alone, and by no combination of every OTHER
 /// claim in the vocabulary.
 /// </summary>
-public class PropertyAuthorizationApiTests
+public class PropertyAuthorizationApiTests(PropertyAuthorizationApiTests.Host host) : SharedApiHostTests<PropertyAuthorizationApiTests.Host>(host)
 {
     private const string ActorUserId = "property-authorization-actor-id";
 
@@ -62,7 +62,7 @@ public class PropertyAuthorizationApiTests
     public async Task Endpoint_WithOnlyItsGatingClaim_Succeeds(string endpoint)
     {
         var (claim, success) = Endpoints[endpoint];
-        await using var factory = new ApiFactory([claim]);
+        var factory = Factory.ForCaller([claim]);
         var fixture = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -81,7 +81,7 @@ public class PropertyAuthorizationApiTests
     public async Task Endpoint_WithEveryOtherClaim_ReturnsForbidden(string endpoint)
     {
         var (claim, _) = Endpoints[endpoint];
-        await using var factory = new ApiFactory([.. RolePermissions.AllClaims.Where(c => c != claim)]);
+        var factory = Factory.ForCaller([.. RolePermissions.AllClaims.Where(c => c != claim)]);
         var fixture = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -92,7 +92,7 @@ public class PropertyAuthorizationApiTests
     [MemberData(nameof(EndpointNames))]
     public async Task Endpoint_Unauthenticated_ReturnsUnauthorized(string endpoint)
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         var fixture = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -106,7 +106,7 @@ public class PropertyAuthorizationApiTests
     [Fact]
     public async Task UserRole_CanReadListAndEstimates_ButCannotWrite()
     {
-        await using var factory = new ApiFactory(RolePermissions.UserClaims);
+        var factory = Factory.ForCaller(RolePermissions.UserClaims);
         var fixture = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -162,6 +162,9 @@ public class PropertyAuthorizationApiTests
         _ => throw new ArgumentOutOfRangeException(nameof(endpoint), endpoint, null),
     };
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

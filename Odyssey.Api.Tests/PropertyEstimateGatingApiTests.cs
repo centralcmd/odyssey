@@ -15,7 +15,7 @@ namespace Odyssey.Api.Tests;
 /// <c>properties.estimates.read</c>, not <c>properties.read</c> (issue #167). A reader with the property
 /// claim alone gets the property and nothing about what it is worth.
 /// </summary>
-public class PropertyEstimateGatingApiTests
+public class PropertyEstimateGatingApiTests(PropertyEstimateGatingApiTests.Host host) : SharedApiHostTests<PropertyEstimateGatingApiTests.Host>(host)
 {
     private const string ActorUserId = "property-estimate-gating-actor-id";
 
@@ -37,7 +37,7 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task ListAndGet_WithTheEstimatesClaim_CarryTheCountAndTheValueInForce()
     {
-        await using var factory = new ApiFactory(ReadAndEstimates);
+        var factory = Factory.ForCaller(ReadAndEstimates);
         var propertyId = await SeedValuedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -56,7 +56,7 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task ListAndGet_WithoutTheEstimatesClaim_LeaveEveryEstimateFigureNull()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         var propertyId = await SeedValuedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -80,7 +80,7 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task SortByValue_WithoutTheEstimatesClaim_IsForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         await SeedValuedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -91,7 +91,7 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task SortByValue_WithTheEstimatesClaim_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadAndEstimates);
+        var factory = Factory.ForCaller(ReadAndEstimates);
         await SeedValuedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -101,7 +101,7 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task Summary_WithTheEstimatesClaim_SumsTheOwnedValuePerCurrency()
     {
-        await using var factory = new ApiFactory(ReadAndEstimates);
+        var factory = Factory.ForCaller(ReadAndEstimates);
         await SeedValuedPropertyAsync(factory);
         await SeedPropertyAsync(factory, "Old car", PropertyType.Vehicle, archived: true);
         using var client = factory.CreateClient();
@@ -125,7 +125,7 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task Summary_NamesTheOwnedPropertyLeftOutForWantOfARate()
     {
-        await using var factory = new ApiFactory(ReadAndEstimates);
+        var factory = Factory.ForCaller(ReadAndEstimates);
         var propertyId = await SeedValuedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -141,7 +141,7 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task Summary_WithoutTheEstimatesClaim_KeepsTheCountsAndDropsTheValue()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         await SeedValuedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -154,13 +154,16 @@ public class PropertyEstimateGatingApiTests
     [Fact]
     public async Task Summary_RejectsABaseCurrencyLongerThanACode()
     {
-        await using var factory = new ApiFactory(ReadAndEstimates);
+        var factory = Factory.ForCaller(ReadAndEstimates);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{SummaryPath}?baseCurrency=DOLLARS")).StatusCode);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

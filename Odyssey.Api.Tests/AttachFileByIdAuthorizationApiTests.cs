@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// (a confused deputy). The contract and property surfaces already stacked <c>files.read</c>; these
 /// are the three that did not.
 /// </summary>
-public sealed class AttachFileByIdAuthorizationApiTests
+public sealed class AttachFileByIdAuthorizationApiTests(AttachFileByIdAuthorizationApiTests.Host host) : SharedApiHostTests<AttachFileByIdAuthorizationApiTests.Host>(host)
 {
     public enum Surface
     {
@@ -45,7 +45,7 @@ public sealed class AttachFileByIdAuthorizationApiTests
     [MemberData(nameof(Cases))]
     public async Task Attach_RequiresRecordUpdateAndFilesRead(Surface surface, string[] claims, HttpStatusCode expected)
     {
-        await using var factory = new OdysseyApiFactory(claims);
+        var factory = Factory.ForCaller(claims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -124,4 +124,7 @@ public sealed class AttachFileByIdAuthorizationApiTests
 
         return (account.AccountId, transaction.TransactionId, taxStatement.TaxStatementId, metadata.Id);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

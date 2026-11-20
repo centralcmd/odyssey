@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// codes, containment on all four verbs, model validation reaching the wire, and the mass-assignment
 /// surface.
 /// </summary>
-public class ContactAliasApiTests
+public class ContactAliasApiTests(ContactAliasApiTests.Host host) : SharedApiHostTests<ContactAliasApiTests.Host>(host)
 {
     private const string ActorUserId = "alias-actor-id";
 
@@ -36,7 +36,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task ListAliases_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/contacts/{Guid.NewGuid()}/aliases");
@@ -47,7 +47,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task ListAliases_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/contacts/{Guid.NewGuid()}/aliases");
@@ -60,7 +60,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task AliasWrites_WithReadOnlyClaim_AreForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -77,7 +77,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostAlias_ReturnsCreatedWithTheRowAndALocationHeader()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -96,7 +96,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostAlias_UnknownContact_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -109,7 +109,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PutAlias_ReturnsNoContentAndClearsAnOmittedLabel()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         var alias = await CreateAliasAsync(client, id, Alias("Kari", "nickname"));
@@ -129,7 +129,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostAlias_Duplicate_ReturnsConflictNamingTheFieldWithoutEchoingTheValue()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         await CreateAliasAsync(client, id, Alias("Hansen", "maiden name"));
@@ -147,7 +147,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostAlias_BeyondTheCap_ReturnsUnprocessableNamingTheField()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         for (var i = 0; i < ContactAliasRules.MaxPerContact; i++)
@@ -167,7 +167,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task DeleteAlias_ReturnsNoContentAndBumpsTheParent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         var alias = await CreateAliasAsync(client, id, Alias("Kari"));
@@ -187,7 +187,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task Containment_AnAliasOfAnotherContactIs404OnEveryVerb()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var a = await SeedContactAsync(factory, "Alpha");
         var b = await SeedContactAsync(factory, "Beta");
         using var client = factory.CreateClient();
@@ -216,7 +216,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostAlias_ControlCharacterValue_IsRejectedByModelValidation()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -230,7 +230,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostAlias_OverlongValue_IsRejectedByModelValidation()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -246,7 +246,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostContact_WithANestedAliasesArray_CreatesZeroAliasRows()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -269,7 +269,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PutAlias_WithIdAndContactIdInTheBody_ReparentsNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var a = await SeedContactAsync(factory, "Alpha");
         var b = await SeedContactAsync(factory, "Beta");
         using var client = factory.CreateClient();
@@ -296,7 +296,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task GetContact_ReturnsAliasesInline()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         await CreateAliasAsync(client, id, Alias("Kari", "nickname"));
@@ -312,7 +312,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PutContact_RoundTripsTheFourLifecycleScalars()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -343,7 +343,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostContact_DeathBeforeBirth_ReturnsBadRequestNamingDateOfDeath()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -369,7 +369,7 @@ public class ContactAliasApiTests
     [Fact]
     public async Task PostContact_DissolvedBeforeEstablished_ReturnsBadRequestNamingDissolvedDate()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -425,6 +425,9 @@ public class ContactAliasApiTests
         return id;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

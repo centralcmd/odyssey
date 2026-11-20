@@ -15,7 +15,7 @@ using static Odyssey.Api.Tests.News.NewsApiTestSupport;
 namespace Odyssey.Api.Tests.News;
 
 /// <summary>The feed endpoints of issue #470 §5.1 over HTTP. Test names carry the AC they pin.</summary>
-public sealed class NewsFeedsApiTests
+public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests<NewsFeedsApiTests.Host>(host)
 {
     private const string Feeds = "/api/news-feeds";
 
@@ -51,10 +51,10 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC3_Management_is_null_with_news_read_only_and_no_field_names_the_fetch_host()
     {
-        await using var owner = new OdysseyApiFactory(AllNewsClaims);
+        var owner = Factory.ForCaller(AllNewsClaims);
         var id = await owner.SeedFeedAsync(url: "https://secret-fetch.example.net/rss?token=abc", title: null, siteUrl: "https://www.public-site.example/");
-        await using var reader = new OdysseyApiFactory(ReadOnly, sharingStoreWith: owner);
-        using var client = reader.CreateClient();
+        var reader = Factory;
+        using var client = reader.ClientFor(ReadOnly);
 
         var body = await client.GetStringAsync($"{Feeds}/{id}");
         var feed = System.Text.Json.JsonSerializer.Deserialize<ExistingNewsFeed>(body, Json)!;
@@ -72,7 +72,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC4_A_duplicate_address_after_normalisation_is_409_with_the_existing_feed()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
         var first = await (await client.PostAsJsonAsync(Feeds, NewFeed("https://News.Example.org/feed.xml"))).ReadAsync<ExistingNewsFeed>();
 
@@ -93,7 +93,7 @@ public sealed class NewsFeedsApiTests
     [InlineData("not a url")]
     public async Task AC4_A_refused_address_is_422_keyed_url(string url)
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(Feeds, NewFeed(url));
@@ -108,7 +108,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC4_An_allow_list_grant_opens_a_private_literal_and_its_port_but_never_a_hard_denied_one()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.NewsPrivateHostAllowList, "127.0.0.1:8080, 169.254.169.254");
         using var client = factory.CreateClient();
 
@@ -119,7 +119,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC4_The_feed_limit_counts_archived_feeds_and_is_422()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.NewsMaxFeeds, SystemSettingsBounds.NewsMaxFeedsMin.ToString(System.Globalization.CultureInfo.InvariantCulture));
         for (var i = 0; i < SystemSettingsBounds.NewsMaxFeedsMin; i++)
         {
@@ -136,7 +136,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC4_An_unknown_or_archived_tag_on_create_is_422_keyed_tagIds()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var archived = await factory.SeedTagAsync("Old", archived: true);
         using var client = factory.CreateClient();
 
@@ -151,7 +151,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC5_Annotations_reject_out_of_range_input_and_a_non_guid_id_is_a_routing_404()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Feeds, new { customTitle = "x" })).StatusCode);
@@ -165,7 +165,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC8_Nested_objects_and_unknown_members_in_a_body_create_or_change_nothing()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(Feeds, JsonBody(new
@@ -189,7 +189,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC46_AC10_Delete_takes_any_feed_and_then_hides_it_everywhere()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var active = await factory.SeedFeedAsync(url: "https://a.example.org/rss");
         var archived = await factory.SeedFeedAsync(url: "https://b.example.org/rss", archived: true);
         using var client = factory.CreateClient();
@@ -212,7 +212,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task Put_is_not_an_upsert_and_a_stale_version_is_409_news_feed_changed()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync();
         using var client = factory.CreateClient();
         var feed = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
@@ -234,7 +234,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC65_AC53_A_url_equal_to_the_suggestion_accepts_it_through_the_same_rules()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         const string suggested = "https://news.example.org/new-feed.xml";
         var id = await factory.SeedFeedAsync(url: "http://news.example.org/feed.xml", state: s => s.SuggestedUrl = suggested);
         await factory.SeedFeedAsync(url: "https://other.example.org/rss");
@@ -261,7 +261,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC65_Another_changed_url_overrides_and_clears_the_suggestion()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync(url: "http://news.example.org/feed.xml", state: s => s.SuggestedUrl = "https://news.example.org/feed.xml");
         using var client = factory.CreateClient();
         var feed = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
@@ -277,7 +277,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task Refresh_sets_the_request_flag_and_a_paused_feed_is_422_inactive()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var active = await factory.SeedFeedAsync(url: "https://a.example.org/rss");
         var paused = await factory.SeedFeedAsync(url: "https://b.example.org/rss", active: false);
         using var client = factory.CreateClient();
@@ -293,7 +293,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC77_Release_quarantine_clears_it_without_rotating_the_version_and_otherwise_is_422()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var quarantined = await factory.SeedFeedAsync(url: "https://a.example.org/rss", state: s =>
         {
             s.QuarantinedAtUtc = Base;
@@ -323,7 +323,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC79_Health_takes_the_highest_precedence_and_the_filter_matches_the_derived_value()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var all = await factory.SeedFeedAsync(url: "https://a.example.org/rss", archived: true, state: s =>
         {
             s.QuarantinedAtUtc = Base;
@@ -362,7 +362,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task The_list_filters_by_state_tag_and_search_with_LIKE_wildcards_escaped_and_sorts_with_an_id_tie_break()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var tag = await factory.SeedTagAsync("World");
         var alpha = await factory.SeedFeedAsync(url: "https://a.example.org/rss", title: "Alpha 100%", unread: 5);
         var beta = await factory.SeedFeedAsync(url: "https://b.example.org/rss", title: "Beta", unread: 9);
@@ -385,7 +385,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC74_Every_catalogue_count_equals_the_feed_dto_and_it_carries_no_url()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync(articles: 7, unread: 3, archived: true);
         using var client = factory.CreateClient();
 
@@ -400,7 +400,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task Unread_counts_exclude_archived_feeds_and_count_effective_tags_once()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var tag = await factory.SeedTagAsync("Tech");
         var tagged = await factory.SeedFeedAsync(url: "https://a.example.org/rss");
         var plain = await factory.SeedFeedAsync(url: "https://b.example.org/rss");
@@ -423,7 +423,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task Put_tags_replaces_the_feed_tags_and_rotates_the_version()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync();
         var one = await factory.SeedTagAsync("One");
         var two = await factory.SeedTagAsync("Two");
@@ -441,7 +441,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task Put_carries_the_tags_with_the_settings_null_keeps_and_an_archived_new_tag_is_refused()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync();
         var one = await factory.SeedTagAsync("One");
         var two = await factory.SeedTagAsync("Two");
@@ -474,7 +474,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task A_refused_tag_on_put_rolls_the_settings_back_too()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync();
         var one = await factory.SeedTagAsync("One");
         var gone = await factory.SeedTagAsync("Gone", archived: true);
@@ -495,7 +495,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task Put_refuses_an_unknown_tag_and_collapses_duplicate_ids()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync();
         var one = await factory.SeedTagAsync("One");
         using var client = factory.CreateClient();
@@ -534,7 +534,7 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task Archive_and_unarchive_are_idempotent_and_move_the_feed_between_states()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var id = await factory.SeedFeedAsync();
         using var client = factory.CreateClient();
 
@@ -546,4 +546,7 @@ public sealed class NewsFeedsApiTests
         Assert.Null(restored.ArchivedAtUtc);
         Assert.Equal(NewsFeedHealth.Healthy, restored.Health);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

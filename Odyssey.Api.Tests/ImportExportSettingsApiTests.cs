@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// ranges, the round-trip rule, the round trip being a no-op), the claim split between count and
 /// size caps, and the effective-limits endpoint's shape/auth.
 /// </summary>
-public class ImportExportSettingsApiTests
+public class ImportExportSettingsApiTests(ImportExportSettingsApiTests.Host host) : SharedApiHostTests<ImportExportSettingsApiTests.Host>(host)
 {
     private const string ActorUserId = "import-export-settings-actor-id";
     private const string SettingsPath = "/api/system-settings";
@@ -40,7 +40,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_OmittingCountField_LeavesStoredValueAndUpdatedAtUnchanged()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         // First write establishes a known, non-default value.
@@ -69,7 +69,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_CapacityLimitWithBothUnlimitedAndValue_ReturnsBadRequest_PersistsNothing()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsync(SettingsPath, JsonContent.Create(new
@@ -86,7 +86,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_CapacityLimitWithNeitherUnlimitedNorValue_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsync(SettingsPath, JsonContent.Create(new
@@ -102,7 +102,7 @@ public class ImportExportSettingsApiTests
     [InlineData(10241, HttpStatusCode.BadRequest)]
     public async Task Put_TaskJournalAndCalendarSizeFields_AcceptUpTo10Gb(int megabytes, HttpStatusCode expected)
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         // Issue #516 AC 7: the calendar pair goes to 10 GB too, because its export and import stream.
@@ -129,7 +129,7 @@ public class ImportExportSettingsApiTests
     {
         // The design system's row advisory for the per-event attachment cap: a series delete copies its links onto
         // every past occurrence it keeps, so raising the cap raises that copy. An advisory, never a refusal.
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { CalendarEventMaxLinksPerKind = cap });
@@ -155,7 +155,7 @@ public class ImportExportSettingsApiTests
     public async Task Put_CalendarSizeFields_WarnAboutTheirOwnCostAbove1024Mb(int megabytes, bool warns)
     {
         // Issue #516 AC 7 / FN1: an advisory, never a refusal — the write still succeeds.
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -196,7 +196,7 @@ public class ImportExportSettingsApiTests
         // despite its name/comment claiming full coverage.
         var expected = megabytes <= 1024 ? HttpStatusCode.OK : HttpStatusCode.BadRequest;
 
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var contactsImport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -259,7 +259,7 @@ public class ImportExportSettingsApiTests
         // download uses the hard-coded constant directly, regardless of this setting (see
         // SystemSettingsService.UpdateAsync's Phase 1b comment) — so this field must behave exactly
         // like every other export count cap, "No limit" included.
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var unlimited = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -280,7 +280,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_UnlimitedCount_SetsNoLimit()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -297,7 +297,7 @@ public class ImportExportSettingsApiTests
     public async Task GetThenPut_EveryField_ChangesNoStoredValue_NorUpdatedAt()
     {
         // AC 16: a GET→PUT round trip (adapting int? → CapacityLimit) is a true no-op.
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         // Establish a row for every one of the sixteen fields first (touching only some would leave the
@@ -377,7 +377,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_ExportExceedsImport_ReturnsBadRequest_NamingBothFields_PersistsNothing()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         // Establish both sides at an equal, consistent baseline first (the default export cap of 2000
@@ -412,7 +412,7 @@ public class ImportExportSettingsApiTests
     {
         // Proves post-write evaluation: only the import side is touched, but the stored export side
         // (unlimited) now exceeds it.
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -429,7 +429,7 @@ public class ImportExportSettingsApiTests
         // Tasks gained an export row cap as a follow-up to the original issue #343 (previously
         // "Non-Goal 2" — no export cap at all); it now carries the same round-trip rule as the other
         // three surfaces.
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         (await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -449,7 +449,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_EqualValues_Succeeds_AndUnlimitedImportWithFiniteExport_Succeeds()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var equal = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -474,7 +474,7 @@ public class ImportExportSettingsApiTests
     {
         // sec F3 / AC 17: the claim check keys off the CapacityLimit object, never `.Value` — a caller
         // sending only {"unlimited": true} (Value null) must still be rejected.
-        await using var factory = new ApiFactory([PermissionClaims.SystemSettingsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.SystemSettingsRead]);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsync(SettingsPath, JsonContent.Create(new
@@ -491,7 +491,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_CountFieldsOnly_SucceedsWithUpdateClaim_SizeFieldRejectedWithoutSecurityClaim()
     {
-        await using var factory = new ApiFactory(CountOnly);
+        var factory = Factory.ForCaller(CountOnly);
         using var client = factory.CreateClient();
 
         var countsOnly = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -519,7 +519,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task Put_SizeFieldsOnly_SucceedsWithSecurityClaim_CountFieldRejectedWithoutUpdateClaim()
     {
-        await using var factory = new ApiFactory(SizeOnly);
+        var factory = Factory.ForCaller(SizeOnly);
         using var client = factory.CreateClient();
 
         var sizesOnly = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
@@ -547,7 +547,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task ImportLimits_AuthenticatedWithNoClaims_ReturnsOk()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(LimitsPath);
@@ -558,7 +558,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task ImportLimits_Anonymous_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(LimitsPath);
@@ -569,7 +569,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task ImportLimits_BodyContainsExactlyTheSixteenDocumentedProperties()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var body = await (await client.GetAsync(LimitsPath)).Content.ReadAsStringAsync();
@@ -604,7 +604,7 @@ public class ImportExportSettingsApiTests
     [Fact]
     public async Task ImportLimits_DefaultInstall_MatchesSystemSettingsDefaults()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var dto = await (await client.GetAsync(LimitsPath)).Content.ReadFromJsonAsync<ImportLimitsDto>();
@@ -633,7 +633,10 @@ public class ImportExportSettingsApiTests
 
     // No photo volume: these tests read the settings table as EF InMemory leaves it without EnsureCreated (no seeded
     // rows), and verifying a volume ensures the store is created.
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId,
             configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" });
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

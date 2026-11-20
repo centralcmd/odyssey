@@ -25,7 +25,7 @@ namespace Odyssey.Api.Tests;
 /// account routes are gated on <c>accounts.read</c> alone and Guest holds no contract claim, so an
 /// unconditional count would tell Guest how many agreements each account is party to.
 /// </remarks>
-public class AccountContractsApiTests
+public class AccountContractsApiTests(AccountContractsApiTests.Host host) : SharedApiHostTests<AccountContractsApiTests.Host>(host)
 {
     private static readonly DateTime FixedToday = new(2026, 6, 15, 8, 0, 0, DateTimeKind.Utc);
 
@@ -34,7 +34,7 @@ public class AccountContractsApiTests
     [Fact]
     public async Task GetAccountContracts_ReturnsOneRowPerContract_WithEveryRoleTheAccountHolds()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var accountId = await SeedAccountAsync(factory);
         var otherAccountId = await SeedAccountAsync(factory, "Savings");
         var loanId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -58,7 +58,7 @@ public class AccountContractsApiTests
     [Fact]
     public async Task GetAccountContracts_OrdersByName_AndIsEmptyForAnAccountPartyToNothing()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var accountId = await SeedAccountAsync(factory);
         var loneId = await SeedAccountAsync(factory, "Lonely");
         await SeedContractAsync(factory, "Zeta lease", ContextContractType.Rental, (accountId, ContextContractPartyRole.Tenant));
@@ -78,7 +78,7 @@ public class AccountContractsApiTests
     [Fact]
     public async Task GetAccountContracts_ListsRolesInPartyIdOrder()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var accountId = await SeedAccountAsync(factory);
         await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
             [
@@ -102,7 +102,7 @@ public class AccountContractsApiTests
     [Fact]
     public async Task GetAccountContracts_IncludesArchivedContracts_WithTheArchivedStatus()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var accountId = await SeedAccountAsync(factory);
         var archivedId = await SeedContractAsync(factory, "Old lease", ContextContractType.Rental,
             [(Guid.NewGuid(), accountId, ContextContractPartyRole.Tenant)], archived: FixedToday.AddDays(-1));
@@ -118,7 +118,7 @@ public class AccountContractsApiTests
     [Fact]
     public async Task GetAccountContracts_ForAMissingAccount_Returns404()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/accounts/{Guid.NewGuid()}/contracts");
@@ -152,7 +152,7 @@ public class AccountContractsApiTests
     [Fact]
     public async Task ContractCount_CountsDistinctContracts_OnListAndGet()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var accountId = await SeedAccountAsync(factory);
         var loneId = await SeedAccountAsync(factory, "Lonely");
         await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -188,7 +188,7 @@ public class AccountContractsApiTests
         Assert.Null(single!.ContractCount);
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         private const string ActorUserId = "account-contracts-actor";
 
@@ -273,4 +273,7 @@ public class AccountContractsApiTests
         await context.SaveChangesAsync();
         return contract.ContractId;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }
