@@ -4,51 +4,51 @@ namespace Odyssey.Dtos.Application;
 
 public sealed record ExistingUser
 {
-    public string Id { get; init; } = string.Empty;
+    public string Id { get; set; } = string.Empty;
 
-    public string? UserName { get; init; }
+    public string? UserName { get; set; }
 
     /// <summary>
     /// The resolver's resolved label for this user (issue #316) — <c>DisplayName ?? FirstName ?? email</c>
     /// under the admin caller's claims. This is the resolver output, never a bare column read.
     /// </summary>
     [StringLength(256)]
-    public string? DisplayName { get; init; }
+    public string? DisplayName { get; set; }
 
-    public string? Email { get; init; }
+    public string? Email { get; set; }
 
-    public bool EmailConfirmed { get; init; }
+    public bool EmailConfirmed { get; set; }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; set; }
 
-    public DateTimeOffset? LockoutEnd { get; init; }
+    public DateTimeOffset? LockoutEnd { get; set; }
 
-    public string Role { get; init; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
 
-    public DateTimeOffset? CreatedAtUtc { get; init; }
+    public DateTimeOffset? CreatedAtUtc { get; set; }
 
     /// <summary>
     /// An admin-initiated password reset is outstanding for this user (issue #406) — they are blocked from
     /// the application until they set a new password. Read-only, under the existing <c>users.read</c> gate.
     /// </summary>
-    public bool MustChangePassword { get; init; }
+    public bool MustChangePassword { get; set; }
 
     // The profile's structured name/birth attributes. This whole endpoint is already gated on
     // users.read, so surfacing them here is an admin-only view, never mixed into the resolver's
     // cross-cutting DisplayName above (that one is read under the target's own claims elsewhere).
     [StringLength(128)]
-    public string? FirstName { get; init; }
+    public string? FirstName { get; set; }
 
     [StringLength(128)]
-    public string? MiddleName { get; init; }
+    public string? MiddleName { get; set; }
 
     [StringLength(128)]
-    public string? LastName { get; init; }
+    public string? LastName { get; set; }
 
-    public DateOnly? BirthDate { get; init; }
+    public DateOnly? BirthDate { get; set; }
 
     [EnumDataType(typeof(Sex))]
-    public Sex? Sex { get; init; }
+    public Sex? Sex { get; set; }
 
     /// <summary>
     /// This user's profile-picture version token (issue #94 §6), per row on the <c>users.read</c>-gated
@@ -74,5 +74,5 @@ public sealed record ExistingUser
     /// reintroduces the <c>200 → 404 → 200</c> password-spray oracle, quietly.
     /// </para>
     /// </summary>
-    public Guid? ProfileImageVersion { get; init; }
+    public Guid? ProfileImageVersion { get; set; }
 }

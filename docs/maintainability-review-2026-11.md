@@ -123,6 +123,15 @@ Phase 2 is done, on the branch for this PR.
 | P3 | `DemoDataSetTests.cs` rewritten with xUnit `Assert`. `AwesomeAssertions` removed from the project, `Directory.Packages.props`, `dependabot.yml` and `THIRD-PARTY-NOTICES.md`. The notices now say tests use `Assert` only and that FluentAssertions 8+ should not come back (Xceed licence). |
 | Contacts.cs | The insurance "link collection" comments now say what the household contacts are for today. The seeded description strings (demo data) are unchanged. |
 
+## Phase 3 status (in progress)
+
+| Item | Decision | Result |
+|---|---|---|
+| M4 | Enforce braces | Braces added to every `if`/`else`/`for`/`foreach`/`while` body: `dotnet format` in 324 `.cs` files, a script plus 4 hand edits in the `@code` blocks of 63 `.razor` files. `EnforceCodeStyleInBuild` is on, so an `.editorconfig` rule at warning severity now fails the build. A probe file with a brace-less `if` was confirmed to fail with IDE0011. EF migrations are marked `generated_code`. Analyzers do not see `.razor` C#, so those stay covered by review only. `using` order was left untouched to keep the diff to braces. |
+| M5 | Use `set`, not `init` | All 237 `{ get; init; }` properties in `Odyssey.Dtos` are now `{ get; set; }`. The one shared instance, `WeatherAttribution.MetNorway`, now returns a fresh copy each time so a settable object is never shared across responses. |
+
+Still open: U1, the six "keep or remove" items (D2, D4, D5, D7, P2, M7) and the file splits.
+
 ## Implementation plan
 
 **Phase 1: quick wins** (S effort, safe, one PR)
