@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using System.Net;
 using System.Net.Http.Json;
 using Odyssey.TestData;
@@ -86,18 +87,17 @@ public class ApiContractTests(ApiStackFixture fixture)
         var client = await fixture.CreateAuthenticatedClientAsync(Admin.Email, Admin.Password);
 
         // The Photos module (issue #321) seeds a library of photos + albums; both list endpoints serve them.
-        var photos = await client.GetAsync("/api/photos?offset=0&limit=100");
-        photos.EnsureSuccessStatusCode();
-        using var photosJson = await photos.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
-        Assert.True(
-            photosJson!.RootElement.GetProperty("items").GetArrayLength() > 0,
-            "expected seeded photos to be served.");
+        // The worker writes them after the stack comes up (DemoFileSeeder): the albums are its last step, so wait for one.
+        async Task<int> CountAsync(string path)
+        {
+            var response = await client.GetAsync(path);
+            response.EnsureSuccessStatusCode();
+            using var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
+            return json!.RootElement.GetProperty("items").GetArrayLength();
+        }
 
-        var albums = await client.GetAsync("/api/albums?offset=0&limit=100");
-        albums.EnsureSuccessStatusCode();
-        using var albumsJson = await albums.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
-        Assert.True(
-            albumsJson!.RootElement.GetProperty("items").GetArrayLength() > 0,
-            "expected seeded albums to be served.");
+        await DemoFileWait.UntilAsync(async () => await CountAsync("/api/albums?offset=0&limit=100") > 0);
+        Assert.True(await CountAsync("/api/photos?offset=0&limit=100") > 0, "expected seeded photos to be served.");
+        Assert.True(await CountAsync("/api/albums?offset=0&limit=100") > 0, "expected seeded albums to be served.");
     }
 }
