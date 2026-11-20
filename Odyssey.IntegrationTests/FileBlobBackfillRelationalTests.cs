@@ -16,7 +16,7 @@ namespace Odyssey.IntegrationTests;
 /// lack of a key, the commit's row lock against a racing attach, the blob removal not cascading the file away, and two
 /// runners moving each file once.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class FileBlobBackfillRelationalTests(MariaDbFixture fixture)
 {
     private static readonly byte[] Pdf = "%PDF-1.7 relational move"u8.ToArray();

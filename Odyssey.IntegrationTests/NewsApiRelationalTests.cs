@@ -18,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// indexes and Guid ordering, the literal <c>LIKE</c> escapes, and API writes landing while a fetch holds its lease.
 /// None of it is observable on EF InMemory.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
 {
     private static readonly DateTime Base = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);

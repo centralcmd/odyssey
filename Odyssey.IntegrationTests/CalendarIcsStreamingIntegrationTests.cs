@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// The two memory checks need 100,000- and 50,000-event calendars, so they are perf-tier tests (<see cref="PerfTier"/>)
 /// that run on the Release PR; the per-PR run keeps the no-transaction assertion on a calendar small enough to seed in seconds.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
 {
     private const string User = "calendar-ics-streaming";

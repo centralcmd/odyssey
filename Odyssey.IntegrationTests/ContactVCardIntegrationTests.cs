@@ -20,7 +20,7 @@ namespace Odyssey.IntegrationTests;
 /// suppressed, so this is the only tier that proves the transactional code path actually runs (and
 /// commits successfully) against a real relational engine, not just that it compiles.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactVCardIntegrationTests(MariaDbFixture fixture)
 {
     /// <summary>

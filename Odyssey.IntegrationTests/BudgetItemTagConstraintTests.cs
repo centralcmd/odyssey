@@ -18,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// database does.
 /// </para>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class BudgetItemTagConstraintTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_budget_item_tag";

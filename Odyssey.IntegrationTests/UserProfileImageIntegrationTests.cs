@@ -31,7 +31,7 @@ namespace Odyssey.IntegrationTests;
 /// while the replace race silently lost a write.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class UserProfileImageIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_profile_images";

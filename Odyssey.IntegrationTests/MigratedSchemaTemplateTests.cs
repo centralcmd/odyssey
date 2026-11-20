@@ -10,7 +10,7 @@ namespace Odyssey.IntegrationTests;
 /// <see cref="MariaDbFixture.CreateMigratedDatabaseAsync"/> or <see cref="MariaDbFixture.CreateDatabaseAtMigrationAsync"/>
 /// rests on this, so it is checked rather than assumed — at head, and at one migration below it.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class MigratedSchemaTemplateTests(MariaDbFixture fixture)
 {
     private const string Migrated = "odyssey_template_check_migrated";

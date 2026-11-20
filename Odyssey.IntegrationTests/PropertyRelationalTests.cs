@@ -26,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// None of this is observable on the fast tiers: the EF InMemory provider enforces no foreign keys and
 /// orders nulls by the CLR comparer rather than by the engine's rule.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class PropertyRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_properties";

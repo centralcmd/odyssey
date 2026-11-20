@@ -31,7 +31,7 @@ namespace Odyssey.IntegrationTests;
 /// <c>ContractSmartTagsApiTests</c>; the two halves are not redundant, because either one alone leaves
 /// the other tier free to regress silently.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContractSmartTagRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_smart_tags";

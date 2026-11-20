@@ -26,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// batches, a disk refusal after a committed batch, a batch that fails outright, the reserve/attach split itself, an
 /// expired reservation, the in-lock re-check, the interactive link write's retries, and an import racing edits.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class CalendarAttachmentsRelationalTests(MariaDbFixture fixture)
 {
     private const string User = "user";

@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// nothing deletes a place implicitly (AC 10, 11, 13, 15, 26). Every context here enables
 /// <c>EnableRetryOnFailure</c>, as production does, so the transaction helper runs inside the strategy.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class LocationUnificationRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_unified_locations";

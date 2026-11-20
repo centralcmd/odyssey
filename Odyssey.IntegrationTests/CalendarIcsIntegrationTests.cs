@@ -25,7 +25,7 @@ namespace Odyssey.IntegrationTests;
 /// (<c>Odyssey.Api/DatabaseExtension.cs</c>). EF InMemory never configures a retrying execution
 /// strategy, so no InMemory-backed tier could ever have caught this.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class CalendarIcsIntegrationTests(MariaDbFixture fixture)
 {
     [SkippableFact]

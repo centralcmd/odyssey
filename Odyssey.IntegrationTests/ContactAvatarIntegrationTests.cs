@@ -40,7 +40,7 @@ namespace Odyssey.IntegrationTests;
 /// property; collapsing the two implementations into one removes it, not just a test.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contact_avatars";
