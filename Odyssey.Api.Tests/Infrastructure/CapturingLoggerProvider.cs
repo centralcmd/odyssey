@@ -23,6 +23,9 @@ public sealed class CapturingLoggerProvider : ILoggerProvider
 
     public ILogger CreateLogger(string categoryName) => new CategoryLogger(this, categoryName);
 
+    /// <summary>Forgets every line so far — what a host shared across tests does between them.</summary>
+    public void Clear() => entries.Clear();
+
     public void Dispose() { }
 
     public sealed record Entry(string Category, LogLevel Level, string Message, Exception? Exception);

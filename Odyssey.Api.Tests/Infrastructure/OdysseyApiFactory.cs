@@ -1,3 +1,4 @@
+using System.Reflection;
 using Odyssey.Context;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -30,6 +32,20 @@ public class OdysseyApiFactory(
     : WebApplicationFactory<Program>
 {
     private readonly string domainDatabaseName = sharingStoreWith?.domainDatabaseName ?? $"domain-{Guid.NewGuid()}";
+
+    /// <summary>The caller every request without a permissions header is authenticated as.</summary>
+    private readonly TestClaimsProvider claimsProvider = new(permissions, actorUserId);
+
+    /// <summary>
+    /// Sets the default caller's permissions — what <c>CreateClient()</c> clients, and helpers that call it, are
+    /// authenticated with — until the next <see cref="ResetStoreAsync"/>, which restores the constructor's set. This is
+    /// how a shared host stands in for a <c>new Factory(permissions)</c> per test; returns the factory for chaining.
+    /// </summary>
+    public OdysseyApiFactory UsePermissions(IReadOnlyCollection<string>? permissions)
+    {
+        claimsProvider.Permissions = permissions;
+        return this;
+    }
 
     /// <summary>
     /// ONE store root for the whole assembly, deliberately: a database NAME alone is scoped to EF's
@@ -90,6 +106,30 @@ public class OdysseyApiFactory(
     /// <summary>Set to <c>"true"</c> in a factory's configuration for a host with no volume at all (the no-op store).</summary>
     public const string NoFileVolumeKey = "Testing:NoFileVolume";
 
+    /// <summary>The permit count every <c>RateLimiting:*</c> section gets on a host shared across tests.</summary>
+    private const string SharedHostPermitLimit = "1000000";
+
+    /// <summary>Every <c>RateLimiting:*</c> section the API binds, found from its <c>SectionName</c> constants.</summary>
+    private static readonly Lazy<string[]> RateLimitingSections = new(() => typeof(Program).Assembly.GetTypes()
+        .SelectMany(type => type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+        .Where(field => field is { IsLiteral: true, Name: "SectionName" } && field.FieldType == typeof(string))
+        .Select(field => (string)field.GetRawConstantValue()!)
+        .Where(name => name.StartsWith("RateLimiting:", StringComparison.Ordinal))
+        .Distinct(StringComparer.Ordinal)
+        .ToArray());
+
+    private bool sharedAcrossTests;
+
+    /// <summary>
+    /// Marks this factory as one host serving a whole test class (<see cref="SharedApiHostTests{THost}"/> calls it
+    /// before the host boots): every rate limit is raised out of reach, since one actor id makes every request of
+    /// every test count against one window. Has no effect once the host is running.
+    /// </summary>
+    internal void MarkSharedAcrossTests() => sharedAcrossTests = true;
+
+    /// <summary>Whether the host boots with any volume (its own temp one or configured ones) — and so verifies, and seeds.</summary>
+    private bool HasFileVolumes => configuration?.GetValueOrDefault(NoFileVolumeKey) != "true";
+
     private bool OwnsFileVolume =>
         configuration?.Keys.Any(k => k.StartsWith("FileStorage:Volumes:", StringComparison.Ordinal)) != true
         && configuration?.GetValueOrDefault(NoFileVolumeKey) != "true";
@@ -121,6 +161,17 @@ public class OdysseyApiFactory(
                 settings["FileStorage:Bindings:NewsArticles"] = "photos";
             }
 
+            if (sharedAcrossTests)
+            {
+                // A shared host serves a whole class from one actor id, so a per-user window would fill across tests
+                // that each stay well inside it. Explicit configuration below still wins, and a test that exercises a
+                // limit keeps a fresh host (it would fail loudly here, never pass by accident).
+                foreach (var section in RateLimitingSections.Value)
+                {
+                    settings[$"{section}:PermitLimit"] = SharedHostPermitLimit;
+                }
+            }
+
             if (configuration is not null)
             {
                 foreach (var entry in configuration)
@@ -150,7 +201,7 @@ public class OdysseyApiFactory(
                     // MariaDB; this just lets that code path run in the fast InMemory-backed API tests.
                     .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
 
-            services.AddSingleton(new TestClaimsProvider(permissions, actorUserId));
+            services.AddSingleton(claimsProvider);
             services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
@@ -197,6 +248,84 @@ public class OdysseyApiFactory(
         }
         catch (UnauthorizedAccessException)
         {
+        }
+    }
+
+    /// <summary>
+    /// Returns a SHARED host to the state a freshly built one starts in, so a test class can boot one host for
+    /// all its tests (see <see cref="SharedApiHostClients"/>) and still give every test an empty store. It:
+    /// <list type="bullet">
+    /// <item><description>empties the InMemory database and re-applies <c>HasData</c> (currencies, roles, settings),
+    /// keeping only the <c>FileStorageVolumes</c> rows the startup verifier wrote — the volume registry the
+    /// host resolved at boot names them;</description></item>
+    /// <item><description>deletes every file on the temp volume except the volume marker and the store's own
+    /// folders, so a file name a previous test used cannot turn the next one's into <c>name (2)</c>;</description></item>
+    /// <item><description>clears the host's <see cref="IMemoryCache"/> (settings lookups cache for 30 s) and
+    /// restores <see cref="FileVolumeSpace"/>.</description></item>
+    /// </list>
+    /// Any other singleton state — a rate-limit partition, a fake clock, a hand-held cache outside
+    /// <see cref="IMemoryCache"/>, a degraded-volume flag — survives, which is why a test that changes such state
+    /// keeps a fresh host of its own.
+    /// </summary>
+    public virtual async Task ResetStoreAsync()
+    {
+        claimsProvider.Permissions = permissions;
+
+        using (var scope = Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            if (HasFileVolumes)
+            {
+                // A host with volumes ran EnsureCreated in its startup verification, so it starts seeded.
+                var volumes = await context.FileStorageVolumes.AsNoTracking().ToListAsync();
+                await context.Database.EnsureDeletedAsync();
+                await context.Database.EnsureCreatedAsync();
+                context.FileStorageVolumes.AddRange(volumes);
+                await context.SaveChangesAsync();
+            }
+            else
+            {
+                // One without starts with a store nothing has created: no HasData rows until a test asks for them.
+                await context.Database.EnsureDeletedAsync();
+            }
+        }
+
+        if (Services.GetService<IMemoryCache>() is MemoryCache cache)
+        {
+            cache.Clear();
+        }
+
+        FileVolumeSpace.Override = new TestSpaceProbe().Override;
+
+        if (OwnsFileVolume && Directory.Exists(fileVolumePath))
+        {
+            foreach (var entry in Directory.EnumerateFileSystemEntries(fileVolumePath))
+            {
+                var name = Path.GetFileName(entry);
+                if (name is StorageNames.TempFolder or StorageNames.QuarantineFolder)
+                {
+                    foreach (var inner in Directory.EnumerateFileSystemEntries(entry))
+                    {
+                        DeleteEntry(inner);
+                    }
+                }
+                else if (name is not (StorageNames.MarkerFileName or StorageNames.LostAndFound))
+                {
+                    DeleteEntry(entry);
+                }
+            }
+        }
+
+        static void DeleteEntry(string path)
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+            else
+            {
+                File.Delete(path);
+            }
         }
     }
 
