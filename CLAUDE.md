@@ -414,9 +414,9 @@ re-opens the partial-success state along with it.
 
 **A user's profile picture is stored SEPARATELY from the domain file store, and that separation is a
 security boundary** (issue #94). `UserProfileImage` / `UserProfileImageBlob` sit beside `UserProfile`
-in `Odyssey.Context` with **zero relationships in either direction** to `FileMetadata` / `FileBlob`. A
+in `Odyssey.Context` with **zero relationships in either direction** to `FileMetadata` or the object store. A
 holder of `files.read` cannot read a person's face, `files.delete` cannot destroy it, and
-`AdminFileExportService` — which enumerates `FileMetadata` and pulls matching blobs wholesale — cannot
+`AdminFileExportService` — which enumerates `FileMetadata` and pulls the matching files wholesale — cannot
 sweep one into an admin file export. The cost is a standing tax: every storage-wide concern
 (encryption at rest, quota accounting, orphan sweeps, backup tooling) now has two places to be applied.
 An integration test asserts the zero-FK property in both directions, because one convenience key added
@@ -434,9 +434,9 @@ files it protects had silently left its scope.
 
 Six rules around it are easy to get backwards:
 
-- **The blob's FK direction is INVERTED relative to `FileMetadata`/`FileBlob`, deliberately.** There the
-  *blob* is the principal, so the cascade runs blob → metadata and never the reverse — which is why
-  `ContactAvatarRelease` removes both rows by hand. Copying that shape would leave every deleted user's
+- **The blob is the DEPENDENT, deliberately** — the inverse of the Files store's former `FileMetadata`/`FileBlob`
+  pair (removed with the legacy file storage), where the *blob* was the principal and the cascade ran blob →
+  metadata, never the reverse. Copying that shape would leave every deleted user's
   facial image bytes a permanent orphan. Making the blob the *dependent* gives an unbroken
   `AspNetUsers → UserProfileImage → UserProfileImageBlob` chain, so GDPR Art. 17 erasure holds through
   a bare `userManager.DeleteAsync` inside the existing delete transaction, which carries no purge code.
@@ -745,7 +745,7 @@ where; code-declared *storage features* (`StorageFeature`, registered in DI, ass
 catalogue holds two features, `PhotoOriginals` (#428) and `PhotoThumbnails` (#362), both `Graced`**, so every host with
 volumes must bind both (check B1); a guard test fails on an `Immediate` production feature. The three
 `TestShared/FileStorage` features exercise the store's own tests.
-Existing uploads stay in `FileBlob`. Rules a consumer
+Every file and photo has its bytes on the store: the legacy database copy (`FileBlob`) is gone. Rules a consumer
 inherits, and that are easy to get backwards:
 
 - **A `Committed` row always has its file.** `IObjectStore.PutAsync` reserves a `Pending` row through its own
@@ -800,9 +800,10 @@ to get backwards:
   native code: a still JPEG/PNG/WebP reaches ImageMagick already stripped and size-gated. GIF and animated
   input go in unstripped — an accepted residual, documented.
 - **`Generation` is the job row's only concurrency token, and every write bumps it — a rename included.** A
-  worker acts only on a `Running` row carrying its own `RunId`. A file rename re-renders through
-  `IFileRenameObserver`, staged in the rename's own save; three consecutive token conflicts are a
-  `409 rename-busy` with `Retry-After`, and nothing is committed.
+  worker acts only on a `Running` row carrying its own `RunId`. A photo rename (`PUT /api/photos/{id}`) re-renders
+  through `PhotoThumbnailService.StageRenameForPhotoAsync`, staged in the update's own save. A Files-store rename
+  re-renders nothing: no photo wraps a Files-store file any more, so the former `IFileRenameObserver` seam and its
+  `409 rename-busy` went with the legacy photo shape.
 - **Every replica runs the job; state is per process.** The breaker (`PhotoThumbnailBreaker`, 3 crashes or
   hangs an hour) counts `PhotoThumbnailIncidents` rows, which carry no photo id so a delete cannot reset it.
   A hung decode cannot be cancelled: the worker pauses, then exits (code 70) for its container to restart —
@@ -814,54 +815,51 @@ to get backwards:
   keeps a surface from building a `ContentUrl` or a CSS `background-image`.
 - **The five thumbnail tables are derived data**.
 
-**A photo owns its original on the object store, not in the Files store** (issue #428). Only journal and photo-library
-photos: every other upload stays in `FileBlob`. `Photo.StoredObjectId` (RESTRICT, feature `PhotoOriginals`, laid out
-`<upload year>/<bucket>`) carries the bytes and the photo carries its own `FileName`/`ContentType`/`SizeBytes`/`Sha256Hash`;
-a **legacy** photo still has `FileId` until `PhotoOriginalBackfillJob` (`Odyssey.Worker`) moves it, and
-`CK_Photos_ExactlyOneSource` keeps exactly one of the two set. Rules that are easy to get backwards:
+**A photo owns its original on the object store, not in the Files store** (issue #428). `Photo.StoredObjectId`
+(RESTRICT, feature `PhotoOriginals`, laid out `<upload year>/<bucket>`) carries the bytes and the photo carries its own
+`FileName`/`ContentType`/`SizeBytes`/`Sha256Hash` — all five `NOT NULL`. **The legacy shape is gone**: a photo once
+wrapped a Files-store file through `Photo.FileId`; every production system finished the `PhotoOriginalBackfill` move, and
+`RemoveLegacyFileBlobStorage` dropped the column, the job and its tables. Rules that are easy to get backwards:
 
-- **Read through `PhotoOriginalSource`**, which resolves either shape, never `FileMetadata` directly. The original is
-  served by `GET /api/photos/{id}/content` under `photos.read` alone; `files.read` reaches no photo, and no photo
-  appears on the Files list. That includes a **legacy** photo's file: `FileService` reads through
-  `FileReferenceCounter.VisibleInFilesStore`, which hides a file a photo names (`FileId` or `LegacyFileId`) unless
-  another referencing column also names it — an attachment's own claim already reaches that one.
+- **Read through `PhotoOriginalSource`**, never `FileMetadata`. The original is served by
+  `GET /api/photos/{id}/content` under `photos.read` alone; `files.read` reaches no photo, and no photo appears on the
+  Files list.
+- **`Photo.LegacyFileId` stays, on purpose.** It is the file id a photo wrapped before the move, with no key (the file
+  may be gone), and it is what resolves an `odyssey-photo:<fileId>` reference in a pre-move `.ics` export
+  (`IPhotoLookup.ResolveReferencesAsync`). A former file the move kept because something else used it is still a Files-
+  store row: `FileService` reads through `FileReferenceCounter.VisibleInFilesStore`, which hides a file a photo names
+  as its `LegacyFileId` unless another referencing column also names it — an attachment's own claim already reaches
+  that one. `FileReferenceCounter.Discover` is derived from the EF model (every key to `FileMetadata`), so a new
+  referencing table is counted without a code change — never replace it with a hand-kept list.
 - **Upload is one multipart `POST /api/photos`** (`PhotoService.UploadAsync`): validated, hashed, duplicate-checked
   (`409 photo-duplicate`, existing id only for a `photos.read` holder), reserve-checked (`507`), written, then one save.
-  There is no "photo from an existing file id" path any more; a JSON body with `fileId` is a `415`.
-- **A rename changes `Photo.FileName` only**, never the file on disk. Journal entries link photos by `PhotoIds`.
-- **The backfill deletes a legacy file only when `IFileReferenceCounter` finds no other user.** That counter is
-  derived from the EF model (every key to `FileMetadata` but `Photo.FileId`), so a new referencing table is counted
-  without a code change — never replace it with a hand-kept list. A shared file is copied and kept.
-- **The backfill is a catalogued, work-driven job** (`JobType.PhotoOriginalBackfill = 5`) on `/background-jobs`:
-  bursts, a held period only while photos are left (`StorageUnavailable`, or `BackingOff` with the lease's
-  `NextAttemptAtUtc` as its resume time), and a manual run that ends a back-off. Its status card is
-  `BackgroundJobsWorkerHealth.PhotoOriginalBackfill`, the same `PhotoBackfillStatus` as
-  `GET /api/file-storage/photo-backfill`; both, and its counters, follow `file-storage.read`.
+  There is no "photo from an existing file id" path; a JSON body with `fileId` is a `415`.
+- **A rename changes `Photo.FileName` only**, never the file on disk. Journal entries link photos by `PhotoIds`. A delete
+  releases the original and both thumbnails in its own save; it never touches a Files-store row.
+- **`JobType` 5 (`PhotoOriginalBackfill`) and 7 (`FileBlobBackfill`), and `JobHeldReason` 6 (`BackingOff`), are
+  retired — permanent holes, never reused.** `RemoveLegacyFileBlobStorage` deleted their run and heartbeat rows (TPH has
+  no branch left to materialise them) and the CHECKs refuse them.
 - **`OdysseyApiFactory` binds every file feature (both photo features and the three file areas) to one
   per-factory temp volume** (`FileVolumeRoot`, `FileVolumeSpace`). A test that needs a host with no
   volume (the settings tests that read an unseeded InMemory store) sets `OdysseyApiFactory.NoFileVolumeKey`; on EF
-  InMemory a host with volumes runs `EnsureCreated` before verifying, so `HasData` rows exist.
+  InMemory a host with volumes runs `EnsureCreated` before verifying, so `HasData` rows exist. A test file or photo is
+  staged through `TestShared/FileStorage/StoredFileFixtures` — the bytes on the store, as production writes them.
 
-**Every other file moves onto the object store too, by AREA** (issue #448). `FileMetadata` keeps its row and gains
-one nullable `RESTRICT` column per feature — `FinanceStoredObjectId` (`FinanceFiles`, `finance-files/`),
-`JournalStoredObjectId` (`JournalFiles`, `journal-files/`) and `ContactAvatarStoredObjectId` (`ContactAvatars`,
-`contact-avatars/`) — and `CK_FileMetadata_ExactlyOneSource` keeps exactly one of those and `FileBlobId` set. All
-of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that are easy to get backwards:
+**Every other file lives on the object store too, by AREA** (issue #448). `FileMetadata` has one nullable `RESTRICT`
+column per feature — `FinanceStoredObjectId` (`FinanceFiles`, `finance-files/`), `JournalStoredObjectId` (`JournalFiles`,
+`journal-files/`) and `ContactAvatarStoredObjectId` (`ContactAvatars`, `contact-avatars/`) — and
+`CK_FileMetadata_ExactlyOneSource` keeps exactly one of the three set. **The legacy database copy is gone**: every
+production system finished the `FileBlobBackfill` move, and `RemoveLegacyFileBlobStorage` dropped `FileBlob`,
+`FileMetadata.FileBlobId`, the job and its tables (its guard refuses to run while any legacy row is left). All of it
+lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that are easy to get backwards:
 
 - **The area is chosen at upload and never moves.** `POST /api/files` takes a required `area`
   (`FileUploadArea`, `Odyssey.Dtos` root); each client host passes its own (`AttachDocumentsDialog.Area` is
   `EditorRequired`). The avatar path always writes `ContactAvatars`, and no other writer may (source-lint).
   Placement is not access: the claim of the referencing record still decides who reads a file.
-- **Read bytes through `StoredFileContentSource`, remove a row through `StoredFileRemoval`.** Both resolve a
-  legacy and a disk-backed file alike; a direct `FileBlob`/`FileBlobId` read or a `FileMetadata.Remove` outside
-  the allow-list fails `StoredFilesSourceLintTests`. Removal stages the store release in the same save.
-- **`FileBlobBackfillJob` classifies at move time, from the EF model** (`FileAreaClassifier`): no link or any
-  finance link → Finance, journal-only → Journal, avatar-only **with an image type** → Contacts, else Finance. A
-  photo-wrapped file waits for the photo move. The commit locks the row `FOR UPDATE` and re-classifies. Its
-  per-area health is checked per candidate, so one degraded area never stalls the others.
-- **`FileBlobBackfillFailures` has no foreign key**, so `FileReferenceCounter.Discover` is unchanged by it; an
-  orphan row is pruned on the next tick. It is `JobType.FileBlobBackfill = 7` on `/background-jobs`, status
-  `GET /api/file-storage/file-backfill` under `file-storage.read`.
+- **Read bytes through `StoredFileContentSource`, remove a row through `StoredFileRemoval`.** A `FileMetadata.Remove`
+  outside the allow-list, or any reference to the removed `FileBlob`/`FileBlobId`, fails `StoredFilesSourceLintTests`.
+  Removal stages the store release in the same save.
 - **Every upload surface shares `UploadFailureText`** (`Odyssey.Client/Services/`): a `507`/`503`/`429` stops
   the batch, anything else is the file's own; inside a dialog the alert line is the only failure channel.
 - **Finance must not gain a `using Odyssey.Core.Journal`.** Three files that predate the rule are allow-listed
@@ -880,8 +878,8 @@ get backwards:
 - **Dedupe is id-then-hash, over `VisibleInFilesStore` only**: the exported file's own id with the same SHA-256 and
   size, else the oldest visible file with that SHA-256 and size, else a new Journal-area file. A new file passes the
   same `FileValidationService` checks an upload does, the admin upload cap included.
-- **A photo is its own kind (`X-ODYSSEY-KIND=PHOTO`) and dedupes the same way over `PhotoOriginalSource.Describe`**
-  (legacy photos included); a match is linked as-is, and a new one goes through `PhotoService.StageUploadAsync` — the
+- **A photo is its own kind (`X-ODYSSEY-KIND=PHOTO`) and dedupes the same way over `PhotoOriginalSource.Describe`**;
+  a match is linked as-is, and a new one goes through `PhotoService.StageUploadAsync` — the
   library upload's checks — carrying only the exported file name, title and caption. Tags, people and albums stay
   library-only.
 - **Files make the claims stricter, never optional**: an export with attached files needs `files.read` (photos:
@@ -1474,13 +1472,28 @@ through NOK only when both legs exist). Currencies and roles are
 reference data (seeded by the initial migration) and permission claims are reconciled by
 `RoleClaimSeeder`; the demo data references all three and never recreates them.
 
-**Seeding at runtime** (`DemoDataSeeder`, run by `Odyssey.MigrationService` after migrations):
+**Seeding at runtime** runs in two hosts, behind one gate (`DemoDataGate`, `Odyssey.TestData`):
 **gated** (an allow-list: only Development and Testing ever seed, and an explicit
 `Seed:DemoData=true` cannot override that — it is logged as ignored. Inside those two the flag
-still turns seeding off) and
-**idempotent** (skips if already seeded). The flag is wired into both Docker Compose
-(`SEED_DEMO_DATA`, default on for the dev stack) and Aspire (`Aspire:Seed:DemoData`). Seeded users
-are created confirmed + unlocked so they can sign in despite the admin-approval gate.
+still turns seeding off) and **idempotent**. The flag is wired into both Docker Compose
+(`SEED_DEMO_DATA`, default on for the dev stack, pinned `false` in the prod overlay) and Aspire
+(`Aspire:Seed:DemoData`), for the migrations job and the worker alike. Seeded users are created confirmed + unlocked
+so they can sign in despite the admin-approval gate.
+
+- **`DemoDataSeeder`** (`Odyssey.MigrationService`, after migrations) seeds everything **without bytes**, sentinel-gated
+  per module. It writes no file, no photo and no row that names one, and leaves every contact without an image.
+- **`DemoFileSeeder`** (`Odyssey.Worker/DemoData/`, a one-shot hosted service, `DemoFileSeedingService`) seeds the rest:
+  it waits for the API to initialise the file volumes (`FileStorageWorkerVerification`, the maintenance job's wait),
+  writes each demo file and photo through `StoredFileWriter`/`PhotoOriginalWriter`, and inserts what names them — the
+  tax-statement files, journal entry and task attachments, the photo library with its tags, albums and links, the
+  journal photo placements and `Contact.AvatarFileId` — in the file's own save, and only when the record it attaches to
+  exists. Only a host with the volumes can write a file, and the migrations job has none. It is **record-level
+  idempotent and safe on every replica**: deterministic ids, a lost insert race re-reads the winner's row (its
+  reservation goes to the abandoned-write sweep), and no process state coordinates anything. A demo photo seeded
+  before photos owned their bytes is recognised by its former file id (`DemoPhoto.FormerFileId` = `LegacyFileId`).
+- **So the demo files appear shortly AFTER the stack is healthy, never before.** A test that needs a seeded file,
+  photo, contact image or album polls for it, bounded (`TestShared/DemoFileWait`, 3 minutes) — the E2E and E2E.Api
+  fixtures that read them do, and a new one must too.
 
 ## EF Core Migrations
 
@@ -1626,7 +1639,7 @@ reviewer had to guess whether a `_field` in a new component was a defect or the 
 | New API endpoint | `Odyssey.Api/Controllers/` |
 | Business logic | `Odyssey.Core/Finance/` or `Odyssey.Core/Journal/` |
 | Background job | an `IPeriodicJob` in `Odyssey.Core/`, then one line in `Odyssey.Worker/WorkerHost.cs` |
-| Files on disk | a `StorageFeature` + `IObjectStore` (`Odyssey.Core/FileStorage/`); never a new `FileBlob` reader |
+| Files on disk | a `StorageFeature` + `IObjectStore` (`Odyssey.Core/FileStorage/`); bytes never go in the database |
 | DB schema / entity | `Odyssey.Context/` then add a migration |
 | Frontend page/component | `Odyssey.Client/Pages/` or `Odyssey.Client/Components/` |
 | Shared DTOs | `Odyssey.Dtos/<Module>/` |

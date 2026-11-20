@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Finance;
 using Xunit;
 using ContextJobStatus = Odyssey.Context.FileAnalysisJobStatus;
@@ -129,21 +130,8 @@ public class FileAnalysisServiceTests
         };
         context.Accounts.Add(account);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(new FileMetadata
-        {
-            Id = fileId,
-            UploadedByUserId = "user-1",
-            FileName = "statement.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = 3,
-            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-            UploadedAtUtc = DateTime.UtcNow,
-        });
+        var fileId = (await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1, 2, 3], "statement.pdf", uploadedByUserId: "user-1")).Id;
         await context.SaveChangesAsync();
 
         context.AccountFiles.Add(new AccountFile
@@ -927,21 +915,8 @@ public class FileAnalysisServiceTests
     // Attaches another Statement file to an existing account, returning its file id.
     private static async Task<Guid> AddStatementFileAsync(OdysseyContext context, Guid accountId, string name)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1] };
-        var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(new FileMetadata
-        {
-            Id = fileId,
-            UploadedByUserId = "user-1",
-            FileName = name,
-            ContentType = "application/pdf",
-            SizeBytes = 1,
-            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-            UploadedAtUtc = DateTime.UtcNow,
-        });
+        var fileId = (await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1], name, uploadedByUserId: "user-1")).Id;
         await context.SaveChangesAsync();
         context.AccountFiles.Add(new AccountFile
         {

@@ -19,7 +19,7 @@ namespace Odyssey.Api.Tests;
 /// Issue #345 over real HTTP: the icon on the journal, task and photo tag write and read paths, and the
 /// display icon and tag order on every journal entry, task and photo response shape.
 /// </summary>
-public class JournalTagIconApiTests
+public class JournalTagIconApiTests(JournalTagIconApiTests.Host host) : SharedApiHostTests<JournalTagIconApiTests.Host>(host)
 {
     private const string ActorUserId = "tag-icon-actor";
 
@@ -38,7 +38,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task Post_with_a_catalogue_icon_returns_and_reads_it_back(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(TagPath(kind), new { name = "Holidays", icon = "beach_access" });
@@ -53,7 +53,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task Post_without_an_icon_stores_null(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(TagPath(kind), new { name = "Holidays" });
@@ -67,7 +67,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task Put_changes_the_icon_and_an_omitted_icon_resets_it(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         var id = await SeedTagAsync(factory, kind, "Holidays", "beach_access");
         using var client = factory.CreateClient();
 
@@ -102,7 +102,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(InvalidIcons))]
     public async Task An_invalid_icon_is_a_400_keyed_on_Icon_that_echoes_nothing_and_persists_nothing(Kind kind, string icon)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         var id = await SeedTagAsync(factory, kind, "Existing", "home");
         using var client = factory.CreateClient();
 
@@ -130,7 +130,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task A_stored_unknown_key_reads_as_null_and_never_500s(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         var id = await SeedTagAsync(factory, kind, "Legacy", "<script>retired</script>");
         using var client = factory.CreateClient();
 
@@ -148,7 +148,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task Put_without_the_update_claim_is_forbidden_whatever_the_body(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind).Where(claim => !claim.EndsWith(".update", StringComparison.Ordinal)).ToArray(), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind).Where(claim => !claim.EndsWith(".update", StringComparison.Ordinal)).ToArray());
         var id = await SeedTagAsync(factory, kind, "Holidays", null);
         using var client = factory.CreateClient();
 
@@ -165,7 +165,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task Every_record_response_carries_the_display_icon_and_name_ordered_tag_ids(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(RecordAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(RecordAdmin(kind));
         var trip = await SeedTagAsync(factory, kind, "Trip", "beach_access");
         var art = await SeedTagAsync(factory, kind, "art", null);
         var auto = await SeedTagAsync(factory, kind, "Auto", "directions_car");
@@ -200,7 +200,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task The_record_read_claim_alone_yields_the_display_icon(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory([ReadClaim(kind)], ActorUserId);
+        var factory = Factory.ForCaller([ReadClaim(kind)]);
         var trip = await SeedTagAsync(factory, kind, "Trip", "beach_access");
         await SeedRecordAsync(factory, kind, trip);
         using var client = factory.CreateClient();
@@ -212,7 +212,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task An_untagged_record_has_the_default_display_icon_on_the_wire(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(RecordAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(RecordAdmin(kind));
         using var client = factory.CreateClient();
 
         var post = await PostRecordAsync(client, kind, []);
@@ -225,7 +225,7 @@ public class JournalTagIconApiTests
     [MemberData(nameof(Kinds))]
     public async Task Renaming_a_tag_changes_which_icon_a_record_shows(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(RecordAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(RecordAdmin(kind));
         var bills = await SeedTagAsync(factory, kind, "Bills", "receipt_long");
         var food = await SeedTagAsync(factory, kind, "Food", "restaurant");
         using var client = factory.CreateClient();
@@ -392,8 +392,14 @@ public class JournalTagIconApiTests
                 context.JournalTasks.Add(task);
                 break;
             default:
-                var (photo, _) = Odyssey.Testing.FileStorage.PhotoTestData.StageLegacyPhoto(context, userId: ActorUserId, createdAt: now);
+                // Only the tag link is read here, so the photo names a stored object that exists nowhere (EF InMemory).
+                var photo = new Photo
+                {
+                    StoredObjectId = Guid.NewGuid(), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 1,
+                    Sha256Hash = new string('a', 64), CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+                };
                 photo.Tags.Add(new PhotoTagLink { PhotoTagId = tagId });
+                context.Photos.Add(photo);
                 break;
         }
 
@@ -452,4 +458,7 @@ public class JournalTagIconApiTests
             _ => (await context.PhotoTags.AsNoTracking().SingleAsync(tag => name == null || tag.Name == name)).Icon,
         };
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([], ActorUserId);
 }

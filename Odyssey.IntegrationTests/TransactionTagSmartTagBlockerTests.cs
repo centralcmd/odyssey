@@ -18,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// foreign keys at all, so the guard test for the key has nowhere else to live — and without it a
 /// later migration could drop the key to <c>Cascade</c> with every fast test still green.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class TransactionTagSmartTagBlockerTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_transaction_tag_smart_tag_blocker";

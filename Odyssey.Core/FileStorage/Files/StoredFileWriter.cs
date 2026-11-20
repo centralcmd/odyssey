@@ -35,7 +35,7 @@ public sealed class StoredFileWriter(
         }
     }
 
-    /// <summary>Whether the area can be written right now, for a caller that must not throw (the move's per-area gate).</summary>
+    /// <summary>Whether the area can be written right now, for a caller that must not throw.</summary>
     public bool CanWrite(StoredFileArea area)
     {
         try

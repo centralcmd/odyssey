@@ -15,7 +15,7 @@ using Odyssey.Api.Tests.Infrastructure;
 namespace Odyssey.Api.Tests;
 
 /// <summary>ICS import/export endpoints (issue #330).</summary>
-public class CalendarIcsApiTests
+public class CalendarIcsApiTests(CalendarIcsApiTests.Host host) : SharedApiHostTests<CalendarIcsApiTests.Host>(host)
 {
     private const string ActorUserId = "calendar-ics-actor-id";
     private const string CalendarsPath = "/api/calendars";
@@ -34,8 +34,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_EmptyCalendar_ReturnsValidVCalendar_WithNoSniff()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Empty");
 
         var response = await client.GetAsync($"{CalendarsPath}/{calendar.CalendarId}/ics");
@@ -52,8 +52,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_FileName_IsDatePrefixedCalendarName()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Trips");
 
         var response = await client.GetAsync($"{CalendarsPath}/{calendar.CalendarId}/ics");
@@ -68,8 +68,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_MissingCalendar_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{CalendarsPath}/{Guid.NewGuid()}/ics");
 
@@ -79,8 +79,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync($"{CalendarsPath}/{Guid.NewGuid()}/ics");
 
@@ -90,8 +90,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_UnmodifiedSeries_EmitsSingleRRule()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Series");
 
         var post = await client.PostAsJsonAsync("/api/recurrence-patterns", new NewRecurrencePattern
@@ -117,8 +117,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_UnclampedMonthlySeries_EmitsSingleRRule()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Monthly");
 
         // DayOfMonth=15 never clamps (every month has a 15th), so the stored rows match the unclamped
@@ -145,8 +145,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_ClampedMonthlySeries_FlattensToStandaloneVEvents()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Clamped");
 
         // DayOfMonth=31 starting Jan 31: the generator clamps Feb→28 and Apr→30, so the stored dates
@@ -178,8 +178,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_AllDayRecurringSeries_UntilIsDateValued()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "AllDaySeries");
 
         // All-day weekly series bounded by RecurrenceEndDate → the exported RRULE UNTIL must be a DATE
@@ -207,8 +207,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Export_EditedOccurrence_IsARecurrenceIdComponentOfTheRule()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Edited");
 
         var pattern = await (await client.PostAsJsonAsync("/api/recurrence-patterns", new NewRecurrencePattern
@@ -255,8 +255,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_ThreeStandaloneEvents_CreatesThreeRowsWithExternalUid()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Import");
 
         var ics = Vcalendar(
@@ -285,8 +285,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_ForeignSyntheticUid_DoesNotPersistAsExternalUid()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "ForeignSynthetic");
 
         var foreignUid = $"{Guid.NewGuid()}@odyssey.local";
@@ -305,8 +305,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_ExportedFile_IsIdempotent_CreatesZeroNewRows()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "RoundTrip");
 
         await client.PostAsJsonAsync("/api/calendar-events", new NewCalendarEvent
@@ -352,8 +352,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_WeeklyCountNoByDay_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "WeeklyDefault");
 
         var ics = Vcalendar(Vevent("w1",
@@ -371,8 +371,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_WkstNonDefault_IsAccepted()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Wkst");
 
         var ics = Vcalendar(Vevent("k1",
@@ -387,8 +387,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_ExdateOnSeries_ImportsTheSeriesWithItsExclusion()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Exdate");
 
         var ics = Vcalendar(Vevent("e1",
@@ -411,8 +411,8 @@ public class CalendarIcsApiTests
     public async Task Import_DuplicateUidInFile_LastComponentWins()
     {
         // Issue #516 R2: no whole-file UID set; a UID seen again updates what the earlier component wrote.
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Dupe");
 
         var ics = Vcalendar(
@@ -433,8 +433,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_TzidEvent_ConvertsToUtc()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Tzid");
 
         var ics = Vcalendar(Vevent("t1",
@@ -453,8 +453,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_AllDayEvent_HasExclusiveEnd()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "AllDay");
 
         var ics = Vcalendar(Vevent("d1",
@@ -474,8 +474,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_MalformedFile_ReturnsBadRequest_NotServerError()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Bad");
 
         var response = await PostIcsAsync(client, calendar.CalendarId, "this is not an ics file", "notes.ics");
@@ -486,8 +486,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_WrongContentType_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Ct");
 
         var ics = Vcalendar(Vevent("c1", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:x"));
@@ -499,8 +499,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_NonIcsExtension_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Ext");
 
         var ics = Vcalendar(Vevent("x1", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:x"));
@@ -512,8 +512,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_MissingCalendar_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(Vevent("m1", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:x"));
         var response = await PostIcsAsync(client, Guid.NewGuid(), ics);
@@ -524,8 +524,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_WithOnlyCreateClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.CalendarCreate, PermissionClaims.CalendarRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.CalendarCreate, PermissionClaims.CalendarRead]);
 
         var ics = Vcalendar(Vevent("p1", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:x"));
         var response = await PostIcsAsync(client, Guid.NewGuid(), ics);
@@ -536,8 +536,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_ReImportSeries_WithEditedFutureOccurrence_KeepsTheEdit()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Regen");
 
         // FREQ=WEEKLY on a Monday DTSTART, no BYDAY → the series' own weekday. Future dates so every
@@ -589,8 +589,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_TooManyVEvents_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         (await client.PutAsJsonAsync("/api/system-settings", new Odyssey.Dtos.Application.SystemSettingsUpdate
         {
             // The export cap may not exceed the import cap (the round-trip pair rule), so both move.
@@ -611,8 +611,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_ExceedsAggregateOccurrenceCap_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Aggregate");
 
         // 8 daily series of 730 occurrences = 5840 rows > 5000 aggregate cap.
@@ -633,8 +633,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_UpdatePathExceedsAggregateCap_ReturnsBadRequest_WithoutMutating()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "AggUpdate");
 
         // Seed 7 daily series of 730 occurrences via 7 SEPARATE imports (each 730 rows, under the 5000
@@ -678,8 +678,8 @@ public class CalendarIcsApiTests
     [InlineData("RRULE:FREQ=HOURLY;COUNT=5", "Unsupported recurrence frequency.")]
     public async Task Import_UnmappableRrule_IsSkippedWithReason(string rrule, string expectedReason)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "SkipReasons");
 
         var ics = Vcalendar(Vevent("r1", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:Rule", rrule));
@@ -699,8 +699,8 @@ public class CalendarIcsApiTests
     [InlineData("RRULE:FREQ=DAILY;COUNT=5", "EXRULE:FREQ=WEEKLY;COUNT=1")]
     public async Task Import_MultipleOrExceptionRules_IsSkippedWithReason(string first, string second)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "MultiRule");
 
         var ics = Vcalendar(Vevent(
@@ -716,8 +716,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_OctetStreamContentType_IsAccepted()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Octet");
 
         // Browsers/OSes routinely send application/octet-stream for .ics — it must be accepted.
@@ -730,8 +730,8 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_TitleTooLong_IsSkippedNotTruncated()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Long");
 
         var longTitle = new string('x', 201);
@@ -789,7 +789,7 @@ public class CalendarIcsApiTests
         return await client.PostAsync($"{CalendarsPath}/{calendarId}/ics", content);
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateCalendarContext)
@@ -803,4 +803,7 @@ public class CalendarIcsApiTests
             services.AddDbContext<CalendarContext>(options => options.UseInMemoryDatabase(calendarDatabaseName));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

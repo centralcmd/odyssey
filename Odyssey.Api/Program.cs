@@ -454,7 +454,6 @@ builder.Services.AddScoped<ContractEventService>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IContactLookup, Odyssey.Core.Journal.ContactLookup>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IContactReferenceGuard, Odyssey.Core.Finance.ContactReferenceGuard>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IFileLookup, Odyssey.Core.Finance.FileLookup>();
-builder.Services.AddScoped<Odyssey.Core.Finance.IFileReferenceGuard, Odyssey.Core.Finance.FileReferenceGuard>();
 builder.Services.AddScoped<Odyssey.Core.Journal.JournalEntryService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.JournalEntryIcsService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.JournalTagService>();
@@ -463,9 +462,8 @@ builder.Services.AddScoped<Odyssey.Core.Journal.JournalTaskTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.TaskIcsService>();
 
 // Photos module (issue #321), now part of the merged OdysseyContext; consumes the Finance lookups above and
-// the bounded image-content reader for in-process EXIF/IPTC/XMP extraction. IPhotoLookup is the narrow
+// reads originals through PhotoOriginalSource for in-process EXIF/IPTC/XMP extraction. IPhotoLookup is the narrow
 // read surface the Journal module uses to link library photos. Gated by claims only.
-builder.Services.AddScoped<Odyssey.Core.Finance.IImageContentReader, Odyssey.Core.Finance.ImageContentReader>();
 builder.Services.AddSingleton<Odyssey.Core.Journal.IPhotoMetadataExtractor, Odyssey.Core.Journal.PhotoMetadataExtractor>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoMetadataService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoService>();
@@ -559,14 +557,13 @@ builder.Services.AddSingleton(TimeProvider.System);
 // registers NO hosted service for the store (A3.1). Volumes and bindings are deploy-time configuration
 // (FileStorage:Volumes / FileStorage:Bindings), verified below before the host listens.
 builder.Services.AddFileStorage();
-// Photo thumbnails (issue #362): the storage feature, the service the photo paths use and the rename observer. The
+// Photo thumbnails (issue #362): the storage feature, the service the photo paths use. The
 // job and the decoder are the worker's alone; nothing here decodes an image.
 builder.Services.AddPhotoThumbnails();
-// Photo originals (issue #428): the storage feature, the content source every reader uses and the writer. The
-// backfill that moves legacy originals out of FileBlob runs in the worker.
+// Photo originals (issue #428): the storage feature, the content source every reader uses and the writer.
 builder.Services.AddPhotoOriginals();
 // Files on the store (issue #448): the finance, journal and contact-avatar areas, the writer every upload uses and the
-// content source every download reads through. The move of the legacy FileBlobs runs in the worker.
+// content source every download reads through.
 builder.Services.AddStoredFiles();
 // News reader (issue #470): the NewsArticles storage feature, which every host with volumes binds. The fetching job runs
 // in the worker; the API makes no outbound request for news.

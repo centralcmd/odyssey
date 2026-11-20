@@ -19,7 +19,7 @@ namespace Odyssey.IntegrationTests;
 /// the projection). The API tests cover both on EF InMemory, which evaluates LINQ in memory and so
 /// proves nothing about whether either shape translates to MariaDB SQL.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class AccountContractLinkRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_account_contract_links";

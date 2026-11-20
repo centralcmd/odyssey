@@ -23,7 +23,7 @@ namespace Odyssey.Api.Tests;
 /// security toggles, the volume caps and the last administrator's identity.
 /// </para>
 /// </summary>
-public class FileAnalysisDisclosureApiTests
+public class FileAnalysisDisclosureApiTests(FileAnalysisDisclosureApiTests.Host host) : SharedApiHostTests<FileAnalysisDisclosureApiTests.Host>(host)
 {
     private const string Path = "/api/file-analysis/disclosure";
     private const string ActorUserId = "11111111-1111-1111-1111-111111111111";
@@ -48,7 +48,7 @@ public class FileAnalysisDisclosureApiTests
     {
         // The consent gate is shown to ordinary users while the settings API is Admin-only, so a
         // caller holding no permissions at all must still be able to read the disclosure.
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -59,7 +59,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task Anonymous_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -70,7 +70,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task Body_ContainsExactlyTheDocumentedProperties()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var json = await client.GetStringAsync(Path);
@@ -85,7 +85,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task Body_ServesTheSeededValues()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<FileAnalysisDisclosureDto>(Path);
@@ -104,7 +104,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task AnAdminEditIsServedToOrdinaryUsers()
     {
-        await using var factory = new ApiFactory([PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsSecurityUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsSecurityUpdate]);
         using var client = factory.CreateClient();
 
         var update = await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
@@ -130,7 +130,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task ADatabasePlantedJavascriptUrl_IsRefusedNotServed()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -164,7 +164,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task ADegradedRead_ReturnsServiceUnavailable()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -193,7 +193,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task AnUnseededDatabase_IsHealthyAndServesTheCompiledDefaults()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -205,7 +205,7 @@ public class FileAnalysisDisclosureApiTests
 
     // No photo volume: these tests read the settings table as EF InMemory leaves it without EnsureCreated (no seeded
     // rows), and verifying a volume ensures the store is created.
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId,
             configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" });
 
@@ -219,7 +219,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task Body_CarriesTheLiveSwitchAndTheSettingsModel()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         // Written before the first read, so the snapshot is cold and picks the model up. The model
         // comes from the CACHED snapshot; only the switch is live, which is the split the next two
         // assertions demonstrate.
@@ -299,7 +299,7 @@ public class FileAnalysisDisclosureApiTests
     [Fact]
     public async Task TheResponse_NeverCarriesTheBaseUrlOrItsHost_AndTheVersionIsNotReversible()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         await factory.EnableFileAnalysisAsync();
         await factory.SetSystemSettingAsync(
             SystemSettingsKeys.FileAnalysisBaseUrl, "https://very-distinctive-gateway.internal");
@@ -318,4 +318,6 @@ public class FileAnalysisDisclosureApiTests
         Assert.DoesNotContain(dto.Processor, dto.DisclosureVersion, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

@@ -349,9 +349,9 @@ rather than seeded data. The logo is deliberately **not square** (320 × 136); a
 make the contained framing indistinguishable from the cover one, which is the whole thing the pair is
 there to show.
 
-The two `FileMetadata`/`FileBlob` rows are carried separately on `DemoDataSet` and written by
-`SeedContactsAsync` rather than with the rest of the Files store: `Contact.AvatarFileId` is a real
-foreign key, and contacts are seeded before finance.
+The two images are carried on `DemoDataSet.ContactAvatars` and written, like every demo file and photo, by the
+worker's `DemoFileSeeder` onto the object store, which then points the contact's `AvatarFileId` at its image: only a
+host with the file volumes can write a file, so the migrations job seeds the contacts without one.
 
 ### 3.11 Demo transactions
 

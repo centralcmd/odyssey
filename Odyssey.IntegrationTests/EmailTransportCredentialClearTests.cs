@@ -44,7 +44,7 @@ namespace Odyssey.IntegrationTests;
 /// and it is the one that fails if the transaction is ever removed.
 /// </para>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_email_transport_clear";

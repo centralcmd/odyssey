@@ -556,19 +556,16 @@ internal sealed partial class CalendarAttachmentImporter(
         public DateTime Order { get; init; }
     }
 
-    // PhotoOriginalSource.Describe's effective hash and size, as a member-init shape: EF composes a filter over a
-    // positional record's members on the in-memory provider only, so the same rule is restated here translatably.
+    // A photo's hash and size, as a member-init shape: EF composes a filter over a positional record's members on the
+    // in-memory provider only, so PhotoOriginalSource.Describe is not reused here.
     private IQueryable<Candidate> PhotoContent() =>
-        from p in context.Photos.AsNoTracking()
-        join f in context.FileMetadata on p.FileId equals (Guid?)f.Id into files
-        from f in files.DefaultIfEmpty()
-        select new Candidate
+        context.Photos.AsNoTracking().Select(p => new Candidate
         {
             Id = p.PhotoId,
-            Hash = p.Sha256Hash ?? (f == null ? null : f.Sha256Hash),
-            Size = p.SizeBytes ?? (f == null ? null : (long?)f.SizeBytes),
+            Hash = p.Sha256Hash,
+            Size = p.SizeBytes,
             Order = DateTime.MinValue,
-        };
+        });
 
     private async Task<List<(Guid Id, string? Hash, long? Size, DateTime Order)>> Candidates(
         CalendarLinkKind kind, System.Linq.Expressions.Expression<Func<Candidate, bool>> filter, CancellationToken cancellationToken)

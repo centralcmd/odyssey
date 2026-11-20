@@ -235,61 +235,6 @@ public class PhotoThumbnailJobRun : JobRun
 }
 
 /// <summary>
-/// A burst or manual run of the photo-original move (issue #428), or a held period of one process — storage
-/// unavailable, or the back-off after a storage or database error.
-/// </summary>
-public class PhotoOriginalBackfillJobRun : JobRun
-{
-    public PhotoOriginalBackfillJobRun() : base(Dtos.Application.JobType.PhotoOriginalBackfill)
-    {
-    }
-
-    /// <summary>Moved, with the database file removed because nothing else used it.</summary>
-    public int PhotosMoved { get; set; }
-
-    /// <summary>Moved, with the database file kept because something else still uses it.</summary>
-    public int PhotosCopiedShared { get; set; }
-
-    /// <summary>Parked for a reason of their own (a <c>PhotoOriginalBackfillFailures</c> code).</summary>
-    public int PhotosParked { get; set; }
-
-    /// <summary>Ticks cut short by a storage or database error; the move then backs off.</summary>
-    public int Interruptions { get; set; }
-
-    protected override (int Processed, int Failed) HeadlineCounts() => (PhotosMoved + PhotosCopiedShared, PhotosParked);
-}
-
-/// <summary>
-/// A burst or manual run of the file move (issue #448), or a held period of one process — storage unavailable, or the
-/// back-off after a storage or database error. <see cref="Interruptions"/> shares its column with
-/// <see cref="PhotoOriginalBackfillJobRun.Interruptions"/>.
-/// </summary>
-public class FileBlobBackfillJobRun : JobRun
-{
-    public FileBlobBackfillJobRun() : base(Dtos.Application.JobType.FileBlobBackfill)
-    {
-    }
-
-    /// <summary>Moved to <c>finance-files/</c>.</summary>
-    public int FinanceFilesMoved { get; set; }
-
-    /// <summary>Moved to <c>journal-files/</c>.</summary>
-    public int JournalFilesMoved { get; set; }
-
-    /// <summary>Moved to <c>contact-avatars/</c>.</summary>
-    public int ContactAvatarsMoved { get; set; }
-
-    /// <summary>Parked for a reason of their own (a <c>FileBlobBackfillFailures</c> code).</summary>
-    public int FilesParked { get; set; }
-
-    /// <summary>Ticks cut short by a storage or database error; the move then backs off.</summary>
-    public int Interruptions { get; set; }
-
-    protected override (int Processed, int Failed) HeadlineCounts() =>
-        (FinanceFilesMoved + JournalFilesMoved + ContactAvatarsMoved, FilesParked);
-}
-
-/// <summary>
 /// An instrument-price sync run or a purge of an instrument's prices (issue #446 §4.6). The purge takes the same
 /// <see cref="JobRun.ExclusiveGuard"/>, so a purge and a sync never overlap.
 /// </summary>

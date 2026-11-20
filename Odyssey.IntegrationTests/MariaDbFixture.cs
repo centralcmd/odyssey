@@ -10,14 +10,33 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Spins up a real MariaDB container (shared across the test collection) and provisions the
-/// Odyssey databases, so tests exercise the actual relational engine — migrations, FK
-/// and cascade behaviour, decimal/datetime fidelity — that EF InMemory cannot represent.
-/// If no Docker daemon is reachable the fixture degrades gracefully: <see cref="Available"/> is false
-/// and tests skip — unless <c>ODYSSEY_REQUIRE_TIER</c> names <c>integration</c>, in which case they fail.
-/// Any other startup failure (image pull, container start, provisioning) always fails the tier
+/// Spins up a real MariaDB container and provisions the Odyssey databases, so tests exercise the actual
+/// relational engine — migrations, FK and cascade behaviour, decimal/datetime fidelity — that EF InMemory
+/// cannot represent. If no Docker daemon is reachable the fixture degrades gracefully: <see cref="Available"/>
+/// is false and tests skip — unless <c>ODYSSEY_REQUIRE_TIER</c> names <c>integration</c>, in which case they
+/// fail. Any other startup failure (image pull, container start, provisioning) always fails the tier
 /// (issue #257; see <see cref="TestTierGate"/>).
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>One container per test assembly, shared by several collections.</b> The tier is split into collections
+/// that xUnit runs in parallel (<see cref="MariaDbCollection"/> and its siblings below; the layout is in the
+/// README). xUnit builds one fixture instance per collection, so the container, its startup outcome and the
+/// template cache are static: the first collection to initialise starts the container, every other one awaits
+/// that same start, and a failed start fails every collection the same way. The container is removed when the
+/// test process exits (and by the Testcontainers reaper should the process die), not when a collection
+/// finishes — the non-parallel <see cref="MariaDbTimingCollection"/> starts only after the others have
+/// finished and disposed their fixtures.
+/// </para>
+/// <para>
+/// <b>Tests in different collections run at the same time against the same server</b>, so a database name may
+/// belong to one test class only. The shared <c>odyssey</c> and <c>odyssey_relational</c> databases hold data
+/// only for classes in <see cref="MariaDbSharedDatabaseCollection"/> (and the timing collection, which runs
+/// alone); every other class owns its private databases by name, and <c>DatabaseNameUniquenessTests</c> fails
+/// when two source files name the same <c>odyssey_…</c> database. Connecting to <c>odyssey</c> only to create
+/// or drop another database, as many classes' admin contexts do, is not a use of it.
+/// </para>
+/// </remarks>
 public sealed class MariaDbFixture : IAsyncLifetime
 {
     private const string Image = "mariadb:11.4";
@@ -41,9 +60,14 @@ public sealed class MariaDbFixture : IAsyncLifetime
     internal static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(10);
     internal static readonly TimeSpan ReadinessTimeout = TimeSpan.FromMinutes(3);
 
-    // Built in InitializeAsync, not a field initialiser: .Build() resolves the Docker endpoint and
-    // throws DockerUnavailableException when no daemon is reachable, the one failure that may become a skip.
-    private MySqlContainer? container;
+    // Built in StartAsync, not a field initialiser: .Build() resolves the Docker endpoint and throws
+    // DockerUnavailableException when no daemon is reachable, the one failure that may become a skip.
+    // Static: one container for the assembly, whichever collection's fixture starts it (see the remarks).
+    private static MySqlContainer? container;
+
+    // The one start, awaited by every collection's fixture. Its result is the skip reason (null when the server is
+    // up); a faulted start rethrows the same fault into every collection.
+    private static readonly Lazy<Task<string?>> Startup = new(StartAsync, LazyThreadSafetyMode.ExecutionAndPublication);
 
     public bool Available { get; private set; }
 
@@ -97,14 +121,15 @@ public sealed class MariaDbFixture : IAsyncLifetime
 
     // One build per target migration, shared by every caller asking for it: a Lazy per key, so two tests wanting the
     // same template wait on one build while a test wanting a different one builds its own alongside. A failed build
-    // stays failed for the container, like any other fixture fault.
-    private readonly ConcurrentDictionary<string, Lazy<Task<MigratedSchemaTemplate>>> templates = new(StringComparer.Ordinal);
+    // stays failed for the container, like any other fixture fault. Static, like the container: the collections run in
+    // parallel, and a cache per fixture would race another's DROP/CREATE of the same template database.
+    private static readonly ConcurrentDictionary<string, Lazy<Task<MigratedSchemaTemplate>>> templates = new(StringComparer.Ordinal);
 
-    private Task<MigratedSchemaTemplate> TemplateAsync(string? migrationId) =>
+    private static Task<MigratedSchemaTemplate> TemplateAsync(string? migrationId) =>
         templates.GetOrAdd(
             migrationId ?? "",
             _ => new Lazy<Task<MigratedSchemaTemplate>>(
-                () => MigratedSchemaTemplate.BuildAsync(OdysseyConnectionString, ConnectionStringFor, migrationId),
+                () => MigratedSchemaTemplate.BuildAsync(BuildConnectionString(SharedDatabase), BuildConnectionString, migrationId),
                 LazyThreadSafetyMode.ExecutionAndPublication)).Value;
 
     public async Task InitializeAsync()
@@ -113,11 +138,17 @@ public sealed class MariaDbFixture : IAsyncLifetime
         // rather than silently leaving the tier unrequired for the day Docker is missing.
         TestTierGate.IsRequired(TestTierGate.Integration);
 
+        SkipReason = await Startup.Value;
+        Available = SkipReason is null;
+    }
+
+    private static async Task<string?> StartAsync()
+    {
         try
         {
             // The image goes through the constructor, not .WithImage(): Testcontainers 4.14 obsoleted the
             // parameterless MySqlBuilder() so the image is known before any module default is applied.
-            container = new MySqlBuilder(Image)
+            var built = new MySqlBuilder(Image)
                 .WithDatabase(SharedDatabase)
                 .WithUsername(AppUser)
                 .WithPassword(AppPassword)
@@ -138,13 +169,15 @@ public sealed class MariaDbFixture : IAsyncLifetime
                         ["healthcheck.sh", "--connect", "--innodb_initialized"],
                         strategy => strategy.WithTimeout(ReadinessTimeout)))
                 .Build();
+            container = built;
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => built.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
             // The pull, the create and the readiness wait together; a cancellation here is a Faulted start.
             using (var startup = new CancellationTokenSource(StartupTimeout))
             {
                 try
                 {
-                    await container.StartAsync(startup.Token);
+                    await built.StartAsync(startup.Token);
                 }
                 catch (OperationCanceledException ex) when (startup.IsCancellationRequested)
                 {
@@ -164,7 +197,7 @@ public sealed class MariaDbFixture : IAsyncLifetime
 
             // The image creates the shared database; add the isolated relational one too.
             using var provisioning = new CancellationTokenSource(ReadinessTimeout);
-            var result = await container.ExecAsync(
+            var result = await built.ExecAsync(
             [
                 "mariadb", "-uroot", $"-p{RootPassword}", "-e",
                 $"CREATE DATABASE IF NOT EXISTS {RelationalDatabase}; " +
@@ -176,12 +209,12 @@ public sealed class MariaDbFixture : IAsyncLifetime
                 throw new InvalidOperationException($"Database provisioning failed: {result.Stderr}");
             }
 
-            Available = true;
+            return null;
         }
         catch (Exception ex) when (ClassifyStartupFailure(ex) == TierProbe.PrerequisiteMissing)
         {
             // No Docker daemon: the one condition that may skip, and only when the tier is not required.
-            SkipReason = TestTierGate.Resolve(
+            return TestTierGate.Resolve(
                 TestTierGate.Integration, TierProbe.PrerequisiteMissing,
                 $"MariaDB Testcontainer unavailable, Docker is not reachable: {ex.Message}", ex);
         }
@@ -219,21 +252,51 @@ public sealed class MariaDbFixture : IAsyncLifetime
         return TierProbe.Faulted;
     }
 
-    public async Task DisposeAsync()
-    {
-        if (container is not null)
-        {
-            await container.DisposeAsync();
-        }
-    }
+    // Nothing to release per collection: the container outlives every collection (see the remarks).
+    public Task DisposeAsync() => Task.CompletedTask;
 
-    private string BuildConnectionString(string database) =>
+    private static string BuildConnectionString(string database) =>
         $"server={container!.Hostname};port={container.GetMappedPublicPort(ContainerPort)};" +
         $"database={database};user={AppUser};password={AppPassword};";
 }
 
+// The collections below run in parallel with each other (xunit.runner.json), against the one container. Which class
+// goes where, and why, is in the README ("Parallel collections"); a new class with a private database of its own
+// joins MariaDbCollection.
+
+/// <summary>Classes that use only private databases they own by name — the default collection.</summary>
 [CollectionDefinition(Name)]
 public sealed class MariaDbCollection : ICollectionFixture<MariaDbFixture>
 {
     public const string Name = "MariaDb";
+}
+
+/// <summary>More classes that use only private databases they own by name, split out of
+/// <see cref="MariaDbCollection"/> so the two run side by side.</summary>
+[CollectionDefinition(Name)]
+public sealed class MariaDbPrivateDatabaseCollection : ICollectionFixture<MariaDbFixture>
+{
+    public const string Name = "MariaDb.PrivateDatabases";
+}
+
+/// <summary>
+/// Every class that keeps data in the shared <c>odyssey</c> or <c>odyssey_relational</c> database. They are not
+/// isolated from each other, so they stay together in one collection, which runs them one at a time.
+/// </summary>
+[CollectionDefinition(Name)]
+public sealed class MariaDbSharedDatabaseCollection : ICollectionFixture<MariaDbFixture>
+{
+    public const string Name = "MariaDb.SharedDatabases";
+}
+
+/// <summary>
+/// Classes that measure something CPU contention or a concurrent test distorts: elapsed-time budgets (P95, a lock wait
+/// bounded in seconds), and process-wide heap and allocation counters (<c>GC.GetTotalMemory</c>,
+/// <c>GC.GetTotalAllocatedBytes</c>), which count every thread in the test process. Not parallel: xUnit runs it alone,
+/// after every parallel collection has finished.
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class MariaDbTimingCollection : ICollectionFixture<MariaDbFixture>
+{
+    public const string Name = "MariaDb.Timing";
 }

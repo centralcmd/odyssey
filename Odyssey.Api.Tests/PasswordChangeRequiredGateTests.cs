@@ -19,10 +19,17 @@ namespace Odyssey.Api.Tests;
 /// out. Everything here authenticates through the real cookie pipeline, because that is the only way the
 /// gate's central questions ("does the same session still work afterwards?") can be asked at all.
 /// </summary>
-public class PasswordChangeRequiredGateTests
+public class PasswordChangeRequiredGateTests(PasswordChangeRequiredGateTests.SharedGateHost sharedHost)
+    : IClassFixture<PasswordChangeRequiredGateTests.SharedGateHost>
 {
     private const string GatedEmail = "gated@example.com";
     private const string NewPassword = "Renewed987!Passphrase";
+
+    /// <summary>
+    /// The three per-endpoint theories share one host (<see cref="SharedGateHost"/>): each case signs in a user of its
+    /// own, so no case sees another's gate flag. The rest of the class changes host-wide state and keeps a fresh host.
+    /// </summary>
+    private static string UniqueGatedEmail() => $"gated-{Guid.NewGuid():N}@example.com";
 
     /// <summary>
     /// A sample across modules. It is a smoke check, not the guarantee — that is
@@ -49,9 +56,10 @@ public class PasswordChangeRequiredGateTests
     [InlineData("POST", "/api/account/email")]
     public async Task WhileGated_EveryModuleIsRefused(string method, string path)
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail, RoleDefinitions.AdminId);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var email = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(email, RoleDefinitions.AdminId);
+        using var client = await factory.LoginAsync(email);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await SendAsync(client, method, path);
@@ -75,9 +83,10 @@ public class PasswordChangeRequiredGateTests
     [InlineData("GET", "/manage/info")]
     public async Task WithTheFlagClear_TheMiddlewareIsInert(string method, string path)
     {
-        await using var factory = new PasswordGateFactory();
-        await factory.CreateUserAsync(GatedEmail, RoleDefinitions.AdminId);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var email = UniqueGatedEmail();
+        await factory.CreateUserAsync(email, RoleDefinitions.AdminId);
+        using var client = await factory.LoginAsync(email);
 
         var response = await SendAsync(client, method, path);
 
@@ -90,9 +99,10 @@ public class PasswordChangeRequiredGateTests
     [InlineData("GET", "/auth/permissions")]
     public async Task TheExemptReads_StillSucceedWhileGated(string method, string path)
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var email = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(email);
+        using var client = await factory.LoginAsync(email);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await SendAsync(client, method, path);
@@ -446,4 +456,7 @@ public class PasswordChangeRequiredGateTests
             "PUT" => client.PutAsJsonAsync(path, new { }),
             _ => throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported method."),
         };
+
+    /// <summary>One host for the per-endpoint theories; the identity rate limit is the fixture's raised one.</summary>
+    public sealed class SharedGateHost() : PasswordGateFactory();
 }

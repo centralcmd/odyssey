@@ -1,12 +1,11 @@
-using System.Security.Cryptography;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage.Files;
 
 namespace Odyssey.TestData.Generators;
 
 /// <summary>
-/// Deterministic document attachments for the seeded tax statements (issue #173): a real
-/// <see cref="FileBlob"/> (a tiny valid PDF), its <see cref="FileMetadata"/> and the
-/// <see cref="TaxStatementFile"/> link. Only the closed/filed years carry documents — a draft
+/// Deterministic document attachments for the seeded tax statements (issue #173): a
+/// <see cref="DemoFile"/> (a tiny valid PDF, in the finance area) and the <see cref="TaxStatementFile"/> link. Only the closed/filed years carry documents — a draft
 /// statement has none. Attached by the demo Owner user.
 ///
 /// This is the one part of the demo set that provisions stored file content, so the tax-statement
@@ -18,7 +17,7 @@ public static class TaxStatementFileGenerator
 
     private sealed record FileSpec(int FiscalYear, TaxStatementFileType Type, string FileName, string Title, DateTime AttachedAtUtc);
 
-    public static (List<FileBlob> Blobs, List<FileMetadata> Metadata, List<TaxStatementFile> Links) Build()
+    public static (List<DemoFile> Files, List<TaxStatementFile> Links) Build()
     {
         var specs = new List<FileSpec>
         {
@@ -32,8 +31,7 @@ public static class TaxStatementFileGenerator
             new(2025, TaxStatementFileType.SupportingDocument, "brokerage-statement-2025.pdf", "Brokerage Statement 2025", D(2026, 3, 15)),
         };
 
-        var blobs = new List<FileBlob>();
-        var metadata = new List<FileMetadata>();
+        var files = new List<DemoFile>();
         var links = new List<TaxStatementFile>();
 
         foreach (var spec in specs)
@@ -44,27 +42,10 @@ public static class TaxStatementFileGenerator
                 $"Document type: {spec.Type}",
                 "Odyssey demo data — sample document.");
 
-            var blobId = DeterministicGuid.From($"file-blob::tax::{spec.FiscalYear}::{spec.FileName}");
             var metadataId = DeterministicGuid.From($"file-metadata::tax::{spec.FiscalYear}::{spec.FileName}");
-
-            blobs.Add(new FileBlob
-            {
-                Id = blobId,
-                Content = content,
-            });
-
-            metadata.Add(new FileMetadata
-            {
-                Id = metadataId,
-                UploadedByUserId = OwnerUserId,
-                FileName = spec.FileName,
-                ContentType = "application/pdf",
-                SizeBytes = content.LongLength,
-                Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-                FileBlobId = blobId,
-                Description = $"{spec.Title} (demo).",
-                UploadedAtUtc = spec.AttachedAtUtc,
-            });
+            files.Add(DemoFileFactory.File(
+                metadataId, StoredFileArea.Finance, OwnerUserId, spec.FileName, "application/pdf",
+                $"{spec.Title} (demo).", spec.AttachedAtUtc, content));
 
             links.Add(new TaxStatementFile
             {
@@ -77,7 +58,7 @@ public static class TaxStatementFileGenerator
             });
         }
 
-        return (blobs, metadata, links);
+        return (files, links);
     }
 
     private static DateTime D(int year, int month, int day) => new(year, month, day, 0, 0, 0, DateTimeKind.Utc);

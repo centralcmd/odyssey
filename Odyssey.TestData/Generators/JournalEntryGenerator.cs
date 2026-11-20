@@ -1,6 +1,6 @@
-using System.Security.Cryptography;
 using Bogus;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.TestData.Catalog;
 using static Odyssey.TestData.DemoDataDefaults;
 
@@ -16,18 +16,16 @@ namespace Odyssey.TestData.Generators;
 /// carrying first-class photos and generic file attachments, an edited entry (last-editor stamped),
 /// and one archived entry so the archived filter has data.
 ///
-/// The Journal rows keep only file <em>references</em>, so this generator also provisions the backing
-/// Files-store records (<see cref="FileBlob"/> + <see cref="FileMetadata"/>): real browser-renderable
-/// PNGs for photos and tiny valid PDFs for attachments. They are returned separately
-/// (<see cref="Result.FileBlobs"/> / <see cref="Result.FileMetadata"/>) so the seeder can write them
-/// with the rest of the Files store — which it must do first, since the references are real FKs. Authors are the seeded non-Guest demo users (Guest is excluded from the module).
+/// The Journal rows keep only file and photo <em>references</em>, so this generator also provisions what they
+/// point at: real browser-renderable PNGs as library photos and tiny valid PDFs as journal-area files. They are
+/// returned separately (<see cref="Result.Files"/> / <see cref="Result.LibraryPhotos"/>) because only the worker's
+/// demo-file seeder, which has the file volumes, can write them — and the links with them, since they are real FKs. Authors are the seeded non-Guest demo users (Guest is excluded from the module).
 /// </summary>
 public static class JournalEntryGenerator
 {
     /// <summary>
     /// Flat result lists (mirrors the seeder's <c>AddRangeAsync</c> pattern): the journal rows and the
-    /// photo/attachment blobs + metadata they reference, kept apart so the seeder can write the Files
-    /// store first. Nav collections are left empty so nothing double-inserts.
+    /// photos and attachment files they reference, kept apart because a different host writes them. Nav collections are left empty so nothing double-inserts.
     /// </summary>
     public sealed record Result(
         IReadOnlyList<JournalEntry> Entries,
@@ -35,11 +33,10 @@ public static class JournalEntryGenerator
         IReadOnlyList<JournalEntryContact> EntryContacts,
         IReadOnlyList<JournalEntryPhoto> Photos,
         IReadOnlyList<JournalEntryAttachment> Attachments,
-        IReadOnlyList<FileBlob> FileBlobs,
-        IReadOnlyList<FileMetadata> FileMetadata,
+        IReadOnlyList<DemoFile> Files,
         // Photo Library unification (issue #321 v4): a journal entry links a library Photo by PhotoId, so
-        // each journal photo file also gets a shared library Photo record (no double-seeding the file).
-        IReadOnlyList<Photo> LibraryPhotos);
+        // each journal photo is a shared library Photo record.
+        IReadOnlyList<DemoPhoto> LibraryPhotos);
 
     private sealed record EntrySpec(
         string Key,
@@ -185,10 +182,9 @@ public static class JournalEntryGenerator
         var entryTags = new List<JournalEntryTag>();
         var entryContacts = new List<JournalEntryContact>();
         var photos = new List<JournalEntryPhoto>();
-        var libraryPhotos = new List<Photo>();
+        var libraryPhotos = new List<DemoPhoto>();
         var attachments = new List<JournalEntryAttachment>();
-        var blobs = new List<FileBlob>();
-        var metadata = new List<FileMetadata>();
+        var files = new List<DemoFile>();
 
         foreach (var spec in specs)
         {
@@ -232,22 +228,21 @@ public static class JournalEntryGenerator
 
             for (var i = 0; i < spec.PhotoCount; i++)
             {
-                var (blob, meta) = BuildImageFile(spec.Key, i, authorId, spec.EntryDate);
-                blobs.Add(blob);
-                metadata.Add(meta);
-
-                // The shared library Photo the journal link points at (one record per image file).
+                // The shared library Photo the journal link points at. A design-system scene gradient per photo
+                // (varied but deterministic by key+index), matching the standalone library photos.
                 var photoId = DeterministicGuid.From($"photo::journal::{spec.Key}#{i}");
-                libraryPhotos.Add(new Photo
+                var seed = spec.Key.Aggregate(i, (acc, ch) => acc * 31 + ch);
+                libraryPhotos.Add(DemoFileFactory.Photo(new Photo
                 {
                     PhotoId = photoId,
-                    FileId = meta.Id,
                     Title = $"{spec.Title} — photo {i + 1}",
                     TakenAt = DateTime.SpecifyKind(spec.EntryDate, DateTimeKind.Unspecified),
                     CreatedByUserId = authorId,
                     CreatedAt = spec.EntryDate,
                     UpdatedAt = spec.EntryDate,
-                });
+                },
+                    $"{spec.Key}-photo-{i + 1}.png", "image/png", DemoImages.GradientPng(DemoImages.PhotoSize, seed),
+                    DeterministicGuid.From($"journal-photo-file::{spec.Key}#{i}")));
 
                 photos.Add(new JournalEntryPhoto
                 {
@@ -261,20 +256,19 @@ public static class JournalEntryGenerator
 
             for (var i = 0; i < spec.AttachmentCount; i++)
             {
-                var (blob, meta) = BuildPdfFile(spec.Key, i, authorId, spec.EntryDate, spec.Title);
-                blobs.Add(blob);
-                metadata.Add(meta);
+                var file = BuildPdfFile(spec.Key, i, authorId, spec.EntryDate, spec.Title);
+                files.Add(file);
                 attachments.Add(new JournalEntryAttachment
                 {
                     JournalEntryAttachmentId = DeterministicGuid.From($"journal-attachment::{spec.Key}#{i}"),
                     JournalEntryId = entryId,
-                    FileId = meta.Id,
+                    FileId = file.Metadata.Id,
                     CreatedAt = spec.EntryDate,
                 });
             }
         }
 
-        return new Result(entries, entryTags, entryContacts, photos, attachments, blobs, metadata, libraryPhotos);
+        return new Result(entries, entryTags, entryContacts, photos, attachments, files, libraryPhotos);
     }
 
     private static string UserId(string role) => DemoUsers.All.First(user => user.Role == role).Id;
@@ -282,57 +276,14 @@ public static class JournalEntryGenerator
     private static string Clamp(string value, int max) =>
         value.Length <= max ? value : value[..max];
 
-    private static (FileBlob Blob, FileMetadata Metadata) BuildImageFile(
-        string key, int index, string uploaderId, DateTime uploadedAt)
+    private static DemoFile BuildPdfFile(string key, int index, string uploaderId, DateTime uploadedAt, string title)
     {
-        var blobId = DeterministicGuid.From($"journal-photo-blob::{key}#{index}");
-        var metadataId = DeterministicGuid.From($"journal-photo-file::{key}#{index}");
-
-        // A design-system scene gradient per photo (varied but deterministic by key+index) so the gallery
-        // tiles look like the design, matching the standalone library photos.
-        var seed = key.Aggregate(index, (acc, ch) => acc * 31 + ch);
-        var content = DemoImages.GradientPng(DemoImages.PhotoSize, seed);
-
-        var blob = new FileBlob { Id = blobId, Content = content };
-        var metadata = new FileMetadata
-        {
-            Id = metadataId,
-            UploadedByUserId = uploaderId,
-            FileName = $"{key}-photo-{index + 1}.png",
-            ContentType = "image/png",
-            SizeBytes = content.LongLength,
-            Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-            FileBlobId = blobId,
-            Description = "Demo journal photo.",
-            UploadedAtUtc = uploadedAt,
-        };
-        return (blob, metadata);
-    }
-
-    private static (FileBlob Blob, FileMetadata Metadata) BuildPdfFile(
-        string key, int index, string uploaderId, DateTime uploadedAt, string title)
-    {
-        var blobId = DeterministicGuid.From($"journal-attachment-blob::{key}#{index}");
-        var metadataId = DeterministicGuid.From($"journal-attachment-file::{key}#{index}");
-
         var content = MinimalPdf.Create(
             title,
             "Odyssey demo data — journal attachment.",
             $"Reference: {key} (document {index + 1}).");
-
-        var blob = new FileBlob { Id = blobId, Content = content };
-        var metadata = new FileMetadata
-        {
-            Id = metadataId,
-            UploadedByUserId = uploaderId,
-            FileName = $"{key}-attachment-{index + 1}.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = content.LongLength,
-            Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-            FileBlobId = blobId,
-            Description = "Demo journal attachment.",
-            UploadedAtUtc = uploadedAt,
-        };
-        return (blob, metadata);
+        return DemoFileFactory.File(
+            DeterministicGuid.From($"journal-attachment-file::{key}#{index}"), StoredFileArea.Journal, uploaderId,
+            $"{key}-attachment-{index + 1}.pdf", "application/pdf", "Demo journal attachment.", uploadedAt, content);
     }
 }

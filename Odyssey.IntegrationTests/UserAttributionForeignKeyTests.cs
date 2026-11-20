@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Xunit;
 
 namespace Odyssey.IntegrationTests;
@@ -25,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// backed by an observation of them firing.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_user_attribution";
@@ -144,7 +145,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
             {
                 await AttributionUsers.EnsureAsync(seed, userId);
 
-                seed.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+                StoredFileFixtures.AddStoredObjectRow(seed, blobId);
                 seed.FileMetadata.Add(new FileMetadata
                 {
                     Id = fileId,
@@ -153,7 +154,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
                     ContentType = "application/pdf",
                     SizeBytes = 3,
                     Sha256Hash = new string('a', 64),
-                    FileBlobId = blobId,
+                    FinanceStoredObjectId = blobId,
                     UploadedAtUtc = DateTime.UtcNow,
                 });
                 seed.JournalEntries.Add(new JournalEntry
@@ -190,7 +191,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
             var file = await verify.FileMetadata.AsNoTracking().SingleAsync(f => f.Id == fileId);
             var entry = await verify.JournalEntries.AsNoTracking().SingleAsync(e => e.JournalEntryId == entryId);
             var contract = await verify.Contracts.AsNoTracking().SingleAsync(c => c.ContractId == contractId);
-            Assert.True(await verify.FileBlob.AsNoTracking().AnyAsync(b => b.Id == blobId));
+            Assert.True(await verify.StoredObjects.AsNoTracking().AnyAsync(o => o.Id == blobId));
 
             // ...and only the attribution is gone.
             Assert.Null(file.UploadedByUserId);

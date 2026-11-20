@@ -260,66 +260,15 @@ public sealed class PhotoThumbnailApiTests
         }
     }
 
-    // ── Rename busy over HTTP (AC 17) ─────────────────────────────────────────────
-
-    [Fact]
-    public async Task A_rename_that_keeps_losing_to_a_worker_write_is_a_409_with_retry_after()
-    {
-        await using var factory = new JournalFactory(
-            [PermissionClaims.FilesRead, PermissionClaims.FilesUpdate],
-            services => services.AddScoped<IFileRenameObserver, AlwaysInterfering>());
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, JournalFactory.Actor, "Before.jpg");
-        var photoId = Guid.NewGuid();
-        using (var scope = factory.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            context.Photos.Add(new Photo { PhotoId = photoId, FileId = fileId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-            context.PhotoThumbnailJobs.Add(new PhotoThumbnailJobEntry
-            {
-                PhotoId = photoId, State = PhotoThumbnailJobState.Done, NextAttemptAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
-            });
-            // Also an attachment: since PR #441 a file only a photo names is hidden from /api/files, so the Files-store
-            // rename that re-renders a photo's thumbnails is one of a file shared with an attachment.
-            context.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = Guid.NewGuid(), FileId = fileId, CreatedAt = DateTime.UtcNow });
-            await context.SaveChangesAsync();
-        }
-
-        using var client = factory.CreateClient();
-        var response = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata", new Odyssey.Dtos.Finance.UpdateFileMetadataRequest { FileName = "After.jpg" });
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal(TimeSpan.FromSeconds(1), response.Headers.RetryAfter?.Delta);
-        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Contains("rename-busy", problem.RootElement.ToString(), StringComparison.Ordinal);
-        // That the name is kept is a property of one atomic save, which EF InMemory does not have; it is asserted on
-        // MariaDB (PhotoThumbnailRelationalTests and the rename scenarios rerun in Odyssey.IntegrationTests).
-    }
-
-    /// <summary>A worker write that lands between every load and save of the rename (a separate context, so a real token conflict).</summary>
-    private sealed class AlwaysInterfering(IServiceScopeFactory scopes) : IFileRenameObserver
-    {
-        public async Task OnFileRenamingAsync(Guid fileId, CancellationToken cancellationToken)
-        {
-            using var scope = scopes.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var photoId = await context.Photos.Where(p => p.FileId == fileId).Select(p => p.PhotoId).SingleAsync(cancellationToken);
-            var job = await context.PhotoThumbnailJobs.SingleAsync(j => j.PhotoId == photoId, cancellationToken);
-            job.Generation++;
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        public bool Owns(Type entityType) => false;
-    }
-
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task The_api_resolves_the_rename_observer_and_hosts_no_thumbnail_job()
+    public async Task The_api_resolves_the_thumbnail_service_and_hosts_no_thumbnail_job()
     {
         await using var factory = new OdysseyApiFactory([PermissionClaims.PhotosRead]);
         using var scope = factory.Services.CreateScope();
 
-        Assert.Contains(scope.ServiceProvider.GetServices<IFileRenameObserver>(), o => o is PhotoThumbnailRenameObserver);
+        Assert.NotNull(scope.ServiceProvider.GetService<PhotoThumbnailService>());
         Assert.Null(factory.Services.GetService<PhotoThumbnailJob>());
         Assert.Null(factory.Services.GetService<IPhotoThumbnailRenderer>());
         Assert.DoesNotContain(
@@ -349,14 +298,7 @@ public sealed class PhotoThumbnailApiTests
 
     private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory)
     {
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, "thumbnail-uploader");
-        var photoId = Guid.NewGuid();
-        await WithScopeAsync(factory, async (context, _) =>
-        {
-            context.Photos.Add(new Photo { PhotoId = photoId, FileId = fileId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-            await context.SaveChangesAsync();
-        });
-        return photoId;
+        return await PhotoTestSupport.SeedPhotoAsync(factory, "thumbnail-uploader");
     }
 
     private static async Task<Guid> SeedPhotoWithThumbnailsAsync(WebApplicationFactory<Program> factory)

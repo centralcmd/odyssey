@@ -18,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// and source; one priority per instrument; the widened <c>ExclusiveGuard</c>), the CHECKs, and the foreign keys'
 /// on-delete behaviour. None of it is observable on EF InMemory.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_instrument_prices";
@@ -304,7 +304,7 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         await context.SaveChangesAsync();
 
         // The migration just before the hourly cap: reverting to it undoes only this one.
-        await MigrationSeam.MigrateToAsync(context, "_CalendarEventAttachments");
+        await MigrationSeam.MigrateToAsync(context, "_RemoveLegacyFileBlobStorage");
         Assert.Equal(0L, await MigrationSeam.CountAsync(context,
             $"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{Database}' AND COLUMN_NAME IN ('RequestHourUtc', 'RequestHourCount', 'InstrumentsDeferred')"));
 

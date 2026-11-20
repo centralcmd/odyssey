@@ -3,7 +3,7 @@
 `OdysseyContext` is the single application-domain `DbContext`. It owns:
 
 - **Finance** — accounts, transactions, budgets, tags, contracts,
-  tax statements, the Files store (`FileMetadata`/`FileBlob`) and the file-analysis tables, plus the
+  tax statements, the Files store (`FileMetadata`, whose bytes live on the object store) and the file-analysis tables, plus the
   `Currencies` reference table (164 ISO-4217 rows seeded from `HasData` in
   `ModelConfiguration/CurrencyConfiguration.cs`, so the initial migration carries them and nothing needs
   to seed them at runtime).

@@ -23,7 +23,7 @@ namespace Odyssey.Api.Tests;
 /// <c>AllUses</c> recount under <c>FOR UPDATE</c>, "nothing deleted implicitly") are in
 /// <c>Odyssey.IntegrationTests/LocationUnificationRelationalTests</c>.
 /// </summary>
-public class LocationUnificationApiTests
+public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost host) : SharedApiHostTests<LocationUnificationApiTests.SharedHost>(host)
 {
     private const string Actor = "unified-locations-actor";
     private const string LocationsPath = "/api/locations";
@@ -51,7 +51,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_place_without_coordinates_reads_with_nulls_and_hasCoordinates_false()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var created = await host.PostLocationAsync(Place("Storgata 1", "Oslo"));
 
         Assert.Null(created.Latitude);
@@ -65,7 +65,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Partial_coordinates_are_422_keyed_latitude()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
 
         var response = await host.Client.PostAsJsonAsync(LocationsPath, Place("Storgata 1", "Oslo") with { Latitude = 59.9m });
 
@@ -79,7 +79,7 @@ public class LocationUnificationApiTests
     [InlineData(LocationSource.Imported)]
     public async Task Post_with_an_application_source_is_422_keyed_source(LocationSource source)
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
 
         var response = await host.Client.PostAsJsonAsync(LocationsPath, Place("Storgata 1", "Oslo") with { Source = source });
 
@@ -89,7 +89,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Put_may_keep_a_stored_application_source_or_change_it_to_Kartverket_but_not_to_another()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("Converted place", source: LocationSource.Converted);
 
         var keep = await host.Client.PutAsJsonAsync($"{LocationsPath}/{id}", Update("Converted place", LocationSource.Converted));
@@ -109,7 +109,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task An_application_source_carries_no_reference()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("Converted place", source: LocationSource.Converted);
 
         var response = await host.Client.PutAsJsonAsync(
@@ -121,7 +121,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Put_to_an_address_another_place_holds_is_409_keyed_line1()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         await host.PostLocationAsync(Place("Storgata 1", "Oslo"));
         var other = await host.PostLocationAsync(Place("Storgata 2", "Oslo"));
 
@@ -136,7 +136,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Put_that_leaves_a_contact_address_incomplete_is_422_keyed_on_the_first_missing_field()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
         var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
 
@@ -152,7 +152,7 @@ public class LocationUnificationApiTests
     public async Task Put_clearing_the_coordinates_of_a_place_linked_to_weather_is_allowed()
     {
         // Issue #387 AC 23: a weather point keeps its own position, so the place's coordinates are its own.
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("Cabin", latitude: 61.5m);
         await host.SeedWeatherAsync(id);
 
@@ -164,7 +164,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Put_on_a_merged_away_place_is_422_keyed_id()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var target = await host.SeedLocationAsync("Target");
         var source = await host.SeedLocationAsync("Forwarder", mergedInto: target, archived: true);
 
@@ -176,7 +176,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task The_list_filters_on_coordinates_and_on_being_referenced()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var geocoded = await host.SeedLocationAsync("Geocoded", latitude: 60m);
         var bare = await host.SeedLocationAsync("Bare");
         var used = await host.SeedLocationAsync("Used");
@@ -196,7 +196,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Usage_counts_each_readable_kind_and_is_null_for_a_kind_the_caller_cannot_read()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("Home", line1: "Storgata 1", city: "Oslo", country: "NO");
         await host.SeedEventAsync(id);
         await host.SeedEventAsync(id);
@@ -225,7 +225,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Deleting_an_unused_place_is_204_and_it_is_gone()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("Unused");
 
         Assert.Equal(HttpStatusCode.NoContent, (await host.Client.DeleteAsync($"{LocationsPath}/{id}")).StatusCode);
@@ -239,7 +239,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Weather_never_blocks_deleting_a_place()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("Linked");
         var point = await host.SeedWeatherAsync(id);
         await host.SeedPreferenceAsync(point);
@@ -258,7 +258,7 @@ public class LocationUnificationApiTests
     [MemberData(nameof(References))]
     public async Task Deleting_a_referenced_place_is_409_with_a_generic_body(string reference)
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("In use", line1: "Storgata 1", city: "Oslo", country: "NO");
         switch (reference)
         {
@@ -289,7 +289,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task The_six_delete_refusals_have_one_identical_body()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var bodies = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var reference in ReferenceKinds)
         {
@@ -321,7 +321,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Deleting_needs_locations_delete()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var id = await host.SeedLocationAsync("Unused");
         await using var updater = await host.SharingAsync(
             [PermissionClaims.LocationsRead, PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate]);
@@ -334,7 +334,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Merge_repoints_every_kind_dedupes_contact_rows_and_leaves_a_forwarder()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var source = await host.SeedLocationAsync("Source", line1: "Storgata 1", city: "Oslo", country: "NO");
         var target = await host.SeedLocationAsync("Target", line1: "Storgata 2", city: "Oslo", country: "NO", latitude: 59m);
         var olderForwarder = await host.SeedLocationAsync("Older", mergedInto: source, archived: true);
@@ -384,7 +384,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Merge_without_a_class_claim_is_a_generic_403_and_changes_nothing()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var source = await host.SeedLocationAsync("Source");
         var target = await host.SeedLocationAsync("Target");
         var entryId = await host.SeedEntryAsync(source);
@@ -402,7 +402,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Merge_refusals_are_404_and_422_on_the_documented_keys()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var source = await host.SeedLocationAsync("Source");
         var target = await host.SeedLocationAsync("Target");
         var archived = await host.SeedLocationAsync("Archived", archived: true);
@@ -420,7 +420,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task An_event_links_by_id_and_reads_back_the_embed_only_for_a_locations_read_holder()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Cabin", latitude: 61m);
         var calendar = await host.SeedCalendarAsync();
 
@@ -440,7 +440,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task An_event_link_to_an_unknown_or_archived_place_is_422_and_without_locations_read_403()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var archived = await host.SeedLocationAsync("Old", archived: true);
         var place = await host.SeedLocationAsync("Cabin");
         var calendar = await host.SeedCalendarAsync();
@@ -455,7 +455,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task An_unchanged_event_link_is_kept_without_a_claim_even_to_a_place_archived_since_and_an_omitted_one_clears()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Cabin");
         var calendar = await host.SeedCalendarAsync();
         var created = (await (await host.Client.PostAsJsonAsync(EventsPath, NewEvent(calendar, place))).Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
@@ -476,7 +476,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task The_event_series_and_entry_lists_filter_on_locationId()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Cabin");
         var linkedEvent = await host.SeedEventAsync(place);
         await host.SeedEventAsync(null);
@@ -499,7 +499,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_series_copies_its_place_onto_every_generated_occurrence()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Pool");
         var calendar = await host.SeedCalendarAsync();
 
@@ -524,7 +524,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_journal_entry_links_by_id_and_a_nested_location_object_changes_no_place()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Cabin");
 
         var body = new Dictionary<string, object?>
@@ -548,7 +548,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Two_contacts_at_one_address_share_one_place_case_variants_included()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var first = await host.PostAddressAsync(await host.PostContactAsync("A"), Address("Storgata 1", "Oslo"));
         var second = await host.PostAddressAsync(await host.PostContactAsync("B"), Address("STORGATA  1", "oslo") with { CountryCode = "no" });
 
@@ -560,7 +560,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_contact_address_reads_under_contacts_read_alone_with_its_location_id()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
         var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
         await using var reader = await host.SharingAsync([PermissionClaims.ContactsRead]);
@@ -577,7 +577,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Linking_by_id_needs_locations_read_and_the_fields_path_needs_locations_create()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Office", line1: "Storgata 1", city: "Oslo", country: "NO");
         var contactId = await host.PostContactAsync("Acme");
         await host.PostAddressAsync(await host.PostContactAsync("Other"), Address("Kirkegata 2", "Oslo"));
@@ -594,7 +594,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Linking_a_contact_by_id_to_an_incomplete_place_is_422_keyed_locationId()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var cityOnly = await host.SeedLocationAsync("Somewhere", city: "Oslo");
         var contactId = await host.PostContactAsync("Acme");
 
@@ -607,7 +607,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Missing_fields_without_a_locationId_are_422_keyed_on_the_first_missing_one()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
 
         var response = await host.Client.PostAsJsonAsync(
@@ -619,7 +619,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task An_id_with_differing_fields_is_422_and_a_round_tripped_address_is_accepted()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
         var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
         var path = $"{ContactsPath}/{contactId}/addresses";
@@ -637,7 +637,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_contact_listing_a_place_twice_is_409_keyed_locationId()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
         await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
 
@@ -649,7 +649,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_changed_address_without_applyTo_is_422_keyed_applyTo()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
         var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
 
@@ -661,7 +661,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task ThisRecord_moves_only_this_link_and_leaves_the_old_place_unchanged()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var a = await host.PostContactAsync("A");
         var b = await host.PostContactAsync("B");
         var first = await host.PostAddressAsync(a, Address("Storgata 1", "Oslo"));
@@ -683,7 +683,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task ThisRecord_without_locations_create_is_403_whether_or_not_the_address_exists()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
         await host.PostAddressAsync(await host.PostContactAsync("B"), Address("Storgata 2", "Oslo"));
@@ -699,7 +699,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Resending_an_unchanged_locationId_needs_no_location_claim()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
         await using var contactsOnly = await host.SharingAsync([PermissionClaims.ContactsRead, PermissionClaims.ContactsUpdate]);
@@ -714,7 +714,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task AllUses_edits_the_place_in_place_recomposes_an_auto_name_and_keeps_everything_else()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var a = await host.PostContactAsync("A");
         var b = await host.PostContactAsync("B");
         var address = await host.PostAddressAsync(a, Address("Storgata 1", "Oslo"));
@@ -753,7 +753,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task AllUses_leaves_a_typed_name_alone()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var a = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(a, Address("Storgata 1", "Oslo"));
         await host.EditLocationAsync(address.LocationId, l => l.Name = "Grandma's");
@@ -767,7 +767,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task AllUses_needs_locations_update_and_expectedOtherUses_and_rechecks_the_count()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var a = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(a, Address("Storgata 1", "Oslo"));
         var path = $"{ContactsPath}/{a}/addresses/{address.Id}";
@@ -788,7 +788,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task AllUses_to_an_address_another_place_holds_is_409_keyed_line1()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var a = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(a, Address("Storgata 1", "Oslo"));
         await host.PostAddressAsync(await host.PostContactAsync("B"), Address("Storgata 2", "Oslo"));
@@ -802,7 +802,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_case_only_change_is_applied_in_place_and_needs_locations_update_whatever_applyTo_says()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var a = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(a, Address("storgata 1", "oslo"));
         var path = $"{ContactsPath}/{a}/addresses/{address.Id}";
@@ -824,7 +824,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task OtherUses_excludes_the_row_itself_and_counts_only_readable_kinds()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var a = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(a, Address("Storgata 1", "Oslo"));
         await host.SeedEventAsync(address.LocationId);
@@ -844,7 +844,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task An_unchanged_property_save_keeps_its_link_for_a_partial_keyless_address_too()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var cityOnly = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, CountryCode = "NO" });
         var before = await host.ReadAsync(c => c.RealEstateDetails.Where(d => d.PropertyId == cityOnly).Select(d => d.LocationId).SingleAsync());
 
@@ -866,7 +866,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_property_put_with_a_geocode_creates_a_geocoded_place_or_links_a_matching_one_unchanged()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var original = await host.SeedLocationAsync("Old address", line1: "Storgata 1", city: "Oslo", country: "NO");
         var curated = await host.SeedLocationAsync("Curated", line1: "Storgata 9", city: "Oslo", country: "NO");
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = original });
@@ -902,7 +902,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_property_AllUses_edit_writes_four_fields_and_leaves_line2_and_region()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Shared", line1: "Storgata 1", city: "Oslo", country: "NO", line2: "H0101", region: "Oslo fylke");
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = place });
 
@@ -923,7 +923,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_property_AllUses_edit_that_leaves_a_contact_place_incomplete_is_422()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contact = await host.PostContactAsync("A");
         var address = await host.PostAddressAsync(contact, Address("Storgata 1", "Oslo"));
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = address.LocationId });
@@ -940,7 +940,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_cleared_property_address_unlinks_and_keeps_the_place()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO" });
         await using var propertiesOnly = await host.SharingAsync([PermissionClaims.PropertiesRead, PermissionClaims.PropertiesUpdate]);
 
@@ -954,7 +954,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_property_reads_its_address_under_properties_read_alone()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO" });
         await using var reader = await host.SharingAsync([PermissionClaims.PropertiesRead]);
 
@@ -976,7 +976,7 @@ public class LocationUnificationApiTests
     [InlineData("entry")]
     public async Task Record_weather_resolves_explicit_then_linked_then_preference_then_household(string kind)
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var linkedWithWeather = await host.SeedLocationAsync("Cabin", latitude: 61m);
         var cabinPoint = await host.SeedWeatherAsync(linkedWithWeather);
         var linkedForecastOff = await host.SeedLocationAsync("Shed", latitude: 62m);
@@ -1027,7 +1027,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Hourly_and_daily_weather_carry_resolvedFrom()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var household = await host.SeedWeatherAsync(await host.SeedLocationAsync("Home", latitude: 59m));
         var named = await host.SeedWeatherAsync(await host.SeedLocationAsync("Cabin", latitude: 61m));
         await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultPointId, household.ToString());
@@ -1046,7 +1046,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Event_weather_with_nothing_to_resolve_is_NoPlace_with_no_resolvedFrom()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
 
         var json = await host.Client.GetStringAsync($"{EventsPath}/{await host.SeedEventAsync(null)}/weather");
 
@@ -1060,7 +1060,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Ics_import_without_both_location_claims_stores_text_and_with_them_links_or_creates()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var calendar = await host.SeedCalendarAsync();
         var existing = await host.SeedLocationAsync("Åsen");
         await host.SeedLocationAsync("Asen skole");
@@ -1093,7 +1093,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task Ics_export_names_the_place_only_for_locations_read_and_never_writes_GEO()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Cabin; north, \"old\"", latitude: 61m);
         var calendar = await host.SeedCalendarAsync();
         var eventId = await host.SeedEventAsync(place, calendar, detail: "room 3,\nback door");
@@ -1112,7 +1112,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task VCard_import_without_locations_create_skips_every_ADR_and_counts_it()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         const string vcf = "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Kari\r\nN:Nordmann;Kari;;;\r\n"
             + "ADR;TYPE=home:;;Storgata 1;Oslo;;0150;NO\r\nADR;TYPE=work:;;Kirkegata 2;Oslo;;0153;NO\r\nEND:VCARD\r\n";
         await using var noCreate = await host.SharingAsync([PermissionClaims.ContactsCreate, PermissionClaims.ContactsUpdate, PermissionClaims.ContactsRead]);
@@ -1139,7 +1139,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task VCard_update_without_locations_create_keeps_the_existing_addresses()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         const string original = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:urn:uuid:kari-1\r\nFN:Kari\r\nN:Nordmann;Kari;;;\r\n"
             + "ADR;TYPE=home:;;Storgata 1;Oslo;;0150;NO\r\nEND:VCARD\r\n";
         var created = await ImportVCard(host.Client, original);
@@ -1159,7 +1159,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task VCard_export_round_trips_separators_and_newlines_from_the_linked_place()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
         await host.PostAddressAsync(contactId, Address("Storgata 1; bakgården, inngang B", "Oslo"));
 
@@ -1204,7 +1204,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_contact_address_with_a_geocode_creates_a_place_with_those_coordinates_and_that_source()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
 
         var address = await host.PostAddressAsync(contactId, Geocoded(Address("Storgata 1", "Oslo")));
@@ -1222,7 +1222,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_contact_address_with_a_geocode_for_an_existing_address_links_that_place_unchanged()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var existing = await host.SeedLocationAsync("Curated", line1: "Storgata 1", city: "Oslo", country: "NO", latitude: 60m);
 
         var address = await host.PostAddressAsync(await host.PostContactAsync("Acme"), Geocoded(Address("STORGATA 1", "oslo")));
@@ -1240,7 +1240,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_geocode_for_a_merged_away_address_links_the_survivor_unchanged()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var survivor = await host.SeedLocationAsync("Survivor");
         await host.SeedLocationAsync("Forwarder", line1: "Storgata 1", city: "Oslo", country: "NO", archived: true, mergedInto: survivor);
 
@@ -1255,7 +1255,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_geocode_sent_with_a_locationId_is_ignored()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var place = await host.SeedLocationAsync("Office", line1: "Storgata 1", city: "Oslo", country: "NO");
         var contactId = await host.PostContactAsync("Acme");
 
@@ -1271,7 +1271,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task ThisRecord_with_a_geocode_creates_the_new_place_geocoded_and_AllUses_ignores_it()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var contactId = await host.PostContactAsync("Acme");
         var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
         var path = $"{ContactsPath}/{contactId}/addresses/{address.Id}";
@@ -1298,7 +1298,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_property_with_a_geocode_creates_a_geocoded_place_and_its_read_never_echoes_the_geocode()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto
         {
             Kind = RealEstateKind.House, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo", CountryCode = "NO",
@@ -1323,7 +1323,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_property_geocode_for_an_existing_address_links_that_place_unchanged()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var existing = await host.SeedLocationAsync("Curated", line1: "Storgata 1", city: "Oslo", country: "NO");
 
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto
@@ -1363,7 +1363,7 @@ public class LocationUnificationApiTests
     [MemberData(nameof(GeocodeRefusals))]
     public async Task An_invalid_contact_geocode_is_422_on_the_documented_key_whether_or_not_the_address_exists(string shape, string key)
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         await host.SeedLocationAsync("Existing", line1: "Storgata 1", city: "Oslo", country: "NO");
         var path = $"{ContactsPath}/{await host.PostContactAsync("Acme")}/addresses";
 
@@ -1377,7 +1377,7 @@ public class LocationUnificationApiTests
     [InlineData("source")]
     public async Task An_invalid_property_geocode_is_422_on_the_documented_key(string key)
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var details = new RealEstateDetailsDto
         {
             Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO",
@@ -1391,7 +1391,7 @@ public class LocationUnificationApiTests
     [Fact]
     public async Task A_geocode_reference_must_fit_its_source_and_a_bad_zone_or_range_is_400()
     {
-        await using var host = await Host.StartAsync(Everything);
+        await using var host = await Host.StartAsync(Factory, Everything);
         var path = $"{ContactsPath}/{await host.PostContactAsync("Acme")}/addresses";
 
         Assert.Equal(HttpStatusCode.BadRequest, (await host.Client.PostAsJsonAsync(path,
@@ -1507,13 +1507,25 @@ public class LocationUnificationApiTests
         Assert.Contains(keys, k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>A host on its own in-memory store, its client, and the seeding helpers the tests share.</summary>
+    /// <summary>
+    /// A caller on a host — the class's shared one (<see cref="StartAsync(SharedHost, IReadOnlyCollection{string})"/>,
+    /// reset before every test) or one of its own on a separate store — its client, and the seeding helpers the tests
+    /// share. Disposing it disposes the factory only when it built one.
+    /// </summary>
     private sealed class Host : IAsyncDisposable
     {
-        private Host(OdysseyApiFactory factory)
+        private readonly bool ownsFactory;
+
+        private Host(OdysseyApiFactory factory, HttpClient client, bool ownsFactory)
         {
             Factory = factory;
-            Client = factory.CreateClient();
+            Client = client;
+            this.ownsFactory = ownsFactory;
+        }
+
+        private Host(OdysseyApiFactory factory)
+            : this(factory, factory.CreateClient(), ownsFactory: true)
+        {
         }
 
         public OdysseyApiFactory Factory { get; }
@@ -1533,9 +1545,13 @@ public class LocationUnificationApiTests
             return new Host(factory);
         }
 
+        /// <summary>A caller on the class's shared host.</summary>
+        public static Task<Host> StartAsync(SharedHost shared, IReadOnlyCollection<string> permissions) =>
+            Task.FromResult(new Host(shared, shared.ClientFor(permissions), ownsFactory: false));
+
         /// <summary>A second principal against this host's store.</summary>
         public Task<Host> SharingAsync(IReadOnlyCollection<string> permissions) =>
-            Task.FromResult(new Host(new OdysseyApiFactory(permissions, Actor, sharingStoreWith: Factory)));
+            Task.FromResult(new Host(Factory, Factory.ClientFor(permissions), ownsFactory: false));
 
         public async Task<T> ReadAsync<T>(Func<OdysseyContext, Task<T>> read)
         {
@@ -1734,7 +1750,13 @@ public class LocationUnificationApiTests
         public async ValueTask DisposeAsync()
         {
             Client.Dispose();
-            await Factory.DisposeAsync();
+            if (ownsFactory)
+            {
+                await Factory.DisposeAsync();
+            }
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class SharedHost() : OdysseyApiFactory([], Actor);
 }

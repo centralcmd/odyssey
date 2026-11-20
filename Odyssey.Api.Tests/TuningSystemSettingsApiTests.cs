@@ -28,7 +28,7 @@ namespace Odyssey.Api.Tests;
 /// today would fail the second.
 /// </para>
 /// </summary>
-public class TuningSystemSettingsApiTests
+public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host) : SharedApiHostTests<TuningSystemSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string AccountLimitsPath = "/api/account-limits";
@@ -52,7 +52,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Get_ServesAllFifteenCompiledDefaults()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -91,7 +91,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Get_PublishesTheSixBoundProjections()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -116,7 +116,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_AllTwelveCountClaimFields_WithOnlyTheOrdinaryClaim_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -150,7 +150,7 @@ public class TuningSystemSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.EmailMaxTrackedRecipients))]
     public async Task Put_ASecurityClaimField_WithOnlyTheOrdinaryClaim_IsForbidden_AndWritesNothing(string field)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var request = new SystemSettingsUpdate { CalendarMaxWindowDays = 31 };
@@ -180,7 +180,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_WithNeitherWriteClaim_IsForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -295,7 +295,7 @@ public class TuningSystemSettingsApiTests
     public async Task Put_OutsideTheRange_IsRejected_WithTheFieldKeyedMessage(
         string field, int value, string expectedFragment)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var request = new SystemSettingsUpdate();
@@ -405,7 +405,7 @@ public class TuningSystemSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.PhotoMetadataReadMegabytes), 16)]
     public async Task Put_AtADerivedCeiling_IsAllowed_AndOneAboveIsNot(string field, int ceiling)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
         var property = typeof(SystemSettingsUpdate).GetProperty(field)!;
 
@@ -426,7 +426,7 @@ public class TuningSystemSettingsApiTests
     public async Task Put_ATightenOnlyKey_AcceptsTheDefaultAndBelow_RejectsAbove(
         string field, int shippedDefault, int lower)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
         var property = typeof(SystemSettingsUpdate).GetProperty(field)!;
 
@@ -445,7 +445,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_TheRaiseOnlyKey_AcceptsTheFloorAndAbove_RejectsBelow()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         foreach (var accepted in new[] { SystemSettingsDefaults.EmailMaxTrackedRecipients, 200_000 })
@@ -596,7 +596,7 @@ public class TuningSystemSettingsApiTests
     {
         Assert.Null(typeof(SystemSettingsUpdate).GetProperty("Warnings"));
 
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsync(Path, JsonContent.Create(new Dictionary<string, object>
@@ -620,7 +620,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Warnings_SerializeWithPascalCaseKeys_UnderAWarningsProperty()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -641,7 +641,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_AboveTheShippedDefault_Persists_AndCarriesAnAdvisory()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var raised = await client.PutAsJsonAsync(Path,
@@ -671,7 +671,7 @@ public class TuningSystemSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.ImportMaxSamplesPerSkipReason), 101)]
     public async Task Put_EachCostAdvisory_FiresAboveItsDefault_AndStillSucceeds(string field, int value)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var request = new SystemSettingsUpdate();
@@ -688,7 +688,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task TightenOnlyKeys_CarryNoAdvisory_AtTheirMaximum()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -714,7 +714,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_ForACallerWithNoClaims_ReturnsTheEffectiveCap()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<AccountLimitsDto>(AccountLimitsPath);
@@ -725,7 +725,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(AccountLimitsPath);
@@ -741,7 +741,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_WithNoRowPresent_Returns200WithTheCompiledDefault()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(AccountLimitsPath);
@@ -759,7 +759,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_WithAnUnusableStoredValue_Returns503()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "not-a-number");
         using var client = factory.CreateClient();
@@ -773,7 +773,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_AfterASave_ServesTheNewCap()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync(Path,
@@ -946,7 +946,7 @@ public class TuningSystemSettingsApiTests
         return System.IO.Path.Combine([dir!, .. parts]);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     /// <summary>Captures the API's log output, for the three audit assertions.</summary>
@@ -962,4 +962,7 @@ public class TuningSystemSettingsApiTests
                 services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(Logs));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

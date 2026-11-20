@@ -23,7 +23,7 @@ namespace Odyssey.Api.Tests;
 /// Issue #448 §5: <c>POST /api/files</c> writes to the area the surface names, a download streams from disk with the shared
 /// headers, and the move's status reads under <c>file-storage.read</c> only.
 /// </summary>
-public sealed class FileStoreUploadApiTests
+public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : SharedApiHostTests<FileStoreUploadApiTests.Host>(host)
 {
     private static readonly byte[] Pdf = "%PDF-1.7 statement for the store"u8.ToArray();
 
@@ -71,9 +71,9 @@ public sealed class FileStoreUploadApiTests
     [Theory]
     [InlineData("Finance", "finance-files/", StoredFileArea.Finance)]
     [InlineData("journal", "journal-files/", StoredFileArea.Journal)]
-    public async Task An_upload_lands_in_its_area_on_disk_and_creates_no_blob(string area, string root, StoredFileArea expected)
+    public async Task An_upload_lands_in_its_area_on_disk(string area, string root, StoredFileArea expected)
     {
-        await using var factory = new OdysseyApiFactory(FilesClaims);
+        var factory = Factory.ForCaller(FilesClaims);
         using var client = factory.CreateClient();
 
         var response = await UploadAsync(client, area);
@@ -81,14 +81,12 @@ public sealed class FileStoreUploadApiTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var uploaded = (await response.Content.ReadFromJsonAsync<FileUploadResponse>())!;
         var row = await RowAsync(factory, uploaded.Id);
-        Assert.Null(row.FileBlobId);
         Assert.Equal(expected, StoredFileAreas.AreaOf(row));
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var stored = await context.StoredObjects.AsNoTracking().SingleAsync(o => o.Id == StoredFileAreas.StoredObjectIdOf(row));
         Assert.StartsWith(root + DateTime.UtcNow.Year.ToString("D4") + "/1/", stored.RelativePath, StringComparison.Ordinal);
         Assert.Equal(Pdf, await File.ReadAllBytesAsync(Path.Combine(factory.FileVolumeRoot, stored.RelativePath)));
-        Assert.False(await context.FileBlob.AnyAsync());
     }
 
     [Theory]
@@ -99,7 +97,7 @@ public sealed class FileStoreUploadApiTests
     [InlineData("Photos")]
     public async Task An_upload_without_a_usable_area_is_a_400_and_writes_nothing(string? area)
     {
-        await using var factory = new OdysseyApiFactory(FilesClaims);
+        var factory = Factory.ForCaller(FilesClaims);
         using var client = factory.CreateClient();
 
         var response = await UploadAsync(client, area);
@@ -114,7 +112,7 @@ public sealed class FileStoreUploadApiTests
     [Fact]
     public async Task Below_the_reserve_an_upload_is_a_507_and_writes_nothing()
     {
-        await using var factory = new OdysseyApiFactory(FilesClaims);
+        var factory = Factory.ForCaller(FilesClaims);
         using var client = factory.CreateClient();
         factory.FileVolumeSpace.Override = (1024L * 1024 * 1024, 1024L * 1024 * 1024 * 1024);
 
@@ -131,7 +129,7 @@ public sealed class FileStoreUploadApiTests
     [Fact]
     public async Task On_a_degraded_volume_an_upload_is_a_503_with_retry_after_and_writes_nothing()
     {
-        await using var factory = new OdysseyApiFactory(FilesClaims);
+        var factory = Factory.ForCaller(FilesClaims);
         using var client = factory.CreateClient();
         var registry = factory.Services.GetRequiredService<FileStorageVolumeRegistry>();
         registry.MarkDegraded(registry.Find("photos")!, new IOException("disk gone"));
@@ -169,7 +167,7 @@ public sealed class FileStoreUploadApiTests
     [Fact]
     public async Task A_download_from_disk_carries_the_shared_headers_ranges_and_conditional_requests()
     {
-        await using var factory = new OdysseyApiFactory(FilesClaims);
+        var factory = Factory.ForCaller(FilesClaims);
         using var client = factory.CreateClient();
         var uploaded = (await (await UploadAsync(client, "Finance")).Content.ReadFromJsonAsync<FileUploadResponse>())!;
 
@@ -195,7 +193,7 @@ public sealed class FileStoreUploadApiTests
     [Fact]
     public async Task Deleting_a_file_on_disk_releases_it_for_erasure()
     {
-        await using var factory = new OdysseyApiFactory(FilesClaims);
+        var factory = Factory.ForCaller(FilesClaims);
         using var client = factory.CreateClient();
         var uploaded = (await (await UploadAsync(client, "Journal")).Content.ReadFromJsonAsync<FileUploadResponse>())!;
 
@@ -207,33 +205,11 @@ public sealed class FileStoreUploadApiTests
         Assert.Equal(StoredObjectState.PendingDelete, (await context.StoredObjects.AsNoTracking().SingleAsync()).State);
     }
 
-    [Fact]
-    public async Task The_move_status_reads_counts_under_file_storage_read_only()
-    {
-        await using (var denied = new OdysseyApiFactory(FilesClaims))
-        {
-            using var client = denied.CreateClient();
-            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/file-storage/file-backfill")).StatusCode);
-        }
-
-        await using var factory = new OdysseyApiFactory([.. FilesClaims, PermissionClaims.FileStorageRead]);
-        using var admin = factory.CreateClient();
-        await UploadAsync(admin, "Finance");
-        await UploadAsync(admin, "Journal", "%PDF-1.7 another"u8.ToArray());
-
-        var status = (await admin.GetFromJsonAsync<FileBackfillStatus>("/api/file-storage/file-backfill"))!;
-
-        Assert.Equal((0, 0, 0, 0), (status.Remaining, status.ToMove, status.WaitingOnPhotos, status.Failed));
-        Assert.Equal((1, 1, 0), (status.OnDisk.Finance, status.OnDisk.Journal, status.OnDisk.ContactAvatars));
-        var body = await (await admin.GetAsync("/api/file-storage/file-backfill")).Content.ReadAsStringAsync();
-        Assert.DoesNotContain("pdf", body, StringComparison.OrdinalIgnoreCase);
-    }
-
     /// <summary>AC 5 on disk: without <c>files.create</c> the policy refuses before the action, so nothing is written.</summary>
     [Fact]
     public async Task Without_files_create_an_upload_is_a_403_and_writes_nothing()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.FilesRead, PermissionClaims.FilesDelete]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesRead, PermissionClaims.FilesDelete]);
         using var client = factory.CreateClient();
 
         var response = await UploadAsync(client, "Finance");
@@ -266,7 +242,7 @@ public sealed class FileStoreUploadApiTests
     [InlineData("application/pdf", "statement.pdf", "\u0089PNG\r\n\u001a\n not a pdf at all")]
     public async Task A_refused_type_or_a_magic_byte_mismatch_is_a_400_before_any_write(string contentType, string name, string content)
     {
-        await using var factory = new OdysseyApiFactory(FilesClaims);
+        var factory = Factory.ForCaller(FilesClaims);
         using var client = factory.CreateClient();
         var bytes = content.Select(c => (byte)c).ToArray();
 
@@ -387,4 +363,7 @@ public sealed class FileStoreUploadApiTests
             builder.UseEnvironment("AntiforgeryEnforced");
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

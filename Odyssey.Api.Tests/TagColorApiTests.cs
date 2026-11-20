@@ -20,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// Issue #392 over real HTTP: the colour on all four tag types' write and read paths, the record-level
 /// <c>displayColor</c> that comes from the tag supplying the icon, and the shared palette on calendars.
 /// </summary>
-public class TagColorApiTests
+public class TagColorApiTests(TagColorApiTests.Host host) : SharedApiHostTests<TagColorApiTests.Host>(host)
 {
     private const string ActorUserId = "tag-color-actor";
 
@@ -64,7 +64,7 @@ public class TagColorApiTests
     [MemberData(nameof(Kinds))]
     public async Task Post_with_a_lower_case_hex_stores_and_returns_it_upper_case(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(TagPath(kind), new { name = "Holidays", archived = false, color = "#15803d" });
@@ -84,7 +84,7 @@ public class TagColorApiTests
     [MemberData(nameof(Kinds))]
     public async Task Post_without_a_color_stores_null(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(TagPath(kind), new { name = "Holidays", archived = false });
@@ -102,7 +102,7 @@ public class TagColorApiTests
     [MemberData(nameof(Kinds))]
     public async Task Put_changes_the_color_and_an_omitted_color_clears_it(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         var id = await SeedTagAsync(factory, kind, "Holidays", "beach_access", "#0369A1");
         using var client = factory.CreateClient();
 
@@ -119,7 +119,7 @@ public class TagColorApiTests
     [MemberData(nameof(KindsByInvalidColor))]
     public async Task An_invalid_color_is_a_400_keyed_on_Color_that_echoes_nothing_and_persists_nothing(Kind kind, string color)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(TagPath(kind), new { name = "Holidays", archived = false, color });
@@ -141,7 +141,7 @@ public class TagColorApiTests
     [MemberData(nameof(KindsByInvalidColor))]
     public async Task An_invalid_color_on_PUT_is_a_400_keyed_on_Color_and_leaves_the_stored_color(Kind kind, string color)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         var id = await SeedTagAsync(factory, kind, "Holidays", null, "#15803D");
         using var client = factory.CreateClient();
 
@@ -160,7 +160,7 @@ public class TagColorApiTests
     [MemberData(nameof(Kinds))]
     public async Task A_stored_corrupt_color_reads_as_null_and_never_500s(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(TagAdmin(kind));
         var id = await SeedTagAsync(factory, kind, "Legacy", null, "red;x:y");
         using var client = factory.CreateClient();
 
@@ -176,7 +176,7 @@ public class TagColorApiTests
     [MemberData(nameof(Kinds))]
     public async Task Put_without_the_update_claim_is_forbidden_and_the_read_claim_sees_the_color(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory([ReadTagClaim(kind)], ActorUserId);
+        var factory = Factory.ForCaller([ReadTagClaim(kind)]);
         var id = await SeedTagAsync(factory, kind, "Holidays", null, "#15803D");
         using var client = factory.CreateClient();
 
@@ -191,7 +191,7 @@ public class TagColorApiTests
     [Fact]
     public async Task A_transaction_takes_the_color_of_the_tag_that_wins_its_icon()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         var accountId = await SeedAccountAsync(factory);
         var transactionId = await SeedTransactionAsync(factory, accountId,
             ("Groceries", "shopping_cart", "#b23b3b"), ("Business", null, "#15803D"), ("Travel", "flight", "#0369A1"));
@@ -211,7 +211,7 @@ public class TagColorApiTests
     [Fact]
     public async Task A_transaction_whose_icon_tag_has_no_color_shows_none_even_when_another_tag_has_one()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         var accountId = await SeedAccountAsync(factory);
         var transactionId = await SeedTransactionAsync(factory, accountId,
             ("Alpha", "home", null), ("Beta", null, "#15803D"));
@@ -226,7 +226,7 @@ public class TagColorApiTests
     [Fact]
     public async Task A_transaction_whose_winning_tag_color_is_corrupt_shows_none_on_the_record_and_the_embed()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         var accountId = await SeedAccountAsync(factory);
         var transactionId = await SeedTransactionAsync(factory, accountId, ("Alpha", "home", "#fff;a"));
         using var client = factory.CreateClient();
@@ -246,7 +246,7 @@ public class TagColorApiTests
     [InlineData(Kind.Photo)]
     public async Task Every_journal_task_and_photo_response_carries_the_winning_tags_color(Kind kind)
     {
-        await using var factory = new OdysseyApiFactory(RecordAdmin(kind), ActorUserId);
+        var factory = Factory.ForCaller(RecordAdmin(kind));
         var trip = await SeedTagAsync(factory, kind, "Trip", "beach_access", "#0369a1");
         var art = await SeedTagAsync(factory, kind, "art", null, "#15803D");
         var corrupt = await SeedTagAsync(factory, kind, "Auto", "directions_car", "red;x:y");
@@ -275,7 +275,7 @@ public class TagColorApiTests
     [Fact]
     public async Task A_calendar_colour_follows_the_tag_rule_but_is_required()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate, PermissionClaims.CalendarCreate]);
+        var factory = Factory.ForCaller([PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate, PermissionClaims.CalendarCreate]);
         var lower = await SeedCalendarAsync(factory, "Lower", "#b23b3b");
         var corrupt = await SeedCalendarAsync(factory, "Corrupt", "red;x:y");
         using var client = factory.CreateClient();
@@ -305,7 +305,7 @@ public class TagColorApiTests
     [MemberData(nameof(NonEmptyInvalidColors))]
     public async Task An_invalid_calendar_color_is_a_400_keyed_on_Color_that_echoes_nothing_on_post_and_put(string color)
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate, PermissionClaims.CalendarCreate]);
+        var factory = Factory.ForCaller([PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate, PermissionClaims.CalendarCreate]);
         var existing = await SeedCalendarAsync(factory, "Existing", "#15803D");
         using var client = factory.CreateClient();
 
@@ -334,7 +334,7 @@ public class TagColorApiTests
     [InlineData("")]
     public async Task A_calendar_color_is_required_unlike_a_tag_color(string? color)
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate]);
+        var factory = Factory.ForCaller([PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate]);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/calendars", new { name = "Odd", color });
@@ -539,4 +539,7 @@ public class TagColorApiTests
         await context.SaveChangesAsync();
         return calendar.CalendarId;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([], ActorUserId);
 }

@@ -1976,7 +1976,7 @@ same release tag, so the normal `pull` + `up -d` does this.
 |---|---|---|
 | Exchange-rate sync | run or purge (unchanged) | — |
 | File-storage maintenance | pass — scheduled hourly, or manual, picked up by a **30 s request poll** | while *this* worker's storage checks fail (`HeldByCheck` names the check, never a path) |
-| Weather, photo thumbnails, photo-original move | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable. Photo-original move, only while photos are left to move: StorageUnavailable (volume degraded or below its reserve) or BackingOff (after a storage or database error, until the back-off ends) |
+| Weather, photo thumbnails | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable |
 
 Every job writes its heartbeat first on every tick (at most once a minute per process), before any early
 return, so an idle, unconfigured or held job is never mistaken for a dead one. A job with no heartbeat for
@@ -2033,8 +2033,9 @@ backups.
 - **`FileStorage__Bindings__PhotoThumbnails=primary`** on `api` and `worker`. Keep the two identical.
 - **No new claim and no new setting.** Thumbnails are served by `GET /api/photos/{id}/thumbnail` under
   `photos.read`. The worker state on `GET /api/photos/stats` is filled only for `system-settings.read`.
-- **Renaming a photo's file re-renders its thumbnails**, because the stored files carry the name. A rename
-  that collides with a running render twice in a row returns `409 rename-busy` with `Retry-After: 1`.
+- **Renaming a photo re-renders its thumbnails**, because the stored files carry the name. (A Files-store rename once
+  did too, for a photo that still wrapped a file, with a `409 rename-busy` on a collision; that went with the legacy
+  photo shape — see [Legacy file storage removed](#legacy-file-storage-removed).)
 
 ### What the worker does, and what the panel says
 
@@ -2148,38 +2149,13 @@ bytes: it has no Files-store row, `files.read` does not reach it, and its origin
 - **Thumbnails become graced.** Their release used to be *Immediate*; it now waits for the deletion grace
   like everything else.
 
-### The backfill
+### The move (finished and removed)
 
-The worker moves existing originals on its own, oldest photo first, 25 per tick every 30 seconds within a
-60-second budget, behind a single lease row so only one replica runs it. For each photo it writes the file,
-reads it back and compares the SHA-256 before the database changes; then, in one transaction that first
-locks the file row, it repoints the photo and deletes the old file **only if nothing else references it**
-(an attachment, an avatar, a contract file — the check is derived from the database model, not a list). A
-file still in use elsewhere is **copied** and kept; the count of those is reported.
-
-It does nothing while the photo volume is degraded or below the reserve. A storage or database error stops
-the tick and backs off 1, 5, 15, then 60 minutes; no photo is blamed for it. A photo that cannot be moved for
-a reason of its own is **parked** with a code and never retried automatically:
-
-| Code | Meaning | What to do |
-|---|---|---|
-| `hash` | The stored bytes do not match their recorded SHA-256, or the copy did not read back identically. | Restore the file from a backup, or delete the photo. |
-| `read` | The bytes are missing, a different length, or the type is not a photo type. | Same. |
-| `too-large` | The file is larger than `FileStorage:MaxFileSizeBytes`. | Raise that limit and retry, or leave the photo in the database. |
-| `error` | An unexpected failure that is neither of the above nor a storage or database outage (the worker log names the exception type and the photo id). | Read the log line, fix the cause, then retry. |
-
-A parked photo stays readable from the database exactly as before. **To retry**, delete its row:
-
-```sql
-DELETE FROM PhotoOriginalBackfillFailures WHERE PhotoId = '{{ PHOTO_ID }}';
-```
-
-Progress — remaining, parked by code, copied-shared, the back-off — is on **`/background-jobs`** (the
-*Photo original move* tile, its status card and its runs, each run counting the photos moved, copied, parked and
-the interruptions) and on `GET /api/file-storage/photo-backfill`, both under `file-storage.read`. They report
-counts and codes only, never a name. A manual run from the page ends a back-off early; it does not retry a parked
-photo — that is still the `DELETE` above. Once nothing is left to move the job records nothing more, and its tile
-keeps showing its last run.
+The release that shipped this section also shipped a worker job, the *photo-original move*
+(`PhotoOriginalBackfillJob`), that moved every existing original out of `FileBlob`. Every production system has
+finished it, and [`RemoveLegacyFileBlobStorage`](#legacy-file-storage-removed) removed the job, its endpoint
+(`GET /api/file-storage/photo-backfill`), its tables and the legacy `Photos.FileId` column. A photo that still wrapped
+a file would block that migration.
 
 ### Erasure of a photo original
 
@@ -2230,53 +2206,43 @@ A file later attached somewhere else stays where it was put.
   plus 4 GB), `503` when it is degraded, and `429` past the limit — each with `Retry-After` where it applies.
   Nothing is stored on a refusal, and no bucket slot is taken.
 - **Downloads are unchanged on the wire** (disposition, content type) and now carry `nosniff`, a strong `ETag`,
-  `Cache-Control: private, no-cache` and range support, whether the file is still in the database or on disk.
+  `Cache-Control: private, no-cache` and range support.
 - **`fileBlobId` is gone from every attachment DTO.** A client that read it must stop.
 - **`POST /api/files` validates `description`** at 256 characters and answers `400` where it used to cut the text
   silently.
-- **One more background job on `/background-jobs`**, the file move. Its counts need `file-storage.read`.
-- **The `FileBlob` table stays** until a later release has seen every deployment report `remaining = 0`. Do
-  not drop it by hand.
+- **One more background job on `/background-jobs`**, the file move. Its counts need `file-storage.read`. It
+  and the `FileBlob` table are gone since [`RemoveLegacyFileBlobStorage`](#legacy-file-storage-removed).
 
-### The backfill
+### The move (finished and removed)
 
-The worker moves the remaining files on its own, oldest first, 25 per tick every 30 seconds within a 60-second
-budget, behind a single lease row. Each file's area is decided from what references it **at move time**:
+The release that shipped this section also shipped a worker job, the *file move* (`FileBlobBackfillJob`), that moved
+every remaining file out of `FileBlob` into its area. Every production system has finished it, and
+[`RemoveLegacyFileBlobStorage`](#legacy-file-storage-removed) removed the job, its endpoint
+(`GET /api/file-storage/file-backfill`), its tables, the `FileBlob` table and `FileMetadata.FileBlobId`.
 
-| References | Area |
-|---|---|
-| None, or any finance record | Finance |
-| Only journal entries or tasks | Journal |
-| Only a contact, as its image, with an image content type | Contacts |
-| Only a contact, with any other content type | Finance |
+### Legacy file storage removed
 
-For each file it writes the bytes, reads them back and compares the SHA-256, then, in one transaction that first
-locks the file row and re-classifies it, repoints the row and deletes the blob. A file still wrapped by a photo
-that has not moved yet is left for the photo move and counted as *waiting on photos*. The job skips an area whose
-volume is degraded or below the reserve and keeps moving the others; with nothing movable on a healthy area it
-holds as *storage unavailable*. A storage or database error backs off 1, 5, 15, then 60 minutes.
+**The database no longer holds file bytes, and nothing reads the legacy shape.** Every file is a `FileMetadata` row
+naming exactly one area's stored object (`CK_FileMetadata_ExactlyOneSource`), and every photo owns its original
+(`Photos.StoredObjectId`, `FileName`, `ContentType`, `SizeBytes` and `Sha256Hash` are `NOT NULL`). The user profile
+picture's own store (`UserProfileImageBlobs`) is a different, deliberate design and is unaffected.
 
-A file that cannot be moved for a reason of its own is **parked** and never retried automatically:
-
-| Code | Meaning | What to do |
-|---|---|---|
-| `hash` | The stored bytes do not match their recorded SHA-256, or the copy did not read back identically. | Restore the file from a backup, or delete it. |
-| `read` | The bytes are missing or a different length from the recorded size. | Same. |
-| `too-large` | Larger than `FileStorage:MaxFileSizeBytes`. | Raise that limit and retry, or leave the file in the database. |
-| `type` | The content type has no file extension the store accepts. | Leave it in the database, or delete and re-upload it as a supported type. |
-| `error` | An unexpected failure that is neither of the above nor an outage; the worker log names the exception type and the file id. | Fix the cause, then retry. |
-
-A parked file stays readable from the database exactly as before. **To retry**, delete its row:
-
-```sql
-DELETE FROM FileBlobBackfillFailures WHERE FileId = '{{ FILE_ID }}';
-```
-
-A failure row whose file has since been deleted is removed on the next tick. Progress — `remaining` (split into
-`toMove`, `waitingOnPhotos` and `failed`), `remainingBytes`, parked by code, files on disk per area and the
-back-off — is on `/background-jobs` (the *File move* card and its runs) and on `GET /api/file-storage/file-backfill`,
-both under `file-storage.read`. Counts and codes only, never a name or path. Size the volumes from
-`remainingBytes` **before** the upgrade.
+- **One migration, `RemoveLegacyFileBlobStorage`, and it destroys data.** It first **refuses to run** — before any
+  drop, since MariaDB commits DDL implicitly — while any photo still has `FileId` set, any file still has `FileBlobId`
+  set, or `FileBlobBackfillFailures` has a row; the error names which. Then it deletes every `JobRuns` and
+  `JobHeartbeats` row of the two retired moves (`JobType` 5 and 7), and drops `FileBlob`, `FileMetadata.FileBlobId`,
+  `Photos.FileId`, the two moves' lease and failure tables and their run counters. `JobType` 5 and 7 and
+  `JobHeldReason` 6 (`BackingOff`) are retired ordinals and will never be reused.
+- **Before upgrading**, on the previous release: `/background-jobs` (or `GET /api/file-storage/photo-backfill` and
+  `/file-backfill`) must show nothing left to move and nothing parked. If the migration refuses, roll the
+  deployment back to the previous release, let the moves finish (clear a parked row as that release's notes
+  describe), and upgrade again.
+- **`Down()` restores the schema only.** The dropped tables and columns come back empty, and the deleted run history
+  does not come back. **The only undo is restoring the database backup taken before the upgrade.**
+- **The demo files of a dev stack** (Development/Testing only) are now written by the worker, after the API has
+  initialised the volumes, instead of by the migrations job: `Seed__DemoData` reaches the worker too, and a fresh dev
+  stack shows its demo photos, attachments and contact images a little after it reports healthy. The production
+  overlay pins it `false` on both.
 
 ### Moving the finance area to its own volume
 

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -13,7 +14,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class JournalEntriesApiTests
+public class JournalEntriesApiTests(JournalEntriesApiTests.Host host) : SharedApiHostTests<JournalEntriesApiTests.Host>(host)
 {
     private const string ActorUserId = "journal-entries-actor-id";
     private const string Path = "/api/journal-entries";
@@ -39,8 +40,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(null);
 
         var response = await client.GetAsync(Path);
 
@@ -51,8 +52,8 @@ public class JournalEntriesApiTests
     public async Task List_Guest_WithoutJournalClaims_ReturnsForbidden()
     {
         // A Guest holds none of the Journal claims — the whole module is 403 for them.
-        await using var factory = new ApiFactory(permissions: []);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync(Path);
 
@@ -62,8 +63,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Mutations_WithReadOnlyPermission_ReturnForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var post = await client.PostAsJsonAsync(Path, NewEntry());
         Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
@@ -77,8 +78,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_Get_Update_Archive_Unarchive_Delete_RoundTrip()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var create = NewEntry(title: "First light", location: "Oslo");
         var post = await client.PostAsJsonAsync(Path, create);
@@ -137,8 +138,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Get_UnknownEntry_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}/{Guid.NewGuid()}");
 
@@ -148,8 +149,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_EntryDateOutsideWindow_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var request = NewEntry(entryDate: new DateTime(3000, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         var post = await client.PostAsJsonAsync(Path, request);
@@ -162,8 +163,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_UnknownTag_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var request = NewEntry(tagIds: [Guid.NewGuid()]);
         var post = await client.PostAsJsonAsync(Path, request);
@@ -174,9 +175,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_ArchivedTag_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var tagId = await SeedJournalTagAsync(factory, "OldTag", archived: true);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var request = NewEntry(tagIds: [tagId]);
         var post = await client.PostAsJsonAsync(Path, request);
@@ -187,9 +188,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_FilteredByTag_ReturnsMatchingSubset()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var tagId = await SeedJournalTagAsync(factory, "Travel");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var tagged = await CreateAsync(client, NewEntry(title: "Trip", tagIds: [tagId]));
         var untagged = await CreateAsync(client, NewEntry(title: "Home"));
@@ -204,9 +205,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_WithContact_ReturnsIdsOnly_NoNestedFields()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var contactId = await SeedContactAsync(factory, "Acme Trading Co");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(contactIds: [contactId]));
 
@@ -221,8 +222,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_UnknownContact_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var request = NewEntry(contactIds: [Guid.NewGuid()]);
         var post = await client.PostAsJsonAsync(Path, request);
@@ -235,9 +236,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_ImageAsPhoto_AppearsInGallery()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var imageId = await SeedPhotoAsync(factory, "beach.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var id = await CreateAsync(client, NewEntry(photoIds: [imageId]));
 
@@ -250,9 +251,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_NonImageAsPhoto_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "notes.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var request = NewEntry(photoIds: [pdfId]);
         var post = await client.PostAsJsonAsync(Path, request);
@@ -263,9 +264,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_PdfAsAttachment_IsLinkedByIdOnly()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "receipt.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var id = await CreateAsync(client, NewEntry(attachmentFileIds: [pdfId]));
 
@@ -277,8 +278,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_UnknownAttachment_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var request = NewEntry(attachmentFileIds: [Guid.NewGuid()]);
         var post = await client.PostAsJsonAsync(Path, request);
@@ -290,9 +291,9 @@ public class JournalEntriesApiTests
     public async Task Post_LinkingPhoto_WithoutPhotosReadClaim_ReturnsForbidden()
     {
         // Issue #428 §3.3: linking a photo the entry does not hold needs photos.read; journal.create alone cannot.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var imageId = await SeedPhotoAsync(factory, "beach.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, NewEntry(photoIds: [imageId]));
 
@@ -303,7 +304,7 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Put_KeepingLinkedPhotos_WithoutPhotosReadClaim_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var photoId = await SeedPhotoAsync(factory, "beach.jpg");
         var id = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
@@ -322,7 +323,7 @@ public class JournalEntriesApiTests
             await context.SaveChangesAsync();
         }
 
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
         var update = new UpdateJournalEntry
         {
             Title = "Renamed", Content = "c", EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), PhotoIds = [photoId],
@@ -336,9 +337,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_LinkingAttachment_WithoutFilesReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "receipt.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, NewEntry(attachmentFileIds: [pdfId]));
 
@@ -350,8 +351,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_WithNestedForeignObjects_DoesNotCreateContactsTagsOrFiles()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // A body carrying populated nested "contacts"/"tags"/"photos" objects (beyond the scalar
         // id arrays) must be ignored: no contact, tag, or file row is created.
@@ -386,8 +387,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Search_MatchesTitleContentAndLocation()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var byTitle = await CreateAsync(client, NewEntry(title: "Zebra sighting"));
         var byLocation = await CreateAsync(client, NewEntry(title: "Ordinary day", location: "Zebra Street"));
@@ -405,8 +406,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Summary_Content_IsReturnedWhole()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var shortContent = "A short note.";
         var longContent = new string('x', 250);
@@ -428,10 +429,10 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Summary_CarriesPhotoLinks_ForEveryEntryOnThePage()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var shared = await SeedPhotoAsync(factory, "shared.jpg");
         var own = await SeedPhotoAsync(factory, "own.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var first = await CreateAsync(client, NewEntry(title: "First", photoIds: [shared]));
         var second = await CreateAsync(client, NewEntry(title: "Second", photoIds: [shared, own]));
@@ -449,11 +450,11 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Summary_PhotoLinks_AreOrderedByPosition()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var a = await SeedPhotoAsync(factory, "a.jpg");
         var b = await SeedPhotoAsync(factory, "b.jpg");
         var c = await SeedPhotoAsync(factory, "c.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var id = await CreateAsync(client, NewEntry(photoIds: [c, a, b]));
 
@@ -473,10 +474,10 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Summary_DropsAPhotoLinkWhoseLibraryPhotoIsGone()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var kept = await SeedPhotoAsync(factory, "kept.jpg");
         var lost = await SeedPhotoAsync(factory, "lost.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var id = await CreateAsync(client, NewEntry(photoIds: [kept, lost]));
 
@@ -500,10 +501,10 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Summary_CarriesContactIds_IncludingADanglingOne()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var kept = await SeedContactAsync(factory, "Kept Ltd");
         var deleted = await SeedContactAsync(factory, "Since-deleted Ltd");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(contactIds: [kept, deleted]));
 
@@ -527,8 +528,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Summary_CarriesBothStamps_EqualUntilTheEntryIsEdited()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(title: "Fresh"));
 
@@ -555,9 +556,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Summary_EditorName_IsNullUntilEdited_ThenResolves()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await factory.SeedActorUserAsync(displayName: "Ada L.");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(title: "Fresh"));
 
@@ -586,9 +587,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Author_DisplayName_Resolves_When_The_User_Exists()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await factory.SeedActorUserAsync(displayName: "Ada L.");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(title: "Mine"));
 
@@ -604,9 +605,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Author_NoProfileName_And_NoUsersRead_ReturnsUnknownUser_NotEmail()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var userName = await factory.SeedActorUserAsync();
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(title: "Mine"));
 
@@ -621,8 +622,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Author_DisplayName_IsUnknownUser_When_The_User_Is_Unresolvable()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(title: "Orphan"));
 
@@ -633,8 +634,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_DefaultSort_IsEntryDateDescending()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var older = await CreateAsync(client, NewEntry(title: "Older", entryDate: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         var newer = await CreateAsync(client, NewEntry(title: "Newer", entryDate: new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc)));
@@ -648,8 +649,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_DateRangeFilter_NarrowsByEntryDate()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var january = await CreateAsync(client, NewEntry(title: "Jan", entryDate: new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc)));
         var june = await CreateAsync(client, NewEntry(title: "Jun", entryDate: new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc)));
@@ -667,9 +668,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_HasPhotosFilter_KeepsOnlyEntriesCarryingAPhoto()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var imageId = await SeedPhotoAsync(factory, "beach.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoIds: [imageId]));
         var plain = await CreateAsync(client, NewEntry(title: "Plain"));
@@ -683,9 +684,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_HasFilesFilter_KeepsOnlyEntriesCarryingAnAttachment()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "receipt.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var withFile = await CreateAsync(client, NewEntry(title: "With file", attachmentFileIds: [pdfId]));
         var plain = await CreateAsync(client, NewEntry(title: "Plain"));
@@ -702,10 +703,10 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_HasPhotosAndHasFiles_AreAnded()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         var pdfId = await SeedFileAsync(factory, "receipt.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var both = await CreateAsync(client, NewEntry(title: "Both", photoIds: [imageId], attachmentFileIds: [pdfId]));
         var photoOnly = await CreateAsync(client, NewEntry(title: "Photo only", photoIds: [imageId]));
@@ -723,9 +724,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_HasPhotosFalse_KeepsOnlyEntriesWithoutPhotos()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var imageId = await SeedPhotoAsync(factory, "beach.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoIds: [imageId]));
         var plain = await CreateAsync(client, NewEntry(title: "Plain"));
@@ -740,9 +741,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_WithoutAttachmentFilters_ReturnsEntriesRegardlessOfMedia()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var imageId = await SeedPhotoAsync(factory, "beach.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoIds: [imageId]));
         var plain = await CreateAsync(client, NewEntry(title: "Plain"));
@@ -756,8 +757,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_Pagination_LimitAndOffset_WindowResults()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         for (var i = 0; i < 5; i++)
         {
@@ -772,8 +773,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_LimitAboveMaximum_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}?limit=100000");
 
@@ -783,8 +784,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_NegativeOffset_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}?offset=-1");
 
@@ -794,8 +795,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_UnknownSortKey_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}?sortBy=NotAKey");
 
@@ -807,9 +808,9 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Get_AfterLinkedContactDeleted_StillReadsWithDanglingId()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var contactId = await SeedContactAsync(factory, "Since-deleted Ltd");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry(contactIds: [contactId]));
 
@@ -828,28 +829,6 @@ public class JournalEntriesApiTests
         Assert.Contains(contactId, fetched!.ContactIds);
     }
 
-    [Fact]
-    public async Task Get_AfterLinkedPhotoFileDeleted_StillReadsWithDanglingId()
-    {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var (imageId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg");
-        using var client = factory.CreateClient();
-
-        var id = await CreateAsync(client, NewEntry(photoIds: [imageId]));
-
-        using (var scope = factory.Services.CreateScope())
-        {
-            var finance = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var file = await finance.FileMetadata.FirstAsync(f => f.Id == fileId);
-            finance.FileMetadata.Remove(file);
-            await finance.SaveChangesAsync();
-        }
-
-        var fetched = await client.GetFromJsonAsync<ExistingJournalEntry>($"{Path}/{id}");
-        Assert.NotNull(fetched);
-        Assert.Contains(fetched!.Photos, p => p.PhotoId == imageId);
-    }
-
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     // ── PUT link diffing (criterion #1) ───────────────────────────────────────
@@ -857,8 +836,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Put_DiffsLinkSets_AddsRemovesAndKeepsStableRows()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var tagA = await SeedJournalTagAsync(factory, "A");
         var tagB = await SeedJournalTagAsync(factory, "B");
@@ -887,8 +866,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Put_WithUnknownTag_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry());
 
@@ -906,8 +885,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Put_LinkingFile_WithoutFilesRead_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(ReadWrite); // no files.read
-        using var client = factory.CreateClient();
+        var factory = Factory; // no files.read
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewEntry());
 
@@ -927,8 +906,8 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task List_WithNonZeroOffset_ReturnsRequestedWindow()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // Default sort is EntryDate descending, so newest first.
         await CreateAsync(client, NewEntry(title: "Newest", entryDate: new DateTime(2026, 6, 3, 0, 0, 0, DateTimeKind.Utc)));
@@ -951,10 +930,10 @@ public class JournalEntriesApiTests
     [Fact]
     public async Task Post_OverALoweredTagLinkCap_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.JournalEntryMaxLinksPerKind, "1");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.PostAsJsonAsync(Path,
             NewEntry(tagIds: [Guid.NewGuid(), Guid.NewGuid()]));
@@ -1036,9 +1015,9 @@ public class JournalEntriesApiTests
         return id;
     }
 
-    /// <summary>A library photo to link (issue #428: the journal links photos by id); seeded as a legacy photo.</summary>
-    private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
-        (await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, fileName)).PhotoId;
+    /// <summary>A library photo to link (issue #428: the journal links photos by id).</summary>
+    private static Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
+        PhotoTestSupport.SeedPhotoAsync(factory, null, fileName);
 
     private static async Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType)
     {
@@ -1046,9 +1025,8 @@ public class JournalEntriesApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1058,14 +1036,13 @@ public class JournalEntriesApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateDomainContext)
@@ -1081,4 +1058,7 @@ public class JournalEntriesApiTests
             services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(databaseName));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

@@ -20,7 +20,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class AccountSmartTagsApiTests
+public class AccountSmartTagsApiTests(AccountSmartTagsApiTests.Host host) : SharedApiHostTests<AccountSmartTagsApiTests.Host>(host)
 {
     private const string ActorUserId = "account-smart-tags-actor-id";
 
@@ -35,7 +35,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(SmartTagsPath(Guid.NewGuid()));
@@ -46,7 +46,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task List_WithoutAccountsReadPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(SmartTagsPath(Guid.NewGuid()));
@@ -57,7 +57,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Write_WithReadOnlyPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         var accountId = await SeedAccountAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -74,7 +74,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task List_NewAccount_ReturnsEmpty()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         using var client = factory.CreateClient();
 
@@ -86,7 +86,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task List_MissingAccount_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(SmartTagsPath(Guid.NewGuid()));
@@ -97,7 +97,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Post_ValidTag_ReturnsCreatedAndIsListed()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         var tagId = await SeedTagAsync(factory, "Groceries");
         using var client = factory.CreateClient();
@@ -114,7 +114,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Post_Duplicate_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -128,7 +128,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Post_ArchivedTag_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         var tagId = await SeedTagAsync(factory, archived: true);
         using var client = factory.CreateClient();
@@ -141,7 +141,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Post_MissingAccount_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
 
@@ -153,7 +153,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Post_MissingTag_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         using var client = factory.CreateClient();
 
@@ -165,7 +165,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Delete_ExistingAssociation_ReturnsNoContentAndRemoves()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -182,7 +182,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Delete_NonexistentAssociation_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -195,7 +195,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task GetAccount_ExposesSmartTagCount()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -240,7 +240,7 @@ public class AccountSmartTagsApiTests
     [Fact]
     public async Task Add_OverTheConfiguredCap_IsRejected_AndNamesTheEffectiveCap()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "3");
         using var client = factory.CreateClient();
@@ -280,6 +280,9 @@ public class AccountSmartTagsApiTests
         return tagId;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

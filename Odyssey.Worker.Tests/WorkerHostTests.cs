@@ -104,7 +104,7 @@ public sealed class WorkerHostTests : IDisposable
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Odyssey.Context.OdysseyContext>>());
     }
 
-    /// <summary>Issue #362: the thumbnail job, the real renderer and self-test, and the rename observer resolve here.</summary>
+    /// <summary>Issue #362: the thumbnail job, the real renderer and self-test, and the thumbnail service resolve here.</summary>
     [Fact]
     public void The_graph_resolves_and_hosts_the_photo_thumbnail_job()
     {
@@ -115,7 +115,6 @@ public sealed class WorkerHostTests : IDisposable
         Assert.IsType<Odyssey.Worker.Thumbnails.MagickDecoderSelfTest>(provider.GetRequiredService<Odyssey.Core.Journal.Thumbnails.IThumbnailDecoderSelfTest>());
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService>());
-        Assert.Contains(scope.ServiceProvider.GetServices<Odyssey.Core.Finance.IFileRenameObserver>(), o => o is Odyssey.Core.Journal.Thumbnails.PhotoThumbnailRenameObserver);
     }
 
     /// <summary>
@@ -185,6 +184,23 @@ public sealed class WorkerHostTests : IDisposable
         Assert.NotNull(provider.GetRequiredService<Core.Jobs.JobRunRecorder>());
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Core.Jobs.JobRunSweeper>());
+    }
+
+    /// <summary>
+    /// The demo-file seeder is in the production graph — so ValidateOnBuild covers it — and its gate holds there: in
+    /// Production it returns at once, before the volume wait (which, with this graph's unreachable database, would
+    /// never end) and before touching the store.
+    /// </summary>
+    [Fact]
+    public async Task The_demo_file_seeder_is_hosted_and_does_nothing_in_production()
+    {
+        using var provider = Build();
+
+        var service = Assert.Single(provider.GetServices<IHostedService>().OfType<Odyssey.Worker.DemoData.DemoFileSeedingService>());
+        await service.StartAsync(CancellationToken.None);
+        await service.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(service.ExecuteTask.IsCompletedSuccessfully);
+        await service.StopAsync(CancellationToken.None);
     }
 
     /// <summary>

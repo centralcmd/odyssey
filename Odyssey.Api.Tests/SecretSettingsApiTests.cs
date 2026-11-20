@@ -29,7 +29,7 @@ namespace Odyssey.Api.Tests;
 /// descriptor is present; <see cref="SecretSettingsRegistryTests"/> covers the Production filter.
 /// </para>
 /// </summary>
-public class SecretSettingsApiTests
+public class SecretSettingsApiTests(SecretSettingsApiTests.Host host) : SharedApiHostTests<SecretSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings/secrets";
     private const string Key = SecretSettingKeys.DiagnosticsSelfTest;
@@ -64,7 +64,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Put_StoresCiphertext_AndNoColumnOfTheRowContainsThePlaintext()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.NoContent, (await Put(client, Sentinel)).StatusCode);
@@ -90,7 +90,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Put_Twice_WithTheSameValue_ProducesDifferentCiphertextsThatBothDecrypt()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         await Put(client, Sentinel);
@@ -115,7 +115,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Ciphertext_CopiedFromAnotherKeysRow_IsUnreadable()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
 
         using var scope = factory.Services.CreateScope();
         var protector = scope.ServiceProvider.GetRequiredService<ISecretProtector>();
@@ -136,7 +136,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task ARowWithAnUnknownProtectionScheme_IsUnreadable()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
         await Put(client, Sentinel);
 
@@ -155,7 +155,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Put_AtTheCap_RoundTrips_AndOneOverIsRejected()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         var atCap = new string('a', SecretSettingKeys.MaxPlaintextLength);
@@ -186,7 +186,7 @@ public class SecretSettingsApiTests
     [InlineData("tab\tstop")]
     public async Task Put_WithANonPrintableAsciiValue_IsRejected(string value)
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         var response = await Put(client, value);
@@ -215,7 +215,7 @@ public class SecretSettingsApiTests
     [InlineData('\u007F', false)]  // 0x7F — DEL, one above the ceiling
     public async Task Put_AtThePrintableAsciiBoundaries_IsAcceptedOnlyInsideTheRange(char character, bool accepted)
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         // Padded, so a leading/trailing space is not simply trimmed away before the rule sees it and
@@ -256,7 +256,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Put_ARelayPasswordWithANonAsciiCharacter_IsRefusedWithTheConstraintNamed()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         // The shape a real credential takes: a Nordic character in a otherwise ordinary password.
@@ -287,7 +287,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Writes_WithoutTheSecurityUpdateClaim_AreForbidden()
     {
-        await using var factory = new ApiFactory(ReadAndCountUpdate);
+        var factory = Factory.ForCaller(ReadAndCountUpdate);
         var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await Put(client, Sentinel)).StatusCode);
@@ -298,7 +298,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Get_WithoutTheReadClaim_IsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Path)).StatusCode);
@@ -312,7 +312,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Writes_WithoutTheReadClaim_AreForbidden_EvenHoldingTheWriteClaim()
     {
-        await using var factory = new ApiFactory(SecurityUpdateOnly);
+        var factory = Factory.ForCaller(SecurityUpdateOnly);
         var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await Put(client, Sentinel)).StatusCode);
@@ -391,7 +391,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task NoResponseBody_FromAnyEndpoint_ContainsTheStoredValue()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         var put = await Put(client, Sentinel);
@@ -463,7 +463,7 @@ public class SecretSettingsApiTests
     [InlineData("badévalue")]
     public async Task BadRequestBodies_ContainNeitherTheValueNorItsLength(string value)
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         var response = await Put(client, value);
@@ -490,7 +490,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task AnOverLengthRejection_DoesNotEchoTheValue()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         var value = new string('z', SecretSettingKeys.MaxPlaintextLength + 7);
@@ -511,7 +511,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task AValidationFailure_IsKeyedOnTheRequestProperty()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         var problem = await (await Put(client, "badévalue")).Content.ReadFromJsonAsync<ProblemBody>();
@@ -530,7 +530,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task WithNoRowsAtAll_TheStatusEndpointReturns200AndEveryKeyIsNotSet()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -553,7 +553,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task ACorruptedRow_IsUnreadable_NotNotSet()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
         await Put(client, Sentinel);
 
@@ -571,7 +571,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task AStoredRow_ReportsSetWithAttribution()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
         await factory.SeedActorUserAsync(displayName: "Ada Lovelace");
 
@@ -588,7 +588,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Delete_OnAnUnreadableRow_Succeeds_AndLeavesItNotSet()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         await WriteRow(factory, "not-decryptable", SystemSettingSecret.CurrentProtectionScheme);
@@ -605,7 +605,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task Delete_OnAnAbsentKey_Is204()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync(KeyPath)).StatusCode);
@@ -621,7 +621,7 @@ public class SecretSettingsApiTests
     [Fact]
     public async Task TheReader_IsReachableFromASingletonRootedCallSite_AndReportsAllThreeStates()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         var client = factory.CreateClient();
 
         // Resolved from the ROOT provider, as a singleton would — the seam FileAnalysisApiKeyHandler,
@@ -774,7 +774,7 @@ public class SecretSettingsApiTests
 
     private sealed record ProblemBody(IReadOnlyDictionary<string, string[]>? Errors);
 
-    private class ApiFactory(
+    public class ApiFactory(
         IReadOnlyCollection<string>? permissions, IReadOnlyDictionary<string, string?>? configuration = null)
         : OdysseyApiFactory(permissions, ActorUserId, configuration);
 
@@ -788,4 +788,7 @@ public class SecretSettingsApiTests
             builder.ConfigureServices(services => services.AddSingleton<ILoggerProvider>(Logs));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

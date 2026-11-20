@@ -19,7 +19,7 @@ using Odyssey.Testing.FileStorage;
 namespace Odyssey.Api.Tests;
 
 /// <summary>VJOURNAL/.ics journal-entry import/export endpoints (issue #339).</summary>
-public class JournalEntryIcsApiTests
+public class JournalEntryIcsApiTests(JournalEntryIcsApiTests.Host host) : SharedApiHostTests<JournalEntryIcsApiTests.Host>(host)
 {
     private const string ActorUserId = "journal-entry-ics-actor-id";
     private const string Path = "/api/journal-entries";
@@ -68,8 +68,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_EmptyBoard_ReturnsValidVCalendar_WithNoSniff()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var response = await client.GetAsync(IcsPath);
 
@@ -84,8 +84,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportAll_FileName_IsTimestampPrefixed()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var fileName = await FileNameOf(await client.GetAsync(IcsPath));
         Assert.Matches(@"^odyssey-journal-entries-\d{8}-\d{6}Z\.ics$", fileName!);
@@ -94,8 +94,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportFiltered_FileName_HasFilteredSegment()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, NewEntry("A"));
 
         var fileName = await FileNameOf(await client.GetAsync($"{IcsPath}?search=A"));
@@ -111,8 +111,8 @@ public class JournalEntryIcsApiTests
     [InlineData("hasPhotos=false")]
     public async Task ExportFilteredByAttachmentPresence_FileName_HasFilteredSegment(string filter)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, NewEntry("A"));
 
         var fileName = await FileNameOf(await client.GetAsync($"{IcsPath}?{filter}"));
@@ -122,8 +122,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(IcsPath)).StatusCode);
     }
@@ -131,8 +131,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_Entry_EmitsVJournal_WithAllFields()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
         var tagId = await SeedJournalTagAsync(factory, "Travel");
         var cpUid = "urn:uuid:cp-acme";
         var cpId = await SeedContactAsync(factory, "Acme", cpUid);
@@ -173,8 +173,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportAll_IncludesArchivedByDefault_StatusFilters()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var active = await CreateAsync(client, NewEntry("Active one"));
         var archived = await ArchiveAsync(client, await CreateAsync(client, NewEntry("Archived one")));
 
@@ -195,8 +195,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportSingle_ReturnsOneVJournal()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var keep = await CreateAsync(client, NewEntry("Keep"));
         await CreateAsync(client, NewEntry("Drop"));
 
@@ -212,8 +212,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportSingle_NotFound_Returns404()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var response = await client.GetAsync($"{Path}/{Guid.NewGuid()}/vjournal");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -222,8 +222,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_WithoutContactsRead_OmitsContactProperty()
     {
-        await using var factory = new ApiFactory(ReadWrite); // no contacts.read
-        using var client = factory.CreateClient();
+        var factory = Factory; // no contacts.read
+        using var client = factory.ClientFor(ReadWrite);
         var cpId = await SeedContactAsync(factory, "Acme", "urn:uuid:cp-1");
         await CreateAsync(client, NewEntry("Linked", contactIds: [cpId]));
 
@@ -234,8 +234,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportFiltered_BySearchAndTag_ReturnsMatchingSet()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var tagId = await SeedJournalTagAsync(factory, "Work");
         var match = await CreateAsync(client, NewEntry("Quarterly review", tagIds: [tagId]));
         await CreateAsync(client, NewEntry("Grocery run"));
@@ -251,9 +251,9 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportFiltered_ByAttachmentPresence_ReturnsMatchingSet()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
+        var factory = Factory;
         var imageId = await SeedPhotoAsync(factory, "beach.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
         var withPhoto = await CreateAsync(client, NewEntry("Trip", photoIds: [imageId]));
         await CreateAsync(client, NewEntry("Grocery run"));
 
@@ -266,8 +266,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportReservedCharacters_RoundTripUnchanged()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, NewEntry(
             title: "Trip",
             content: "Comma, semicolon; backslash\\ and\nnewline",
@@ -290,8 +290,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_HandAuthored_CreatesEntries_WithVerbatimUid()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(
             Vjournal("urn:uuid:e1", "SUMMARY:One", "DESCRIPTION:First", "DTSTART;VALUE=DATE:20260101"),
@@ -311,8 +311,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_ExportedFile_IsIdempotent_UpdatesInPlace()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, NewEntry("Alpha"));
         await CreateAsync(client, NewEntry("Beta"));
 
@@ -330,8 +330,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_UpdateInPlace_PreservesCreatedBy_StampsUpdatedBy()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, NewEntry("Original"));
 
         var ics = Vcalendar(Vjournal(created.ExternalUid, "SUMMARY:Renamed", "DESCRIPTION:Edited", "DTSTART;VALUE=DATE:20260601"));
@@ -350,8 +350,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_CancelledStatus_ArchivesOnCreateAndUpdate()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await ImportAsync(client, Vcalendar(
             Vjournal("c1", "SUMMARY:Cancelled", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101", "STATUS:CANCELLED")));
@@ -367,8 +367,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_AbsentStatusOnUpdate_LeavesArchivedUnchanged()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // Create archived, then re-import the same UID with NO STATUS: it must stay archived (§5, AC 17).
         var archived = await ImportAsync(client, Vcalendar(
@@ -386,8 +386,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_FinalStatusOnUpdate_UnarchivesEntry()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await ImportAsync(client, Vcalendar(
             Vjournal("u1", "SUMMARY:Archived", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101", "STATUS:CANCELLED")));
 
@@ -402,8 +402,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_MissingSummary_IsSkippedWithSample()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var result = await ImportAsync(client, Vcalendar(Vjournal("n1", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101")));
 
@@ -416,8 +416,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_MissingDescription_IsSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var result = await ImportAsync(client, Vcalendar(Vjournal("n2", "SUMMARY:No body", "DTSTART;VALUE=DATE:20260101")));
 
@@ -428,8 +428,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_MissingDtstart_IsSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var result = await ImportAsync(client, Vcalendar(Vjournal("n3", "SUMMARY:No date", "DESCRIPTION:x")));
 
@@ -440,8 +440,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_TitleTooLong_IsSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(Vjournal("l1", $"SUMMARY:{new string('x', 201)}", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
         var result = await ImportAsync(client, ics);
@@ -453,8 +453,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_ControlCharUid_IsSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // A UID with an embedded tab (a C0 control character) is rejected before any DB write.
         var ics = Vcalendar(Vjournal("bad\tuid", "SUMMARY:Sneaky", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
@@ -470,8 +470,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_C1ControlCharUid_IsImported()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // The import runs the create/update DTO's own pattern (issue #287 L8), which bounds the C0 range
         // and DEL only. A C1 character is therefore accepted here exactly as the API accepts it.
@@ -489,8 +489,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_DuplicateUidWithinFile_LastWriteWins()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(
             Vjournal("dupe", "SUMMARY:First", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"),
@@ -506,8 +506,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_CaseVariantUid_DoesNotMatchExisting()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await ImportAsync(client, Vcalendar(Vjournal("Entry-ABC", "SUMMARY:Upper", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101")));
 
         var result = await ImportAsync(client, Vcalendar(Vjournal("entry-abc", "SUMMARY:Lower", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101")));
@@ -519,8 +519,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_MatchedCategory_LinksTag_UnmatchedCounted()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var tagId = await SeedJournalTagAsync(factory, "Errands");
 
         var ics = Vcalendar(Vjournal("c1", "SUMMARY:Shop", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101", "CATEGORIES:errands,Nonexistent"));
@@ -537,8 +537,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_Contact_WithClaim_LinksIt()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithContacts);
         var cpId = await SeedContactAsync(factory, "Acme", "urn:uuid:cp-acme");
 
         var ics = Vcalendar(Vjournal("cp1", "SUMMARY:Met Acme", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -556,8 +556,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_Contact_WithClaim_UnmatchedUid_IsSkippedButEntryImports()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithContacts);
 
         var ics = Vcalendar(Vjournal("cp2", "SUMMARY:Ghost contact", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             "X-ODYSSEY-CONTACT:urn:uuid:nobody"));
@@ -570,8 +570,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_Contact_WithoutClaim_IsSkippedButEntryImports()
     {
-        await using var factory = new ApiFactory(ReadWrite); // no contacts.read
-        using var client = factory.CreateClient();
+        var factory = Factory; // no contacts.read
+        using var client = factory.ClientFor(ReadWrite);
         await SeedContactAsync(factory, "Acme", "urn:uuid:cp-acme");
 
         var ics = Vcalendar(Vjournal("cp3", "SUMMARY:Gated", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -588,8 +588,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_UpdateWithoutClaim_LeavesExistingContactLinkUntouched()
     {
-        await using var factory = new ApiFactory(ReadWrite); // no contacts.read
-        using var client = factory.CreateClient();
+        var factory = Factory; // no contacts.read
+        using var client = factory.ClientFor(ReadWrite);
         var cpId = await SeedContactAsync(factory, "Acme", "urn:uuid:cp-acme");
         // Creating with a contact link needs only journal.create (not contacts.read).
         var created = await CreateAsync(client, NewEntry("Linked", contactIds: [cpId]));
@@ -610,8 +610,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_UpdateWithClaim_ZeroReferences_ClearsContacts()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithContacts);
         var cpId = await SeedContactAsync(factory, "Acme", "urn:uuid:cp-acme");
         var created = await CreateAsync(client, NewEntry("Linked", contactIds: [cpId]));
 
@@ -626,8 +626,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_ResolvableAttachment_WithFilesRead_LinksIt()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var fileId = await SeedFileAsync(factory, "doc.pdf", "application/pdf");
 
         var ics = Vcalendar(Vjournal("at1", "SUMMARY:With file", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -644,8 +644,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_Attachment_WithoutFilesRead_IsSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite); // no files.read
-        using var client = factory.CreateClient();
+        var factory = Factory; // no files.read
+        using var client = factory.ClientFor(ReadWrite);
         var fileId = await SeedFileAsync(factory, "doc.pdf", "application/pdf");
 
         var ics = Vcalendar(Vjournal("at2", "SUMMARY:Gated", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -659,8 +659,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_PhotoReference_WithPhotosRead_LinksIt()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var imageId = await SeedPhotoAsync(factory, "pic.jpg");
 
         var ics = Vcalendar(Vjournal("ph1", "SUMMARY:With photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -675,43 +675,42 @@ public class JournalEntryIcsApiTests
     }
 
     /// <summary>
-    /// Issue #428 §3.3: an old export names a photo by the file it wrapped. That id still resolves — through the
-    /// legacy photo's current FileId, and after the backfill through its LegacyFileId.
+    /// Issue #428 §3.3: an old export names a photo by the file it wrapped before the move. That id still resolves,
+    /// through the photo's LegacyFileId — whether the former file is gone or was kept because something else used it.
     /// </summary>
     [Fact]
-    public async Task Import_PhotoReferenceByLegacyOrBackfilledFileId_ResolvesToThePhoto()
+    public async Task Import_PhotoReferenceByFormerFileId_ResolvesToThePhoto()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
-        var (legacyPhoto, legacyFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "legacy.jpg");
-        var (movedPhoto, movedFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "moved.jpg");
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
+        var (keptPhoto, keptFile) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, null, "kept.jpg");
+        var movedPhoto = await PhotoTestSupport.SeedPhotoAsync(factory, null, "moved.jpg");
+        var movedFile = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
         {
-            // What the backfill leaves behind: the old file id kept, no file any more (the original is irrelevant here).
+            // What the move left behind when nothing else used the file: the old id kept, the file deleted.
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var moved = await context.Photos.SingleAsync(p => p.PhotoId == movedPhoto);
-            moved.LegacyFileId = movedFile;
-            moved.FileId = null;
+            (await context.Photos.SingleAsync(p => p.PhotoId == movedPhoto)).LegacyFileId = movedFile;
             await context.SaveChangesAsync();
         }
 
         var ics = Vcalendar(Vjournal("ph-legacy", "SUMMARY:Old export", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
-            $"ATTACH:odyssey-photo:{legacyFile}", $"ATTACH:odyssey-photo:{movedFile}"));
+            $"ATTACH:odyssey-photo:{keptFile}", $"ATTACH:odyssey-photo:{movedFile}"));
         var result = await ImportAsync(client, ics);
 
         Assert.Equal(0, result.SkippedPhotoCount);
         using var assertScope = factory.Services.CreateScope();
         var ctx = assertScope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var linked = (await ctx.JournalEntries.Include(e => e.Photos).SingleAsync()).Photos.Select(p => p.PhotoId).ToHashSet();
-        Assert.Equal(new HashSet<Guid> { legacyPhoto, movedPhoto }, linked);
+        Assert.Equal(new HashSet<Guid> { keptPhoto, movedPhoto }, linked);
     }
 
     /// <summary>Issue #428 §3.3: an image file no photo wraps is skipped and counted — the import never creates a photo.</summary>
     [Fact]
     public async Task Import_ImageFileNoPhotoWraps_IsSkipped_AndNoPhotoIsCreated()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var imageFile = await SeedFileAsync(factory, "receipt.jpg", "image/jpeg");
 
         var ics = Vcalendar(Vjournal("ph-file", "SUMMARY:A file", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -726,8 +725,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_NonImagePhotoReference_IsSkippedButEntryImports()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var pdfId = await SeedFileAsync(factory, "not-a-photo.pdf", "application/pdf");
 
         var ics = Vcalendar(Vjournal("ph2", "SUMMARY:Bad photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -744,8 +743,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_OverLengthLocationOnUpdate_LeavesExistingUnchanged()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, NewEntry("Trip", location: "Bergen"));
 
         var ics = Vcalendar(Vjournal(created.ExternalUid, "SUMMARY:Trip", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260601",
@@ -760,8 +759,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_TooManyVJournals_ReturnsBadRequest_NothingImported()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.JournalIcsMaxImportEntries, AdminCountCap.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
@@ -778,8 +777,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_MalformedFile_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await PostIcsAsync(client, "not an ics file")).StatusCode);
     }
@@ -787,8 +786,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_NonIcsExtension_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(Vjournal("x1", "SUMMARY:x", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
         Assert.Equal(HttpStatusCode.BadRequest, (await PostIcsAsync(client, ics, "data.txt")).StatusCode);
@@ -797,8 +796,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_OnlyVEvents_IsNoOp()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n" +
                   "BEGIN:VEVENT\r\nUID:e1\r\nDTSTART:20300101T090000Z\r\nSUMMARY:Event\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
@@ -811,8 +810,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_WithOnlyCreateClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.JournalCreate, PermissionClaims.JournalRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.JournalCreate, PermissionClaims.JournalRead]);
 
         var ics = Vcalendar(Vjournal("p1", "SUMMARY:x", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
         Assert.Equal(HttpStatusCode.Forbidden, (await PostIcsAsync(client, ics)).StatusCode);
@@ -821,8 +820,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_WithoutContactsRead_NoReferences_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(Vjournal("nc1", "SUMMARY:Plain", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
         var result = await ImportAsync(client, ics);
@@ -836,8 +835,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_UpdateNamingFewerTags_RemovesTheDroppedLink()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var alpha = await SeedJournalTagAsync(factory, "Alpha");
         var beta = await SeedJournalTagAsync(factory, "Beta");
         var created = await CreateAsync(client, NewEntry("Tagged", tagIds: [alpha, beta]));
@@ -856,8 +855,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_UpdateWithNoAttach_RemovesExistingAttachment()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var fileId = await SeedFileAsync(factory, "doc.pdf", "application/pdf");
         var created = await CreateAsync(client, NewEntry("Filed", attachmentFileIds: [fileId]));
 
@@ -872,8 +871,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_UpdateReorderingPhotos_ResequencesPosition()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var imgA = await SeedPhotoAsync(factory, "a.jpg");
         var imgB = await SeedPhotoAsync(factory, "b.jpg");
         var created = await CreateAsync(client, NewEntry("Gallery", photoIds: [imgA, imgB]));
@@ -900,8 +899,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_OverLengthUid_IsSkipped_NothingImported()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // A UID longer than the varchar(255) column would 500 the whole batch on a strict MariaDB; it must
         // instead be a clean per-block skip, preserving skip-and-continue.
@@ -918,8 +917,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_DescriptionTooLong_IsSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(Vjournal("d-long", "SUMMARY:Big", $"DESCRIPTION:{new string('d', 4097)}", "DTSTART;VALUE=DATE:20260101"));
         var result = await ImportAsync(client, ics);
@@ -931,8 +930,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_EntryDateOutOfRange_IsSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var ics = Vcalendar(Vjournal("y1", "SUMMARY:Ancient", "DESCRIPTION:x", "DTSTART;VALUE=DATE:18000101"));
         var result = await ImportAsync(client, ics);
@@ -944,8 +943,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_TagLinks_CappedAtMaxLinksPerKind()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var names = await SeedManyTagsAsync(factory, 55);
 
         // 55 resolvable CATEGORIES against a cap of 50. The excess used to be dropped SILENTLY here —
@@ -978,10 +977,10 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_ADuplicateTagAtTheCap_IsNotReportedAsCapped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.JournalEntryMaxLinksPerKind, "2");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
         var names = await SeedManyTagsAsync(factory, 2);
 
         var ics = Vcalendar(Vjournal("dup-cap", "SUMMARY:Repeat", "DESCRIPTION:x",
@@ -1002,10 +1001,10 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_TagLinks_HonourTheConfiguredCap_NotAHardcodedFifty()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.JournalEntryMaxLinksPerKind, "5");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
         var names = await SeedManyTagsAsync(factory, 20);
 
         var ics = Vcalendar(Vjournal("cap-cfg", "SUMMARY:Twenty tags", "DESCRIPTION:x",
@@ -1034,10 +1033,10 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_And_Create_ResolveTheSameLinkCap()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.JournalEntryMaxLinksPerKind, "3");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
         var names = await SeedManyTagsAsync(factory, 10);
 
         using var scope = factory.Services.CreateScope();
@@ -1091,8 +1090,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_ExceedingCap_Returns400_WithMachineReadableCode()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.JournalIcsMaxExportRows, AdminCountCap.ToString(System.Globalization.CultureInfo.InvariantCulture));
         await SeedManyEntriesAsync(factory, AdminCountCap + 1);
@@ -1111,8 +1110,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Create_WithoutExternalUid_GeneratesUrnUuid()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, NewEntry("Auto"));
         Assert.StartsWith("urn:uuid:", created.ExternalUid);
     }
@@ -1120,8 +1119,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Create_WithSuppliedExternalUid_StoresVerbatim()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var request = NewEntry("Given");
         request.ExternalUid = "my-own-id";
         var post = await client.PostAsJsonAsync(Path, request);
@@ -1133,8 +1132,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Create_WithExternalUidAlreadyUsed_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var first = NewEntry("First");
         first.ExternalUid = "shared-id";
         (await client.PostAsJsonAsync(Path, first)).EnsureSuccessStatusCode();
@@ -1147,8 +1146,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Create_WithControlCharExternalUid_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var request = NewEntry("Bad");
         request.ExternalUid = "line1\nline2";
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, request)).StatusCode);
@@ -1161,13 +1160,13 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_WithAttachedFile_WithoutFilesRead_IsForbidden_AndSoIsTheSummary()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
         var entry = await CreateAsync(client, NewEntry("With file", attachmentFileIds: [fileId]));
 
-        await using var readOnly = new ApiFactory([PermissionClaims.JournalRead, PermissionClaims.PhotosRead], sharingStoreWith: factory);
-        using var readOnlyClient = readOnly.CreateClient();
+        var readOnly = Factory;
+        using var readOnlyClient = readOnly.ClientFor([PermissionClaims.JournalRead, PermissionClaims.PhotosRead]);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath + "/summary")).StatusCode);
@@ -1178,13 +1177,13 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_WithPhoto_WithoutPhotosRead_IsForbidden_AndSoIsTheSummary()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var photoId = await SeedPhotoAsync(factory, "beach.jpg");
         await CreateAsync(client, NewEntry("With photo", photoIds: [photoId]));
 
-        await using var readOnly = new ApiFactory([PermissionClaims.JournalRead, PermissionClaims.FilesRead], sharingStoreWith: factory);
-        using var readOnlyClient = readOnly.CreateClient();
+        var readOnly = Factory;
+        using var readOnlyClient = readOnly.ClientFor([PermissionClaims.JournalRead, PermissionClaims.FilesRead]);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath + "/summary")).StatusCode);
@@ -1193,12 +1192,12 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_WithoutFilesOrPhotos_NeedsOnlyJournalRead()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, NewEntry("Plain"));
 
-        await using var readOnly = new ApiFactory(ReadOnly, sharingStoreWith: factory);
-        using var readOnlyClient = readOnly.CreateClient();
+        var readOnly = Factory;
+        using var readOnlyClient = readOnly.ClientFor(ReadOnly);
 
         Assert.Equal(HttpStatusCode.OK, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await readOnlyClient.GetAsync(IcsPath + "/summary")).StatusCode);
@@ -1207,11 +1206,11 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Summary_CountsEntriesFilesAndPhotos_ForAllFilteredAndSingle()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
         var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
-        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", photoBytes);
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, null, "beach.jpg", photoBytes);
         var withBoth = await CreateAsync(client, NewEntry("Alpha", photoIds: [photoId], attachmentFileIds: [fileId]));
         await CreateAsync(client, NewEntry("Beta"));
 
@@ -1229,8 +1228,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_AllFilteredAndSingle_CarryFileAndPhotoInline_WithThePhotosTitleAndCaption()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
         var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
         var photoId = await SeedTitledPhotoAsync(factory, photoBytes, "Sunset", "Over the fjord");
@@ -1253,8 +1252,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_OverTheByteCap_IsRefusedBeforeAnyByte()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.JournalIcsMaxExportMegabytes, "1");
         var big = new byte[1024 * 1024]; // 1 MB of content is ~1.4 MB once base64-encoded and folded
         var fileId = await SeedFileWithContentAsync(factory, "big.bin", "application/octet-stream", big);
@@ -1271,8 +1270,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task RoundTrip_SameInstance_ReusesTheFileAndPhoto_NoDuplicate()
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads);
         var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
         var photoId = await SeedPhotoAsync(factory, "beach.jpg");
         var entry = await CreateAsync(client, NewEntry("Camping", photoIds: [photoId], attachmentFileIds: [fileId]));
@@ -1282,7 +1281,7 @@ public class JournalEntryIcsApiTests
         Assert.Equal((1, 0, 1, 0, 1), (result.UpdatedCount, result.StoredFileCount, result.ReusedFileCount, result.StoredPhotoCount, result.ReusedPhotoCount));
         Assert.Equal((0, 0), (result.SkippedAttachmentCount, result.SkippedPhotoCount));
         Assert.Single(await PhotosAsync(factory));
-        Assert.Equal(2, (await FilesAsync(factory)).Count); // the file and the legacy photo's wrapped file, nothing new
+        Assert.Single(await FilesAsync(factory)); // the file itself, nothing new
         var row = await EntryAsync(factory, entry.ExternalUid!);
         Assert.Equal(fileId, Assert.Single(row.Attachments).FileId);
         Assert.Equal(photoId, Assert.Single(row.Photos).PhotoId);
@@ -1309,7 +1308,7 @@ public class JournalEntryIcsApiTests
         Assert.NotNull(file.JournalStoredObjectId);
         var photo = Assert.Single(await PhotosAsync(target));
         Assert.Equal(("Sunset", "Over the fjord"), (photo.Title, photo.Caption));
-        Assert.NotNull(photo.StoredObjectId); // an owned original on the object store, not a Files-store row
+        Assert.NotEqual(Guid.Empty, photo.StoredObjectId); // an owned original on the object store, not a Files-store row
         var row = await EntryAsync(target, entry.ExternalUid!);
         Assert.Equal(file.Id, Assert.Single(row.Attachments).FileId);
         Assert.Equal(photo.PhotoId, Assert.Single(row.Photos).PhotoId);
@@ -1324,8 +1323,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_InlinePhoto_MatchingAStoredPhoto_IsReusedByHash_AndKeepsItsOwnTitle()
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads);
         var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
         var existingId = await SeedTitledPhotoAsync(factory, photoBytes, "Library title", null);
 
@@ -1342,8 +1341,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_SameInlinePhotoOnTwoEntries_IsUploadedOnce()
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads);
         var photo = InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg");
 
         var result = await ImportAsync(client, Vcalendar(
@@ -1361,8 +1360,8 @@ public class JournalEntryIcsApiTests
     [InlineData(PermissionClaims.FilesRead)]
     public async Task Import_InlineFile_WithoutBothFileClaims_IsForbidden_NothingImported(string missing)
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads.Where(c => c != missing).ToArray());
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads.Where(c => c != missing).ToArray());
 
         var response = await PostIcsAsync(client, Vcalendar(Vjournal("f1", "SUMMARY:Gated", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             InlineAttach(NoteBytes, "note.txt", "text/plain"))));
@@ -1379,8 +1378,8 @@ public class JournalEntryIcsApiTests
     [InlineData(PermissionClaims.PhotosRead)]
     public async Task Import_InlinePhoto_WithoutBothPhotoClaims_IsForbidden_NothingImported(string missing)
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads.Where(c => c != missing).ToArray());
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads.Where(c => c != missing).ToArray());
 
         var response = await PostIcsAsync(client, Vcalendar(Vjournal("g1", "SUMMARY:Gated", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg"))));
@@ -1395,8 +1394,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_InlinePhoto_ThatIsNotAnImage_IsSkipped_ButTheEntryImports()
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads);
 
         var result = await ImportAsync(client, Vcalendar(Vjournal("n1", "SUMMARY:Not a photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             InlinePhoto(NoteBytes, "fake.jpg"))));
@@ -1411,8 +1410,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_InlineFile_LargerThanTheImportCap_IsRefusedWhole()
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.JournalIcsMaxImportMegabytes, "1");
 
         var response = await PostIcsAsync(client, Vcalendar(Vjournal("b1", "SUMMARY:Big", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
@@ -1425,8 +1424,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_Category_MatchesAnArchivedTag_PreferringAnActiveOne()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var archivedOnly = await SeedJournalTagAsync(factory, "Retired", archived: true);
         await SeedJournalTagAsync(factory, "Both", archived: true);
         var activeBoth = await SeedJournalTagAsync(factory, "Both");
@@ -1442,8 +1441,8 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Import_NewInlinePhoto_OverTheAdminUploadCap_IsSkipped_ButTheEntryImports()
     {
-        await using var factory = new ApiFactory(ReadWriteWithUploads);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithUploads);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
         // A JPEG header padded past the 1 MB cap: the size check runs before the image is decoded.
         var big = PhotoTestData.Jpeg(PhotoTestData.NextSeed()).Concat(new byte[1536 * 1024]).ToArray();
@@ -1467,8 +1466,8 @@ public class JournalEntryIcsApiTests
             PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
             PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate,
         ];
-        await using var factory = new ApiFactory(photosOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(photosOnly);
 
         var photo = await ImportAsync(client, Vcalendar(Vjournal("po1", "SUMMARY:Photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg"))));
@@ -1487,8 +1486,8 @@ public class JournalEntryIcsApiTests
             PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
             PermissionClaims.FilesRead, PermissionClaims.FilesCreate,
         ];
-        await using var factory = new ApiFactory(filesOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(filesOnly);
 
         var file = await ImportAsync(client, Vcalendar(Vjournal("fo1", "SUMMARY:File", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             InlineAttach(NoteBytes, "note.txt", "text/plain"))));
@@ -1505,8 +1504,8 @@ public class JournalEntryIcsApiTests
     {
         // The pre-flight check judges files and photos exactly, but entry text only as it is written. Text alone over
         // the cap must end the response abnormally, so a browser reports a failed download instead of saving part of it.
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.JournalIcsMaxExportMegabytes, "1");
         using (var scope = factory.Services.CreateScope())
         {
@@ -1555,7 +1554,7 @@ public class JournalEntryIcsApiTests
     private static async Task<Guid> SeedTitledPhotoAsync(
         WebApplicationFactory<Program> factory, byte[] bytes, string? title, string? caption)
     {
-        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", bytes);
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, null, "beach.jpg", bytes);
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
@@ -1700,10 +1699,10 @@ public class JournalEntryIcsApiTests
         return id;
     }
 
-    private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
-        (await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, fileName)).PhotoId;
+    private static Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
+        PhotoTestSupport.SeedPhotoAsync(factory, null, fileName);
 
-    // A legacy file with real content and its real hash, so an import can match it.
+    // A file with real content and its real hash, so an import can match it.
     private static async Task<Guid> SeedFileWithContentAsync(
         WebApplicationFactory<Program> factory, string fileName, string contentType, byte[] content)
     {
@@ -1711,9 +1710,8 @@ public class JournalEntryIcsApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = content };
+        var blobContent = content;
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1723,8 +1721,7 @@ public class JournalEntryIcsApiTests
             SizeBytes = content.Length,
             Sha256Hash = Sha256(content),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
@@ -1775,9 +1772,8 @@ public class JournalEntryIcsApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1787,8 +1783,7 @@ public class JournalEntryIcsApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
@@ -1860,7 +1855,10 @@ public class JournalEntryIcsApiTests
         }
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
+
+    public class ApiFactory : OdysseyApiFactory
     {
         private readonly string databaseName;
 

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Finance;
@@ -36,7 +37,7 @@ namespace Odyssey.IntegrationTests;
 /// that decimal/datetime columns round-trip at full precision. Also runs the demo seeder end to
 /// end to confirm referential integrity on a relational store.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class RelationalIntegrationTests(MariaDbFixture fixture)
 {
     [SkippableFact]
@@ -75,25 +76,17 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         Assert.Equal(expected.JournalEntries.Count, await journal.JournalEntries.CountAsync());
         Assert.Equal(expected.JournalEntryTags.Count, await journal.JournalEntryTags.CountAsync());
         Assert.Equal(expected.JournalEntryContacts.Count, await journal.JournalEntryContacts.CountAsync());
-        Assert.Equal(expected.JournalEntryPhotos.Count, await journal.JournalEntryPhotos.CountAsync());
-        Assert.Equal(expected.JournalEntryAttachments.Count, await journal.JournalEntryAttachments.CountAsync());
+        // The photo and attachment links, the photo library and every file are the worker's DemoFileSeeder's (it needs
+        // the file volumes); this job writes none of them.
+        Assert.Equal(0, await journal.JournalEntryPhotos.CountAsync());
+        Assert.Equal(0, await journal.JournalEntryAttachments.CountAsync());
+        Assert.Equal(0, await journal.FileMetadata.CountAsync());
         Assert.Equal(expected.JournalTasks.Count, await journal.JournalTasks.CountAsync());
         Assert.Equal(expected.JournalTaskTagLinks.Count, await journal.JournalTaskTagLinks.CountAsync());
         Assert.Equal(expected.JournalTags.Count, await journal.JournalTags.CountAsync());
         Assert.Equal(expected.JournalTaskTags.Count, await journal.JournalTaskTags.CountAsync());
 
-        // Photos module (issue #321), now part of the merged OdysseyContext: the seeder persists the photo graph.
-        var photos = journal;
-        Assert.Equal(expected.Photos.Count, await photos.Photos.CountAsync());
-        Assert.Equal(expected.PhotoTags.Count, await photos.PhotoTags.CountAsync());
-        Assert.Equal(expected.PhotoTagLinks.Count, await photos.PhotoTagLinks.CountAsync());
-        Assert.Equal(expected.PhotoPeople.Count, await photos.PhotoPeople.CountAsync());
-        Assert.Equal(expected.PhotoAlbums.Count, await photos.PhotoAlbums.CountAsync());
-        Assert.Equal(expected.PhotoAlbumItems.Count, await photos.PhotoAlbumItems.CountAsync());
-        // Every seeded journal photo now links a library Photo that exists (unification backfill/seed).
-        var libraryPhotoIds = (await photos.Photos.Select(p => p.PhotoId).ToListAsync()).ToHashSet();
-        var journalPhotoIds = await journal.JournalEntryPhotos.Select(link => link.PhotoId).ToListAsync();
-        Assert.All(journalPhotoIds, id => Assert.Contains(id, libraryPhotoIds));
+        Assert.Equal(0, await journal.Photos.CountAsync());
 
         // Calendar module (issue #323), now part of the merged OdysseyContext: the seeder persists the calendar graph.
         var calendar = journal;
@@ -295,7 +288,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 ContractId = contractId,
                 ContactId = contactId,
             });
-            context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+            StoredFileFixtures.AddStoredObjectRow(context, blobId);
             context.FileMetadata.Add(new FileMetadata
             {
                 Id = fileId,
@@ -304,7 +297,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 ContentType = "application/pdf",
                 SizeBytes = 3,
                 Sha256Hash = Guid.NewGuid().ToString("N"),
-                FileBlobId = blobId,
+                FinanceStoredObjectId = blobId,
                 UploadedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
@@ -372,7 +365,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             await context.FileAnalysisJobs.Where(j => j.AccountFileId == accountFileId).ExecuteDeleteAsync();
             await context.AccountFiles.Where(f => f.Id == accountFileId).ExecuteDeleteAsync();
             await context.FileMetadata.Where(f => f.Id == fileId).ExecuteDeleteAsync();
-            await context.FileBlob.Where(b => b.Id == blobId).ExecuteDeleteAsync();
+            await StoredFileFixtures.RemoveStoredObjectRowAsync(context, blobId);
             await context.Transactions.Where(x => x.TransactionId == transactionId).ExecuteDeleteAsync();
             await context.Contracts.Where(c => c.ContractId == contractId).ExecuteDeleteAsync();
             await context.Accounts.Where(a => a.AccountId == accountId).ExecuteDeleteAsync();
@@ -427,22 +420,18 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// The other direction across the old boundary: a library <see cref="Photo"/> wraps exactly one row
-    /// in the Files store, so deleting the file takes the library record — and everything hanging off
-    /// it — with it, rather than leaving a photo whose image is gone.
+    /// The other direction across the old boundary: a journal-entry or task attachment is meaningless without its file,
+    /// so deleting the file takes the link rows with it and keeps the entry and the task. (A library photo once wrapped
+    /// a file the same way; it owns its original on the store since issue #428.)
     /// </summary>
     [SkippableFact]
-    public async Task Deleting_a_file_cascades_the_library_photo_that_wraps_it()
+    public async Task Deleting_a_file_cascades_its_journal_attachment_links()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await EnsureRelationalSchemaAsync();
         await EnsureRelationalSchemaAsync();
 
         var blobId = Guid.NewGuid();
         var fileId = Guid.NewGuid();
-        var photoId = Guid.NewGuid();
-        var tagId = Guid.NewGuid();
-        var tagLinkId = Guid.NewGuid();
         var entryId = Guid.NewGuid();
         var entryAttachmentId = Guid.NewGuid();
         var taskId = Guid.NewGuid();
@@ -450,7 +439,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
         await using (var context = NewRelationalContext())
         {
-            context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+            StoredFileFixtures.AddStoredObjectRow(context, blobId);
             context.FileMetadata.Add(new FileMetadata
             {
                 Id = fileId,
@@ -459,35 +448,11 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 ContentType = "image/jpeg",
                 SizeBytes = 3,
                 Sha256Hash = Guid.NewGuid().ToString("N"),
-                FileBlobId = blobId,
+                FinanceStoredObjectId = blobId,
                 UploadedAtUtc = DateTime.UtcNow,
-            });
-            context.Photos.Add(new Photo
-            {
-                PhotoId = photoId,
-                FileId = fileId,
-                CreatedByUserId = "integration-user",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-            });
-            context.PhotoTags.Add(new PhotoTag
-            {
-                PhotoTagId = tagId,
-                Name = $"cascade-{Guid.NewGuid():N}",
             });
             await context.SaveChangesAsync();
 
-            context.PhotoTagLinks.Add(new PhotoTagLink
-            {
-                PhotoTagLinkId = tagLinkId,
-                PhotoId = photoId,
-                PhotoTagId = tagId,
-            });
-
-            // The other two file links the merge made real. They cascade for the same reason every
-            // in-module attachment row does — the link is meaningless without its file — and the PR
-            // that added them proved only the Photo one, which is why they are seeded against the very
-            // same file here rather than in a test of their own.
             context.JournalEntries.Add(new JournalEntry
             {
                 JournalEntryId = entryId,
@@ -532,23 +497,19 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
         await using (var context = NewRelationalContext())
         {
-            Assert.False(await context.Photos.AnyAsync(photo => photo.PhotoId == photoId));
-            Assert.False(await context.PhotoTagLinks.AnyAsync(link => link.PhotoTagLinkId == tagLinkId));
             Assert.False(await context.JournalEntryAttachments
                 .AnyAsync(attachment => attachment.JournalEntryAttachmentId == entryAttachmentId));
             Assert.False(await context.JournalTaskAttachments
                 .AnyAsync(attachment => attachment.JournalTaskAttachmentId == taskAttachmentId));
 
-            // The tag, the entry and the task are separate aggregates: only the links die with the file.
-            Assert.True(await context.PhotoTags.AnyAsync(tag => tag.PhotoTagId == tagId));
+            // The entry and the task are separate aggregates: only the links die with the file.
             Assert.True(await context.JournalEntries.AnyAsync(entry => entry.JournalEntryId == entryId));
             Assert.True(await context.JournalTasks.AnyAsync(task => task.JournalTaskId == taskId));
 
             // cleanup
             await context.JournalEntries.Where(entry => entry.JournalEntryId == entryId).ExecuteDeleteAsync();
             await context.JournalTasks.Where(task => task.JournalTaskId == taskId).ExecuteDeleteAsync();
-            await context.PhotoTags.Where(tag => tag.PhotoTagId == tagId).ExecuteDeleteAsync();
-            await context.FileBlob.Where(b => b.Id == blobId).ExecuteDeleteAsync();
+            await StoredFileFixtures.RemoveStoredObjectRowAsync(context, blobId);
         }
     }
 
@@ -581,7 +542,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 AccountType = AccountType.CheckingAccount,
                 CurrencyCode = "USD",
             });
-            context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+            StoredFileFixtures.AddStoredObjectRow(context, blobId);
             context.FileMetadata.Add(new FileMetadata
             {
                 Id = fileId,
@@ -590,7 +551,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 ContentType = "application/pdf",
                 SizeBytes = 3,
                 Sha256Hash = "hash",
-                FileBlobId = blobId,
+                FinanceStoredObjectId = blobId,
                 UploadedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
@@ -652,7 +613,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             await context.FileAnalysisJobs.Where(j => j.AccountFile!.AccountId == accountId).ExecuteDeleteAsync();
             await context.AccountFiles.Where(af => af.AccountId == accountId).ExecuteDeleteAsync();
             await context.FileMetadata.Where(f => f.Id == fileId).ExecuteDeleteAsync();
-            await context.FileBlob.Where(b => b.Id == blobId).ExecuteDeleteAsync();
+            await StoredFileFixtures.RemoveStoredObjectRowAsync(context, blobId);
             await context.Accounts.Where(a => a.AccountId == accountId).ExecuteDeleteAsync();
         }
     }
@@ -910,8 +871,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 AccountType = AccountType.CheckingAccount,
                 CurrencyCode = "USD",
             });
-            var blob = new FileBlob { Id = blobId, Content = [1, 2, 3] };
-            context.FileBlob.Add(blob);
+            StoredFileFixtures.AddStoredObjectRow(context, blobId);
             context.FileMetadata.Add(new FileMetadata
             {
                 Id = fileMetadataId,
@@ -921,8 +881,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 SizeBytes = 3,
                 Sha256Hash = Guid.NewGuid().ToString("N"),
                 UploadedAtUtc = DateTime.UtcNow,
-                FileBlobId = blobId,
-                FileBlob = blob,
+                FinanceStoredObjectId = blobId,
             });
             context.Contracts.Add(new Contract
             {
@@ -966,7 +925,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
             // cleanup
             await context.FileMetadata.Where(f => f.Id == fileMetadataId).ExecuteDeleteAsync();
-            await context.FileBlob.Where(b => b.Id == blobId).ExecuteDeleteAsync();
+            await StoredFileFixtures.RemoveStoredObjectRowAsync(context, blobId);
             await context.Accounts.Where(a => a.AccountId == accountId).ExecuteDeleteAsync();
         }
     }
@@ -1117,7 +1076,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             context.Contacts.Add(NewOrganizationContact(contactId, "Pictured Contact", "PICTURED CONTACT"));
             // Photo.FileId is a real FK to the Files store now, so the library record needs a real file
             // behind it rather than an arbitrary Guid.
-            context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+            StoredFileFixtures.AddStoredObjectRow(context, blobId);
             context.FileMetadata.Add(new FileMetadata
             {
                 Id = fileId,
@@ -1127,12 +1086,12 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 SizeBytes = 3,
                 Sha256Hash = Guid.NewGuid().ToString("N"),
                 UploadedAtUtc = DateTime.UtcNow,
-                FileBlobId = blobId,
+                FinanceStoredObjectId = blobId,
             });
             context.Photos.Add(new Photo
             {
                 PhotoId = photoId,
-                FileId = fileId,
+                StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = new string('a', 64),
                 CreatedByUserId = "integration-user",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -1158,7 +1117,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
             // cleanup — deleting the file cascades the library photo with it.
             await context.FileMetadata.Where(f => f.Id == fileId).ExecuteDeleteAsync();
-            await context.FileBlob.Where(b => b.Id == blobId).ExecuteDeleteAsync();
+            await StoredFileFixtures.RemoveStoredObjectRowAsync(context, blobId);
         }
     }
 
@@ -1231,19 +1190,22 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         await using (var context = NewRelationalContext())
         {
             var fileIds = new[] { fileWithPending, fileAllReviewed };
-            var blobIds = await context.FileMetadata
-                .Where(f => fileIds.Contains(f.Id)).Select(f => f.FileBlobId).ToListAsync();
+            var objectIds = await context.FileMetadata
+                .Where(f => fileIds.Contains(f.Id)).Select(f => f.FinanceStoredObjectId!.Value).ToListAsync();
             await context.Accounts.Where(a => a.AccountId == accountId).ExecuteDeleteAsync();
             await context.FileMetadata.Where(f => fileIds.Contains(f.Id)).ExecuteDeleteAsync();
-            await context.FileBlob.Where(b => blobIds.Contains(b.Id)).ExecuteDeleteAsync();
+            foreach (var objectId in objectIds)
+            {
+                await StoredFileFixtures.RemoveStoredObjectRowAsync(context, objectId);
+            }
         }
     }
 
-    // Seeds a statement file (blob + metadata + account-file join), returning the account-file id.
+    // Seeds a statement file (stored-object row + metadata + account-file join), returning the account-file id.
     private static Guid AddRelationalStatement(OdysseyContext context, Guid accountId, Guid fileMetadataId, string name)
     {
         var blobId = Guid.NewGuid();
-        context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+        StoredFileFixtures.AddStoredObjectRow(context, blobId);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileMetadataId,
@@ -1253,7 +1215,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blobId,
+            FinanceStoredObjectId = blobId,
         });
 
         var accountFileId = Guid.NewGuid();
@@ -1587,7 +1549,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         // Photos-module services the demo seeder / journal backfill depend on (issue #321).
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IFileLookup, FileLookup>();
-        services.AddScoped<IImageContentReader, ImageContentReader>();
         services.AddSingleton<Odyssey.Core.Journal.IPhotoMetadataExtractor, Odyssey.Core.Journal.PhotoMetadataExtractor>();
         services.AddScoped<Odyssey.Core.Journal.PhotoMetadataService>();
         services.AddScoped<Odyssey.Core.Journal.IPhotoLookup, Odyssey.Core.Journal.PhotoLookup>();

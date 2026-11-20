@@ -200,11 +200,11 @@ internal sealed class CalendarExportAttachments
                     .Where(p => chunk.Contains(p.PhotoId))
                     .Select(p => new { p.PhotoId, p.Title, p.Caption })
                     .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
-                foreach (var row in described.Where(d => d.SizeBytes is not null && d.Sha256Hash is not null && d.ContentType is not null))
+                foreach (var row in described)
                 {
                     var label = labels.GetValueOrDefault(row.PhotoId);
                     photos[row.PhotoId] = Planned(new IcsBinaryAttachmentHeader(
-                        row.PhotoId, row.FileName, row.ContentType, row.Sha256Hash, row.SizeBytes!.Value,
+                        row.PhotoId, row.FileName, row.ContentType, row.Sha256Hash, row.SizeBytes,
                         IsPhoto: true, Title: label?.Title, Caption: label?.Caption));
                 }
             }

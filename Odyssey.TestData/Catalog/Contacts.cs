@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.TestData.Generators;
 using Odyssey.Dtos;
 using Odyssey.Context;
@@ -150,24 +150,20 @@ public static class Contacts
     public static Guid AvatarFileIdFor(string contactKey) =>
         DeterministicGuid.From($"contact-avatar-file::{contactKey}");
 
-    private static Guid AvatarBlobIdFor(string contactKey) =>
-        DeterministicGuid.From($"contact-avatar-blob::{contactKey}");
-
     /// <summary>
-    /// The Files-store rows behind <see cref="WithAvatars"/>. These are ORDINARY file rows — the
-    /// description is the same fixed, non-PII marker the upload path writes, and the filename is
-    /// generated from the contact id rather than carrying a person's name.
+    /// The images behind <see cref="WithAvatars"/>, in the contact-avatar area. These are ORDINARY file rows — the
+    /// description is the same fixed, non-PII marker the upload path writes, and the filename is generated from the
+    /// contact id rather than carrying a person's name.
     ///
     /// <para>
-    /// They are returned separately from <see cref="Build"/> because <c>Contact.AvatarFileId</c> is a
-    /// real foreign key, so the seeder has to write these <b>before</b> the contacts that point at them
-    /// — earlier than the rest of the Files store, which is seeded with finance.
+    /// <c>Contact.AvatarFileId</c> is a real foreign key, and only the worker's demo-file seeder can write the file, so
+    /// <see cref="Build"/> leaves every contact without an image and that seeder points the contact at it once the file
+    /// exists.
     /// </para>
     /// </summary>
-    public static (List<FileBlob> Blobs, List<FileMetadata> Files) BuildAvatarFiles()
+    public static List<DemoContactAvatar> BuildAvatarFiles()
     {
-        var blobs = new List<FileBlob>();
-        var files = new List<FileMetadata>();
+        var avatars = new List<DemoContactAvatar>();
 
         for (var i = 0; i < WithAvatars.Length; i++)
         {
@@ -179,23 +175,12 @@ public static class Contacts
                 ? DemoImages.GradientPng(DemoImages.ContactLogoWidth, DemoImages.ContactLogoHeight, seed: 3 + i)
                 : DemoImages.GradientPng(DemoImages.ContactAvatarSize, seed: 3 + i);
 
-            var blobId = AvatarBlobIdFor(contactKey);
-            blobs.Add(new FileBlob { Id = blobId, Content = content });
-            files.Add(new FileMetadata
-            {
-                Id = AvatarFileIdFor(contactKey),
-                UploadedByUserId = null,
-                FileName = $"contact-avatar-{IdFor(contactKey).ToString("N")[..8]}.png",
-                ContentType = "image/png",
-                SizeBytes = content.LongLength,
-                Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-                FileBlobId = blobId,
-                Description = "Contact image",
-                UploadedAtUtc = SeededAt,
-            });
+            avatars.Add(new DemoContactAvatar(IdFor(contactKey), DemoFileFactory.File(
+                AvatarFileIdFor(contactKey), StoredFileArea.ContactAvatars, null,
+                $"contact-avatar-{IdFor(contactKey).ToString("N")[..8]}.png", "image/png", "Contact image", SeededAt, content)));
         }
 
-        return (blobs, files);
+        return avatars;
     }
 
     /// <summary>
@@ -272,16 +257,8 @@ public static class Contacts
         AttachAliases(contacts);
         AttachAddresses(contacts);
 
-        // One person with a picture, one organization with a logo (issue #86). Attached here rather
-        // than in the definitions above so the pair is named in exactly one place.
-        foreach (var (contactKey, _) in WithAvatars)
-        {
-            var target = contacts.FirstOrDefault(c => c.ContactId == IdFor(contactKey));
-            if (target is not null)
-            {
-                target.AvatarFileId = AvatarFileIdFor(contactKey);
-            }
-        }
+        // One person with a picture, one organization with a logo (issue #86): see BuildAvatarFiles. The
+        // contacts are built without one, since the image is written later, by the worker.
 
         return contacts;
     }

@@ -6,7 +6,7 @@ namespace Odyssey.Context;
 /// <summary>
 /// The signed-in user's one profile picture (issue #94 §6) — 1:1 with <see cref="ApplicationUser"/>,
 /// stored in its <b>own</b> pair of tables with <b>zero relationships in either direction</b> to
-/// <see cref="FileMetadata"/> / <see cref="FileBlob"/>.
+/// <see cref="FileMetadata"/> and the object store.
 ///
 /// <para>
 /// <b>Why a second blob store rather than the domain one.</b> The separation is the point, and it is

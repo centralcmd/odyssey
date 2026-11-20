@@ -25,7 +25,7 @@ namespace Odyssey.Api.Tests;
 /// abuse surface (bulk storage consumption), not an ordinary per-request shape.
 /// </para>
 /// </summary>
-public class UploadCapSystemSettingsApiTests
+public class UploadCapSystemSettingsApiTests(UploadCapSystemSettingsApiTests.Host host) : SharedApiHostTests<UploadCapSystemSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string ActorUserId = "44444444-4444-4444-4444-444444444444";
@@ -40,7 +40,7 @@ public class UploadCapSystemSettingsApiTests
     [Fact]
     public async Task Get_ServesTheCompiledDefault()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -68,7 +68,7 @@ public class UploadCapSystemSettingsApiTests
     [Fact]
     public async Task Get_ShippedCeiling_Is10Gb()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -79,7 +79,7 @@ public class UploadCapSystemSettingsApiTests
     [Fact]
     public async Task Put_LoweringTheCap_IsAllowed()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -93,7 +93,7 @@ public class UploadCapSystemSettingsApiTests
     [Fact]
     public async Task Put_AtTheCeilingExactly_IsAllowed()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -131,7 +131,7 @@ public class UploadCapSystemSettingsApiTests
     [InlineData(10241)]
     public async Task Put_OutsideTheAdvertisedRange_IsRejected(int value)
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -147,7 +147,7 @@ public class UploadCapSystemSettingsApiTests
     [Fact]
     public async Task Put_WithOnlyTheOrdinaryClaim_IsForbidden_AndNamesTheField()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -164,6 +164,9 @@ public class UploadCapSystemSettingsApiTests
         ["FileStorage:MaxFileSizeBytes"] = (64L * 1024 * 1024).ToString(System.Globalization.CultureInfo.InvariantCulture),
     };
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, IReadOnlyDictionary<string, string?>? configuration = null)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions, IReadOnlyDictionary<string, string?>? configuration = null)
         : OdysseyApiFactory(permissions, ActorUserId, configuration);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

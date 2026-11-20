@@ -11,9 +11,9 @@ namespace Odyssey.IntegrationTests;
 
 /// <summary>
 /// Issue #448 AC 31 (deferred by #456) on real MariaDB, at head: the keys TO <c>FileMetadata</c> in the database are
-/// exactly the columns <see cref="FileReferenceCounter.Discover"/> derives from the EF model, plus the photo's own
-/// <c>FileId</c>, which Discover excludes by design — so a referencing table the model declares is a key the engine
-/// enforces, and the counter can never miss one.
+/// exactly the columns <see cref="FileReferenceCounter.Discover"/> derives from the EF model — so a referencing table
+/// the model declares is a key the engine enforces, and the counter can never miss one. (The photo's own
+/// <c>Photos.FileId</c> key was dropped by <c>RemoveLegacyFileBlobStorage</c>.)
 /// </summary>
 /// <remarks>
 /// <c>MoveFilesToObjectStore</c>'s own before/after comparison was retired with the other seam tests once production
@@ -25,7 +25,7 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
     private const string Database = "odyssey_move_files";
 
     [SkippableFact]
-    public async Task The_keys_to_FileMetadata_are_the_reference_counters_set_plus_the_photos_own()
+    public async Task The_keys_to_FileMetadata_are_exactly_the_reference_counters_set()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await fixture.CreateMigratedDatabaseAsync(Database);
@@ -37,7 +37,6 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
 
             var discovered = FileReferenceCounter.Discover(context)
                 .Select(r => ColumnOf(context.Model, r.EntityType, r.PropertyName))
-                .Append(ColumnOf(context.Model, typeof(Photo), nameof(Photo.FileId)))
                 .Order(StringComparer.Ordinal)
                 .ToList();
 

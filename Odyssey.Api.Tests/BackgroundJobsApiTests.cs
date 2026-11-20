@@ -22,7 +22,7 @@ namespace Odyssey.Api.Tests;
 /// claims, cooldown, limiter, conflicts and audit line. Nothing executes a weather, file-storage or thumbnail run
 /// here (AC 28) — the worker's executors are covered in <c>Odyssey.Core.Tests</c>.
 /// </summary>
-public class BackgroundJobsApiTests
+public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedApiHostTests<BackgroundJobsApiTests.Host>(host)
 {
     private const string Base = "/api/background-jobs";
 
@@ -49,8 +49,8 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task Every_endpoint_needs_system_settings_read()
     {
-        await using var factory = new ApiFactory([PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate]);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Base}/overview")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Base}/runs")).StatusCode);
@@ -63,11 +63,10 @@ public class BackgroundJobsApiTests
     [InlineData("Weather")]
     [InlineData("FileStorageMaintenance")]
     [InlineData("PhotoThumbnails")]
-    [InlineData("PhotoOriginalBackfill")]
     public async Task A_manual_run_without_the_jobs_own_claim_is_forbidden(string jobType)
     {
-        await using var factory = new ApiFactory(SettingsOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(SettingsOnly);
 
         var response = await client.PostAsync($"{Base}/{jobType}/runs", null);
 
@@ -79,8 +78,8 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task A_settings_reader_cannot_start_a_run()
     {
-        await using var factory = new ApiFactory([PermissionClaims.SystemSettingsRead, PermissionClaims.PhotosUpdate]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.SystemSettingsRead, PermissionClaims.PhotosUpdate]);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"{Base}/PhotoThumbnails/runs", null)).StatusCode);
     }
@@ -97,8 +96,8 @@ public class BackgroundJobsApiTests
     [InlineData("ExchangeRateSync, Weather")]
     public async Task An_unknown_job_is_not_found(string jobType)
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"{Base}/{jobType}/runs", null)).StatusCode);
     }
@@ -108,14 +107,13 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task With_no_heartbeat_every_job_is_not_ticking_and_the_thresholds_travel_on_the_dto()
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var overview = await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
 
         Assert.Equal(
-            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
-                JobType.FileAnalysis, JobType.FileBlobBackfill,
+            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
                 JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
@@ -132,14 +130,13 @@ public class BackgroundJobsApiTests
         Assert.Equal(Now, overview.GeneratedAtUtc);
         Assert.NotNull(overview.WorkerHealth.FileStorage);
         Assert.NotNull(overview.WorkerHealth.Thumbnails);
-        Assert.NotNull(overview.WorkerHealth.PhotoOriginalBackfill);
     }
 
     /// <summary>AC 30: an unconfigured job still heartbeats, and reads NotConfigured, not NotTicking.</summary>
     [Fact]
     public async Task A_ticking_job_with_nothing_to_work_on_is_not_configured_and_thumbnails_never_are()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         await factory.SeedAsync(context =>
         {
             foreach (var jobType in JobCatalogue.Entries.Select(entry => entry.JobType))
@@ -147,7 +144,7 @@ public class BackgroundJobsApiTests
                 context.JobHeartbeats.Add(Beat(jobType, Guid.NewGuid()));
             }
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         var jobs = (await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview"))!.Jobs.ToDictionary(job => job.JobType);
 
@@ -166,7 +163,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task Not_configured_is_shown_only_to_a_caller_who_can_read_the_jobs_detail()
     {
-        await using var factory = new ApiFactory(SettingsOnly);
+        var factory = Factory;
         await factory.SeedAsync(context =>
         {
             foreach (var jobType in JobCatalogue.Entries.Select(entry => entry.JobType))
@@ -174,7 +171,7 @@ public class BackgroundJobsApiTests
                 context.JobHeartbeats.Add(Beat(jobType, Guid.NewGuid()));
             }
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(SettingsOnly);
 
         var jobs = (await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview"))!.Jobs.ToDictionary(job => job.JobType);
 
@@ -194,7 +191,7 @@ public class BackgroundJobsApiTests
     [InlineData("running-dead", JobHealth.NeverRun)]
     public async Task The_health_follows_its_precedence(string scenario, JobHealth expected)
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         var worker = Guid.NewGuid();
         await factory.SeedAsync(context =>
         {
@@ -220,7 +217,7 @@ public class BackgroundJobsApiTests
                     break;
             }
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         var overview = await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
         var sync = overview!.Jobs.Single(job => job.JobType == JobType.ExchangeRateSync);
@@ -234,7 +231,7 @@ public class BackgroundJobsApiTests
     public async Task A_held_job_shows_its_reason_only_to_a_holder_of_its_read_claim()
     {
         var worker = Guid.NewGuid();
-        await using var admin = new ApiFactory(Admin);
+        var admin = Factory;
         await admin.SeedAsync(context =>
         {
             context.JobHeartbeats.Add(Beat(JobType.PhotoThumbnails, worker));
@@ -244,15 +241,15 @@ public class BackgroundJobsApiTests
             held.HeldByCheck = "VolumeLost";
             context.JobRuns.Add(held);
         });
-        await using var reader = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
+        var reader = Factory;
 
-        var full = await admin.CreateClient().GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
+        var full = await admin.ClientFor(Admin).GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
         var thumbnails = full!.Jobs.Single(job => job.JobType == JobType.PhotoThumbnails);
         var storage = full.Jobs.Single(job => job.JobType == JobType.FileStorageMaintenance);
         Assert.Equal((JobHealth.Held, JobHeldReason.DecoderPaused), (thumbnails.Health, thumbnails.HeldReason));
         Assert.Equal((JobHealth.Held, JobHeldReason.StorageCheckFailed, "VolumeLost"), (storage.Health, storage.HeldReason, storage.HeldCheck));
 
-        var partial = await reader.CreateClient().GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
+        var partial = await reader.ClientFor(SettingsOnly).GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
         thumbnails = partial!.Jobs.Single(job => job.JobType == JobType.PhotoThumbnails);
         storage = partial.Jobs.Single(job => job.JobType == JobType.FileStorageMaintenance);
         Assert.Equal(JobHealth.Held, thumbnails.Health);
@@ -270,7 +267,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task The_totals_count_by_their_rules()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         await factory.SeedAsync(context =>
         {
             context.JobRuns.AddRange(
@@ -282,7 +279,7 @@ public class BackgroundJobsApiTests
                 Running<WeatherJobRun>(Guid.NewGuid()),
                 Held<PhotoThumbnailJobRun>(Guid.NewGuid(), JobHeldReason.BreakerTripped));
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         var overview = await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
         var weather = overview!.Jobs.Single(job => job.JobType == JobType.Weather).Totals;
@@ -297,7 +294,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task The_list_filters_by_job_status_and_trigger_and_hides_counts_without_the_claim()
     {
-        await using var admin = new ApiFactory(Admin);
+        var admin = Factory;
         await admin.SeedAsync(context =>
         {
             var weather = Finished<WeatherJobRun>(JobRunStatus.Failed, Now.AddHours(-1), JobFailureCategory.ProviderUnavailable);
@@ -311,7 +308,7 @@ public class BackgroundJobsApiTests
                 Finished<PhotoThumbnailJobRun>(JobRunStatus.Failed, Now.AddHours(-3), JobFailureCategory.Internal),
                 Finished<ExchangeRateSyncJobRun>(JobRunStatus.Succeeded, Now.AddHours(-4)));
         });
-        using var client = admin.CreateClient();
+        using var client = admin.ClientFor(Admin);
 
         var page = await client.GetFromJsonAsync<PagedResult<ExistingJobRun>>(
             $"{Base}/runs?jobTypes=Weather&jobTypes=PhotoThumbnails&statuses=Failed&triggers=Manual");
@@ -324,8 +321,8 @@ public class BackgroundJobsApiTests
         Assert.Equal(25, all.Limit);
         Assert.Equal(all.Items.Select(run => run.StartedAtUtc).OrderByDescending(at => at), all.Items.Select(run => run.StartedAtUtc));
 
-        await using var reader = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
-        var hidden = await reader.CreateClient().GetFromJsonAsync<PagedResult<ExistingJobRun>>($"{Base}/runs?jobTypes=Weather&statuses=Failed");
+        var reader = Factory;
+        var hidden = await reader.ClientFor(SettingsOnly).GetFromJsonAsync<PagedResult<ExistingJobRun>>($"{Base}/runs?jobTypes=Weather&statuses=Failed");
         var row = Assert.Single(hidden!.Items);
         Assert.Null(row.ItemsProcessed);
         Assert.Null(row.ItemsFailed);
@@ -346,8 +343,8 @@ public class BackgroundJobsApiTests
     [InlineData("startedFrom=2026-11-05&tz=Mars/Olympus_Mons")]
     public async Task An_invalid_list_query_is_a_400(string query)
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.GetAsync($"{Base}/runs?{query}");
 
@@ -361,8 +358,8 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task An_unknown_time_zone_is_a_generic_400_keyed_tz()
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.GetAsync($"{Base}/runs?startedFrom=2026-11-05&tz=Mars/Olympus_Mons");
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -385,8 +382,8 @@ public class BackgroundJobsApiTests
     [InlineData("startedFrom=1979-12-31", "startedFrom")]
     public async Task An_out_of_range_date_is_a_400_keyed_on_the_date(string dates, string field)
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.GetAsync($"{Base}/runs?{dates}&tz=Pacific/Kiritimati");
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -403,8 +400,8 @@ public class BackgroundJobsApiTests
     [InlineData("startedTo=9998-12-31&tz=Pacific/Pago_Pago")]
     public async Task The_extreme_accepted_dates_list_without_error(string query)
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Base}/runs?{query}")).StatusCode);
     }
@@ -412,8 +409,8 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task A_time_zone_without_dates_is_ignored()
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Base}/runs?tz=Mars/Olympus_Mons")).StatusCode);
     }
@@ -422,7 +419,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task The_date_filter_is_local_days_across_a_dst_change()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         // 2026-10-25 in Oslo: CEST until 03:00 local, then CET — the day runs from 22:00Z on the 24th to 23:00Z on the 25th.
         var inside = new[] { new DateTime(2026, 10, 24, 22, 0, 0, DateTimeKind.Utc), new DateTime(2026, 10, 25, 22, 59, 0, DateTimeKind.Utc) };
         var outside = new[] { new DateTime(2026, 10, 24, 21, 59, 0, DateTimeKind.Utc), new DateTime(2026, 10, 25, 23, 0, 0, DateTimeKind.Utc) };
@@ -433,7 +430,7 @@ public class BackgroundJobsApiTests
                 context.JobRuns.Add(Finished<WeatherJobRun>(JobRunStatus.Succeeded, at, started: at));
             }
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         var page = await client.GetFromJsonAsync<PagedResult<ExistingJobRun>>(
             $"{Base}/runs?startedFrom=2026-10-25&startedTo=2026-10-25&tz=Europe/Oslo&sortDir=asc");
@@ -447,7 +444,7 @@ public class BackgroundJobsApiTests
     [InlineData("desc")]
     public async Task The_duration_sort_puts_running_rows_last(string direction)
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         await factory.SeedAsync(context =>
         {
             context.JobRuns.AddRange(
@@ -455,7 +452,7 @@ public class BackgroundJobsApiTests
                 Finished<WeatherJobRun>(JobRunStatus.Succeeded, Now.AddMinutes(-10), started: Now.AddMinutes(-12)),
                 Finished<WeatherJobRun>(JobRunStatus.Succeeded, Now.AddMinutes(-20), started: Now.AddMinutes(-21)));
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         var page = await client.GetFromJsonAsync<PagedResult<ExistingJobRun>>($"{Base}/runs?sortBy=Duration&sortDir={direction}");
         var durations = page!.Items.Select(run => run.DurationMs).ToList();
@@ -469,7 +466,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task The_detail_is_discriminated_by_kind_and_hides_the_jobs_fields_without_its_claim()
     {
-        await using var admin = new ApiFactory(Admin);
+        var admin = Factory;
         var id = Guid.Empty;
         await admin.SeedAsync(context =>
         {
@@ -482,7 +479,7 @@ public class BackgroundJobsApiTests
             id = run.JobRunId;
         });
 
-        var raw = await admin.CreateClient().GetStringAsync($"{Base}/runs/{id}");
+        var raw = await admin.ClientFor(Admin).GetStringAsync($"{Base}/runs/{id}");
         using (var document = JsonDocument.Parse(raw))
         {
             Assert.Equal("PhotoThumbnails", document.RootElement.GetProperty("$kind").GetString());
@@ -499,14 +496,14 @@ public class BackgroundJobsApiTests
         var detail = Assert.IsType<PhotoThumbnailJobRunDetail>(JsonSerializer.Deserialize<JobRunDetail>(raw, Json));
         Assert.Equal((7, 7), (detail.PhotosRendered, detail.ItemsProcessed));
 
-        await using var reader = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
+        var reader = Factory;
         var hidden = Assert.IsType<PhotoThumbnailJobRunDetail>(
-            await reader.CreateClient().GetFromJsonAsync<JobRunDetail>($"{Base}/runs/{id}"));
+            await reader.ClientFor(SettingsOnly).GetFromJsonAsync<JobRunDetail>($"{Base}/runs/{id}"));
         Assert.Null(hidden.PhotosRendered);
         Assert.Null(hidden.ItemsProcessed);
         Assert.Equal(JobRunStatus.Succeeded, hidden.Status);
 
-        Assert.Equal(HttpStatusCode.NotFound, (await admin.CreateClient().GetAsync($"{Base}/runs/{Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.ClientFor(Admin).GetAsync($"{Base}/runs/{Guid.NewGuid()}")).StatusCode);
     }
 
     // ── Manual run (§3.5, §5.4) ───────────────────────────────────────────────────────────────────────────
@@ -515,9 +512,9 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task A_thumbnail_run_is_accepted_left_unclaimed_audited_and_then_cooled_down()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         await factory.SeedAsync(context => context.PhotoThumbnailJobs.Add(PendingJob()));
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.PostAsync($"{Base}/PhotoThumbnails/runs", null);
 
@@ -551,11 +548,10 @@ public class BackgroundJobsApiTests
     [InlineData("FileStorageMaintenance")]
     [InlineData("PhotoThumbnails")]
     [InlineData("ExchangeRateSync")]
-    [InlineData("PhotoOriginalBackfill")]
     public async Task A_run_with_nothing_to_do_is_skipped_at_once(string jobType)
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.PostAsync($"{Base}/{jobType}/runs", null);
 
@@ -567,7 +563,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task A_weather_run_with_a_tracked_point_is_accepted()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         await factory.SeedAsync(context =>
         {
             context.SystemSettings.Single(setting => setting.Key == SystemSettingsKeys.WeatherUserAgentContact).Value = "ops@example.org";
@@ -576,7 +572,7 @@ public class BackgroundJobsApiTests
                 WeatherPointId = Guid.NewGuid(), Name = "Home", ForecastEnabled = true, IsTracked = true, EnabledAt = Now, CurrentSiteVersion = 1,
             });
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsync($"{Base}/Weather/runs", null)).StatusCode);
     }
@@ -584,7 +580,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task A_second_manual_run_while_one_is_live_is_a_409_already_running()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         var worker = Guid.NewGuid();
         await factory.SeedAsync(context =>
         {
@@ -595,7 +591,7 @@ public class BackgroundJobsApiTests
             live.StartedAtUtc = Now.AddMinutes(-5);
             context.JobRuns.Add(live);
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.PostAsync($"{Base}/PhotoThumbnails/runs", null);
 
@@ -608,7 +604,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task A_stale_request_is_abandoned_inline_and_the_run_proceeds()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory;
         await factory.SeedAsync(context =>
         {
             context.PhotoThumbnailJobs.Add(PendingJob());
@@ -618,7 +614,7 @@ public class BackgroundJobsApiTests
             stale.StartedAtUtc = Now.AddMinutes(-5);
             context.JobRuns.Add(stale);
         });
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
 
         Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsync($"{Base}/PhotoThumbnails/runs", null)).StatusCode);
         await using var scope = factory.Scope();
@@ -631,7 +627,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task A_thumbnail_run_while_the_worker_is_held_is_a_409_held()
     {
-        await using var admin = new ApiFactory(Admin);
+        var admin = Factory;
         await admin.SeedAsync(context =>
         {
             context.PhotoThumbnailJobs.Add(PendingJob());
@@ -645,7 +641,7 @@ public class BackgroundJobsApiTests
             }
         });
 
-        var response = await admin.CreateClient().PostAsync($"{Base}/PhotoThumbnails/runs", null);
+        var response = await admin.ClientFor(Admin).PostAsync($"{Base}/PhotoThumbnails/runs", null);
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(JobRunConflictCodes.Held, problem.GetProperty("code").GetString());
@@ -710,7 +706,7 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task The_sixth_request_in_a_minute_is_rate_limited()
     {
-        await using var factory = new ApiFactory(Admin);
+        await using var factory = new ApiFactory(Admin); // a fresh host: this test spends a real rate-limit window
         using var client = factory.CreateClient();
 
         var statuses = new List<HttpStatusCode>();
@@ -733,8 +729,8 @@ public class BackgroundJobsApiTests
     [Fact]
     public async Task The_exchange_rate_sync_endpoints_read_the_shared_log()
     {
-        await using var factory = new ApiFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"{Base}/ExchangeRateSync/runs", null)).StatusCode);
 
@@ -743,110 +739,6 @@ public class BackgroundJobsApiTests
         Assert.Equal((ExchangeRateSyncTrigger.Manual, ExchangeRateSyncRunStatus.Skipped), (run.Trigger, run.Status));
         var status = await client.GetFromJsonAsync<ExchangeRateSyncStatus>("/api/system-settings/exchange-rate-sync/status");
         Assert.Equal(Now.AddSeconds(60), status!.ManualRunAvailableAtUtc);
-    }
-
-    // ── The photo-original move (issue #428) ─────────────────────────────────────────────────────────────
-
-    private static void SeedLegacyPhoto(OdysseyContext context) =>
-        Odyssey.Testing.FileStorage.PhotoTestData.StageLegacyPhoto(context, createdAt: Now.AddDays(-30));
-
-    [Fact]
-    public async Task A_photo_original_move_with_a_legacy_photo_left_is_accepted()
-    {
-        await using var factory = new ApiFactory(Admin);
-        await factory.SeedAsync(SeedLegacyPhoto);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsync($"{Base}/PhotoOriginalBackfill/runs", null);
-
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-    }
-
-    /// <summary>
-    /// Every live worker held for storage: the move cannot run, so the request is a 409 held. Held only for its back-off
-    /// it can — a manual run is what ends a back-off early — so that request is accepted.
-    /// </summary>
-    [Theory]
-    [InlineData(JobHeldReason.StorageUnavailable, HttpStatusCode.Conflict)]
-    [InlineData(JobHeldReason.BackingOff, HttpStatusCode.Accepted)]
-    public async Task A_photo_original_move_is_refused_only_while_every_worker_is_held_for_storage(JobHeldReason reason, HttpStatusCode expected)
-    {
-        await using var factory = new ApiFactory(Admin);
-        var worker = Guid.NewGuid();
-        await factory.SeedAsync(context =>
-        {
-            SeedLegacyPhoto(context);
-            context.JobHeartbeats.Add(Beat(JobType.PhotoOriginalBackfill, worker));
-            context.JobRuns.Add(Held<PhotoOriginalBackfillJobRun>(worker, reason));
-        });
-
-        var response = await factory.CreateClient().PostAsync($"{Base}/PhotoOriginalBackfill/runs", null);
-
-        Assert.Equal(expected, response.StatusCode);
-    }
-
-    /// <summary>
-    /// The status card and the back-off's resume time are file-storage data: shown with file-storage.read, and null
-    /// without it, like the other jobs' worker health.
-    /// </summary>
-    [Fact]
-    public async Task The_move_status_and_its_back_off_are_shown_only_with_file_storage_read()
-    {
-        var worker = Guid.NewGuid();
-        var resumes = Now.AddMinutes(14);
-        await using var admin = new ApiFactory(Admin);
-        await admin.SeedAsync(context =>
-        {
-            SeedLegacyPhoto(context);
-            context.JobHeartbeats.Add(Beat(JobType.PhotoOriginalBackfill, worker));
-            context.JobRuns.Add(Held<PhotoOriginalBackfillJobRun>(worker, JobHeldReason.BackingOff));
-            // The lease row is seeded (HasData) once the store is created.
-            var lease = context.PhotoOriginalBackfillLeases.Find(PhotoOriginalBackfillLease.SingletonId)!;
-            lease.NextAttemptAtUtc = resumes;
-            lease.ConsecutiveEnvironmentalFailures = 3;
-            lease.CopiedSharedCount = 2;
-        });
-        await using var reader = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
-
-        var full = await admin.CreateClient().GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
-        var move = full!.Jobs.Single(job => job.JobType == JobType.PhotoOriginalBackfill);
-        Assert.Equal((JobHealth.Held, JobHeldReason.BackingOff, resumes), (move.Health, move.HeldReason, move.HeldUntilUtc));
-        var status = full.WorkerHealth.PhotoOriginalBackfill!;
-        Assert.Equal((1, 2, resumes), (status.Remaining, status.CopiedShared, status.BackingOffUntilUtc));
-        Assert.Equal(["error", "hash", "read", "too-large"], status.FailedByCode.Keys.Order());
-
-        var partial = await reader.CreateClient().GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
-        move = partial!.Jobs.Single(job => job.JobType == JobType.PhotoOriginalBackfill);
-        Assert.Equal((JobHealth.Held, (JobHeldReason?)null, (DateTime?)null), (move.Health, move.HeldReason, move.HeldUntilUtc));
-        Assert.Null(partial.WorkerHealth.PhotoOriginalBackfill);
-    }
-
-    [Fact]
-    public async Task A_move_run_detail_carries_its_counters_only_with_file_storage_read()
-    {
-        var id = Guid.NewGuid();
-        await using var admin = new ApiFactory(Admin);
-        await admin.SeedAsync(context =>
-        {
-            var run = new PhotoOriginalBackfillJobRun
-            {
-                JobRunId = id, Trigger = JobRunTrigger.Scheduled, StartedAtUtc = Now.AddMinutes(-3), ClaimedAtUtc = Now.AddMinutes(-3),
-                LastActivityAtUtc = Now, PhotosMoved = 20, PhotosCopiedShared = 3, PhotosParked = 2, Interruptions = 0,
-            };
-            run.Finish(JobRunStatus.PartiallySucceeded, JobFailureCategory.UnsupportedInput, Now);
-            context.JobRuns.Add(run);
-        });
-        await using var reader = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
-
-        var raw = await admin.CreateClient().GetStringAsync($"{Base}/runs/{id}");
-        Assert.StartsWith("{\"$kind\":\"PhotoOriginalBackfill\"", raw, StringComparison.Ordinal);
-        var detail = Assert.IsType<PhotoOriginalBackfillJobRunDetail>(JsonSerializer.Deserialize<JobRunDetail>(raw, Json));
-        Assert.Equal((20, 3, 2, 0, 23, 2), (detail.PhotosMoved, detail.PhotosCopiedShared, detail.PhotosParked, detail.Interruptions,
-            detail.ItemsProcessed, detail.ItemsFailed));
-
-        var hidden = Assert.IsType<PhotoOriginalBackfillJobRunDetail>(
-            await reader.CreateClient().GetFromJsonAsync<JobRunDetail>($"{Base}/runs/{id}"));
-        Assert.Equal(((int?)null, (int?)null), (hidden.PhotosMoved, hidden.ItemsProcessed));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────
@@ -885,7 +777,7 @@ public class BackgroundJobsApiTests
         PhotoId = Guid.NewGuid(), State = PhotoThumbnailJobState.Pending, NextAttemptAtUtc = Now, UpdatedAtUtc = Now,
     };
 
-    private sealed class ApiFactory(IReadOnlyCollection<string> permissions, OdysseyApiFactory? sharingStoreWith = null)
+    public class ApiFactory(IReadOnlyCollection<string> permissions, OdysseyApiFactory? sharingStoreWith = null)
         : OdysseyApiFactory(
             permissions,
             "background-jobs-actor",
@@ -910,10 +802,16 @@ public class BackgroundJobsApiTests
             await scope.Context.SaveChangesAsync();
         }
 
-        public ContextScope Scope() => new(Services.CreateAsyncScope());
+        internal ContextScope Scope() => new(Services.CreateAsyncScope());
+
+        public override async Task ResetStoreAsync()
+        {
+            await base.ResetStoreAsync();
+            Logs.Clear();
+        }
     }
 
-    private sealed class ContextScope(AsyncServiceScope scope) : IAsyncDisposable
+    internal sealed class ContextScope(AsyncServiceScope scope) : IAsyncDisposable
     {
         public OdysseyContext Context { get; } = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
@@ -924,4 +822,7 @@ public class BackgroundJobsApiTests
     {
         public override DateTimeOffset GetUtcNow() => new(Now, TimeSpan.Zero);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

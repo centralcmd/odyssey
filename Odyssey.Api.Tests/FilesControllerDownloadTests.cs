@@ -1,6 +1,7 @@
 using Odyssey.Api.Controllers;
 using Odyssey.Core.Finance;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,24 +24,17 @@ public class FilesControllerDownloadTests
             .Options;
         await using var financeContext = new OdysseyContext(options);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var metadata = new FileMetadata
-        {
-            Id = Guid.NewGuid(),
-            UploadedByUserId = "test-user",
-            FileName = "logo.svg",
-            ContentType = "image/svg+xml",
-            SizeBytes = 3,
-            Sha256Hash = "hash",
-            UploadedAtUtc = DateTime.UtcNow,
-            Description = null,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-        };
-        financeContext.Add(metadata);
+        var store = TestFileStores.For(financeContext);
+        // The store names a file from an allow-listed type, and SVG is not one; the row is what the download serves, so an
+        // SVG row over stored bytes is the risky case this test needs (an older upload, say).
+        var metadata = await StoredFileFixtures.StageFileAsync(
+            financeContext, store.Writer, [1, 2, 3], "logo.pdf", "application/pdf", uploadedByUserId: "test-user");
+        metadata.FileName = "logo.svg";
+        metadata.ContentType = "image/svg+xml";
         await financeContext.SaveChangesAsync();
 
-        var controller = new FilesController(new FileService(financeContext, new FileValidationService()))
+        var controller = new FilesController(new FileService(
+            financeContext, new FileValidationService(), writer: store.Writer, store: store.Store, source: store.Source))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };

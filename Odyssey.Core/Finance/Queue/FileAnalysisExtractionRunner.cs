@@ -108,7 +108,7 @@ public sealed class FileAnalysisExtractionRunner(
         }
 
         // The ceiling was enforced at enqueue against the metadata; the one read path (issue #448) re-checks the stored
-        // bytes' length before materialising them — on disk or in a legacy blob — so a file swapped since is never
+        // bytes' length before materialising them, so a file swapped since is never
         // loaded whole here.
         var read = await source.ReadAllAsync(file.FileMetadataId, FileAnalysisJobTiming.MaxAnalysisFileBytes, cancellationToken);
         if (read is not { TooLarge: false, Bytes: { } content }

@@ -158,6 +158,8 @@ services:
       # Pinned like the migrations job's, for the same reason: the base file takes it from the env file,
       # and the secret registry's environment filter must agree with the API's.
       DOTNET_ENVIRONMENT: Production
+      # Never seed demo files in production (explicit guard on top of the environment gate), as for the migrations job.
+      Seed__DemoData: "false"
       # DataProtection__KeysPath comes from the base file, beside its read-only mount, so the two cannot
       # drift apart. That mount makes this the second container able to decrypt the stored credentials;
       # see docs/deployment.md before changing either.

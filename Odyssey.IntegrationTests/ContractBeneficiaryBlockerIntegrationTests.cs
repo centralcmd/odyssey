@@ -38,7 +38,7 @@ namespace Odyssey.IntegrationTests;
 /// makes the direct-service test (AC 21) load-bearing.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_beneficiary_blocker";

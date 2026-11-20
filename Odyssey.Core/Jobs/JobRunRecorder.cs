@@ -368,7 +368,6 @@ public static class JobRunOutcomes
     {
         WeatherJobRun weather => Weather(weather),
         PhotoThumbnailJobRun thumbnails => Thumbnails(thumbnails),
-        PhotoOriginalBackfillJobRun move => PhotoOriginalMove(move),
         // A provider failure or interruption is what an operator acts on; a refusal before sending is the
         // queue doing its job (consent re-checks), so it never fails a burst on its own.
         FileAnalysisJobRun analysis => analysis.AnalysesFailed == 0
@@ -376,7 +375,6 @@ public static class JobRunOutcomes
             : analysis.AnalysesCompleted == 0
                 ? (JobRunStatus.Failed, JobFailureCategory.ProviderUnavailable)
                 : (JobRunStatus.PartiallySucceeded, JobFailureCategory.ProviderUnavailable),
-        FileBlobBackfillJobRun files => FileMove(files),
         // A quarantine is a parser crashing on a publisher's input: worth a look, but the other feeds were read.
         NewsFeedJobRun news => news.FeedsQuarantined == 0
             ? (JobRunStatus.Succeeded, null)
@@ -405,37 +403,6 @@ public static class JobRunOutcomes
 
         var category = WeatherCategory(run.FailureKind);
         return run.PointsFailed >= run.PointsAttempted
-            ? (JobRunStatus.Failed, category)
-            : (JobRunStatus.PartiallySucceeded, category);
-    }
-
-    /// <summary>
-    /// A storage or database interruption outranks a parked photo for the category: the outage is what an operator has
-    /// to act on, and a parked photo is already listed by code on the status card.
-    /// </summary>
-    private static (JobRunStatus, JobFailureCategory?) PhotoOriginalMove(PhotoOriginalBackfillJobRun run)
-    {
-        if (run.Interruptions == 0 && run.PhotosParked == 0)
-        {
-            return (JobRunStatus.Succeeded, null);
-        }
-
-        var category = run.Interruptions > 0 ? JobFailureCategory.Storage : JobFailureCategory.UnsupportedInput;
-        return run.PhotosMoved + run.PhotosCopiedShared == 0
-            ? (JobRunStatus.Failed, category)
-            : (JobRunStatus.PartiallySucceeded, category);
-    }
-
-    /// <summary>The photo move's rule, for the file move (issue #448): an interruption outranks a parked file.</summary>
-    private static (JobRunStatus, JobFailureCategory?) FileMove(FileBlobBackfillJobRun run)
-    {
-        if (run.Interruptions == 0 && run.FilesParked == 0)
-        {
-            return (JobRunStatus.Succeeded, null);
-        }
-
-        var category = run.Interruptions > 0 ? JobFailureCategory.Storage : JobFailureCategory.UnsupportedInput;
-        return run.FinanceFilesMoved + run.JournalFilesMoved + run.ContactAvatarsMoved == 0
             ? (JobRunStatus.Failed, category)
             : (JobRunStatus.PartiallySucceeded, category);
     }

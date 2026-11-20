@@ -132,7 +132,7 @@ alike. Served inline with a strong ETag and private, no-cache, so revalidation c
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Stream a photo's original, from the object store or (not yet moved) its legacy file.",
+    [SwaggerOperation(Summary = "Stream a photo's original from the object store.",
         Description = @"Served inline under photos.read with nosniff, CORP same-site, a strong ETag (the SHA-256) and range
 processing; private, no-cache, so revalidation costs one 304 with no body (issue #428 §5.2).")]
     public async Task<IActionResult> GetContent(
@@ -285,10 +285,8 @@ EXIF/IPTC/XMP extraction. 409 photo-duplicate when the same bytes are already a 
     [Authorize(Policy = PermissionClaims.PhotosDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Permanently delete a library photo; its original and thumbnails are released after "
-        + "the deletion grace. A legacy photo (not yet moved to the photo store) deletes the file it wraps, and returns "
-        + "409 when that file is also attached elsewhere, naming the other holders.")]
+        + "the deletion grace.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

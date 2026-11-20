@@ -38,7 +38,7 @@ public static class PhotoOriginalLimits
     public const int BucketCapacity = 10_000;
 
     /// <summary>
-    /// Photo uploads and the backfill stop this far above the store's own 1 GB floor (§7.9), so a full library
+    /// Photo uploads stop this far above the store's own 1 GB floor (§7.9), so a full library
     /// cannot starve thumbnails, which keep the store's floor.
     /// </summary>
     public const long UploadReserveBytes = FileStorage.FileStorageReserves.UploadReserveBytes;

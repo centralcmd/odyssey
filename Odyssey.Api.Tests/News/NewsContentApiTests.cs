@@ -16,7 +16,7 @@ namespace Odyssey.Api.Tests.News;
 /// The file-reading article endpoints (issue #470 §5.2 items 13–15a): the detail body, the revisions and the image
 /// content, each read from the per-factory volume through the object store.
 /// </summary>
-public sealed class NewsContentApiTests
+public class NewsContentApiTests(NewsContentApiTests.Host host) : SharedApiHostTests<NewsContentApiTests.Host>(host)
 {
     private const string Articles = "/api/news-articles";
 
@@ -25,7 +25,7 @@ public sealed class NewsContentApiTests
     [Fact]
     public async Task AC27_The_detail_reads_its_body_from_the_plain_text_file_and_lists_only_stored_images()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
         await factory.SeedTextAsync(feed, id, "The whole body.\n\nSecond paragraph.");
@@ -46,7 +46,7 @@ public sealed class NewsContentApiTests
     [Fact]
     public async Task AC27_A_degraded_volume_is_503_on_the_detail_while_lists_counts_read_state_and_tags_keep_working()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
         await factory.SeedTextAsync(feed, id, "Body");
@@ -71,7 +71,7 @@ public sealed class NewsContentApiTests
     [Fact]
     public async Task A_missing_body_file_is_200_with_bodyUnavailable_and_an_omitted_body_opens_no_file()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var missing = (await factory.SeedArticlesAsync(feed, 1))[0];
         var fileId = await factory.SeedTextAsync(feed, missing, "Body");
@@ -90,7 +90,7 @@ public sealed class NewsContentApiTests
     [Fact]
     public async Task AC49_AC76_Revisions_return_no_bodies_and_one_revision_returns_its_body_or_its_omitted_reason()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
         var first = await AddRevisionAsync(factory, id, 1, null);
@@ -113,7 +113,7 @@ public sealed class NewsContentApiTests
     [Fact]
     public async Task AC26_The_image_is_scoped_to_its_article_and_served_with_its_headers_and_a_304_never_opens_the_file()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var ids = await factory.SeedArticlesAsync(feed, 2);
         var image = await factory.SeedImageAsync(feed, ids[0], Png);
@@ -149,7 +149,7 @@ public sealed class NewsContentApiTests
     [Fact]
     public async Task AC54_A_missing_image_file_is_404_and_the_get_writes_nothing()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
         var image = await factory.SeedImageAsync(feed, id, Png);
@@ -167,7 +167,7 @@ public sealed class NewsContentApiTests
     [Fact]
     public async Task AC46_Detail_revisions_and_images_of_a_feed_pending_deletion_are_404()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync(archived: true, pendingDeletion: true);
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
         await factory.SeedTextAsync(feed, id, "Body");
@@ -218,4 +218,7 @@ public sealed class NewsContentApiTests
         Assert.StartsWith(NewsArticleStorage.RootFolder + "/", relativePath, StringComparison.Ordinal);
         File.Delete(Path.Combine(factory.FileVolumeRoot, relativePath));
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }
