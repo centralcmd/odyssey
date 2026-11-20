@@ -199,8 +199,16 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
 
     private static async Task<Guid> SeedFileMetadataAsync(OdysseyContext context, string uploaderId)
     {
+        // A database-held file (FileBlob + FileMetadata), by raw SQL.
         var id = Guid.NewGuid();
-        await LegacyFileRows.InsertAsync(context, id, Anchor, "agreement.pdf", uploadedByUserId: uploaderId);
+        var blobId = Guid.NewGuid();
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO `FileBlob` (`Id`, `Content`) VALUES ({blobId}, {new byte[] { 1, 2, 3 }})");
+        await context.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO `FileMetadata`
+                (`Id`, `UploadedByUserId`, `FileName`, `ContentType`, `SizeBytes`, `Sha256Hash`, `FileBlobId`, `UploadedAtUtc`)
+            VALUES ({id}, {uploaderId}, {"agreement.pdf"}, {"application/pdf"}, {3L}, {Guid.NewGuid().ToString("N")}, {blobId}, {Anchor})
+            """);
         return id;
     }
 

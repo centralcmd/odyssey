@@ -80,6 +80,16 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         (SystemSettingsKeys.CalendarIcsMaxImportEvents, SystemSettingsDefaults.CalendarIcsMaxImportEvents),
         (SystemSettingsKeys.CalendarIcsMaxImportMegabytes, $"{SystemSettingsDefaults.CalendarIcsMaxImportMegabytes}"),
         (SystemSettingsKeys.CalendarIcsMaxExportMegabytes, $"{SystemSettingsDefaults.CalendarIcsMaxExportMegabytes}"),
+        // Task and journal .ics: the same unlimited counts and 10 GB sizes, which RaiseTaskIcsLimits and
+        // RaiseJournalIcsLimits moved the rows to.
+        (SystemSettingsKeys.TaskIcsMaxExportTasks, SystemSettingsDefaults.TaskIcsMaxExportTasks),
+        (SystemSettingsKeys.TaskIcsMaxImportTasks, SystemSettingsDefaults.TaskIcsMaxImportTasks),
+        (SystemSettingsKeys.TaskIcsMaxImportMegabytes, $"{SystemSettingsDefaults.TaskIcsMaxImportMegabytes}"),
+        (SystemSettingsKeys.TaskIcsMaxExportMegabytes, $"{SystemSettingsDefaults.TaskIcsMaxExportMegabytes}"),
+        (SystemSettingsKeys.JournalIcsMaxExportRows, SystemSettingsDefaults.JournalIcsMaxExportRows),
+        (SystemSettingsKeys.JournalIcsMaxImportEntries, SystemSettingsDefaults.JournalIcsMaxImportEntries),
+        (SystemSettingsKeys.JournalIcsMaxImportMegabytes, $"{SystemSettingsDefaults.JournalIcsMaxImportMegabytes}"),
+        (SystemSettingsKeys.JournalIcsMaxExportMegabytes, $"{SystemSettingsDefaults.JournalIcsMaxExportMegabytes}"),
         // Calendar event links (issue #521 §4): the seed restates the cap as a literal, so pin it to the constant.
         (SystemSettingsKeys.CalendarEventMaxLinksPerKind, $"{SystemSettingsDefaults.CalendarEventMaxLinksPerKind}"),
     ];

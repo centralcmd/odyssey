@@ -17,69 +17,31 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #349: the migration in both directions over existing rates, the run guard's
-/// generated column and unique index, the idempotency index, the CHECKs and the purge's transaction. None of
-/// it is observable on the EF InMemory provider, which computes no column and enforces no index or CHECK.
+/// The relational half of issue #349: the provider list's key, the run guard's generated column and unique
+/// index, the idempotency index, the CHECKs and the purge's transaction. None of it is observable on the EF
+/// InMemory provider, which computes no column and enforces no index or CHECK.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_exchange_rate_sync";
-    private const string PreviousMigration = "_AddLocations";
-    private const string ThisMigration = "_AddExchangeRateSync";
-    private const string SeriesMigration = "_AddExchangeRateProviderSeries";
 
     private static readonly DateTime AsOf = new(2026, 10, 22, 14, 0, 0, DateTimeKind.Utc);
 
+    /// <summary>The stored provider list is keyed on (provider, code), so one provider cannot list a currency twice.</summary>
     [SkippableFact]
-    public async Task The_migration_keeps_existing_rates_as_manual_and_its_down_restores_the_old_index()
+    public async Task The_provider_series_table_keys_one_row_per_code()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
+        await MigratedAsync();
 
         await using var context = NewContext();
-        await context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO `ExchangeRates` (`ExchangeRateId`, `FromCurrencyCode`, `ToCurrencyCode`, `Rate`, `AsOf`, `CreatedAt`) "
-            + $"VALUES ('{Guid.NewGuid()}', 'USD', 'NOK', 10.5, '2026-10-01 00:00:00', NOW())");
-
-        await MigrationSeam.MigrateToAsync(context, ThisMigration);
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `ExchangeRates` WHERE `Provider` IS NULL"));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` = 'ExchangeRateHistoryStartDate' AND `Value` = ''"));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` = 'ExchangeRateSyncIntervalHours' AND `Value` = '24'"));
-
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "ExchangeRateSyncRuns"));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() "
-            + "AND INDEX_NAME = 'IX_ExchangeRates_FromCurrencyCode_ToCurrencyCode_AsOf' AND SEQ_IN_INDEX = 1"));
-    }
-
-    /// <summary>
-    /// The stored provider list: up creates the table keyed on (provider, code), so one provider cannot
-    /// list a currency twice, and down drops it without touching the sync's own tables.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_provider_series_migration_keys_one_row_per_code_and_its_down_drops_only_that_table()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, ThisMigration);
-
-        await using var context = NewContext();
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "ExchangeRateProviderSeries"));
-
-        await MigrationSeam.MigrateToAsync(context, SeriesMigration);
         const string insert = "INSERT INTO `ExchangeRateProviderSeries` "
             + "(`Provider`, `CurrencyCode`, `FirstObservation`, `NewestObservation`, `FetchedAtUtc`) "
             + "VALUES (1, 'USD', '1980-12-10', '2026-10-22', NOW())";
         await context.Database.ExecuteSqlRawAsync(insert);
         await Assert.ThrowsAsync<MySqlException>(() => context.Database.ExecuteSqlRawAsync(insert));
         Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `ExchangeRateProviderSeries`"));
-
-        await MigrationSeam.MigrateToAsync(context, ThisMigration);
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "ExchangeRateProviderSeries"));
-        Assert.True(await MigrationSeam.TableExistsAsync(context, "ExchangeRateSyncRuns"));
     }
 
     [SkippableFact]

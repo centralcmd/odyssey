@@ -1,5 +1,4 @@
 @using Odyssey.Dtos.Finance
-@inject IDialogService DialogService
 @inject IContractsApiClient Contracts
 @inject ISnackbar Snackbar
 
@@ -141,3 +140,5 @@
                    Existing="_terms"
                    OnSaved="OnTermChanged" />
 }
+
+<OdsConfirm @ref="_confirm" />

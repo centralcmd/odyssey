@@ -6,7 +6,6 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IScrollManager ScrollManager
@@ -107,7 +106,7 @@
                     var problems = _problems.GetValueOrDefault(s.TaxStatementId) ?? [];
                     var settle = SettlementFigure(s);
                     var tagCount = s.TaxTagIds.Count + s.IncomeTagIds.Count + s.SettlementTagIds.Count;
-                    var period = $"{s.StartDate:MMM dd, yyyy} → {s.EndDate:MMM dd, yyyy}";
+                    var period = $"{OdsDates.Long(s.StartDate)} → {OdsDates.Long(s.EndDate)}";
                     var settled = s.SettledAtUtc is not null;
 
                     @* The single meta line: period · base currency. *@
@@ -206,14 +205,14 @@
                             @if (s.FiledAtUtc is { } filed)
                             {
                                 <OdsInfoTile Icon="outbox" Label="Filed to authority" ValueVariant="OdsInfoTileVariant.Sm">
-                                    <Value>@LongDate(filed)</Value>
+                                    <Value>@OdsDates.Long(filed)</Value>
                                 </OdsInfoTile>
                             }
 
                             @if (s.TaxOfficeApprovedAtUtc is { } approved)
                             {
                                 <OdsInfoTile Icon="verified" Label="Authority approved" ValueVariant="OdsInfoTileVariant.Sm">
-                                    <Value>@LongDate(approved)</Value>
+                                    <Value>@OdsDates.Long(approved)</Value>
                                 </OdsInfoTile>
                             }
 
@@ -223,7 +222,7 @@
                                          ValueVariant="@(settled ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)"
                                          Tone="@(settled ? OdsInfoTileTone.Income : OdsInfoTileTone.Pending)"
                                          Foot="@OdsInfoTile.Caption(settled ? null : "outstanding")">
-                                <Value>@(s.SettledAtUtc is { } paid ? LongDate(paid) : "Not yet")</Value>
+                                <Value>@(s.SettledAtUtc is { } paid ? OdsDates.Long(paid) : "Not yet")</Value>
                             </OdsInfoTile>
                         </OdsInfoTileGrid>
                     </Details>
@@ -284,7 +283,7 @@
                                         <span class="tx-role-cap">Settlement recorded</span>
                                         <span class="tx-role-range">
                                             <span class="material-icons" aria-hidden="true">date_range</span>
-                                            @LongDate(s.SettlementStartDate) → @LongDate(s.SettlementEndDate)
+                                            @OdsDates.Long(s.SettlementStartDate) → @OdsDates.Long(s.SettlementEndDate)
                                         </span>
                                         <span class="tx-role-tags">
                                             @if (s.SettlementTagIds.Count > 0)
@@ -306,7 +305,7 @@
                         {
                             <div class="tax-section">
                                 <OdsSectionDivider Label="Reconciliation" Meta="@($"declared vs. recorded · {s.BaseCurrencyCode}")" />
-                                <TaxReconciliation Statement="s" Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))"
+                                <TaxReconciliation Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))"
                                                    SignedMoney="@(n => TaxSignedMoney(n, s.BaseCurrencyCode))" />
                             </div>
                         }
@@ -376,6 +375,8 @@
                            Attach="AttachTaxFileAsync"
                            OnAttached="@(_ => OnFilesChanged())" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // The two meta-line entries. An inline render fragment is Razor syntax, so it cannot live in the

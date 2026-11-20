@@ -15,6 +15,7 @@
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync"
           Icon="@Icon" IconTone="@IconTone" Wide="@Wide" RequiredLegend="@RequiredLegend"
           InitialFocus="@InitialFocus" ReturnFocusToId="@ReturnFocusToId"
+          Role="@Role" DescribedById="@DescribedById"
           Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body">
@@ -60,6 +61,12 @@
     /// <summary>Element id to return focus to on close — forwarded to OdsModal (a row menu's
     /// <c>OdsRecordActionContext.MenuTriggerId</c>).</summary>
     [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>The dialog's ARIA role; <c>AlertDialog</c> for a destructive confirmation (OdsModal Role).</summary>
+    [Parameter] public OdsModalRole Role { get; set; } = OdsModalRole.Dialog;
+
+    /// <summary>Id of the body copy the dialog is described by, read on open (OdsModal DescribedById).</summary>
+    [Parameter] public string? DescribedById { get; set; }
 
     /// <summary>Header title text.</summary>
     [Parameter] public string? Title { get; set; }

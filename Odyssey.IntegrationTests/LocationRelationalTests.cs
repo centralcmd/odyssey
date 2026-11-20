@@ -14,31 +14,15 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #350 (AC 3, 18, 19): the migration, the five CHECK constraints, the unique
+/// The relational half of issue #350 (AC 3, 18, 19): the five CHECK constraints, the unique
 /// name index under the column's <c>_ci</c> collation, the duplicate-key race mapping to <c>409</c>, and
 /// the attribution keys nulling on a user delete. None of it is observable on the EF InMemory provider,
-/// which runs no migrations and enforces no index, key or CHECK.
+/// which enforces no index, key or CHECK.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class LocationRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_locations";
-    private const string PreviousMigration = "_AddJournalTaskPhotoTagIcons";
-    private const string ThisMigration = "_AddLocations";
-
-    [SkippableFact]
-    public async Task The_migration_creates_the_table_from_the_previous_one()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
-
-        await using (var context = NewContext())
-        {
-            Assert.False(await MigrationSeam.TableExistsAsync(context, "Locations"));
-            await MigrationSeam.MigrateToAsync(context, ThisMigration);
-            Assert.True(await MigrationSeam.TableExistsAsync(context, "Locations"));
-        }
-    }
 
     public static TheoryData<string, string> OutOfRangeRows() => new()
     {

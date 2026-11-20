@@ -80,7 +80,7 @@ public partial class AccountFilesSection
         DateTime UploadedAtUtc, AccountFileType FileType, string? AccountName);
 
     private Task CopyFileId(ExistingAccountFile af) =>
-        Clipboard.CopyAsync(af.FileMetadata.Id.ToString(), "File ID copied.");
+        Clipboard.CopyAsync(af.FileMetadata.Id.ToString(), OdsCopied.Id("File"));
 
     // Opens the inline analysis modal in a host-resolved initial phase. The host already holds the
     // resumable map, so it decides: Resume review → straight to loading the saved review; Analyze with
@@ -342,7 +342,7 @@ public partial class AccountFilesSection
             });
         }
 
-        menu.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyFileId(file)) });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyFileId(file))));
 
         return menu;
     }

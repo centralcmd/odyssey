@@ -322,7 +322,6 @@ public partial class AttachDocumentsDialog
         var other => other.Split('/')[^1].Split('.')[^1].ToUpperInvariant(),
     };
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture);
 
     private void TogglePick(FileListItem file)
     {

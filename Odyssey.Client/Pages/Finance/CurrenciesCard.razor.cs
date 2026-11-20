@@ -255,7 +255,7 @@ public partial class CurrenciesCard
             });
         }
 
-        items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyCode(c.CurrencyCode)) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyCode(c.CurrencyCode))));
 
         var purge = PurgeAction(c);
         if (_canDelete || purge is not null)
@@ -391,7 +391,7 @@ public partial class CurrenciesCard
     private static string MenuIdFor(string currencyCode) => $"cur-{currencyCode}-menu";
 
     private Task CopyCode(string currencyCode) =>
-        Clipboard.CopyAsync(currencyCode, "Currency code copied to clipboard.");
+        Clipboard.CopyAsync(currencyCode, OdsCopied.Value("Currency code"));
 
     public void Dispose() => _listLoader.Dispose();
 }

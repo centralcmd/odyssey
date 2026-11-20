@@ -64,7 +64,7 @@
                         </div>
                     </div>
                 </td>
-                <td class="trm-cell-date">@term.EffectiveFrom.ToString("MMM dd, yyyy")</td>
+                <td class="trm-cell-date">@OdsDates.Long(term.EffectiveFrom)</td>
                 @* A contract figure keeps its direction's hue at full strength on every row, in force
                    or not: dimming a superseded one drops it below the contrast floor, and dimming a
                    SCHEDULED one draws the entry that is next as though it were already history. The

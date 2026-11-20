@@ -402,7 +402,7 @@ public partial class Users
         && string.Equals(target.Role, "Admin", StringComparison.OrdinalIgnoreCase)
         && EnabledAdminCount <= 1;
 
-    private Task CopyUserId(ExistingUser user) => Clipboard.CopyAsync(user.Id, "User ID copied.");
+    private Task CopyUserId(ExistingUser user) => Clipboard.CopyAsync(user.Id, OdsCopied.Id("User"));
 
     private void RequestDelete(ExistingUser user) => _pendingDelete = user;
 

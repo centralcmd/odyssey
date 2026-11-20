@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -23,6 +24,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// </remarks>
 public partial class PropertyEventsSection : IAsyncDisposable
 {
+    private OdsConfirm _confirm = default!;
+
     /// <summary>Rows per page — the design system's <c>pageSize</c> default.</summary>
     public const int PageSize = 25;
 
@@ -185,12 +188,9 @@ public partial class PropertyEventsSection : IAsyncDisposable
 
     private async Task DeleteAsync(ExistingPropertyEvent ev)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete event?",
-            $"Remove “{ev.Title}” from this property's log? This can’t be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete event?", $"Remove “{ev.Title}” from this property's log? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         var ok = (await Properties.DeleteEventAsync(Property.PropertyId, ev.PropertyEventId))

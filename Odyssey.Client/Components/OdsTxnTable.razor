@@ -119,7 +119,7 @@
         {
             Key = "date", HeaderText = "Date", Sortable = true, Align = OdsAlign.End, CellClass = "odc-rec-muted", SortType = OdsSortType.Date,
             SortValue = t => t.TimeStamp,
-            Cell = (t, ctx) => @<text>@t.TimeStamp.ToLocalTime().ToString("MMM dd, yyyy")</text>
+            Cell = (t, ctx) => @<text>@OdsDates.Long(t.TimeStamp.ToLocalTime())</text>
         });
 
         return columns;

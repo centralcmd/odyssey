@@ -103,13 +103,13 @@ public partial class ContactDetailPanel
         var editable = CanEdit && !IsArchived;
         var items = new List<OdsMenuItem>
         {
-            new() { Icon = "content_copy", Label = $"Copy {KindNoun(t.Kind)}", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Value, $"{t.KindTitle} copied to clipboard.")) },
+            new() { Icon = "content_copy", Label = $"Copy {KindNoun(t.Kind)}", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Value, OdsCopied.Value(t.KindTitle))) },
         };
         if (editable && !t.IsPrimary)
             items.Add(new() { Icon = "star", Label = "Set as primary", OnClick = EventCallback.Factory.Create(this, t.SetPrimary) });
         if (editable)
             items.Add(new() { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, t.Edit) });
-        items.Add(new() { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Id.ToString(), "ID copied to clipboard.")) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Id.ToString(), OdsCopied.Id(t.KindTitle)))));
         if (editable)
         {
             items.Add(new() { Divider = true });

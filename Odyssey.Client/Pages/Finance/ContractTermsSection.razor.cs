@@ -30,6 +30,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// </remarks>
 public partial class ContractTermsSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
 
     /// <summary>Gates every write affordance (<c>contracts.update</c>).</summary>
@@ -94,7 +96,7 @@ public partial class ContractTermsSection
                 ? $" · {incoming} incoming, {priced - incoming} outgoing"
                 : string.Empty;
 
-            return $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force{split} · {DateTime.UtcNow:MMM dd, yyyy}";
+            return $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force{split} · {OdsDates.Long(DateTime.UtcNow)}";
         }
     }
 
@@ -203,7 +205,7 @@ public partial class ContractTermsSection
     /// </summary>
     private static string FactTileFoot(ExistingTerm term)
     {
-        var since = $"since {term.EffectiveFrom:MMM dd, yyyy}";
+        var since = $"since {OdsDates.Long(term.EffectiveFrom)}";
         return term.ValueUnit == TermValueUnit.DateTime && term.DateTimeValue is { } instant
             ? $"{since} · {TermVisuals.Distance(instant, DateTime.UtcNow)}"
             : since;
@@ -215,7 +217,7 @@ public partial class ContractTermsSection
     private static string TileFoot(ExistingTerm term, string? cadence)
     {
         var parts = new List<string>(2);
-        parts.Add($"since {term.EffectiveFrom:MMM dd, yyyy}");
+        parts.Add($"since {OdsDates.Long(term.EffectiveFrom)}");
 
         if (cadence is not null)
             parts.Add(cadence);
@@ -233,12 +235,9 @@ public partial class ContractTermsSection
     private async Task DeleteAsync(ExistingTerm term)
     {
         // Named by what the user called it, so a contract with several charges says which one is going.
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete term?",
-            $"Remove the {TermVisuals.DisplayName(term)} entry effective {term.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete term?", $"Remove the {TermVisuals.DisplayName(term)} entry effective {OdsDates.Long(term.EffectiveFrom)}? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
             return;
 
         var ok = (await Contracts.DeleteTermAsync(Contract.ContractId, term.TermId))

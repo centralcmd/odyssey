@@ -4,14 +4,7 @@ namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
 /// A party's term in its role, formatted for the tile line that carries it (Odyssey Design System ·
-/// <c>Insurance.jsx</c> <c>termText</c> / <c>insRangeShort</c> and <c>contracts-data.js</c>
-/// <c>conPartyTermText</c>).
-///
-/// <para>
-/// ONE formatter for both surfaces. Insurance policy parties and contract parties carry the same
-/// <c>FromDate</c>/<c>ToDate</c> pair with the same semantics (issue #121), and two copies of a
-/// format would drift — the whole reason the insurance-specific name was dropped.
-/// </para>
+/// <c>contracts-data.js</c> <c>conPartyTermText</c>).
 ///
 /// <para>
 /// Deliberately the COMPACT form: no zero-padding, and the year written once where both ends share

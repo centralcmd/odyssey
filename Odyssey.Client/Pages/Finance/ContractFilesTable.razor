@@ -1,7 +1,6 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject IJSRuntime JsRuntime
 @inject IReferenceDataCache ReferenceData
@@ -49,3 +48,5 @@
                    OnDelete="@DeleteAction"
                    AriaLabel="Contract documents" />
 </OdsInlinePager>
+
+<OdsConfirm @ref="_confirm" />

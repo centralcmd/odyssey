@@ -24,7 +24,6 @@ public sealed class TransactionFilesSectionFrameTests : IAsyncLifetime
 {
     private readonly BunitContext ctx = new();
     private readonly Mock<ITransactionsApiClient> transactions = new();
-    private readonly Mock<IDialogService> dialogs = new();
     private readonly Guid transactionId = Guid.NewGuid();
 
     public TransactionFilesSectionFrameTests()
@@ -38,7 +37,6 @@ public sealed class TransactionFilesSectionFrameTests : IAsyncLifetime
         ctx.Services.AddSingleton(transactions.Object);
         ctx.Services.AddSingleton(Mock.Of<IFilesApiClient>());
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
-        ctx.Services.AddSingleton(dialogs.Object);
     }
 
     public Task InitializeAsync() => Task.CompletedTask;
@@ -125,15 +123,17 @@ public sealed class TransactionFilesSectionFrameTests : IAsyncLifetime
         Listing(file);
         transactions.Setup(t => t.DetachFileAsync(transactionId, file.FileMetadata.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
-        dialogs.Setup(d => d.ShowMessageBoxAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogOptions>()))
-            .ReturnsAsync(true);
         var cut = Render(chrome: false);
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".acct-table-frame")));
 
         var table = cut.FindComponent<OdsFilesTable>();
         var row = Assert.Single(table.Instance.Files);
-        await cut.InvokeAsync(() => table.Instance.OnDelete.InvokeAsync(row));
+        // The detach waits on the OdsConfirm prompt; answer it once it is open.
+        var detach = cut.InvokeAsync(() => table.Instance.OnDelete.InvokeAsync(row));
+        var confirm = cut.FindComponent<OdsConfirmDialog>();
+        cut.WaitForAssertion(() => Assert.True(confirm.Instance.Open));
+        await cut.InvokeAsync(() => confirm.Instance.OnConfirm());
+        await detach;
 
         cut.WaitForAssertion(() =>
         {

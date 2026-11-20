@@ -115,18 +115,10 @@ public static partial class OdsTypeRegistries
     public static OdsChipValue ExchangeRateSyncRunStatusOf(ExchangeRateSyncRunStatus status) =>
         ExchangeRateSyncRunStatuses.GetValueOrDefault(status, UnknownChip);
 
-    public static string ExchangeRateSyncTriggerOf(ExchangeRateSyncTrigger trigger) =>
-        ExchangeRateSyncTriggers.GetValueOrDefault(trigger, UnknownChip.Label);
-
     public static string ExchangeRateSyncErrorOf(ExchangeRateSyncErrorKind kind) =>
         ExchangeRateSyncErrors.GetValueOrDefault(kind, SyncErrorFallback);
 
     /// <summary>The chip for a currency's status; <see cref="UnknownChip"/> for none or a value this client does not know.</summary>
     public static OdsChipValue CurrencyStatusOf(CurrencyStatus? status) =>
         status is { } known && CurrencyStatuses.TryGetValue(known, out var entry) ? entry.Chip : UnknownChip;
-
-    public static ExchangeRateBackfillState ExchangeRateBackfillOf(ExistingExchangeRateSyncCurrency currency) =>
-        !currency.Enabled ? ExchangeRateBackfillState.Off
-        : currency.BackfillComplete ? ExchangeRateBackfillState.Complete
-        : ExchangeRateBackfillState.InProgress;
 }

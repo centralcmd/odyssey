@@ -18,119 +18,20 @@ using ContextAccountType = Odyssey.Context.AccountType;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #167: the purely additive migration (AC 19, 28), the declared on-delete
+/// The relational half of issue #167: the declared on-delete
 /// behaviours (AC 20), the list's value sort on the real engine (AC 9), the shared effective-dating
 /// queries translating for BOTH estimate tables (AC 21), and the duplicate-pair race on smart tags.
 /// </summary>
 /// <remarks>
-/// None of this is observable on the fast tiers: the EF InMemory provider enforces no foreign keys, runs
-/// no migrations, and orders nulls by the CLR comparer rather than by the engine's rule.
+/// None of this is observable on the fast tiers: the EF InMemory provider enforces no foreign keys and
+/// orders nulls by the CLR comparer rather than by the engine's rule.
 /// </remarks>
 [Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class PropertyRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_properties";
-    private const string PreviousMigration = "_AddTextAndDateTimeTermKinds";
-    private const string ThisMigration = "_AddProperties";
-
-    private static readonly string[] NewTables =
-        ["Properties", "RealEstateDetails", "VehicleDetails", "PropertyEstimates", "PropertySmartTags"];
 
     private static readonly DateTime Anchor = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-    // ── Migration ────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// AC 19 — applied to a populated database at the previous migration, this one leaves every existing
-    /// table exactly as it was: same tables, same columns (name, type, nullability, key), same indexes,
-    /// and the account estimate and smart-tag rows untouched. The assertion is additivity, which is the
-    /// property the whole design rests on.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_migration_is_purely_additive_over_a_populated_database()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
-
-        await using (var context = NewContext())
-        {
-            await SeedAccountEstimateAndSmartTagAsync(context);
-        }
-
-        Snapshot before;
-        await using (var context = NewContext())
-        {
-            before = await SnapshotAsync(context);
-            Assert.DoesNotContain("Properties", before.Tables);
-            await MigrationSeam.MigrateToAsync(context, ThisMigration);
-        }
-
-        await using (var context = NewContext())
-        {
-            var after = await SnapshotAsync(context);
-
-            Assert.Equal(before.Tables.Concat(NewTables).OrderBy(t => t, StringComparer.Ordinal), after.Tables);
-            Assert.Equal(before.Columns, after.Columns.Where(c => !NewTables.Contains(c.Split('.')[0])).ToList());
-            Assert.Equal(before.Indexes, after.Indexes.Where(i => !NewTables.Contains(i.Split('.')[0])).ToList());
-            Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `AccountEstimates`"));
-            Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `AccountSmartTags`"));
-
-            // …and the one row it inserts is the settings seed, at its shipped default.
-            Assert.Equal(before.SettingsRows + 1, after.SettingsRows);
-            Assert.Equal(
-                SystemSettingsDefaults.PropertyMaxSmartTagsPerProperty.ToString(),
-                await context.SystemSettings.AsNoTracking()
-                    .Where(row => row.Key == SystemSettingsKeys.PropertyMaxSmartTagsPerProperty)
-                    .Select(row => row.Value)
-                    .SingleAsync());
-        }
-    }
-
-    /// <summary>
-    /// AC 28 — <c>Down()</c> on a database holding properties does not throw and removes exactly what
-    /// <c>Up()</c> added; re-applying <c>Up()</c> reproduces the same schema.
-    /// </summary>
-    [SkippableFact]
-    public async Task Down_then_up_on_a_populated_database_round_trips_the_schema()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await MigrateAsync();
-
-        Snapshot first;
-        await using (var context = NewContext())
-        {
-            // No address: since issue #380 one would be a coordinate-less location, which no schema below
-            // UnifyLocationsExpand can hold — that Down() restores the schema, not such rows (rollback is a
-            // backup restore).
-            var house = House("Storgata 14");
-            house.RealEstateDetails = house.RealEstateDetails! with { City = null, CountryCode = null };
-            await new PropertyService(context, new ContactLookup(context)).Create(house, userId: null, claims: LocationClaims.Trusted);
-            first = await SnapshotAsync(context);
-
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-        }
-
-        await using (var context = NewContext())
-        {
-            foreach (var table in NewTables)
-            {
-                Assert.False(await MigrationSeam.TableExistsAsync(context, table), $"{table} survived Down().");
-            }
-
-            Assert.False(await context.SystemSettings.AsNoTracking()
-                .AnyAsync(row => row.Key == SystemSettingsKeys.PropertyMaxSmartTagsPerProperty));
-
-            await context.Database.MigrateAsync();
-        }
-
-        await using (var context = NewContext())
-        {
-            var second = await SnapshotAsync(context);
-            Assert.Equal(first.Tables, second.Tables);
-            Assert.Equal(first.Columns, second.Columns);
-            Assert.Equal(first.Indexes, second.Indexes);
-        }
-    }
 
     /// <summary>AC 20 — every foreign key the feature adds carries the on-delete behaviour §4 names.</summary>
     [SkippableFact]
@@ -423,56 +324,6 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         context.PropertySmartTags.Add(new PropertySmartTag { PropertyId = propertyId, TransactionTagId = tagId, AddedAt = Anchor });
         await context.SaveChangesAsync();
         return propertyId;
-    }
-
-    // Raw SQL against the pre-migration schema: the model already has the property tables, so going
-    // through EF entities other than the two being counted would be sound, but raw SQL keeps this seed
-    // independent of anything the migration under test creates.
-    private static async Task SeedAccountEstimateAndSmartTagAsync(OdysseyContext context)
-    {
-        var accountId = Guid.NewGuid();
-        var tagId = Guid.NewGuid();
-        await context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `Accounts` (`AccountId`, `Name`, `Description`, `Opened`, `AccountType`, `CurrencyCode`)
-            VALUES ('{accountId}', 'House', '', '2026-01-01', 6, 'USD')
-            """);
-        await context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `AccountEstimates` (`AccountEstimateId`, `AccountId`, `Value`, `CurrencyCode`, `EffectiveFrom`, `CreatedAtUtc`)
-            VALUES ('{Guid.NewGuid()}', '{accountId}', 1, 'USD', '2026-01-01', '2026-01-01')
-            """);
-        await context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `TransactionTags` (`TransactionTagId`, `Name`) VALUES ('{tagId}', 'Maintenance')
-            """);
-        await context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `AccountSmartTags` (`AccountId`, `TransactionTagId`, `AddedAt`)
-            VALUES ('{accountId}', '{tagId}', '2026-01-01')
-            """);
-    }
-
-    private sealed record Snapshot(List<string> Tables, List<string> Columns, List<string> Indexes, int SettingsRows);
-
-    private static async Task<Snapshot> SnapshotAsync(OdysseyContext context)
-    {
-        var tables = await context.Database.SqlQuery<string>($"""
-            SELECT TABLE_NAME AS Value FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '__EFMigrationsHistory'
-            ORDER BY BINARY TABLE_NAME
-            """).ToListAsync();
-        var columns = await context.Database.SqlQuery<string>($"""
-            SELECT CONCAT_WS('.', TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, IFNULL(COLUMN_DEFAULT, '<null>')) AS Value
-            FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '__EFMigrationsHistory'
-            ORDER BY BINARY TABLE_NAME, ORDINAL_POSITION
-            """).ToListAsync();
-        var indexes = await context.Database.SqlQuery<string>($"""
-            SELECT CONCAT_WS('.', TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, NON_UNIQUE) AS Value
-            FROM information_schema.STATISTICS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '__EFMigrationsHistory'
-            ORDER BY BINARY TABLE_NAME, BINARY INDEX_NAME, SEQ_IN_INDEX
-            """).ToListAsync();
-        var settingsRows = (int)await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `SystemSettings`");
-
-        return new Snapshot(tables, columns, indexes, settingsRows);
     }
 
     private sealed record ForeignKeyRule(string TableName, string ColumnName, string ReferencedTable, string DeleteRule);

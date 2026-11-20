@@ -8,6 +8,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class BudgetItemsSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter] public Guid BudgetId { get; set; }
     [Parameter] public string? BudgetName { get; set; }
     [Parameter] public List<ExistingBudgetItem> Items { get; set; } = new();
@@ -255,11 +257,8 @@ public partial class BudgetItemsSection
         if (!CanDelete || _isBusy)
             return;
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete budget item",
-            $"Delete '{item.Tag.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed != true)
+        var confirmed = await _confirm.AskAsync("Delete budget item", $"Delete '{item.Tag.Name}'? This cannot be undone.", "Delete");
+        if (!confirmed)
             return;
 
         _isBusy = true;
@@ -275,7 +274,7 @@ public partial class BudgetItemsSection
     }
 
     private Task CopyItemId(ExistingBudgetItem item) =>
-        Clipboard.CopyAsync(item.BudgetItemId.ToString(), "Budget item ID copied.");
+        Clipboard.CopyAsync(item.BudgetItemId.ToString(), OdsCopied.Id("Budget item"));
 
     // A tag can be planned for by one item only per budget; the picker marks the others "in use"
     // rather than hiding them, and always exempts the row's own current tag.

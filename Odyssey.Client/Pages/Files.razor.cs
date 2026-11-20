@@ -15,6 +15,8 @@ namespace Odyssey.Client.Pages;
 
 public partial class Files
 {
+    private OdsConfirm _confirm = default!;
+
     private bool _isLoading = true;
     private bool _loadError;
 
@@ -394,8 +396,7 @@ public partial class Files
                 return;
             }
 
-            var contentType = content.ContentType ?? "application/octet-stream";
-            await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileName, contentType);
+            await JsRuntime.SaveFileAsync(content, file.FileName);
         }
         catch (Exception ex)
         {
@@ -409,13 +410,9 @@ public partial class Files
 
     private async Task ConfirmDeleteAsync(FileListItem file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete file",
-            $"Permanently delete '{file.FileName}'? This can't be undone.",
-            yesText: "Delete",
-            cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete file", $"Permanently delete '{file.FileName}'? This can't be undone.", "Delete");
 
-        if (confirmed == true)
+        if (confirmed)
             await DeleteFileAsync(file);
     }
 
@@ -481,7 +478,7 @@ public partial class Files
             switch (result.Outcome)
             {
                 case FileExportOutcome.Success when result.File is not null:
-                    await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", result.File.Bytes, result.File.FileName, "application/zip");
+                    await JsRuntime.SaveFileAsync(result.File.Bytes, result.File.FileName, "application/zip");
                     Snackbar.Add($"Exported {result.File.FileName}", Severity.Success);
                     break;
                 case FileExportOutcome.Forbidden:

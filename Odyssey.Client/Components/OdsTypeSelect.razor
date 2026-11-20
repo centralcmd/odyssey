@@ -64,7 +64,10 @@
        clamp) so a long list scrolls instead of running off-screen. A compact trigger (e.g. the inline
        file-kind picker) would otherwise pin the popover too narrow — it passes a PopoverClass that
        widens it to fit the option names. *@
-    <OdsPopupMenu @ref="_popup"
+    @* UserAttributes goes first so the explicit parameters below win a name clash. OdsPopupMenu
+       splats it onto its wrapper, the same element OdsSelect's attributes reach. *@
+    <OdsPopupMenu @attributes="UserAttributes"
+                  @ref="_popup"
                   TriggerId="@FieldId"
                   TriggerClass="@TriggerClass"
                   AriaLabel="@AriaLabel"
