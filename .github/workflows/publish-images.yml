@@ -3,7 +3,7 @@ name: Publish images
 # Reusable workflow that builds and pushes the three container images to GHCR.
 # Called from release-please.yml when a release is cut: it stamps the immutable
 # SemVer tag alongside the floating `latest` and the long sha. Images are only
-# published for releases — pushes to main run build-and-test only, never publish.
+# published for releases — pushes to main run the CI test jobs only, never publish.
 on:
   workflow_call:
     inputs:
