@@ -24,7 +24,7 @@ namespace Odyssey.Api.Tests;
 /// rendered: the property is gone from the managed code, so nothing else would notice if the API
 /// started rejecting the two stale inputs above instead of ignoring them.
 /// </remarks>
-public class ContactRelationshipTypeRemovalTests
+public class ContactRelationshipTypeRemovalTests(ContactRelationshipTypeRemovalTests.Host host) : SharedApiHostTests<ContactRelationshipTypeRemovalTests.Host>(host)
 {
     private const string ActorUserId = "contact-relationship-removal-actor";
     private const string BasePath = "/api/contacts";
@@ -41,7 +41,7 @@ public class ContactRelationshipTypeRemovalTests
     [Fact]
     public async Task Get_PersonContact_CarriesNoRelationshipTypeKey()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreatePersonAsync(client);
 
@@ -71,7 +71,7 @@ public class ContactRelationshipTypeRemovalTests
     [Fact]
     public async Task Put_WithStaleRelationshipTypeMember_IsAcceptedAndIgnored()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreatePersonAsync(client);
 
@@ -121,7 +121,7 @@ public class ContactRelationshipTypeRemovalTests
     [Fact]
     public async Task ExportOne_AfterImportingAVCardCarryingTheProperty_OmitsItOnTheWayOut()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var import = await PostVCardAsync(client, PersonVcard("relationship-round-trip-1"));
@@ -151,7 +151,7 @@ public class ContactRelationshipTypeRemovalTests
     [Fact]
     public async Task Import_VCardCarryingTheRelationshipProperty_IsToleratedNotSkipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await PostVCardAsync(client, PersonVcard("relationship-tolerance-1"));
@@ -226,6 +226,9 @@ public class ContactRelationshipTypeRemovalTests
         return await client.PostAsync($"{BasePath}/vcard", content);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 }

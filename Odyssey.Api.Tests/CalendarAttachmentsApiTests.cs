@@ -882,12 +882,10 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
             : $"{PatternsPath}/{(await CreatePatternAsync(ownerClient, Weekly(calendar.CalendarId, 2) with { AttachmentFileIds = files, PhotoIds = photos })).RecurrencePatternId}/ics";
 
         // The OTHER kind's claim alone is not enough; the matching one alone is.
-        await using var wrong = new ApiFactory(
-            [PermissionClaims.CalendarRead, kind == "files" ? PermissionClaims.PhotosRead : PermissionClaims.FilesRead], sharingStoreWith: owner);
-        await using var right = new ApiFactory(
-            [PermissionClaims.CalendarRead, kind == "files" ? PermissionClaims.FilesRead : PermissionClaims.PhotosRead], sharingStoreWith: owner);
-        using var wrongClient = wrong.CreateClient();
-        using var rightClient = right.CreateClient();
+        using var wrongClient = owner.ClientFor(
+            [PermissionClaims.CalendarRead, kind == "files" ? PermissionClaims.PhotosRead : PermissionClaims.FilesRead]);
+        using var rightClient = owner.ClientFor(
+            [PermissionClaims.CalendarRead, kind == "files" ? PermissionClaims.FilesRead : PermissionClaims.PhotosRead]);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await wrongClient.GetAsync(path + "/summary")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await wrongClient.GetAsync(path)).StatusCode);

@@ -132,10 +132,9 @@ public class DtoValidationBoundaryTests(DtoValidationBoundaryTests.Host host) : 
         await context.Database.EnsureCreatedAsync();
     }
 
-    private static async Task PostExpectingBadRequest(string path, object body)
+    private async Task PostExpectingBadRequest(string path, object body)
     {
-        await using var factory = new ApiFactory(CreateClaims);
-        using var client = factory.CreateClient();
+        using var client = Factory.ClientFor(CreateClaims);
 
         var response = await client.PostAsJsonAsync(path, body);
 
