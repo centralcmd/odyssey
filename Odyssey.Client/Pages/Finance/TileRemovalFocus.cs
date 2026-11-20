@@ -3,9 +3,9 @@ using Microsoft.JSInterop;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// Focus return across a tile removal, shared by the policy-party and contract-party tile surfaces
-/// (issue #122 §4, §6.4). Domain-agnostic: it knows only opaque string keys and the selector a key
-/// maps to, which is what lets one implementation serve both.
+/// Focus return across a tile removal, shared by the contract party tiles and the contract events
+/// section (issue #122 §4, §6.4). Domain-agnostic: it knows only opaque string keys and the selector a
+/// key maps to, which is what lets one implementation serve every surface.
 /// </summary>
 /// <remarks>
 /// <para>

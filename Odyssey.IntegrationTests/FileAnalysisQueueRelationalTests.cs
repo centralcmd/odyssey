@@ -113,7 +113,7 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
     {
         var service = new FileAnalysisService(
             context, new SweepingProvider(() => { }), new ContactLookup(context),
-            Options.Create(new FileAnalysisOptions { Enabled = true }), new StaticSettingsLookup(),
+            new StaticSettingsLookup(),
             NullLogger<FileAnalysisService>.Instance, Queue(context), new EmbeddedFileAnalysisPromptTemplate(), time);
         var response = await service.AnalyzeAsync(statement.AccountId, statement.FileId, UserId, new AnalyzeFileRequest
         {

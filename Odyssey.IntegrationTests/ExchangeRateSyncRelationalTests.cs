@@ -35,10 +35,9 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_keeps_existing_rates_as_manual_and_its_down_restores_the_old_index()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
 
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
         await context.Database.ExecuteSqlRawAsync(
             "INSERT INTO `ExchangeRates` (`ExchangeRateId`, `FromCurrencyCode`, `ToCurrencyCode`, `Rate`, `AsOf`, `CreatedAt`) "
             + $"VALUES ('{Guid.NewGuid()}', 'USD', 'NOK', 10.5, '2026-10-01 00:00:00', NOW())");
@@ -65,10 +64,9 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
     public async Task The_provider_series_migration_keys_one_row_per_code_and_its_down_drops_only_that_table()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, ThisMigration);
 
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, ThisMigration);
         Assert.False(await MigrationSeam.TableExistsAsync(context, "ExchangeRateProviderSeries"));
 
         await MigrationSeam.MigrateToAsync(context, SeriesMigration);
@@ -413,14 +411,5 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         }
 
         return new OdysseyContext(options.Options);
-    }
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 }

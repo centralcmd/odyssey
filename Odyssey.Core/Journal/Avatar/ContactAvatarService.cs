@@ -41,7 +41,6 @@ public class ContactAvatarService
     private const string AvatarDescription = "Contact image";
 
     private readonly OdysseyContext context;
-    private readonly FileService fileService;
     private readonly IUploadLimitsLookup uploadLimits;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<ContactAvatarService>? logger;
@@ -53,7 +52,6 @@ public class ContactAvatarService
     /// Null only in a host with no file store, where an upload is a <c>503</c>.</param>
     public ContactAvatarService(
         OdysseyContext context,
-        FileService fileService,
         IUploadLimitsLookup uploadLimits,
         TimeProvider? timeProvider = null,
         ILogger<ContactAvatarService>? logger = null,
@@ -62,7 +60,6 @@ public class ContactAvatarService
         StoredFileContentSource? source = null)
     {
         this.context = context;
-        this.fileService = fileService;
         this.uploadLimits = uploadLimits;
         this.timeProvider = timeProvider ?? TimeProvider.System;
         this.logger = logger;

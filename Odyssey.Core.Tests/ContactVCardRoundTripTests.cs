@@ -24,7 +24,7 @@ public class ContactVCardRoundTripTests
     {
         var stores = Odyssey.Testing.FileStorage.TestFileStores.For(context);
         var avatars = new ContactAvatarService(
-            context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024),
+            context, new FixedUploadLimits(64L * 1024 * 1024),
             writer: stores.Writer, store: stores.Store, source: stores.Source);
         var service = new ContactService(context, new NoopContactReferenceGuard());
         return (service, new ContactVCardService(

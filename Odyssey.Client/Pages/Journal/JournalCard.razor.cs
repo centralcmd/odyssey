@@ -75,7 +75,6 @@ public partial class JournalCard
     private PhotoImageAccess _imageAccess = new(false);
     private bool _canReadContacts;
     private bool _canCreateContacts;
-    private bool _canReadJournalTags;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "journal-page";
@@ -194,10 +193,6 @@ public partial class JournalCard
         // The gallery's thumbnail needs photos.read, read once here rather than per tile (issue #365 B5).
         _imageAccess = PhotoImageAccess.From(user);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
-        // /journal-tags is gated on its OWN claim, which journal.read does not imply. Without this the
-        // tag tile's "Open journal tags" item is a dead end for a caller who holds one and not the
-        // other — the same reason "Open contact" is gated on contacts.read.
-        _canReadJournalTags = user.HasPermission(PermissionClaims.JournalTagsRead);
         _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);

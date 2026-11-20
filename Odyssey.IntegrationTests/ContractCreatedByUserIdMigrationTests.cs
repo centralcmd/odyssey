@@ -28,7 +28,7 @@ public class ContractCreatedByUserIdMigrationTests(MariaDbFixture fixture)
     public async Task A_pre_existing_contract_survives_the_upgrade_with_no_author()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         var contractId = Guid.NewGuid();
         var createdAt = new DateTime(2026, 3, 1, 9, 30, 0, DateTimeKind.Utc);
@@ -37,7 +37,6 @@ public class ContractCreatedByUserIdMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 Assert.False(await ColumnExistsAsync(context));
                 await MigrationSeam.InsertContractAsync(context, new Contract
                 {
@@ -84,13 +83,6 @@ public class ContractCreatedByUserIdMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

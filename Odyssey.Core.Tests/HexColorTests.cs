@@ -4,6 +4,7 @@ using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 using Odyssey.TestShared;
 using Xunit;
+using DataAnnotations = System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Core.Tests;
 
@@ -63,13 +64,48 @@ public class HexColorTests
         Assert.True(properties.Count >= 7, $"Scan set unexpectedly small ({properties.Count}).");
 
         var unbounded = properties
-            .Where(property => property.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.StringLengthAttribute), false)
-                .Cast<System.ComponentModel.DataAnnotations.StringLengthAttribute>()
+            .Where(property => property.GetCustomAttributes(typeof(DataAnnotations.StringLengthAttribute), false)
+                .Cast<DataAnnotations.StringLengthAttribute>()
                 .All(length => length.MaximumLength != HexColor.Length))
             .Select(property => $"{property.DeclaringType!.Name}.{property.Name}")
             .ToList();
 
         Assert.Empty(unbounded);
+    }
+
+    /// <summary>
+    /// The whole corpus against the attribute stack each <c>[HexColor]</c> DTO property actually carries
+    /// (<c>[StringLength]</c> included), as model validation runs it: exactly one error, the shared message.
+    /// This is what lets the HTTP tier keep only representatives (<c>TagColorApiTests</c>,
+    /// <c>AlbumIconColorApiTests</c>) — it proves wiring per endpoint, this proves the corpus per property.
+    /// An empty string on a <c>[Required]</c> property is the required-field case, not this rule.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(HexColorNegativeCorpus.TheoryData), MemberType = typeof(HexColorNegativeCorpus))]
+    public void Every_HexColor_property_reports_one_shared_error_for_every_corpus_value(string value)
+    {
+        var properties = typeof(HexColor).Assembly.GetTypes()
+            .SelectMany(type => type.GetProperties())
+            .Where(property => property.IsDefined(typeof(HexColorAttribute), inherit: false))
+            .ToList();
+        Assert.True(properties.Count >= 7, $"Scan set unexpectedly small ({properties.Count}).");
+
+        foreach (var property in properties)
+        {
+            if (value.Length == 0 && property.IsDefined(typeof(DataAnnotations.RequiredAttribute), inherit: false))
+            {
+                continue;
+            }
+
+            var results = new List<DataAnnotations.ValidationResult>();
+            var context = new DataAnnotations.ValidationContext(new object()) { MemberName = property.Name };
+            var attributes = property.GetCustomAttributes(typeof(DataAnnotations.ValidationAttribute), inherit: false)
+                .Cast<DataAnnotations.ValidationAttribute>();
+
+            Assert.False(DataAnnotations.Validator.TryValidateValue(value, context, results, attributes),
+                $"{property.DeclaringType!.Name}.{property.Name}");
+            Assert.Equal([HexColor.InvalidMessage], results.Select(result => result.ErrorMessage));
+        }
     }
 
     [Fact]

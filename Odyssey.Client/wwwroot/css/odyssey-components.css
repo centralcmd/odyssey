@@ -1965,8 +1965,8 @@
 .odc-meta-tile-value { font: var(--fw-regular) var(--fs-body1)/1.45 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; text-wrap: pretty; }
 .odc-meta-tile-value.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
-/* Inline edit panel inside a RecordTable's RenderEdit (head · field grid · actions). */
 .odc-rec td.odc-rec-muted { color: var(--mud-palette-text-secondary); }
+/* Inline validation error line inside an edit form (OdsFilesEditDialog). */
 .odc-rec-edit-err { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-error); }
 
 @media (max-width: 600px) {
@@ -2639,10 +2639,10 @@ tr:focus-within > .odc-rowactions.reveal,
   .odc-progress.indeterminate .odc-progress-fill { animation: none; left: 0; width: 100%; }
 }
 
-/* Contract party dialog: the two-up "In the role" date row must shrink to the modal.
-   MudBlazor's select carries an intrinsic min-width, so without min-width:0 the grid
-   columns overflow the modal's right edge instead of fitting. */
-.con-dialog .odc-form-row { min-width: 0; }
+/* Two-up date/money rows inside the contract party and event dialogs must shrink to the
+   520px modal. MudBlazor's select carries an intrinsic min-width, so without min-width:0 the
+   grid columns overflow the modal's right edge instead of fitting. */
+.con-dialog .odc-form-row,
 .con-dialog .odc-form-row > *,
 .con-dialog .odc-form-row .mud-input-control { min-width: 0; }
 
@@ -2651,8 +2651,8 @@ tr:focus-within > .odc-rowactions.reveal,
    contracts.css. Global (not scoped) because these classes live in the page,
    the detail child, the summary child and the dialogs. The page scaffold
    (.acct-*) is in the scoped ContractsCard.razor.css. The feature accent is a
-   warm clay/bronze (oklch hue 42) — distinct from brand tide and Tax's
-   magenta; it never encodes money.
+   warm clay/bronze (oklch hue 42) — distinct from brand tide
+   and Tax's magenta; it never encodes money.
    ============================================================ */
 :root, [data-theme] {
   --con-accent: oklch(0.70 0.13 42);
@@ -3926,7 +3926,6 @@ tr:focus-within > .odc-rowactions.reveal,
     margin-top: 2px;
 }
 .acct-tags .mono { font-family: var(--font-mono); }
-
 /* ── Per-record problem chip, in the name row ── */
 .acct-flag {
     display: inline-flex; align-items: center; gap: 4px; flex: none;
@@ -4330,9 +4329,9 @@ tr:focus-within > .odc-rowactions.reveal,
 /* ---------- RecordCard (OdsRecordCard — the expandable record list item) ----------
    Mirrors the design system (components/bundle.css · .odc-record*). ROW HEIGHT IS ONE NUMBER
    ACROSS EVERY RECORD LIST: the header is at least 88px, set here rather than left to
-   each page's content. Insurance is the reference — its meta line carries linked-record
-   pill chips, which are worth the height — and a list of plainer records breathes the
-   same way instead of collapsing to a tighter row. Lists scan as one product when their
+   each page's content, so a list whose meta line carries linked-record pill chips and a
+   list of plainer records breathe the same way instead of the plainer one collapsing to
+   a tighter row. Lists scan as one product when their
    rows share a rhythm; a page that needs more says so by wrapping, not by shrinking.
    The header is the record's identity; the body order is fixed by the component (alert
    then details then content then sections). ONE ACCENT PER RECORD: --rec / --rec-soft

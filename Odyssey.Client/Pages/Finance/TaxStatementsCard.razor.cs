@@ -26,10 +26,8 @@ public partial class TaxStatementsCard
     private TaxStatementSummary? _summary;
     private readonly Dictionary<Guid, TaxStatementReport> _reports = new();
     private List<ExistingCurrency> _currencies = [];
-    private Dictionary<string, ExistingCurrency> _currenciesByCode = new(StringComparer.OrdinalIgnoreCase);
     private List<ExistingTransactionTag> _tags = [];
     private Dictionary<Guid, ExistingTransactionTag> _tagById = new();
-    private IReadOnlyList<OdsOption> _tagOptions = [];
 
     // Per-statement problems (derived-net-worth pending / off-currency excluded).
     private Dictionary<Guid, List<TaxProblem>> _problems = new();
@@ -225,7 +223,6 @@ public partial class TaxStatementsCard
     private async Task LoadCurrencies()
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
-        _currenciesByCode = _currencies.ToDictionary(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task LoadTags()
@@ -233,7 +230,6 @@ public partial class TaxStatementsCard
         var tags = await ReferenceData.TransactionTagsAsync();
         _tags = tags.Where(t => t.Archived is null).OrderBy(t => t.Name, StringComparer.CurrentCulture).ToList();
         _tagById = tags.ToDictionary(t => t.TransactionTagId);
-        _tagOptions = [.. _tags.Select(OdsTransactionTagOptions.From)];
     }
 
     // Per-statement reconciliation reports (derived figures + variances). Fetched in

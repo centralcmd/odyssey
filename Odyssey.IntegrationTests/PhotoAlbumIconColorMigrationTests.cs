@@ -26,14 +26,13 @@ public class PhotoAlbumIconColorMigrationTests(MariaDbFixture fixture)
     public async Task Existing_albums_read_no_icon_and_no_colour_and_stale_values_normalise_on_detail_and_list()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
         var legacyId = Guid.NewGuid();
 
         try
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 Assert.Null(await ColumnAsync(context, "Icon"));
                 Assert.Null(await ColumnAsync(context, "Color"));
 
@@ -122,13 +121,6 @@ public class PhotoAlbumIconColorMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

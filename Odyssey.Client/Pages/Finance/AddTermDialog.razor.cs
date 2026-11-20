@@ -58,8 +58,6 @@ public partial class AddTermDialog
         // A direction is never the reason a value is invalid, so nothing is re-validated here.
     }
 
-    private const int TermLabelMaxLength = TermLabel.MaxLength;
-
     private string _label = "";
     private TermValueUnit _unit = TermValueUnit.Amount;
     private string _valueStr = "";

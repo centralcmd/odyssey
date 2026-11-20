@@ -60,23 +60,6 @@ internal static class BaselineContacts
     }
 
     /// <summary>
-    /// The Person counterpart. <c>PersonDetails</c> gained <c>MiddleName</c> and <c>DateOfDeath</c> in
-    /// issue #48, so an EF graph insert at any earlier baseline fails with
-    /// <c>Unknown column 'DateOfDeath' in 'INSERT INTO'</c> — the same trap the Organization side hit.
-    /// </summary>
-    public static async Task AddPersonAsync(
-        OdysseyContext context, Guid contactId, string firstName, string lastName)
-    {
-        await AddContactRowAsync(context, contactId, $"{firstName} {lastName}".ToUpperInvariant(), ContactType.Person);
-
-        await context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO `PersonDetails` (`ContactId`, `FirstName`, `LastName`) VALUES ({0}, {1}, {2})",
-            contactId, firstName, lastName);
-
-        context.ChangeTracker.Clear();
-    }
-
-    /// <summary>
     /// The parent row. Raw SQL for the same reason as the detail sub-records above: it names only the
     /// columns <c>InitialCreate</c> shipped, so a later migration adding one to the <c>Contact</c>
     /// entity cannot reach back and break every test that seeds an older schema.
@@ -97,6 +80,6 @@ internal static class BaselineContacts
     }
 
     /// <summary>The timestamp format the raw-SQL seeds in this project use for a DATETIME(6) column.</summary>
-    public static string SqlTimestamp(DateTime value) =>
+    private static string SqlTimestamp(DateTime value) =>
         value.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
 }

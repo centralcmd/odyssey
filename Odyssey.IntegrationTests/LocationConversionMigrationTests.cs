@@ -46,13 +46,12 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         const string database = "odyssey_location_conversion";
-        await RecreateAsync(database);
+        await fixture.CreateDatabaseAtMigrationAsync(database, Expand);
 
         try
         {
             await using (var context = NewContext(database))
             {
-                await MigrationSeam.MigrateToAsync(context, Expand);
                 await SeedAsync(context);
             }
 
@@ -218,15 +217,14 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
         var suffix = $"{table.ToLowerInvariant()}_{batch}";
         var straight = $"odyssey_lc_straight_{suffix}";
         var interrupted = $"odyssey_lc_interrupted_{suffix}";
-        await RecreateAsync(straight);
-        await RecreateAsync(interrupted);
+        await fixture.CreateDatabaseAtMigrationAsync(straight, Expand);
+        await fixture.CreateDatabaseAtMigrationAsync(interrupted, Expand);
 
         try
         {
             foreach (var database in new[] { straight, interrupted })
             {
                 await using var context = NewContext(database);
-                await MigrationSeam.MigrateToAsync(context, Expand);
                 await SeedAsync(context);
             }
 
@@ -288,13 +286,12 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         const string database = "odyssey_location_conversion_empty_address";
-        await RecreateAsync(database);
+        await fixture.CreateDatabaseAtMigrationAsync(database, Expand);
 
         try
         {
             await using (var context = NewContext(database))
             {
-                await MigrationSeam.MigrateToAsync(context, Expand);
                 await SeedAsync(context);
                 await AddressAsync(context, "address-empty", "contact-2", primary: false, "\u0007", null, " \t ", "\u202E", null, "\u0001");
             }
@@ -330,13 +327,12 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         const string database = "odyssey_location_conversion_partial";
-        await RecreateAsync(database);
+        await fixture.CreateDatabaseAtMigrationAsync(database, Expand);
 
         try
         {
             await using (var context = NewContext(database))
             {
-                await MigrationSeam.MigrateToAsync(context, Expand);
                 await SeedAsync(context);
                 await new LocationConversion(context).ConvertAsync(CancellationToken.None);
 

@@ -28,11 +28,10 @@ public class WeatherHistoryWindowsMigrationTests(MariaDbFixture fixture)
     public async Task The_migration_carries_history_from_and_the_markers_and_down_restores_them()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Before);
 
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, Before);
             await SeedAsync(context, MidBackfill, historyEnabled: true, siteVersion: 1, historyFrom: "2025-01-01", backfilledFrom: "2025-06-01", checkedThrough: "2026-11-06");
             await SeedAsync(context, NeverFetched, historyEnabled: false, siteVersion: 1, historyFrom: "2025-08-01", backfilledFrom: null, checkedThrough: null);
             await SeedAsync(context, Moved, historyEnabled: true, siteVersion: 2, historyFrom: "2024-01-01", backfilledFrom: "2026-06-14", checkedThrough: "2026-11-06");
@@ -86,12 +85,11 @@ public class WeatherHistoryWindowsMigrationTests(MariaDbFixture fixture)
     public async Task After_the_migration_the_fetcher_skips_covered_days_and_down_falls_back_for_a_point_without_windows()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Before);
         var fresh = Guid.Parse("20000000-0000-0000-0000-000000000004");
 
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, Before);
             await SeedAsync(context, MidBackfill, historyEnabled: true, siteVersion: 1, historyFrom: "2025-01-01", backfilledFrom: "2025-06-01", checkedThrough: "2026-11-06");
             await SeedAsync(context, Moved, historyEnabled: true, siteVersion: 2, historyFrom: "2024-01-01", backfilledFrom: "2026-06-14", checkedThrough: "2026-11-06");
             await SeedAsync(context, fresh, historyEnabled: true, siteVersion: 1, historyFrom: "2026-01-01", backfilledFrom: "2026-11-07", checkedThrough: "2026-11-06");
@@ -151,10 +149,9 @@ public class WeatherHistoryWindowsMigrationTests(MariaDbFixture fixture)
     public async Task The_order_checks_hold_and_writes_and_the_cascade_behave_on_mariadb()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Before);
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, Before);
             await SeedAsync(context, MidBackfill, historyEnabled: true, siteVersion: 1, historyFrom: "2025-01-01", backfilledFrom: "2025-06-01", checkedThrough: "2026-11-06");
             await context.Database.MigrateAsync();
         }
@@ -212,10 +209,9 @@ public class WeatherHistoryWindowsMigrationTests(MariaDbFixture fixture)
     public async Task The_relational_history_purge_removes_coverage_and_keeps_the_windows()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Before);
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, Before);
             await SeedAsync(context, MidBackfill, historyEnabled: false, siteVersion: 1, historyFrom: "2025-01-01", backfilledFrom: "2025-06-01", checkedThrough: "2026-11-06");
             await context.Database.MigrateAsync();
         }
@@ -264,13 +260,4 @@ public class WeatherHistoryWindowsMigrationTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
         .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
         .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 }

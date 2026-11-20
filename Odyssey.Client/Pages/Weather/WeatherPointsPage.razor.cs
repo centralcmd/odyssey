@@ -412,7 +412,6 @@ public partial class WeatherPointsPage
     private bool _dialogOpen;
     private ExistingWeatherPoint? _target;
     private WeatherPurgeMode _purgeMode;
-    private bool _purgeFromNotice;
     private Guid? _purgeNeighbour;
 
     private void Show(Dialog dialog, ExistingWeatherPoint? target)
@@ -432,12 +431,11 @@ public partial class WeatherPointsPage
 
     private void OpenSettings(ExistingWeatherPoint p) => Show(Dialog.Settings, p);
 
-    private void OpenPurge(ExistingWeatherPoint p, WeatherPurgeMode mode, bool fromNotice = false)
+    private void OpenPurge(ExistingWeatherPoint p, WeatherPurgeMode mode)
     {
         if (!_canDelete)
             return;
         _purgeMode = mode;
-        _purgeFromNotice = fromNotice || _dialog == Dialog.Settings;
         _purgeNeighbour = NeighbourOf(VisibleRows, p.WeatherPointId);
         Show(Dialog.Purge, Current(p.WeatherPointId) ?? p);
     }

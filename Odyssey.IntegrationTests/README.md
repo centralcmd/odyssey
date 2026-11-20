@@ -36,7 +36,7 @@ ODYSSEY_REQUIRE_TIER=integration dotnet test Odyssey.IntegrationTests
 name fails the run rather than being ignored. The rule lives in `TestShared/TestTierGate.cs`, linked
 into all three self-skipping test projects.
 
-## A private database at head: copy, don't migrate
+## A private database: copy, don't migrate
 
 A test that needs a database of its own at the current schema calls
 `fixture.CreateMigratedDatabaseAsync(name)`. It drops `name` if it exists, recreates it as a copy of
@@ -44,14 +44,27 @@ A test that needs a database of its own at the current schema calls
 real migration chain once per container (`MigratedSchemaTemplate`). Locally a copy takes about 70 ms and
 a migration from empty about 2.8 s.
 
-Two kinds of test still migrate for real:
+A **migration test** (`MigrationSeam`) that needs the database *before* head calls
+`fixture.CreateDatabaseAtMigrationAsync(name, "_SomeMigration")` (or
+`CreateDatabaseBeforeMigrationAsync(name, "_ItsSubject")`) instead: the same copy, of a template migrated
+to exactly that migration with every later one pending. Each target gets its own template database
+(`odyssey_template_<16 hex digits of a hash of the migration id>`), built on first use and shared by every
+test asking for the same target; tests asking for different targets build theirs independently.
 
-- a **migration test** (`MigrationSeam`) that needs the database *before* head, where a copy of head is
-  no use;
-- the **seeder test** and `MigrationDriftIntegrationTests`, whose point is that the migrations
-  themselves apply.
+Only tests whose point is that the chain applies from nothing still migrate for real: the **seeder
+test**, `MigrationDriftIntegrationTests` and the drift-guard tests in `TermRenameMigrationTests`, which
+need an empty database a copy cannot give them.
 
-`MigratedSchemaTemplateTests` compares a copy with a database migrated from empty: every column,
-index, constraint, foreign key and table option, and every row (`CHECKSUM TABLE`). A copy comes from
-`SHOW CREATE TABLE`, so the template refuses to build if a migration ever creates an object that does
-not reproduce: a view, trigger, routine, event or sequence.
+`MigratedSchemaTemplateTests` compares a copy with a database migrated the slow way, at head and at one
+intermediate migration: every column, index, constraint, foreign key and table option, and every row
+(`CHECKSUM TABLE`). A copy comes from `SHOW CREATE TABLE`, so the template refuses to build if a
+migration ever creates an object that does not reproduce: a view, trigger, routine, event or sequence.
+
+## Data migrations that shipped before production
+
+A data migration's seam tests (its backfill, remap or relocation over seeded rows, and its `Down()` over
+data) are retired once every production database has applied it: from then on the data path only ever
+runs over an empty database, and a rollback is a backup restore. The tests for migrations up to
+`v0.35.0` (`20260924202453_AddTextAndDateTimeTermKinds`) are gone for that reason. What a removed file
+also asserted about the *current* schema — a constraint, an index, a foreign key's delete rule — was
+kept, on a copy of head.

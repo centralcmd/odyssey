@@ -1181,22 +1181,6 @@ public class JournalEntryIcsService
     }
 
     // ── Parsing helpers ─────────────────────────────────────────────────────────
-
-    private static List<Guid> SchemedFileIds(IcalJournal journal, string scheme)
-    {
-        var ids = new List<Guid>();
-        foreach (var attachment in journal.Attachments)
-        {
-            if (TryParseAttachment(attachment, out var attachmentScheme, out var fileId)
-                && attachmentScheme == scheme && fileId is { } id)
-            {
-                ids.Add(id);
-            }
-        }
-
-        return ids;
-    }
-
     // Parses an ATTACH value. Returns false for a non-Odyssey scheme (a real third-party file link — ignored
     // entirely). Returns true with the lowercased scheme; fileId is null when the scheme matches but the
     // value isn't a GUID (a malformed odyssey reference — the caller counts it as a skipped link).

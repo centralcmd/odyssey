@@ -45,8 +45,6 @@ public partial class NewsFeedsPage
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
-    [Inject] private TimeProvider Time { get; set; } = default!;
-
     [Inject] private IClaimsRefresher ClaimsRefresher { get; set; } = default!;
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
