@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -164,7 +165,7 @@ public class CalendarAttachmentsApiTests
         await using var factory = new ApiFactory(WithReads);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client);
-        var (_, wrappedFileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg");
+        var (_, wrappedFileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, null, "beach.jpg");
 
         var response = await client.PostAsJsonAsync(EventsPath, Event(calendar.CalendarId) with { AttachmentFileIds = [wrappedFileId] });
 
@@ -545,7 +546,7 @@ public class CalendarAttachmentsApiTests
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client);
         var bytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
-        var (_, hiddenFileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", bytes);
+        var (_, hiddenFileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, null, "beach.jpg", bytes);
         string Reference(Guid id, string hash, long size) =>
             $"ATTACH;VALUE=URI;X-ODYSSEY-SHA256={hash};SIZE={size}:odyssey-file:{id:D}";
 
@@ -700,34 +701,6 @@ public class CalendarAttachmentsApiTests
         var library = Assert.Single(await PhotosAsync(target));
         // Each CR and LF becomes a space (#515's SafeQuoted), and the quote is dropped: no line or parameter is injected.
         Assert.Equal(("Line  BREAK:x", "Say cheese now"), (library.Title, library.Caption));
-    }
-
-    // ------------------------------------------------------------------ AC 17: the file reference guard
-
-    [Fact]
-    public async Task Deleting_a_photo_keeps_its_file_while_a_calendar_event_also_links_it()
-    {
-        await using var factory = new ApiFactory(WithUploads);
-        using var client = factory.CreateClient();
-        var calendar = await CreateCalendarAsync(client);
-        var (photoId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg");
-        var created = await CreateEventAsync(client, Event(calendar.CalendarId));
-        await using (var scope = factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            db.CalendarEventAttachments.Add(new CalendarEventAttachment
-            {
-                CalendarEventId = created.CalendarEventId, FileId = fileId, CreatedAt = Now.UtcDateTime,
-            });
-            await db.SaveChangesAsync();
-        }
-
-        // The guard names the calendar link, so the delete is refused rather than taking the event's file with it.
-        var response = await client.DeleteAsync($"/api/photos/{photoId}");
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Contains("calendar event attachment", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
-        Assert.Contains(await FilesAsync(factory), f => f.Id == fileId);
     }
 
     [Fact]
@@ -1112,16 +1085,10 @@ public class CalendarAttachmentsApiTests
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await db.Database.EnsureCreatedAsync();
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = content };
-        var id = Guid.NewGuid();
-        db.FileBlob.Add(blob);
-        db.FileMetadata.Add(new FileMetadata
-        {
-            Id = id, UploadedByUserId = ActorUserId, FileName = fileName, ContentType = "text/plain", SizeBytes = content.Length,
-            Sha256Hash = Sha256(content), UploadedAtUtc = Now.UtcDateTime, FileBlobId = blob.Id, FileBlob = blob,
-        });
-        await db.SaveChangesAsync();
-        return id;
+        var file = await StoredFileFixtures.SeedFileAsync(
+            scope.ServiceProvider, content, fileName, "text/plain", StoredFileArea.Journal, uploadedByUserId: ActorUserId,
+            uploadedAtUtc: Now.UtcDateTime);
+        return file.Id;
     }
 
     private static Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string? title = null) =>
@@ -1129,7 +1096,7 @@ public class CalendarAttachmentsApiTests
 
     private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, byte[] bytes, string? title, string? caption)
     {
-        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", bytes);
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, null, "beach.jpg", bytes);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var photo = await db.Photos.SingleAsync(p => p.PhotoId == photoId);

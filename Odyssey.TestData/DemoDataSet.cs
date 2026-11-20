@@ -36,19 +36,19 @@ public sealed class DemoDataSet
     public required IReadOnlyList<PropertyEvent> PropertyEvents { get; init; }
     public required IReadOnlyList<TaxStatement> TaxStatements { get; init; }
     public required IReadOnlyList<TaxStatementTag> TaxStatementTags { get; init; }
-    public required IReadOnlyList<FileBlob> FileBlobs { get; init; }
-    public required IReadOnlyList<FileMetadata> FileMetadata { get; init; }
 
-    // The seeded contact images (issue #86). Kept OUT of the two lists above because Contact.AvatarFileId
-    // is a real foreign key and contacts are seeded before finance — so these have to be written with
-    // the contacts rather than with the rest of the Files store.
-    public required IReadOnlyList<FileBlob> ContactAvatarBlobs { get; init; }
-    public required IReadOnlyList<FileMetadata> ContactAvatarFiles { get; init; }
+    // Everything with bytes, and every row that names it, is written by the worker's demo-file seeder rather than by
+    // the migrations job: only a host with the file volumes can put a file on the object store, and the links are
+    // real foreign keys. The migrations job seeds everything else in this set.
+
+    /// <summary>Every demo Files-store file — tax-statement documents, journal and task attachments, contact images.</summary>
+    public required IReadOnlyList<DemoFile> Files { get; init; }
+
+    /// <summary>The seeded contact images (issue #86), each a file of <see cref="Files"/>.</summary>
+    public required IReadOnlyList<DemoContactAvatar> ContactAvatars { get; init; }
     public required IReadOnlyList<TaxStatementFile> TaxStatementFiles { get; init; }
 
-    // Journal module (issue #311). The backing photo/attachment Files-store records are merged into
-    // FileBlobs/FileMetadata above, and are real FK principals for these rows — so the seeder has to
-    // write them first.
+    // Journal module (issue #311). The photo and attachment links are written with their photos and files.
     public required IReadOnlyList<JournalTag> JournalTags { get; init; }
     public required IReadOnlyList<JournalTaskTag> JournalTaskTags { get; init; }
     public required IReadOnlyList<JournalEntry> JournalEntries { get; init; }
@@ -60,9 +60,9 @@ public sealed class DemoDataSet
     public required IReadOnlyList<JournalTaskTagLink> JournalTaskTagLinks { get; init; }
     public required IReadOnlyList<JournalTaskAttachment> JournalTaskAttachments { get; init; }
 
-    // Photos module (issue #321), now part of the merged OdysseyContext; the backing image Files-store records are
-    // merged into FileBlobs/FileMetadata above. Journal photos are shared library records (no double-seed).
-    public required IReadOnlyList<Photo> Photos { get; init; }
+    // Photos module (issue #321), now part of the merged OdysseyContext. Each photo owns its original; journal photos
+    // are shared library records (no double-seed).
+    public required IReadOnlyList<DemoPhoto> Photos { get; init; }
     public required IReadOnlyList<PhotoTag> PhotoTags { get; init; }
     public required IReadOnlyList<PhotoTagLink> PhotoTagLinks { get; init; }
     public required IReadOnlyList<PhotoPerson> PhotoPeople { get; init; }
@@ -92,7 +92,7 @@ public sealed class DemoDataSet
         var (contracts, contractParties, contractTerms, contractEvents) = ContractGenerator.Build(anchor);
         var (taxStatements, taxStatementTags) = TaxStatementGenerator.Build();
         var (properties, propertyEstimates, propertySmartTags) = PropertyGenerator.Build();
-        var (fileBlobs, fileMetadata, taxStatementFiles) = TaxStatementFileGenerator.Build();
+        var (taxFiles, taxStatementFiles) = TaxStatementFileGenerator.Build();
         var (instruments, instrumentPrices) = InstrumentGenerator.Build(anchor);
 
         var journalTags = JournalTagGenerator.Generate(anchor);
@@ -102,24 +102,19 @@ public sealed class DemoDataSet
         var photoLibrary = PhotoGenerator.Generate(anchor);
         var calendar = CalendarGenerator.Generate(anchor);
 
-        // Journal/photo/attachment generators create their own Files-store records; merge them into the
-        // finance Files store (soft-referenced by FileId from the journal/photo tables).
-        var allFileBlobs = fileBlobs.Concat(journal.FileBlobs).Concat(journalTasks.FileBlobs).Concat(photoLibrary.FileBlobs).ToList();
-        var allFileMetadata = fileMetadata.Concat(journal.FileMetadata).Concat(journalTasks.FileMetadata).Concat(photoLibrary.FileMetadata).ToList();
-
         // The photo library is the single home for all photos: the journal's shared library records plus
-        // the standalone demo photos, deduped by FileId (a journal photo is one library Photo).
+        // the standalone demo photos (a journal photo is one library Photo).
         var allPhotos = journal.LibraryPhotos.Concat(photoLibrary.Photos).ToList();
 
         var contactAvatars = Catalog.Contacts.BuildAvatarFiles();
+        var allFiles = taxFiles.Concat(journal.Files).Concat(journalTasks.Files).Concat(contactAvatars.Select(a => a.File)).ToList();
 
         return new DemoDataSet
         {
             Users = DemoUsers.All,
             Tags = Catalog.Tags.Build(),
             Contacts = Catalog.Contacts.Build(),
-            ContactAvatarBlobs = contactAvatars.Blobs,
-            ContactAvatarFiles = contactAvatars.Files,
+            ContactAvatars = contactAvatars,
             Accounts = accounts,
             AccountEstimates = AccountEstimateGenerator.Build(),
             // Every term is owned by a contract (issue #190): ContractGenerator places the account-derived
@@ -141,8 +136,7 @@ public sealed class DemoDataSet
             PropertyEvents = PropertyGenerator.BuildEvents(properties),
             TaxStatements = taxStatements,
             TaxStatementTags = taxStatementTags,
-            FileBlobs = allFileBlobs,
-            FileMetadata = allFileMetadata,
+            Files = allFiles,
             TaxStatementFiles = taxStatementFiles,
             JournalTags = journalTags,
             JournalTaskTags = taskTags,

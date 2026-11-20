@@ -675,35 +675,34 @@ public class JournalEntryIcsApiTests
     }
 
     /// <summary>
-    /// Issue #428 §3.3: an old export names a photo by the file it wrapped. That id still resolves — through the
-    /// legacy photo's current FileId, and after the backfill through its LegacyFileId.
+    /// Issue #428 §3.3: an old export names a photo by the file it wrapped before the move. That id still resolves,
+    /// through the photo's LegacyFileId — whether the former file is gone or was kept because something else used it.
     /// </summary>
     [Fact]
-    public async Task Import_PhotoReferenceByLegacyOrBackfilledFileId_ResolvesToThePhoto()
+    public async Task Import_PhotoReferenceByFormerFileId_ResolvesToThePhoto()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         using var client = factory.CreateClient();
-        var (legacyPhoto, legacyFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "legacy.jpg");
-        var (movedPhoto, movedFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "moved.jpg");
+        var (keptPhoto, keptFile) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, null, "kept.jpg");
+        var movedPhoto = await PhotoTestSupport.SeedPhotoAsync(factory, null, "moved.jpg");
+        var movedFile = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
         {
-            // What the backfill leaves behind: the old file id kept, no file any more (the original is irrelevant here).
+            // What the move left behind when nothing else used the file: the old id kept, the file deleted.
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var moved = await context.Photos.SingleAsync(p => p.PhotoId == movedPhoto);
-            moved.LegacyFileId = movedFile;
-            moved.FileId = null;
+            (await context.Photos.SingleAsync(p => p.PhotoId == movedPhoto)).LegacyFileId = movedFile;
             await context.SaveChangesAsync();
         }
 
         var ics = Vcalendar(Vjournal("ph-legacy", "SUMMARY:Old export", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
-            $"ATTACH:odyssey-photo:{legacyFile}", $"ATTACH:odyssey-photo:{movedFile}"));
+            $"ATTACH:odyssey-photo:{keptFile}", $"ATTACH:odyssey-photo:{movedFile}"));
         var result = await ImportAsync(client, ics);
 
         Assert.Equal(0, result.SkippedPhotoCount);
         using var assertScope = factory.Services.CreateScope();
         var ctx = assertScope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var linked = (await ctx.JournalEntries.Include(e => e.Photos).SingleAsync()).Photos.Select(p => p.PhotoId).ToHashSet();
-        Assert.Equal(new HashSet<Guid> { legacyPhoto, movedPhoto }, linked);
+        Assert.Equal(new HashSet<Guid> { keptPhoto, movedPhoto }, linked);
     }
 
     /// <summary>Issue #428 §3.3: an image file no photo wraps is skipped and counted — the import never creates a photo.</summary>
@@ -1211,7 +1210,7 @@ public class JournalEntryIcsApiTests
         using var client = factory.CreateClient();
         var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
         var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
-        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", photoBytes);
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, null, "beach.jpg", photoBytes);
         var withBoth = await CreateAsync(client, NewEntry("Alpha", photoIds: [photoId], attachmentFileIds: [fileId]));
         await CreateAsync(client, NewEntry("Beta"));
 
@@ -1282,7 +1281,7 @@ public class JournalEntryIcsApiTests
         Assert.Equal((1, 0, 1, 0, 1), (result.UpdatedCount, result.StoredFileCount, result.ReusedFileCount, result.StoredPhotoCount, result.ReusedPhotoCount));
         Assert.Equal((0, 0), (result.SkippedAttachmentCount, result.SkippedPhotoCount));
         Assert.Single(await PhotosAsync(factory));
-        Assert.Equal(2, (await FilesAsync(factory)).Count); // the file and the legacy photo's wrapped file, nothing new
+        Assert.Single(await FilesAsync(factory)); // the file itself, nothing new
         var row = await EntryAsync(factory, entry.ExternalUid!);
         Assert.Equal(fileId, Assert.Single(row.Attachments).FileId);
         Assert.Equal(photoId, Assert.Single(row.Photos).PhotoId);
@@ -1309,7 +1308,7 @@ public class JournalEntryIcsApiTests
         Assert.NotNull(file.JournalStoredObjectId);
         var photo = Assert.Single(await PhotosAsync(target));
         Assert.Equal(("Sunset", "Over the fjord"), (photo.Title, photo.Caption));
-        Assert.NotNull(photo.StoredObjectId); // an owned original on the object store, not a Files-store row
+        Assert.NotEqual(Guid.Empty, photo.StoredObjectId); // an owned original on the object store, not a Files-store row
         var row = await EntryAsync(target, entry.ExternalUid!);
         Assert.Equal(file.Id, Assert.Single(row.Attachments).FileId);
         Assert.Equal(photo.PhotoId, Assert.Single(row.Photos).PhotoId);
@@ -1555,7 +1554,7 @@ public class JournalEntryIcsApiTests
     private static async Task<Guid> SeedTitledPhotoAsync(
         WebApplicationFactory<Program> factory, byte[] bytes, string? title, string? caption)
     {
-        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", bytes);
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, null, "beach.jpg", bytes);
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
@@ -1700,10 +1699,10 @@ public class JournalEntryIcsApiTests
         return id;
     }
 
-    private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
-        (await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, fileName)).PhotoId;
+    private static Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
+        PhotoTestSupport.SeedPhotoAsync(factory, null, fileName);
 
-    // A legacy file with real content and its real hash, so an import can match it.
+    // A file with real content and its real hash, so an import can match it.
     private static async Task<Guid> SeedFileWithContentAsync(
         WebApplicationFactory<Program> factory, string fileName, string contentType, byte[] content)
     {
@@ -1711,9 +1710,8 @@ public class JournalEntryIcsApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = content };
+        var blobContent = content;
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1723,8 +1721,7 @@ public class JournalEntryIcsApiTests
             SizeBytes = content.Length,
             Sha256Hash = Sha256(content),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
@@ -1775,9 +1772,8 @@ public class JournalEntryIcsApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1787,8 +1783,7 @@ public class JournalEntryIcsApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;

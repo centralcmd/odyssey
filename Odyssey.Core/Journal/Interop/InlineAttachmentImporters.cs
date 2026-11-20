@@ -129,8 +129,7 @@ internal sealed class InlineFileImporter(
 /// <summary>
 /// Turns spooled inline PHOTOS (<c>X-ODYSSEY-KIND=PHOTO</c>) into library photo ids for a journal import, the photo
 /// counterpart of <see cref="InlineFileImporter"/>. A photo is matched to the one it was exported from (same id and
-/// content), else to any photo with that content — a legacy photo by its wrapped file's hash, as the upload's
-/// duplicate check does — and otherwise uploaded through <see cref="PhotoService.StageUploadAsync"/>: the same type,
+/// content), else to any photo with that content, as the upload's duplicate check does — and otherwise uploaded through <see cref="PhotoService.StageUploadAsync"/>: the same type,
 /// magic-byte, cap and metadata path as a library upload, carrying the exported title and caption, staged unsaved.
 /// </summary>
 internal sealed class InlinePhotoImporter(

@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -210,7 +212,7 @@ public sealed class PropertyFilesApiTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var metadata = await db.FileMetadata.SingleAsync(m => m.Id == fileId);
-        Assert.True(await db.FileBlob.AnyAsync(b => b.Id == metadata.FileBlobId));
+        Assert.True(await db.StoredObjects.AnyAsync(o => o.Id == metadata.FinanceStoredObjectId && o.State == StoredObjectState.Committed));
     }
 
     // ── AC 5: claims ───────────────────────────────────────────────────────────
@@ -650,7 +652,7 @@ public sealed class PropertyFilesApiTests
         await db.Database.EnsureCreatedAsync();
 
         var bytes = content ?? [1, 2, 3];
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = bytes };
+        var blobContent = bytes;
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -660,10 +662,8 @@ public sealed class PropertyFilesApiTests
             SizeBytes = bytes.Length,
             Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(bytes)),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         };
-        db.FileBlob.Add(blob);
         db.FileMetadata.Add(metadata);
         await db.SaveChangesAsync();
         return metadata.Id;

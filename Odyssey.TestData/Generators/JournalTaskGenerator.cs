@@ -1,6 +1,6 @@
-using System.Security.Cryptography;
 using Bogus;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Dtos.Journal;
 using static Odyssey.TestData.DemoDataDefaults;
 
@@ -14,23 +14,21 @@ namespace Odyssey.TestData.Generators;
 /// <see cref="JournalTaskStatus.Done"/> (with <c>CompletedAt</c> stamped) and one <see cref="JournalTaskStatus.Archived"/>
 /// item — with gap-free <c>Position</c> values within each column (0-based, in spec order). Items are
 /// tagged via <see cref="JournalTaskTagGenerator"/> ids and some carry a file attachment; the backing
-/// <see cref="FileBlob"/> + <see cref="FileMetadata"/> are returned separately so the seeder can write
-/// them with the rest of the Files store, which it must do first since the reference is a real FK. Authors are the seeded
+/// <see cref="DemoFile"/>s (journal area) are returned separately because only the worker's demo-file seeder, which has
+/// the file volumes, can write them — and the attachment links with them, since the reference is a real FK. Authors are the seeded
 /// non-Guest demo users (Guest is excluded from the module).
 /// </summary>
 public static class JournalTaskGenerator
 {
     /// <summary>
     /// Flat result lists (mirrors the seeder's <c>AddRangeAsync</c> pattern): the task rows and the
-    /// attachment blobs + metadata they reference, kept apart so the seeder can write the Files store
-    /// first. Nav collections are left empty so nothing double-inserts.
+    /// attachment files they reference, kept apart because a different host writes them. Nav collections are left empty so nothing double-inserts.
     /// </summary>
     public sealed record Result(
         IReadOnlyList<JournalTask> Items,
         IReadOnlyList<JournalTaskTagLink> ItemTags,
         IReadOnlyList<JournalTaskAttachment> Attachments,
-        IReadOnlyList<FileBlob> FileBlobs,
-        IReadOnlyList<FileMetadata> FileMetadata);
+        IReadOnlyList<DemoFile> Files);
 
     private sealed record TaskSpec(
         string Key,
@@ -131,8 +129,7 @@ public static class JournalTaskGenerator
         var items = new List<JournalTask>();
         var itemTags = new List<JournalTaskTagLink>();
         var attachments = new List<JournalTaskAttachment>();
-        var blobs = new List<FileBlob>();
-        var metadata = new List<FileMetadata>();
+        var files = new List<DemoFile>();
 
         // Gap-free 0-based position per status column, honouring spec order.
         var nextPosition = new Dictionary<JournalTaskStatus, int>();
@@ -182,20 +179,19 @@ public static class JournalTaskGenerator
 
             for (var i = 0; i < spec.AttachmentCount; i++)
             {
-                var (blob, meta) = BuildPdfFile(spec.Key, i, authorId, createdAt, spec.Title);
-                blobs.Add(blob);
-                metadata.Add(meta);
+                var file = BuildPdfFile(spec.Key, i, authorId, createdAt, spec.Title);
+                files.Add(file);
                 attachments.Add(new JournalTaskAttachment
                 {
                     JournalTaskAttachmentId = DeterministicGuid.From($"journal-task-attachment::{spec.Key}#{i}"),
                     JournalTaskId = itemId,
-                    FileId = meta.Id,
+                    FileId = file.Metadata.Id,
                     CreatedAt = createdAt,
                 });
             }
         }
 
-        return new Result(items, itemTags, attachments, blobs, metadata);
+        return new Result(items, itemTags, attachments, files);
     }
 
     private static string UserId(string role) => DemoUsers.All.First(user => user.Role == role).Id;
@@ -203,30 +199,14 @@ public static class JournalTaskGenerator
     private static string Clamp(string value, int max) =>
         value.Length <= max ? value : value[..max];
 
-    private static (FileBlob Blob, FileMetadata Metadata) BuildPdfFile(
-        string key, int index, string uploaderId, DateTime uploadedAt, string title)
+    private static DemoFile BuildPdfFile(string key, int index, string uploaderId, DateTime uploadedAt, string title)
     {
-        var blobId = DeterministicGuid.From($"journal-task-attachment-blob::{key}#{index}");
-        var metadataId = DeterministicGuid.From($"journal-task-attachment-file::{key}#{index}");
-
         var content = MinimalPdf.Create(
             title,
             "Odyssey demo data — task attachment.",
             $"Reference: {key} (document {index + 1}).");
-
-        var blob = new FileBlob { Id = blobId, Content = content };
-        var metadata = new FileMetadata
-        {
-            Id = metadataId,
-            UploadedByUserId = uploaderId,
-            FileName = $"{key}-attachment-{index + 1}.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = content.LongLength,
-            Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-            FileBlobId = blobId,
-            Description = "Demo task attachment.",
-            UploadedAtUtc = uploadedAt,
-        };
-        return (blob, metadata);
+        return DemoFileFactory.File(
+            DeterministicGuid.From($"journal-task-attachment-file::{key}#{index}"), StoredFileArea.Journal, uploaderId,
+            $"{key}-attachment-{index + 1}.pdf", "application/pdf", "Demo task attachment.", uploadedAt, content);
     }
 }

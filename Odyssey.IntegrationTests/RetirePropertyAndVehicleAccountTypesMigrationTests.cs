@@ -388,8 +388,11 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
     private async Task<List<string>> RunMigrationServiceAsync()
     {
         var services = new ServiceCollection();
+        // The seed's files are database-held (it runs below #448): the interceptor gives them the file move's end state
+        // just before RemoveLegacyFileBlobStorage's guard, as the worker did between the two releases.
         services.AddDbContext<OdysseyContext>(options => options.UseMySql(
-            fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
+            fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
+            .AddInterceptors(new LegacyFileRows.FinishTheFileMoveBeforeTheGuard()));
         services.AddScoped<Odyssey.Core.Locations.Conversion.ILocationConversion, Odyssey.Core.Locations.Conversion.LocationConversion>();
         await using var provider = services.BuildServiceProvider();
 
@@ -549,9 +552,12 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
             Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 
+    // The seeded files are database-held (seeded below #448): the interceptor gives them the file move's end state just
+    // before RemoveLegacyFileBlobStorage's guard, as the worker did between the two releases.
     private OdysseyContext NewContext() =>
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
+            .AddInterceptors(new LegacyFileRows.FinishTheFileMoveBeforeTheGuard())
             .Options);
 
     private async Task RecreateAsync()

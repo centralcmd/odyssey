@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
@@ -65,21 +66,9 @@ public class ContractFileValidityTests
 
     private static async Task<Guid> SeedFileAsync(OdysseyContext context)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var metadata = new FileMetadata
-        {
-            Id = Guid.NewGuid(),
-            UploadedByUserId = TestUserId,
-            FileName = "agreement.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = 3,
-            Sha256Hash = Guid.NewGuid().ToString("N"),
-            UploadedAtUtc = FixedToday,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-        };
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(metadata);
+        var metadata = await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1, 2, 3], "agreement.pdf", uploadedByUserId: TestUserId,
+            uploadedAtUtc: FixedToday);
         await context.SaveChangesAsync();
         return metadata.Id;
     }

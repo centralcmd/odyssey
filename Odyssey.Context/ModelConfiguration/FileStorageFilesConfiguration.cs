@@ -28,10 +28,10 @@ internal sealed class FileMetadataStorageConfiguration : IEntityTypeConfiguratio
         entity.HasIndex(f => f.JournalStoredObjectId).IsUnique();
         entity.HasIndex(f => f.ContactAvatarStoredObjectId).IsUnique();
 
-        // Exactly one of the four sources is set: the legacy blob, or one feature's stored object.
+        // Exactly one feature's stored object is set: a file always has its bytes on the store.
         entity.ToTable(tb => tb.HasCheckConstraint(
             "CK_FileMetadata_ExactlyOneSource",
-            "(`FileBlobId` IS NOT NULL) + (`FinanceStoredObjectId` IS NOT NULL) + (`JournalStoredObjectId` IS NOT NULL)"
+            "(`FinanceStoredObjectId` IS NOT NULL) + (`JournalStoredObjectId` IS NOT NULL)"
             + " + (`ContactAvatarStoredObjectId` IS NOT NULL) = 1"));
     }
 }
@@ -47,31 +47,5 @@ internal sealed class StoredFileBucketConfiguration : IEntityTypeConfiguration<S
             tb.HasCheckConstraint("CK_StoredFileBuckets_CurrentBucketPositive", "`CurrentBucket` >= 1");
             tb.HasCheckConstraint("CK_StoredFileBuckets_ObjectsWrittenRange", "`ObjectsWritten` BETWEEN 0 AND 10000");
         });
-    }
-}
-
-internal sealed class FileBlobBackfillLeaseConfiguration : IEntityTypeConfiguration<FileBlobBackfillLease>
-{
-    public void Configure(EntityTypeBuilder<FileBlobBackfillLease> entity)
-    {
-        entity.Property(l => l.Id).ValueGeneratedNever();
-        entity.ToTable(tb => tb.HasCheckConstraint("CK_FileBlobBackfillLeases_Singleton", "`Id` = 1"));
-
-        entity.HasData(new FileBlobBackfillLease
-        {
-            Id = FileBlobBackfillLease.SingletonId,
-            Version = new Guid("3c9b7e51-6a2f-4d08-b1e4-95f0a27c6d13"),
-        });
-    }
-}
-
-internal sealed class FileBlobBackfillFailureConfiguration : IEntityTypeConfiguration<FileBlobBackfillFailure>
-{
-    public void Configure(EntityTypeBuilder<FileBlobBackfillFailure> entity)
-    {
-        entity.Property(f => f.FileId).ValueGeneratedNever();
-        entity.Property(f => f.Code).IsUnicode(false);
-        entity.ToTable(tb => tb.HasCheckConstraint(
-            "CK_FileBlobBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large', 'type', 'error')"));
     }
 }

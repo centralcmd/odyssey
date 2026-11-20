@@ -32,7 +32,7 @@ public sealed class PhotoOriginalWriter(
         }
     }
 
-    /// <summary>Whether the reserve holds, for a caller that must not throw (the backfill's health gate).</summary>
+    /// <summary>Whether the reserve holds, for a caller that must not throw.</summary>
     public bool HasReserve()
     {
         try

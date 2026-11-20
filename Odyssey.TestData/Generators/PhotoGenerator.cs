@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Odyssey.Context;
 using Odyssey.TestData.Catalog;
 
@@ -9,20 +8,18 @@ namespace Odyssey.TestData.Generators;
 /// photos (which are shared library records, created by <see cref="JournalEntryGenerator"/>). Exercises
 /// every read surface: titled/captioned photos with extracted-style metadata, photo tags (incl. one
 /// archived), a person link (to the seeded <c>Jane Smith (Landlord)</c> Person contact), and two
-/// albums with covers and ordered membership. Each photo provisions its own backing Files-store record
-/// (a real renderable PNG) returned separately so the seeder can insert the file rows first.
+/// albums with covers and ordered membership. Each photo carries its own original (a real renderable PNG),
+/// which the worker's demo-file seeder writes onto the object store.
 /// </summary>
 public static class PhotoGenerator
 {
     public sealed record Result(
-        IReadOnlyList<Photo> Photos,
+        IReadOnlyList<DemoPhoto> Photos,
         IReadOnlyList<PhotoTag> Tags,
         IReadOnlyList<PhotoTagLink> TagLinks,
         IReadOnlyList<PhotoPerson> People,
         IReadOnlyList<PhotoAlbum> Albums,
-        IReadOnlyList<PhotoAlbumItem> AlbumItems,
-        IReadOnlyList<FileBlob> FileBlobs,
-        IReadOnlyList<FileMetadata> FileMetadata);
+        IReadOnlyList<PhotoAlbumItem> AlbumItems);
 
     private sealed record TagSpec(string Name, string? Description, bool Archived, string? Icon = null);
 
@@ -87,25 +84,20 @@ public static class PhotoGenerator
             })
             .ToList();
 
-        var photos = new List<Photo>();
+        var photos = new List<DemoPhoto>();
         var tagLinks = new List<PhotoTagLink>();
         var people = new List<PhotoPerson>();
-        var blobs = new List<FileBlob>();
-        var metadata = new List<FileMetadata>();
 
         var colourSeed = 0;
         foreach (var spec in PhotoDefinitions)
         {
             var photoId = PhotoIdFor(spec.Key);
             var takenAt = anchor.AddDays(-spec.DaysBeforeAnchor);
-            var (blob, meta) = BuildImageFile(spec.Key, authorId, takenAt, colourSeed++);
-            blobs.Add(blob);
-            metadata.Add(meta);
+            var content = DemoImages.GradientPng(DemoImages.PhotoSize, colourSeed++);
 
-            photos.Add(new Photo
+            photos.Add(DemoFileFactory.Photo(new Photo
             {
                 PhotoId = photoId,
-                FileId = meta.Id,
                 Title = spec.Title,
                 Caption = spec.Caption,
                 TakenAt = DateTime.SpecifyKind(takenAt, DateTimeKind.Unspecified),
@@ -118,7 +110,7 @@ public static class PhotoGenerator
                 CreatedByUserId = authorId,
                 CreatedAt = takenAt,
                 UpdatedAt = takenAt,
-            });
+            }, $"{spec.Key}.png", "image/png", content, DeterministicGuid.From($"photo-file::{spec.Key}")));
 
             foreach (var tagName in spec.TagNames.Distinct())
             {
@@ -171,30 +163,6 @@ public static class PhotoGenerator
             }
         }
 
-        return new Result(photos, tags, tagLinks, people, albums, albumItems, blobs, metadata);
-    }
-
-    private static (FileBlob Blob, FileMetadata Metadata) BuildImageFile(
-        string key, string uploaderId, DateTime uploadedAt, int colourSeed)
-    {
-        var blobId = DeterministicGuid.From($"photo-blob::{key}");
-        var metadataId = DeterministicGuid.From($"photo-file::{key}");
-
-        var content = DemoImages.GradientPng(DemoImages.PhotoSize, colourSeed);
-
-        var blob = new FileBlob { Id = blobId, Content = content };
-        var metadata = new FileMetadata
-        {
-            Id = metadataId,
-            UploadedByUserId = uploaderId,
-            FileName = $"{key}.png",
-            ContentType = "image/png",
-            SizeBytes = content.LongLength,
-            Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-            FileBlobId = blobId,
-            Description = "Demo library photo.",
-            UploadedAtUtc = uploadedAt,
-        };
-        return (blob, metadata);
+        return new Result(photos, tags, tagLinks, people, albums, albumItems);
     }
 }

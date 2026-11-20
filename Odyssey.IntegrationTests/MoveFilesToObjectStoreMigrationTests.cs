@@ -43,10 +43,11 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
             Assert.NotEmpty(before);
             Assert.Equal(before, after);
 
-            // The database's keys are Discover's columns plus the photo's own, which Discover excludes by design.
+            // The database's keys are Discover's columns plus the photo's own legacy key, which the move excluded from
+            // the count and RemoveLegacyFileBlobStorage later dropped (so the current model no longer has it).
             var discovered = FileReferenceCounter.Discover(context)
                 .Select(r => ColumnOf(context.Model, r.EntityType, r.PropertyName))
-                .Append(ColumnOf(context.Model, typeof(Photo), nameof(Photo.FileId)))
+                .Append("Photos.FileId")
                 .Except(AddedLater, StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)
                 .ToList();
@@ -95,8 +96,8 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// <see cref="FileReferenceCounter.Discover"/>'s rule — every key to <c>FileMetadata</c> but the photo's own — over a
-    /// designer model, whose entity types are named rather than typed, as <c>Table.Column</c>.
+    /// The move's counting rule — every key to <c>FileMetadata</c> but the photo's own, which models of that era still had
+    /// — over a designer model, whose entity types are named rather than typed, as <c>Table.Column</c>.
     /// </summary>
     private static List<string> DiscoverIn(IModel model) =>
         [.. model.GetEntityTypes()

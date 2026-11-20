@@ -258,22 +258,12 @@ public class CalendarAttachmentsTests
     }
 
     [Fact]
-    public void Both_attachment_tables_file_their_content_under_journal_and_the_counter_discovers_them()
+    public void The_counter_discovers_both_attachment_tables()
     {
-        Assert.Equal(StoredFileArea.Journal, FileAreaClassifier.AreaOfReference[typeof(CalendarEventAttachment)]);
-        Assert.Equal(StoredFileArea.Journal, FileAreaClassifier.AreaOfReference[typeof(RecurrencePatternAttachment)]);
         using var context = TestContextFactory.CreateJournal();
         var discovered = FileReferenceCounter.Discover(context);
         Assert.Contains(new FileReference(typeof(CalendarEventAttachment), nameof(CalendarEventAttachment.FileId)), discovered);
         Assert.Contains(new FileReference(typeof(RecurrencePatternAttachment), nameof(RecurrencePatternAttachment.FileId)), discovered);
-    }
-
-    [Fact]
-    public void The_file_reference_guard_names_both_calendar_attachment_tables()
-    {
-        var source = File.ReadAllText(Path.Combine(SolutionRoot(), "Odyssey.Core", "Finance", "Lookups", "FileReferenceGuard.cs"));
-        Assert.Contains("context.CalendarEventAttachments", source, StringComparison.Ordinal);
-        Assert.Contains("context.RecurrencePatternAttachments", source, StringComparison.Ordinal);
     }
 
     /// <summary>

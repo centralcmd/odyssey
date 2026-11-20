@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
@@ -379,18 +381,17 @@ public class ContactAvatarApiTests
         using (var seedScope = factory.Services.CreateScope())
         {
             var context = seedScope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = "%PDF-1.7 confidential"u8.ToArray() };
+            var blobContent = "%PDF-1.7 confidential"u8.ToArray();
             var metadata = new FileMetadata
             {
                 Id = Guid.NewGuid(),
                 FileName = "tax-statement.pdf",
                 ContentType = "application/pdf",
-                SizeBytes = blob.Content.LongLength,
+                SizeBytes = blobContent.LongLength,
                 Sha256Hash = new string('a', 64),
-                FileBlobId = blob.Id,
+                FinanceStoredObjectId = await StoredFileFixtures.PutAsync(seedScope.ServiceProvider, blobContent),
                 UploadedAtUtc = DateTime.UtcNow,
             };
-            context.FileBlob.Add(blob);
             context.FileMetadata.Add(metadata);
             context.SaveChanges();
             foreignFileId = metadata.Id;
@@ -436,7 +437,7 @@ public class ContactAvatarApiTests
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
-        var pdfId = MisPoint(factory, contactId);
+        var pdfId = await MisPoint(factory, contactId);
 
         var response = await client.GetAsync($"/api/contacts/{contactId}/avatar");
 
@@ -450,7 +451,7 @@ public class ContactAvatarApiTests
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
-        var pdfId = MisPoint(factory, contactId);
+        var pdfId = await MisPoint(factory, contactId);
 
         var response = await client.DeleteAsync($"/api/contacts/{contactId}/avatar");
 
@@ -470,7 +471,7 @@ public class ContactAvatarApiTests
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
-        var pdfId = MisPoint(factory, contactId);
+        var pdfId = await MisPoint(factory, contactId);
 
         var response = await UploadAsync(client, contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
 
@@ -545,28 +546,27 @@ public class ContactAvatarApiTests
     }
 
     /// <summary>Points a contact at a non-image file, the anomaly the release rule exists to survive.</summary>
-    private static Guid MisPoint(ApiFactory factory, Guid contactId)
+    private static async Task<Guid> MisPoint(ApiFactory factory, Guid contactId)
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = "%PDF-1.7 tax statement"u8.ToArray() };
+        var blobContent = "%PDF-1.7 tax statement"u8.ToArray();
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
             FileName = "tax-statement.pdf",
             ContentType = "application/pdf",
-            SizeBytes = blob.Content.LongLength,
+            SizeBytes = blobContent.LongLength,
             Sha256Hash = new string('b', 64),
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(metadata);
 
         var contact = context.Contacts.Single(c => c.ContactId == contactId);
         contact.AvatarFileId = metadata.Id;
-        context.SaveChanges();
+        await context.SaveChangesAsync();
 
         return metadata.Id;
     }
@@ -586,12 +586,12 @@ public class ContactAvatarApiTests
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
-        var blobId = context.FileMetadata
+        var objectId = context.FileMetadata
             .Where(fm => fm.Id == fileId)
-            .Select(fm => (Guid?)fm.FileBlobId)
+            .Select(fm => fm.FinanceStoredObjectId ?? fm.JournalStoredObjectId ?? fm.ContactAvatarStoredObjectId)
             .SingleOrDefault();
 
-        return blobId is not null && context.FileBlob.Any(b => b.Id == blobId);
+        return objectId is not null && context.StoredObjects.Any(o => o.Id == objectId && o.State == StoredObjectState.Committed);
     }
 
     private static Guid? AvatarFileIdOf(ApiFactory factory, Guid contactId)

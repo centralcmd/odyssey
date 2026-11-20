@@ -185,29 +185,6 @@ public class BackgroundJobsPageTests
         Assert.Contains("No runs", success.QuerySelector(".sr-only")!.TextContent);
     }
 
-    /// <summary>Issue #428: the move's status card has its own h2, and is absent when its block is null (no file-storage.read).</summary>
-    [Fact]
-    public async Task The_photo_original_move_card_appears_only_with_its_status_block()
-    {
-        var withStatus = Overview();
-        withStatus.WorkerHealth = new BackgroundJobsWorkerHealth { PhotoOriginalBackfill = new PhotoBackfillStatus { Remaining = 12 } };
-        await using (var f = NewFixture(withStatus))
-        {
-            var cut = await RenderLoaded(f);
-            Assert.Contains(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
-            Assert.Single(cut.FindComponents<BackfillMoveStatus>());
-            // No card around the move: the h2 frames it and its tiles sit straight in the Overview.
-            Assert.Null(cut.Find(".bgj-move").Closest(".odc-card"));
-        }
-
-        await using (var f = NewFixture())
-        {
-            var cut = await RenderLoaded(f);
-            Assert.DoesNotContain(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
-            Assert.Empty(cut.FindComponents<BackfillMoveStatus>());
-        }
-    }
-
     // ── Run items per canRunNow (AC 12) ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -241,7 +218,7 @@ public class BackgroundJobsPageTests
 
         var items = OpenMenu(f, cut).Select(i => i.TextContent.Trim()).ToList();
 
-        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Run photo original move", "Run file move", "Run instrument-price sync", "Run news feeds", "Run recurrence keys", "Refresh"], items);
+        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Run instrument-price sync", "Run news feeds", "Run recurrence keys", "Refresh"], items);
         Assert.Equal("true", cut.Find("section[aria-label='Overview']").GetAttribute("aria-busy"));
     }
 
@@ -870,8 +847,8 @@ public class BackgroundJobsPageTests
         var available = Now.UtcDateTime.AddMinutes(1);
         await using var f = NewFixture(Overview(
             Job(JobType.ExchangeRateSync), Job(JobType.Weather, j => j.ManualRunAvailableAtUtc = available),
-            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails), Job(JobType.PhotoOriginalBackfill),
-            Job(JobType.FileAnalysis, j => j.CanRunNow = false), Job(JobType.FileBlobBackfill), Job(JobType.InstrumentPriceSync),
+            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails),
+            Job(JobType.FileAnalysis, j => j.CanRunNow = false), Job(JobType.InstrumentPriceSync),
             Job(JobType.NewsFeedFetch), Job(JobType.RecurrenceKeyBackfill)));
         var cut = await RenderLoaded(f);
         Assert.Contains(cut.Instance.RunItems, i => i.Job == JobType.Weather && i.Disabled);

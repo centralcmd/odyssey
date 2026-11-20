@@ -360,9 +360,12 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
         await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
+    // The seeded files are database-held (seeded below #448): the interceptor gives them the file move's end state just
+    // before RemoveLegacyFileBlobStorage's guard, as the worker did between the two releases.
     private OdysseyContext NewContext() =>
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
+            .AddInterceptors(new LegacyFileRows.FinishTheFileMoveBeforeTheGuard())
             .Options);
 
     private async Task RecreateAsync()

@@ -270,15 +270,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(party => party.ContactId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // FileMetadata ← journal/photo. Cascade matches how every in-module attachment row already
+        // FileMetadata ← journal. Cascade matches how every in-module attachment row already
         // references the Files store (TransactionFile, AccountFile, TaxStatementFile, …): the link is
-        // meaningless without its file. A library Photo is a wrapper around exactly one file, so it goes
-        // the same way, sweeping its tag/person/album links and its journal-entry placements with it.
-        modelBuilder.Entity<Photo>()
-            .HasOne<FileMetadata>()
-            .WithMany()
-            .HasForeignKey(photo => photo.FileId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // meaningless without its file. A photo owns its original on the object store and has no key here.
 
         modelBuilder.Entity<JournalEntryAttachment>()
             .HasOne<FileMetadata>()
@@ -449,7 +443,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<TransactionFile> TransactionFiles { get; set; }
     public DbSet<AccountFile> AccountFiles { get; set; }
     public DbSet<FileMetadata> FileMetadata { get; set; }
-    public DbSet<FileBlob> FileBlob { get; set; }
     public DbSet<FileAnalysisJob> FileAnalysisJobs { get; set; }
     public DbSet<FileAnalysisCandidateTransaction> FileAnalysisCandidateTransactions { get; set; }
     public DbSet<FileAnalysisCandidateTag> FileAnalysisCandidateTags { get; set; }
@@ -536,7 +529,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     /// <summary>
     /// A user's one profile picture (issue #94). Deliberately NOT in the domain file store: the pair
-    /// below shares no relationship with <see cref="FileMetadata"/>/<see cref="FileBlob"/> in either
+    /// below shares no relationship with <see cref="FileMetadata"/> in either
     /// direction, which is what keeps a face out of reach of every <c>files.*</c> claim and out of the
     /// admin file export.
     /// </summary>
@@ -584,29 +577,16 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PhotoThumbnailWorkerHeartbeat> PhotoThumbnailWorkerHeartbeats => Set<PhotoThumbnailWorkerHeartbeat>();
 
     /// <summary>
-    /// Photo originals on the object store (issue #428): the per-year bucket counter, the backfill's lease and its
-    /// parked failures. The originals themselves are <see cref="StoredObjects"/> named by <c>Photo.StoredObjectId</c>.
+    /// Photo originals on the object store (issue #428): the per-year bucket counter. The originals themselves are <see cref="StoredObjects"/> named by <c>Photo.StoredObjectId</c>.
     /// </summary>
     public DbSet<PhotoOriginalBucket> PhotoOriginalBuckets => Set<PhotoOriginalBucket>();
 
-    /// <inheritdoc cref="PhotoOriginalBuckets" />
-    public DbSet<PhotoOriginalBackfillLease> PhotoOriginalBackfillLeases => Set<PhotoOriginalBackfillLease>();
-
-    /// <inheritdoc cref="PhotoOriginalBuckets" />
-    public DbSet<PhotoOriginalBackfillFailure> PhotoOriginalBackfillFailures => Set<PhotoOriginalBackfillFailure>();
 
     /// <summary>
-    /// Files on the object store (issue #448): the per-feature bucket counter, the file move's lease and its parked
-    /// failures. The files themselves are <see cref="StoredObjects"/> named by one of <see cref="Odyssey.Context.FileMetadata"/>'s
+    /// Files on the object store (issue #448): the per-feature bucket counter. The files themselves are <see cref="StoredObjects"/> named by one of <see cref="Odyssey.Context.FileMetadata"/>'s
     /// three stored-object columns.
     /// </summary>
     public DbSet<StoredFileBucket> StoredFileBuckets => Set<StoredFileBucket>();
-
-    /// <inheritdoc cref="StoredFileBuckets" />
-    public DbSet<FileBlobBackfillLease> FileBlobBackfillLeases => Set<FileBlobBackfillLease>();
-
-    /// <inheritdoc cref="StoredFileBuckets" />
-    public DbSet<FileBlobBackfillFailure> FileBlobBackfillFailures => Set<FileBlobBackfillFailure>();
 
     /// <summary>
     /// The background-job run log (issue #409): one TPH table for every job's runs, bursts and held periods, and

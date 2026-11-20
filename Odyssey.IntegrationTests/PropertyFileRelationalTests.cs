@@ -9,6 +9,7 @@ using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -23,7 +24,7 @@ namespace Odyssey.IntegrationTests;
 /// The relational half of issue #210. AC 16: the purely additive migration, the four declared on-delete
 /// behaviours observed firing at the engine (property and file <c>CASCADE</c>; issuer and attaching user
 /// <c>SET NULL</c>), the property delete leaving the files themselves in place, and the unique
-/// <c>(PropertyId, FileMetadataId)</c> index. AC 22: the list query never reads <c>FileBlob</c>.
+/// <c>(PropertyId, FileMetadataId)</c> index.
 /// </summary>
 /// <remarks>
 /// None of this is observable on the fast tiers: the EF InMemory provider enforces no foreign keys and
@@ -160,7 +161,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
         Assert.False(await verify.PropertyFiles.AnyAsync(f => f.PropertyId == doomed));
         Assert.True(await verify.PropertyFiles.AnyAsync(f => f.PropertyId == surviving));
         var metadata = await verify.FileMetadata.AsNoTracking().SingleAsync(f => f.Id == fileId);
-        Assert.True(await verify.FileBlob.AnyAsync(b => b.Id == metadata.FileBlobId));
+        Assert.True(await verify.StoredObjects.AnyAsync(o => o.Id == metadata.FinanceStoredObjectId && o.State == StoredObjectState.Committed));
     }
 
     /// <summary>AC 17 on the real provider: the service delete removes the links and keeps the file.</summary>
@@ -185,7 +186,8 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
         Assert.False(await verify.Properties.AnyAsync());
         Assert.False(await verify.PropertyFiles.AnyAsync());
         Assert.True(await verify.FileMetadata.AnyAsync(f => f.Id == fileId));
-        Assert.Equal(1, await verify.FileBlob.CountAsync());
+        var kept = await verify.FileMetadata.AsNoTracking().SingleAsync(f => f.Id == fileId);
+        Assert.Equal(StoredObjectState.Committed, (await verify.StoredObjects.SingleAsync(o => o.Id == kept.FinanceStoredObjectId)).State);
     }
 
     [SkippableFact]
@@ -359,53 +361,6 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
         }
     }
 
-    // ── AC 22: the list never reads the blob ─────────────────────────────────
-
-    /// <summary>
-    /// <see cref="PropertyFileService.GetFiles"/> loads <c>FileMetadata</c> and never the <c>FileBlob</c>
-    /// table — asserted on the generated SQL, since a result DTO cannot show whether the bytes were
-    /// materialised. The table is matched as a quoted identifier: <c>FileMetadata.FileBlobId</c> is
-    /// legitimately selected and contains the table's name as a substring.
-    /// </summary>
-    [SkippableFact]
-    public async Task Listing_a_propertys_documents_issues_no_read_of_FileBlob()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await MigrateAsync();
-
-        Guid propertyId;
-        await using (var seed = NewContext())
-        {
-            await AttributionUsers.EnsureAsync(seed, Attacher);
-            propertyId = await SeedPropertyAsync(seed, "Storgata 14");
-            await SeedLinkAsync(seed, propertyId, await SeedFileAsync(seed));
-            await SeedLinkAsync(seed, propertyId, await SeedFileAsync(seed));
-        }
-
-        var recorder = new CommandRecorder();
-        await using (var context = NewContext(recorder))
-        {
-            var files = await Service(context).GetFiles(propertyId);
-
-            Assert.Equal(2, files!.Count);
-            Assert.All(files, f => Assert.Equal("deed.pdf", f.FileMetadata.FileName));
-        }
-
-        // Not vacuous: the recorder saw the list query itself, joined onto the metadata.
-        Assert.Contains(recorder.Commands, sql => sql.Contains("`PropertyFiles`", StringComparison.Ordinal)
-                                                  && sql.Contains("`FileMetadata`", StringComparison.Ordinal));
-        Assert.DoesNotContain(recorder.Commands, sql => sql.Contains("`FileBlob`", StringComparison.Ordinal));
-
-        // …and the detector does see the table when a query does read it.
-        var control = new CommandRecorder();
-        await using (var context = NewContext(control))
-        {
-            await context.FileMetadata.Include(f => f.FileBlob).ToListAsync();
-        }
-
-        Assert.Contains(control.Commands, sql => sql.Contains("`FileBlob`", StringComparison.Ordinal));
-    }
-
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static PropertyFileService Service(OdysseyContext context) =>
@@ -423,7 +378,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
 
     private static async Task<Guid> SeedFileAsync(OdysseyContext context, string uploaderId = Attacher)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -432,10 +387,9 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
             UploadedAtUtc = Anchor,
         };
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(metadata);
         await context.SaveChangesAsync();
         return metadata.Id;

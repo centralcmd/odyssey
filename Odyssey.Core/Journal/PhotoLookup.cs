@@ -61,15 +61,10 @@ public sealed class PhotoLookup(OdysseyContext context) : IPhotoLookup
         if (rest.Count > 0)
         {
             var byFile = await context.Photos
-                .Where(p => (p.FileId != null && rest.Contains(p.FileId.Value)) || (p.LegacyFileId != null && rest.Contains(p.LegacyFileId.Value)))
-                .Select(p => new { p.PhotoId, p.FileId, p.LegacyFileId })
+                .Where(p => p.LegacyFileId != null && rest.Contains(p.LegacyFileId.Value))
+                .Select(p => new { p.PhotoId, p.LegacyFileId })
                 .ToListAsync(cancellationToken);
-            foreach (var row in byFile.Where(r => r.FileId is not null))
-            {
-                result.TryAdd(row.FileId!.Value, row.PhotoId);
-            }
-
-            foreach (var row in byFile.Where(r => r.LegacyFileId is not null))
+            foreach (var row in byFile)
             {
                 result.TryAdd(row.LegacyFileId!.Value, row.PhotoId);
             }

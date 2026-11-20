@@ -1,4 +1,5 @@
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using System.Net;
 using System.Net.Http.Json;
 using Odyssey.Api.Tests.Infrastructure;
@@ -330,12 +331,12 @@ public class PhotosApiTests
         Assert.NotEqual("should not land", fetched.Title);
     }
 
-    /// <summary>Issue #428 §5.4: a legacy photo's rename writes the photo, never the shared file it still wraps.</summary>
+    /// <summary>Issue #428 §5.4: a rename writes the photo, never the file it wrapped before the move.</summary>
     [Fact]
-    public async Task Put_Rename_OfALegacyPhoto_LeavesItsFileUntouched()
+    public async Task Put_Rename_LeavesThePhotosFormerFileUntouched()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (photoId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId, "A.jpg");
+        var (photoId, fileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, ActorUserId, "A.jpg");
         using var client = factory.CreateClient();
 
         var put = await client.PutAsJsonAsync($"{Path}/{photoId}", new UpdatePhoto { FileName = "B.jpg" });
@@ -570,11 +571,9 @@ public class PhotosApiTests
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             var photo = await context.Photos.SingleAsync(p => p.PhotoId == created.PhotoId);
-            Assert.Null(photo.FileId);
-            Assert.NotNull(photo.StoredObjectId);
+            Assert.NotEqual(Guid.Empty, photo.StoredObjectId);
             Assert.Equal(Odyssey.Testing.FileStorage.PhotoTestData.Sha256(bytes), photo.Sha256Hash);
             Assert.Empty(context.FileMetadata);
-            Assert.Empty(context.FileBlob);
         }
 
         var content = await client.GetAsync($"{Path}/{created.PhotoId}/content");
@@ -597,11 +596,11 @@ public class PhotosApiTests
     }
 
     [Fact]
-    public async Task ContentRoute_ServesALegacyPhotoFromItsFile_AndNeedsPhotosRead()
+    public async Task ContentRoute_ServesTheOriginalFromTheStore_AndNeedsPhotosRead()
     {
         await using var factory = new ApiFactory(ReadWrite);
         var bytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(9);
-        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId, "old.jpg", bytes);
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, ActorUserId, "old.jpg", bytes);
         using var client = factory.CreateClient();
 
         var content = await client.GetAsync($"{Path}/{photoId}/content");
@@ -629,7 +628,7 @@ public class PhotosApiTests
         using (var scope = factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var storedObjectId = (await context.Photos.SingleAsync(p => p.PhotoId == created.PhotoId)).StoredObjectId!.Value;
+            var storedObjectId = (await context.Photos.SingleAsync(p => p.PhotoId == created.PhotoId)).StoredObjectId;
             var stored = await context.StoredObjects.SingleAsync(o => o.Id == storedObjectId);
             File.Delete(System.IO.Path.Combine(factory.FileVolumeRoot, stored.RelativePath));
         }
@@ -656,18 +655,19 @@ public class PhotosApiTests
     }
 
     /// <summary>
-    /// PR #441 security finding 1: a legacy photo's original is still a Files-store row until the backfill moves it, and
-    /// <c>files.*</c> must not reach it meanwhile — not to list, read, download, rename or delete.
+    /// PR #441 security finding 1: the file a photo wrapped before the move, still a Files-store row and named only by
+    /// the photo's <c>LegacyFileId</c>, is a photo original, and <c>files.*</c> must not reach it — not to list, read,
+    /// download, rename or delete.
     /// </summary>
     [Fact]
-    public async Task ALegacyPhotoOriginal_IsUnreachableThroughTheFilesStore()
+    public async Task APhotosFormerFile_IsUnreachableThroughTheFilesStore()
     {
         string[] filesAll =
         [
             PermissionClaims.FilesRead, PermissionClaims.FilesUpdate, PermissionClaims.FilesDelete,
         ];
         await using var factory = new ApiFactory(filesAll);
-        var (_, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId, "Holiday.jpg");
+        var (_, fileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, ActorUserId, "Holiday.jpg");
         var plain = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId, "receipt.jpg");
         using var client = factory.CreateClient();
 
@@ -685,16 +685,14 @@ public class PhotosApiTests
     }
 
     /// <summary>
-    /// A legacy photo's file that is also a journal attachment stays a Files-store file: the attachment's own claim
-    /// already reaches it, and the backfill copies rather than removes it — before the move and after.
+    /// A photo's former file that is also a journal attachment stays a Files-store file: the attachment's own claim
+    /// already reaches it, which is why the move copied rather than removed it.
     /// </summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task APhotoFileThatIsAlsoAnAttachment_StaysOnTheFilesList(bool backfilled)
+    [Fact]
+    public async Task APhotosFormerFileThatIsAlsoAnAttachment_StaysOnTheFilesList()
     {
         await using var factory = new ApiFactory([PermissionClaims.FilesRead]);
-        var (photoId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId, "Shared.jpg");
+        var (_, fileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, ActorUserId, "Shared.jpg");
         using (var scope = factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -702,14 +700,6 @@ public class PhotosApiTests
             {
                 JournalEntryId = Guid.NewGuid(), FileId = fileId, CreatedAt = DateTime.UtcNow,
             });
-            if (backfilled)
-            {
-                // The backfill's end state for a shared file: the photo names it as its legacy file only.
-                var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
-                photo.LegacyFileId = fileId;
-                photo.FileId = null;
-            }
-
             await context.SaveChangesAsync();
         }
 
@@ -771,22 +761,21 @@ public class PhotosApiTests
     }
 
     [Fact]
-    public async Task Upload_TheBytesOfALegacyPhoto_IsADuplicate_ButAFinanceFilesBytesAreNot()
+    public async Task Upload_TheBytesOfAnExistingPhoto_IsADuplicate_ButAFinanceFilesBytesAreNot()
     {
         await using var factory = new ApiFactory(ReadWrite);
         var legacyBytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(11);
         var financeBytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(12);
-        await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId, bytes: legacyBytes);
+        await PhotoTestSupport.SeedPhotoAsync(factory, ActorUserId, bytes: legacyBytes);
         using (var scope = factory.Services.CreateScope())
         {
             // A finance image no photo wraps: never an oracle for finance documents (issue #428 §7.7).
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = financeBytes };
-            context.FileBlob.Add(blob);
+            var blobContent = financeBytes;
             context.FileMetadata.Add(new FileMetadata
             {
                 Id = Guid.NewGuid(), FileName = "receipt.jpg", ContentType = "image/jpeg", SizeBytes = financeBytes.Length,
-                Sha256Hash = Odyssey.Testing.FileStorage.PhotoTestData.Sha256(financeBytes), FileBlobId = blob.Id, UploadedAtUtc = DateTime.UtcNow,
+                Sha256Hash = Odyssey.Testing.FileStorage.PhotoTestData.Sha256(financeBytes), FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent), UploadedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -840,7 +829,7 @@ public class PhotosApiTests
         using (var scope = factory.Services.CreateScope())
         {
             objectId = (await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos
-                .SingleAsync(p => p.PhotoId == created.PhotoId)).StoredObjectId!.Value;
+                .SingleAsync(p => p.PhotoId == created.PhotoId)).StoredObjectId;
         }
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Path}/{created.PhotoId}")).StatusCode);
@@ -856,25 +845,6 @@ public class PhotosApiTests
 
         // The bytes stay until the maintenance pass after the grace.
         Assert.Single(OriginalFiles(factory));
-    }
-
-    /// <summary>
-    /// A LEGACY photo (created before issue #428) and the file it wraps are still deleted together: the database
-    /// enforces the reverse direction with a cascading FK; this direction is application code in PhotoService.
-    /// </summary>
-    [Fact]
-    public async Task Delete_OfALegacyPhoto_AlsoRemovesTheFileItWrapped()
-    {
-        await using var factory = new ApiFactory(ReadWrite);
-        var (photoId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId);
-        using var client = factory.CreateClient();
-
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Path}/{photoId}")).StatusCode);
-
-        using var scope = factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        Assert.False(await context.FileMetadata.AnyAsync(f => f.Id == fileId));
-        Assert.False(await context.Photos.AnyAsync(photo => photo.PhotoId == photoId));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

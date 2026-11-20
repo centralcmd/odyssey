@@ -63,16 +63,12 @@ public class DemoDataSeederTests
         Assert.Equal(expected.TransactionTagLinks.Count, await finance.TransactionTagLinks.CountAsync());
         Assert.Equal(expected.TaxStatements.Count, await finance.TaxStatements.CountAsync());
         Assert.Equal(expected.TaxStatementTags.Count, await finance.TaxStatementTags.CountAsync());
-        Assert.Equal(expected.TaxStatementFiles.Count, await finance.TaxStatementFiles.CountAsync());
-        // The contact images are ordinary Files-store rows and land in the same two tables, but they are
-        // carried separately on the data set because Contact.AvatarFileId is a real FK and contacts are
-        // seeded before the rest of the store (issue #86 §13).
-        Assert.Equal(
-            expected.FileMetadata.Count + expected.ContactAvatarFiles.Count,
-            await finance.FileMetadata.CountAsync());
-        Assert.Equal(
-            expected.FileBlobs.Count + expected.ContactAvatarBlobs.Count,
-            await finance.FileBlob.CountAsync());
+        // Everything with bytes is the worker's DemoFileSeeder's: this job has no file volumes, so it writes no
+        // file, no photo and no row that names one — and leaves every contact without an image.
+        Assert.Equal(0, await finance.TaxStatementFiles.CountAsync());
+        Assert.Equal(0, await finance.FileMetadata.CountAsync());
+        Assert.Equal(0, await finance.StoredObjects.CountAsync());
+        Assert.False(await finance.Contacts.AnyAsync(c => c.AvatarFileId != null));
 
         // Every seeded contact has a non-null, unique ExternalUid (issue #338 §6, AC #9).
         // Contacts moved to OdysseyContext (issue #325 follow-up).
@@ -572,11 +568,12 @@ public class DemoDataSeederTests
         Assert.Equal(expected.JournalEntries.Count, await journal.JournalEntries.CountAsync());
         Assert.Equal(expected.JournalEntryTags.Count, await journal.JournalEntryTags.CountAsync());
         Assert.Equal(expected.JournalEntryContacts.Count, await journal.JournalEntryContacts.CountAsync());
-        Assert.Equal(expected.JournalEntryPhotos.Count, await journal.JournalEntryPhotos.CountAsync());
-        Assert.Equal(expected.JournalEntryAttachments.Count, await journal.JournalEntryAttachments.CountAsync());
         Assert.Equal(expected.JournalTasks.Count, await journal.JournalTasks.CountAsync());
         Assert.Equal(expected.JournalTaskTagLinks.Count, await journal.JournalTaskTagLinks.CountAsync());
-        Assert.Equal(expected.JournalTaskAttachments.Count, await journal.JournalTaskAttachments.CountAsync());
+        // The photo and attachment links name rows only the worker's demo-file seeder writes.
+        Assert.Equal(0, await journal.JournalEntryPhotos.CountAsync());
+        Assert.Equal(0, await journal.JournalEntryAttachments.CountAsync());
+        Assert.Equal(0, await journal.JournalTaskAttachments.CountAsync());
 
         // A journal entry with at least one contact, photo and attachment exists (rich example).
         Assert.True(await journal.JournalEntries.AnyAsync(), "expected seeded journal entries");
@@ -596,8 +593,9 @@ public class DemoDataSeederTests
         Assert.Equal(entryUids.Count, entryUids.Distinct().Count());
     }
 
+    /// <summary>The photo library is the worker's DemoFileSeeder's in full (Odyssey.Worker.Tests): every photo owns its bytes.</summary>
     [Fact]
-    public async Task Seeds_photos_module_dataset()
+    public async Task Seeds_no_photo_library()
     {
         await using var provider = BuildProvider(out var seeder);
 
@@ -605,112 +603,9 @@ public class DemoDataSeederTests
 
         using var scope = provider.CreateScope();
         var photos = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var expected = DemoDataSet.Build();
-
-        Assert.Equal(expected.Photos.Count, await photos.Photos.CountAsync());
-        Assert.Equal(expected.PhotoTags.Count, await photos.PhotoTags.CountAsync());
-        Assert.Equal(expected.PhotoTagLinks.Count, await photos.PhotoTagLinks.CountAsync());
-        Assert.Equal(expected.PhotoPeople.Count, await photos.PhotoPeople.CountAsync());
-        Assert.Equal(expected.PhotoAlbums.Count, await photos.PhotoAlbums.CountAsync());
-        Assert.Equal(expected.PhotoAlbumItems.Count, await photos.PhotoAlbumItems.CountAsync());
-    }
-
-    /// <summary>
-    /// A legacy database whose photo link rows were written by an <em>older</em> generator: the
-    /// deterministic surrogate key is the same, but the natural key it points at has since changed.
-    /// </summary>
-    /// <remarks>
-    /// Found in the wild. The demo generator's Landlord contact id changed, so a database seeded before
-    /// that carries a <c>PhotoPerson</c> with today's <c>PhotoPersonId</c> but yesterday's
-    /// <c>ContactId</c>. The seed's guards were keyed on the natural pair while the table's uniqueness
-    /// is on the surrogate key, so the row read as "new" and the insert died on a duplicate primary key
-    /// — taking the whole migrations job down with it. The same shape applies to
-    /// <c>PhotoTagLinks</c> and <c>PhotoAlbumItems</c>, which is why all three are asserted here.
-    /// </remarks>
-    [Fact]
-    public async Task Reseeds_over_link_rows_whose_surrogate_key_survived_a_changed_natural_key()
-    {
-        await using var provider = BuildProvider(out var seeder);
-        await seeder.ExecuteAsync(CancellationToken.None);
-
-        using (var scope = provider.CreateScope())
-        {
-            var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-
-            // Repoint each link row's natural key while keeping its primary key — exactly what an
-            // older generation of the generator leaves behind.
-            foreach (var person in journal.PhotoPeople)
-            {
-                person.ContactId = Guid.NewGuid();
-            }
-
-            foreach (var link in journal.PhotoTagLinks)
-            {
-                link.PhotoTagId = Guid.NewGuid();
-            }
-
-            foreach (var item in journal.PhotoAlbumItems)
-            {
-                item.PhotoId = Guid.NewGuid();
-            }
-
-            await journal.SaveChangesAsync();
-        }
-
-        var expected = DemoDataSet.Build();
-
-        // The whole assertion is "this does not throw": a duplicate-key insert here fails the
-        // migrations job, and since issue #290 that keeps the API down behind it.
-        await seeder.ExecuteAsync(CancellationToken.None);
-
-        using (var scope = provider.CreateScope())
-        {
-            var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-
-            // No row is duplicated: the surrogate keys were already taken, so nothing is re-inserted.
-            Assert.Equal(expected.PhotoPeople.Count, await journal.PhotoPeople.CountAsync());
-            Assert.Equal(expected.PhotoTagLinks.Count, await journal.PhotoTagLinks.CountAsync());
-            Assert.Equal(expected.PhotoAlbumItems.Count, await journal.PhotoAlbumItems.CountAsync());
-        }
-    }
-
-    // Reproduces the existing-deployment case: the journal unification backfill has created library
-    // Photos for the legacy journal files, so only those exist. The record-level idempotent seed must
-    // still add the standalone demo photos/tags/albums (not skip the whole seed).
-    [Fact]
-    public async Task Reseeds_standalone_photo_data_when_only_journal_photos_exist()
-    {
-        await using var provider = BuildProvider(out var seeder);
-        await seeder.ExecuteAsync(CancellationToken.None);
-        var expected = DemoDataSet.Build();
-
-        using (var scope = provider.CreateScope())
-        {
-            var photos = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var journalPhotoIds = await journal.JournalEntryPhotos.Select(p => p.PhotoId).ToListAsync();
-
-            // Drop everything except the journal-linked photos (simulating a backfill-only library).
-            photos.PhotoAlbumItems.RemoveRange(photos.PhotoAlbumItems);
-            photos.PhotoTagLinks.RemoveRange(photos.PhotoTagLinks);
-            photos.PhotoPeople.RemoveRange(photos.PhotoPeople);
-            photos.PhotoAlbums.RemoveRange(photos.PhotoAlbums);
-            photos.PhotoTags.RemoveRange(photos.PhotoTags);
-            photos.Photos.RemoveRange(photos.Photos.Where(p => !journalPhotoIds.Contains(p.PhotoId)));
-            await photos.SaveChangesAsync();
-            Assert.Equal(journalPhotoIds.Distinct().Count(), await photos.Photos.CountAsync());
-            Assert.Equal(0, await photos.PhotoTags.CountAsync());
-        }
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-
-        using (var scope = provider.CreateScope())
-        {
-            var photos = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            Assert.Equal(expected.Photos.Count, await photos.Photos.CountAsync());
-            Assert.Equal(expected.PhotoTags.Count, await photos.PhotoTags.CountAsync());
-            Assert.Equal(expected.PhotoAlbums.Count, await photos.PhotoAlbums.CountAsync());
-        }
+        Assert.Equal(0, await photos.Photos.CountAsync());
+        Assert.Equal(0, await photos.PhotoTags.CountAsync());
+        Assert.Equal(0, await photos.PhotoAlbums.CountAsync());
     }
 
     [Fact]

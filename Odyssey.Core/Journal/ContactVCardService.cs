@@ -104,7 +104,7 @@ public class ContactVCardService
             return null;
         }
 
-        // Through the one read path (issue #448): an image on disk or a legacy blob alike; null unless avatar-legal.
+        // Through the one read path (issue #448); null unless avatar-legal.
         if (await avatarService.ReadImageAsync(fileId, cancellationToken) is not { } image)
         {
             return null;

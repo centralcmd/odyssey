@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Microsoft.AspNetCore.Authentication;
@@ -524,9 +525,8 @@ public class TaxStatementApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -536,8 +536,7 @@ public class TaxStatementApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;

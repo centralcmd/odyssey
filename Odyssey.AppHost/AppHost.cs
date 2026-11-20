@@ -143,6 +143,9 @@ builder
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     // Host.CreateApplicationBuilder reads DOTNET_ENVIRONMENT, not the ASPNETCORE name.
     .WithEnvironment("DOTNET_ENVIRONMENT", apiEnvironment)
+    // The worker seeds the demo files and photos (DemoDataGate: Development/Testing only), under the migrations
+    // job's flag: the half of the demo seed with bytes, which only a host with the file volumes can write.
+    .WithEnvironment("Seed__DemoData", seedDemoData)
     // The same trust bundle as the API: the worker makes the scheduled outbound HTTPS calls (MET, Frost).
     .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
     .WithFileStorage(fileStorageSettings)

@@ -810,7 +810,7 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(deadline, cancellationToken);
 
-        // The original by photo id, whichever backend holds it, with the effective file name (issue #428 §3.1, §5.4).
+        // The original by photo id, with the photo's own file name (issue #428 §3.1, §5.4).
         var originals = scope.ServiceProvider.GetRequiredService<Originals.PhotoOriginalSource>();
         var source = await originals.DescribeAsync(claimed.PhotoId, bounded.Token);
         if (source is not { ContentType: { } contentType, FileName: { } fileName })

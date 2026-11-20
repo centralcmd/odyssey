@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -71,12 +72,11 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await MigrateAsync();
 
-        Guid jobId;
-        await using (var context = NewContext())
-        {
-            await SeedRequesterAsync(context);
-            jobId = await EnqueueAsync(context, await SeedStatementAsync(context));
-        }
+        // The run reads the statement's bytes, so this one is a real file on a temp store bound to the run's own context.
+        await using var worker = NewContext();
+        using var store = TestFileStore.For(worker);
+        await SeedRequesterAsync(worker);
+        var jobId = await EnqueueAsync(worker, await SeedStatementAsync(worker, store.Writer));
 
         var provider = new SweepingProvider(() =>
         {
@@ -86,12 +86,9 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
             Queue(other, later).SweepAsync().GetAwaiter().GetResult();
         });
 
-        await using (var worker = NewContext())
-        {
-            Assert.True(await Queue(worker).TryClaimAsync(jobId, CancellationToken.None));
-            var result = await Runner(worker, provider).RunAsync(jobId, CancellationToken.None);
-            Assert.Equal(FileAnalysisRunResult.Lost, result);
-        }
+        Assert.True(await Queue(worker).TryClaimAsync(jobId, CancellationToken.None));
+        var result = await Runner(worker, provider, store.Source).RunAsync(jobId, CancellationToken.None);
+        Assert.Equal(FileAnalysisRunResult.Lost, result);
 
         Assert.True(provider.Called);
         await using var verify = NewContext();
@@ -105,9 +102,10 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
     private FileAnalysisJobQueue Queue(OdysseyContext context, TimeProvider? clock = null) =>
         new(context, Options.Create(new FileAnalysisOptions()), clock ?? time, NullLogger<FileAnalysisJobQueue>.Instance);
 
-    private FileAnalysisExtractionRunner Runner(OdysseyContext context, IFileAnalysisProvider provider) =>
+    private FileAnalysisExtractionRunner Runner(
+        OdysseyContext context, IFileAnalysisProvider provider, Odyssey.Core.FileStorage.Files.StoredFileContentSource? source = null) =>
         new(context, provider, new StaticSettingsLookup(), new EmbeddedFileAnalysisPromptTemplate(), new KeyStored(),
-            time, NullLogger<FileAnalysisExtractionRunner>.Instance);
+            time, NullLogger<FileAnalysisExtractionRunner>.Instance, source);
 
     private async Task<Guid> EnqueueAsync(OdysseyContext context, (Guid AccountId, Guid FileId) statement)
     {
@@ -144,11 +142,14 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
         await context.SaveChangesAsync();
     }
 
-    private static async Task<(Guid AccountId, Guid FileId)> SeedStatementAsync(OdysseyContext context)
+    /// <param name="writer">Writes the bytes to a real store, for a test whose run reads them; otherwise the file names a
+    /// stored-object row with no file behind it, which is all a claim needs.</param>
+    private static async Task<(Guid AccountId, Guid FileId)> SeedStatementAsync(
+        OdysseyContext context, Odyssey.Core.FileStorage.Files.StoredFileWriter? writer = null)
     {
         var accountId = Guid.NewGuid();
         var fileId = Guid.NewGuid();
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         context.Accounts.Add(new Account
         {
             AccountId = accountId,
@@ -158,17 +159,19 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
             AccountType = ContextAccountType.CheckingAccount,
             CurrencyCode = "USD",
         });
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
             UploadedByUserId = UserId,
             FileName = "statement.pdf",
             ContentType = "application/pdf",
-            SizeBytes = blob.Content.Length,
-            Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(blob.Content)),
+            SizeBytes = blobContent.Length,
+            Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(blobContent)),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = writer is null
+                ? StoredFileFixtures.AddStoredObjectRow(context)
+                : (await writer.PutAsync(Odyssey.Core.FileStorage.Files.StoredFileArea.Finance, new MemoryStream(blobContent),
+                    "statement.pdf", "application/pdf", DateTime.UtcNow, blobContent.Length, CancellationToken.None)).Id,
         });
         context.AccountFiles.Add(new AccountFile
         {

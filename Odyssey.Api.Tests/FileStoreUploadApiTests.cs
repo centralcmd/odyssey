@@ -71,7 +71,7 @@ public sealed class FileStoreUploadApiTests
     [Theory]
     [InlineData("Finance", "finance-files/", StoredFileArea.Finance)]
     [InlineData("journal", "journal-files/", StoredFileArea.Journal)]
-    public async Task An_upload_lands_in_its_area_on_disk_and_creates_no_blob(string area, string root, StoredFileArea expected)
+    public async Task An_upload_lands_in_its_area_on_disk(string area, string root, StoredFileArea expected)
     {
         await using var factory = new OdysseyApiFactory(FilesClaims);
         using var client = factory.CreateClient();
@@ -81,14 +81,12 @@ public sealed class FileStoreUploadApiTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var uploaded = (await response.Content.ReadFromJsonAsync<FileUploadResponse>())!;
         var row = await RowAsync(factory, uploaded.Id);
-        Assert.Null(row.FileBlobId);
         Assert.Equal(expected, StoredFileAreas.AreaOf(row));
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var stored = await context.StoredObjects.AsNoTracking().SingleAsync(o => o.Id == StoredFileAreas.StoredObjectIdOf(row));
         Assert.StartsWith(root + DateTime.UtcNow.Year.ToString("D4") + "/1/", stored.RelativePath, StringComparison.Ordinal);
         Assert.Equal(Pdf, await File.ReadAllBytesAsync(Path.Combine(factory.FileVolumeRoot, stored.RelativePath)));
-        Assert.False(await context.FileBlob.AnyAsync());
     }
 
     [Theory]
@@ -205,28 +203,6 @@ public sealed class FileStoreUploadApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         Assert.False(await context.FileMetadata.AnyAsync());
         Assert.Equal(StoredObjectState.PendingDelete, (await context.StoredObjects.AsNoTracking().SingleAsync()).State);
-    }
-
-    [Fact]
-    public async Task The_move_status_reads_counts_under_file_storage_read_only()
-    {
-        await using (var denied = new OdysseyApiFactory(FilesClaims))
-        {
-            using var client = denied.CreateClient();
-            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/file-storage/file-backfill")).StatusCode);
-        }
-
-        await using var factory = new OdysseyApiFactory([.. FilesClaims, PermissionClaims.FileStorageRead]);
-        using var admin = factory.CreateClient();
-        await UploadAsync(admin, "Finance");
-        await UploadAsync(admin, "Journal", "%PDF-1.7 another"u8.ToArray());
-
-        var status = (await admin.GetFromJsonAsync<FileBackfillStatus>("/api/file-storage/file-backfill"))!;
-
-        Assert.Equal((0, 0, 0, 0), (status.Remaining, status.ToMove, status.WaitingOnPhotos, status.Failed));
-        Assert.Equal((1, 1, 0), (status.OnDisk.Finance, status.OnDisk.Journal, status.OnDisk.ContactAvatars));
-        var body = await (await admin.GetAsync("/api/file-storage/file-backfill")).Content.ReadAsStringAsync();
-        Assert.DoesNotContain("pdf", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>AC 5 on disk: without <c>files.create</c> the policy refuses before the action, so nothing is written.</summary>

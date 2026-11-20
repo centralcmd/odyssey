@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
@@ -131,8 +132,7 @@ public class FileAnalysisAuditApiTests
         };
         db.Accounts.Add(account);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var file = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -141,7 +141,7 @@ public class FileAnalysisAuditApiTests
             ContentType = "application/pdf",
             SizeBytes = 318_000,
             Sha256Hash = "hash",
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(file);

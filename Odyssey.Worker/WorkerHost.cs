@@ -53,14 +53,15 @@ public static class WorkerHost
         // Photo thumbnails (issue #362): the job and the Magick.NET decoder run here and nowhere else. A failing
         // self-test or volume holds this job alone (it reports PolicyFailed or StorageUnavailable); the others run on.
         services.AddPhotoThumbnails();
-        // Photo originals (issue #428): the content source the thumbnail job reads through, and the backfill that moves
-        // legacy originals out of FileBlob. The lease elects one runner per tick across replicas.
+        // Photo originals (issue #428): the content source the thumbnail job reads through, and the writer the demo
+        // files use.
         services.AddPhotoOriginals();
-        services.AddPeriodicJob<PhotoOriginalBackfillJob>();
-        // Files on the store (issue #448): the three file areas and the move of every remaining FileBlob onto them. The
-        // lease elects one runner per tick; a file a legacy photo wraps waits for the photo move above.
+        // Files on the store (issue #448): the three file areas, their writer and content source.
         services.AddStoredFiles();
-        services.AddPeriodicJob<FileBlobBackfillJob>();
+        // The demo files and photos (Development/Testing only, DemoDataGate): written onto the store once the API has
+        // initialised the volumes, with the rows that name them. The migrations job seeds the rest of the demo set.
+        services.AddSingleton<Odyssey.Worker.DemoData.DemoFileSeeder>();
+        services.AddHostedService<Odyssey.Worker.DemoData.DemoFileSeedingService>();
         // News reader (issue #470): the NewsArticles storage feature and the egress client, shared with the API, and the
         // fetch job — purge, fetch, ingest, images and maintenance — which runs here only (§7.9: the API makes no
         // outbound request). Every replica runs it; the per-feed leases and the host throttle rows coordinate them.

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -680,9 +681,8 @@ public class JournalTasksApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -692,8 +692,7 @@ public class JournalTasksApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;

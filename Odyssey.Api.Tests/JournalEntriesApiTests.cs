@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -828,28 +829,6 @@ public class JournalEntriesApiTests
         Assert.Contains(contactId, fetched!.ContactIds);
     }
 
-    [Fact]
-    public async Task Get_AfterLinkedPhotoFileDeleted_StillReadsWithDanglingId()
-    {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var (imageId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg");
-        using var client = factory.CreateClient();
-
-        var id = await CreateAsync(client, NewEntry(photoIds: [imageId]));
-
-        using (var scope = factory.Services.CreateScope())
-        {
-            var finance = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var file = await finance.FileMetadata.FirstAsync(f => f.Id == fileId);
-            finance.FileMetadata.Remove(file);
-            await finance.SaveChangesAsync();
-        }
-
-        var fetched = await client.GetFromJsonAsync<ExistingJournalEntry>($"{Path}/{id}");
-        Assert.NotNull(fetched);
-        Assert.Contains(fetched!.Photos, p => p.PhotoId == imageId);
-    }
-
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     // ── PUT link diffing (criterion #1) ───────────────────────────────────────
@@ -1036,9 +1015,9 @@ public class JournalEntriesApiTests
         return id;
     }
 
-    /// <summary>A library photo to link (issue #428: the journal links photos by id); seeded as a legacy photo.</summary>
-    private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
-        (await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, fileName)).PhotoId;
+    /// <summary>A library photo to link (issue #428: the journal links photos by id).</summary>
+    private static Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
+        PhotoTestSupport.SeedPhotoAsync(factory, null, fileName);
 
     private static async Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType)
     {
@@ -1046,9 +1025,8 @@ public class JournalEntriesApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1058,8 +1036,7 @@ public class JournalEntriesApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
