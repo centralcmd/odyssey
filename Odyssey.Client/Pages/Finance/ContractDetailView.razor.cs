@@ -136,7 +136,7 @@ public partial class ContractDetailView : IAsyncDisposable
 
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 
-    // Focus return across a detach, through the helper the insurance party tiles also call. A
+    // Focus return across a detach, through the shared TileRemovalFocus helper. A
     // contract's parties are one flat list, so the keys are party ids.
     private TileRemovalFocus? _focus;
 
@@ -273,10 +273,8 @@ public partial class ContractDetailView : IAsyncDisposable
     /// <remarks>
     /// <b>Edit party is withheld for an UNRECOGNISED role</b> — an ordinal this build's registry does
     /// not contain. The <c>PUT</c> is a full replacement, so a dialog that cannot name the role would
-    /// silently rewrite it to whatever it could show. Detach stays, on the same reasoning the
-    /// insurance tiles already apply to an unresolvable target: detaching a link needs only the link.
-    /// <c>Unspecified</c> is deliberately NOT withheld — it is a role the picker holds and can
-    /// round-trip perfectly.
+    /// silently rewrite it to whatever it could show. Detach stays, on the same reasoning applied to
+    /// an unresolvable target: detaching a link needs only the link.
     /// </remarks>
     private IReadOnlyList<OdsMenuItem> MenuFor(ExistingContractParty party, PartyVisual visual)
     {

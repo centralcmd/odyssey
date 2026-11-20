@@ -246,8 +246,8 @@ public sealed record OdsOption(string Value, string Label)
 
     /// <summary>
     /// Secondary text after the label on an option row — a type ("Person", "Property"), an account
-    /// number. What tells two same-named records apart in a picker, which is the whole job of the
-    /// insurance link pickers. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
+    /// number. What tells two same-named records apart in a picker, which is the whole job of an
+    /// entity picker. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
     /// </summary>
     public string? Sub { get; init; }
 

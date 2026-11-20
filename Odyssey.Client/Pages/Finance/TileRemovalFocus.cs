@@ -15,11 +15,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// is a removal too.
 /// </para>
 /// <para>
-/// Extracted rather than copied. <c>InsurancePolicyLinkTiles</c> cannot be dropped into the contract
-/// surface — it takes a required <c>InsurancePartyRole</c> and is instantiated once per collection,
-/// while a contract's parties are one flat list — so the alternative was a second copy of the
-/// pre-compute-neighbour + JS-interop dance, and two copies of a focus mechanism drift in exactly the
-/// way that is invisible until a keyboard user hits it.
+/// One shared mechanism rather than a copy per surface: two copies of the pre-compute-neighbour +
+/// JS-interop dance drift in exactly the way that is invisible until a keyboard user hits it.
 /// </para>
 /// </remarks>
 internal sealed class TileRemovalFocus : IAsyncDisposable

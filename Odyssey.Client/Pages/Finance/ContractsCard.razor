@@ -111,9 +111,8 @@
                     var counts = new[]
                     {
                         new OdsRecordCount("diversity_3", c.PartyCount.ToString(CultureInfo.CurrentCulture), "Parties"),
-                        @* Term ROWS, not values in force — the same "count rows, never resolved
-                           values" rule the insurance link counts follow, so a busy price history
-                           never reads as empty. *@
+                        @* Term ROWS, not values in force — count rows, never resolved values, so a
+                           busy price history never reads as empty. *@
                         new OdsRecordCount("§", c.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"),
                         @* Watched tags (issue #166), under `sell` — the smart-tag glyph on every
                            host. Terms carry the typeset `§` the term dialog already uses, so no

@@ -2891,8 +2891,8 @@ tr:focus-within > .odc-rowactions.reveal,
    contracts.css. Global (not scoped) because these classes live in the page,
    the detail child, the summary child and the dialogs. The page scaffold
    (.acct-*) is in the scoped ContractsCard.razor.css. The feature accent is a
-   warm clay/bronze (oklch hue 42) — distinct from brand tide, Insurance's
-   indigo and Tax's magenta; it never encodes money.
+   warm clay/bronze (oklch hue 42) — distinct from brand tide and Tax's
+   magenta; it never encodes money.
    ============================================================ */
 :root, [data-theme] {
   --con-accent: oklch(0.70 0.13 42);
@@ -4104,7 +4104,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .pf-note-body b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
 /* ── Expandable record card (issue #367) — Components/OdsExpandableCard.razor ──────────
-   THE expand-in-place list row: Accounts, Contracts, Insurance policies, Tax statements,
+   THE expand-in-place list row: Accounts, Contracts, Tax statements,
    Budgets, Journal entries and the analysis log. Ported from the design
    system's kit.css `.acct-list` / `.acct-item` scaffold, which this file previously
    carried in eight scoped copies.
