@@ -347,13 +347,7 @@ public partial class PropertiesCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(p.PropertyId.ToString(), "Property ID copied.")),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(p.PropertyId.ToString(), "Property ID copied."))));
 
         if (_canUpdate || _canDelete)
             items.Add(new OdsMenuItem { Divider = true });

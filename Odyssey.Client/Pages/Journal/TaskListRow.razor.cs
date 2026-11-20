@@ -186,11 +186,7 @@ public partial class TaskListRow : IAsyncDisposable
             Icon = "event_note", Label = "Export as iCalendar",
             OnClick = EventCallback.Factory.Create(this, () => OnExport.InvokeAsync(Task)),
         });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => OnCopyId.InvokeAsync(Task.JournalTaskId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => OnCopyId.InvokeAsync(Task.JournalTaskId))));
 
         if (CanUpdate)
         {

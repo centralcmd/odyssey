@@ -345,10 +345,7 @@ public partial class LocationsPage
                 Icon = "my_location", Label = "Copy coordinates", AriaLabel = $"Copy coordinates of {l.Name}",
                 TrailingIcon = "content_copy", OnClick = copyCoordinates,
             });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", AriaLabel = $"Copy ID of {l.Name}", TrailingIcon = "content_copy", OnClick = copyId,
-        });
+        items.Add(OdsMenuItem.CopyId(copyId, $"Copy ID of {l.Name}"));
 
         // The weather-point items sit directly after Copy ID (issue #388 §3).
         if (weather is { Count: > 0 } && !merged)

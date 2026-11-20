@@ -322,7 +322,7 @@ public partial class ContactsCard
             });
         }
 
-        items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(c.ContactId)) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(c.ContactId))));
 
         if (_canDelete)
         {
@@ -662,7 +662,7 @@ public partial class ContactsCard
             if (result.OrToast(Snackbar, "Unable to export the contact") is not { } file)
                 return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
+            await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally
@@ -689,7 +689,7 @@ public partial class ContactsCard
             if (result.OrToast(Snackbar, "Unable to export contacts") is not { } file)
                 return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
+            await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally

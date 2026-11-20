@@ -268,7 +268,7 @@ public class ContractReferenceNumberSurfaceTests : IAsyncLifetime
         // The sort key, last, under the server's enum name.
         Assert.Matches(new Regex(@"Key = ""referenceNumber"", Label = ""Reference number""[^\n]*\n\s*\];"), code);
         // Copy reference number: present only with a value, and just before Copy ID.
-        Assert.Matches(new Regex(@"if \(!string\.IsNullOrWhiteSpace\(c\.ReferenceNumber\)\)[\s\S]{0,300}?Label = ""Copy reference number""[\s\S]{0,400}?Label = ""Copy ID"""), code);
+        Assert.Matches(new Regex(@"if \(!string\.IsNullOrWhiteSpace\(c\.ReferenceNumber\)\)[\s\S]{0,300}?Label = ""Copy reference number""[\s\S]{0,400}?OdsMenuItem\.CopyId\("), code);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

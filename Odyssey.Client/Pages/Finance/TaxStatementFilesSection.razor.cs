@@ -164,7 +164,7 @@ public partial class TaxStatementFilesSection
         if (CanDownload)
             menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)) });
 
-        menu.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied.")) });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied."))));
 
         return menu;
     }
@@ -175,8 +175,7 @@ public partial class TaxStatementFilesSection
         if (content is null)
         { Snackbar.Add("Download failed.", Severity.Error); return; }
 
-        var contentType = content.ContentType ?? "application/octet-stream";
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileMetadata.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, file.FileMetadata.FileName);
     }
 
     // "Preview" opens the design-system file viewer (FilePreviewDialog), the same

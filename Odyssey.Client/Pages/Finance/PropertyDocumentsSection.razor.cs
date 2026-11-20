@@ -202,13 +202,7 @@ public partial class PropertyDocumentsSection
                 Label = "Download",
                 OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)),
             },
-            new OdsMenuItem
-            {
-                Icon = "fingerprint",
-                TrailingIcon = "content_copy",
-                Label = "Copy ID",
-                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied.")),
-            },
+            OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied."))),
         ];
     }
 
@@ -218,8 +212,7 @@ public partial class PropertyDocumentsSection
         if (result.OrToast(Snackbar, "Download failed") is not { } content)
             return;
 
-        var contentType = content.ContentType ?? file.FileMetadata.ContentType ?? "application/octet-stream";
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileMetadata.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, file.FileMetadata.FileName, file.FileMetadata.ContentType);
     }
 
     private EventCallback<OdsRecordSaveEventArgs> SaveAction =>

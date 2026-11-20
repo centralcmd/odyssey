@@ -111,13 +111,7 @@ public partial class ContractFilesTable
             });
         }
 
-        menu.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileId.ToString(), "File ID copied.")),
-        });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileId.ToString(), "File ID copied."))));
 
         return menu;
     }
@@ -128,8 +122,7 @@ public partial class ContractFilesTable
         if (result.OrToast(Snackbar, "Download failed") is not { } content)
             return;
 
-        var contentType = content.ContentType ?? file.ContentType ?? "application/octet-stream";
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, file.FileName, file.ContentType);
     }
 
     private EventCallback<OdsRecordSaveEventArgs> SaveAction =>

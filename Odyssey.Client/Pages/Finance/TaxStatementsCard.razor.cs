@@ -509,13 +509,7 @@ public partial class TaxStatementsCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId))));
 
         if (_canUpdate)
         {

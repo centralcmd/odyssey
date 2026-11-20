@@ -109,7 +109,7 @@ public partial class ContactDetailPanel
             items.Add(new() { Icon = "star", Label = "Set as primary", OnClick = EventCallback.Factory.Create(this, t.SetPrimary) });
         if (editable)
             items.Add(new() { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, t.Edit) });
-        items.Add(new() { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Id.ToString(), "ID copied to clipboard.")) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(t.Id.ToString(), "ID copied to clipboard."))));
         if (editable)
         {
             items.Add(new() { Divider = true });

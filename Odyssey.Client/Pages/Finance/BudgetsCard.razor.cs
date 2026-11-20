@@ -508,13 +508,7 @@ public partial class BudgetsCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyBudgetId(budget.BudgetId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyBudgetId(budget.BudgetId))));
 
         if (_canUpdate)
         {

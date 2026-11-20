@@ -86,11 +86,7 @@ public partial class ContactAliasSection
             items.Add(new() { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => OpenDialog(alias)) });
         }
 
-        items.Add(new()
-        {
-            Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(alias.Id.ToString(), "ID copied to clipboard.")),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(alias.Id.ToString(), "ID copied to clipboard."))));
 
         if (CanUpdate && !IsArchived)
         {

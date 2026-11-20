@@ -646,13 +646,7 @@ public partial class AccountsCard
             items.Add(new OdsMenuItem { Icon = "monitor", Label = "New estimate", OnClick = EventCallback.Factory.Create(this, () => AddEstimate(account)) });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyAccountId(account.AccountId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyAccountId(account.AccountId))));
 
         if (_canUpdateAccounts)
         {

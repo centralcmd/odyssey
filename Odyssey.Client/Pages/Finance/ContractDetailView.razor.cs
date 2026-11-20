@@ -317,14 +317,7 @@ public partial class ContractDetailView : IAsyncDisposable
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this,
-                () => Clipboard.CopyAsync(party.ContractPartyId.ToString(), "ID copied to clipboard.")),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(party.ContractPartyId.ToString(), "ID copied to clipboard."))));
 
         items.Add(new OdsMenuItem { Divider = true });
         items.Add(new OdsMenuItem

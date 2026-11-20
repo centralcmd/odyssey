@@ -342,7 +342,7 @@ public partial class AccountFilesSection
             });
         }
 
-        menu.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyFileId(file)) });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyFileId(file))));
 
         return menu;
     }

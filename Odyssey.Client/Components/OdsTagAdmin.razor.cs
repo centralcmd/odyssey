@@ -267,7 +267,7 @@ public partial class OdsTagAdmin<TRow>
             });
         }
 
-        items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(Id(t))) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(Id(t)))));
 
         if (_canDelete)
         {

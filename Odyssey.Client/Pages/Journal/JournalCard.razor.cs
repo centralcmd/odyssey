@@ -862,11 +862,7 @@ public partial class JournalCard
             Icon = "event_note", Label = "Export VJOURNAL",
             OnClick = EventCallback.Factory.Create(this, () => ExportEntryAsync(e)),
         });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId))));
 
         if (_canUpdate)
         {
