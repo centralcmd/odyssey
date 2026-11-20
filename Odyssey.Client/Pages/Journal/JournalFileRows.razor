@@ -36,7 +36,7 @@
             <span class="jec-file-size mono">@FormatSize(f.SizeBytes)</span>
             @* The size carries its unit, and the kind its own word; the date is the one bare value, so
                it says what it is for a reader who cannot see the column it sits in. *@
-            <span class="jec-file-up"><span class="sr-only">Uploaded </span>@(f.UploadedAtUtc == default ? Unknown : f.UploadedAtUtc.ToLocalTime().ToString("MMM d, yyyy"))</span>
+            <span class="jec-file-up"><span class="sr-only">Uploaded </span>@(f.UploadedAtUtc == default ? Unknown : OdsDates.LongUnpadded(f.UploadedAtUtc.ToLocalTime()))</span>
             <span class="je-cardmenu" id="@MenuId(Id, f.Id)">
                 <OdsMenu Items="BuildMenu(f)" AriaLabel="@($"Actions for file {f.FileName}")" />
             </span>
@@ -127,11 +127,7 @@
             });
         }
 
-        menu.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(f.Id.ToString(), "File ID copied.")),
-        });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(f.Id.ToString(), OdsCopied.Id("File")))));
 
         if (OnRemove is { } remove)
         {
@@ -155,7 +151,6 @@
             return;
         }
 
-        var contentType = content.ContentType ?? f.ContentType;
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, f.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, f.FileName, f.ContentType);
     }
 }

@@ -1499,9 +1499,7 @@
    MudSelect and MudDatePicker wrap their control in a .mud-select / .mud-picker div, so the
    control is a grandchild of the cell and needs its own selector (e.g. Interval vs Every). */
 .odc-form-row > .mud-input-control,
-.odc-form-row > :is(.mud-select, .mud-picker) > .mud-input-control,
-.edit-grid > .mud-input-control,
-.edit-grid > :is(.mud-select, .mud-picker) > .mud-input-control { margin-top: 0 !important; }
+.odc-form-row > :is(.mud-select, .mud-picker) > .mud-input-control { margin-top: 0 !important; }
 
 /* ---------- Form grid (two-column form layout for large dialogs / panels) ----------
    Direct children are cells; add `.odc-form-grid-wide` to any child that should
@@ -2184,20 +2182,11 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-kind-ic.lg { width: 42px; height: 42px; }
 
 /* ---- HERO — the interest-rate step chart ---- */
-.trm-hero { border: 1px solid var(--mud-palette-divider); border-radius: 10px; background: var(--mud-palette-surface); overflow: hidden; }
-.trm-hero-head { display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px 12px; }
-.trm-hero-titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.trm-hero-kind { display: flex; align-items: center; gap: 8px; font: 500 13px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
-.trm-hero-sub { font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.trm-hero-figs { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
-.trm-hero-value { font: 300 34px/0.95 var(--font-mono); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
 .trm-delta { display: inline-flex; align-items: center; gap: 3px; font: 500 11.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; padding: 3px 8px 3px 5px; border-radius: 999px; }
 .trm-delta .material-icons { font-size: 14px; }
 .trm-delta.up   { color: oklch(from oklch(0.80 0.15 150) var(--glyph-text-l, l) c h); background: oklch(0.80 0.15 150 / 0.13); }
 .trm-delta.down { color: oklch(from oklch(0.74 0.16 22) var(--glyph-text-l, l) c h); background: oklch(0.74 0.16 22 / 0.13); }
 .trm-delta.flat { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
-
-.trm-chart-wrap { padding: 2px 12px 14px; }
 
 /* The DS TermHistoryChart above a contract's history table. The chart card
    sits directly above the table inside a contract record's section, so the
@@ -2216,16 +2205,10 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-chart .nowlabel { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--mud-palette-text-secondary); }
 
 /* ---- CURRENT TERMS — summary tiles (the /terms/current view) ---- */
-.trm-summary.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(168px, 100%), 1fr)); gap: 10px; }
-.trm-tile { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 13px 14px; border: 1px solid var(--mud-palette-divider); border-radius: 9px; background: var(--mud-palette-surface); }
-.trm-tile-top { display: flex; align-items: center; gap: 9px; }
 /* A term is NAMED by its label, as text, so no meaning rides on the glyph or its hue
    (WCAG 1.1.1 / 1.4.1). The colour is an existing semantic token, already AA-compliant in the light
    and dark themes. */
 .trm-name { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
-.trm-tile-name { font: 500 12.5px/1.25 var(--font-sans); color: var(--mud-palette-text-primary); }
-.trm-tile-value { font: 400 23px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; color: var(--mud-palette-text-primary); }
-.trm-tile-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 400 11px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
 /* The DS adds `white-space: nowrap` here; this deliberately does NOT carry it across. The pill used
    to hold a short chip ("Monthly") and now holds a whole cadence phrase ("every 12 months"), and
    nowrap stops that phrase breaking at all — so at 320px / 200% zoom it overflows its tile rather
@@ -2233,9 +2216,7 @@ tr:focus-within > .odc-rowactions.reveal,
    that width. The foot already sets `flex-wrap: wrap`, so at ordinary widths the pill drops to its
    own line and gets the full tile before any intra-phrase break is needed; nowrap bought nothing
    there and cost the narrow case. */
-.trm-bill { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 7px; border-radius: 999px; background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
 
-/* ---- Cadence block in the New / Edit term dialog ---- */
 /* ---- Direction (TermDirection, issue #159) ------------------------------------------
    The WORD, in the quiet mono caption the tile's sub-line uses — no glyph, because a directional
    arrow reads against value rather than against the household, and the FIGURE is what carries the
@@ -2277,7 +2258,6 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* The dialog's Direction refusal — the state that stands in place of the control where direction
    has no meaning (a rate kind, or an account-owned term). */
-.trm-dir-field { display: flex; flex-direction: column; gap: 6px; }
 .trm-dir-refused {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 9px 11px; border-radius: var(--radius-sm);
@@ -2295,7 +2275,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-cadence-echo { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* ---- HISTORY — as a table ---- */
-.trm-history { display: flex; flex-direction: column; gap: 20px; }
 
 .trm-tbl { width: 100%; border-collapse: collapse; }
 .trm-tbl thead th { text-align: left; font: 600 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 0 12px 9px; border-bottom: 1px solid var(--mud-palette-divider); }
@@ -2322,7 +2301,6 @@ tr:focus-within > .odc-rowactions.reveal,
 
 .trm-value-block { display: flex; flex-direction: column; gap: 10px; }
 
-.trm-field { display: flex; flex-direction: column; gap: 6px; }
 .trm-label { font: 500 12px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .trm-err { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-error); }
 .trm-field-head { display: flex; align-items: center; }
@@ -2349,7 +2327,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-na-note .material-icons { font-size: 16px; margin-top: 1px; }
 .trm-kind-switch { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .trm-kind-switch b { color: var(--mud-palette-text-primary); font-weight: 500; }
-.trm-dt-utc { font-family: var(--font-mono); color: var(--mud-palette-text-primary); }
 
 /* =============================================================
    Account value estimates — the "Estimates" section inside an
@@ -2834,14 +2811,6 @@ tr:focus-within > .odc-rowactions.reveal,
   box-shadow: var(--mud-elevation-1);
   padding: var(--space-2) var(--space-2) var(--space-1);
 }
-
-/* Upload dialog — the "already attached" reference list */
-.con-existing-files { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
-.con-existing-head { font: 600 11px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 4px; }
-.con-existing-row { display: flex; align-items: center; gap: 9px; padding: 6px 4px; }
-.con-existing-ic { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; border-radius: 7px; }
-.con-existing-name { flex: 1; min-width: 0; font: 400 12.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.con-existing-kind { flex: none; font: 500 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* UNSIGNED (Draft / Ready) — full brightness, because these are the rows most likely to need
    attention, and a dashed edge instead: nothing about the agreement is settled yet. The opposite
@@ -3390,10 +3359,6 @@ tr:focus-within > .odc-rowactions.reveal,
    self-describing via its kind avatar, so there are no per-kind section headers.
    ───────────────────────────────────────────────────────────────────────────── */
 .cp-contact-wrap { margin-top: 20px; }
-.cp-sub { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.cp-sub-label { font: 600 11px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.cp-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
-.cp-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light, var(--mud-palette-divider)); }
 .cp-empty-row { padding: 6px 2px 10px; color: var(--mud-palette-text-secondary); font: 400 13px/1.4 var(--font-sans); }
 .cp-tile-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .cp-tile { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 14px 15px; border: 1px solid var(--mud-palette-divider); border-radius: 10px; background: var(--mud-palette-background); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); min-width: 0; }
@@ -4568,8 +4533,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* Section tables read as cards, the same frame as the charts beside them. */
 .odc-record-body .acct-table-frame,
-.odc-record-body .est-history,
-.odc-record-body .trm-history {
+.odc-record-body .est-history {
     background: var(--mud-palette-surface);
     border: 1px solid var(--mud-palette-divider);
     border-radius: var(--radius-md);
@@ -4579,20 +4543,19 @@ tr:focus-within > .odc-rowactions.reveal,
        instead of being clipped by .odc-record's overflow-x. */
     overflow-x: auto;
 }
-.odc-record-body .trm-history { padding: var(--space-3) var(--space-2) var(--space-2); }
 
 /* The section heroes lose their standalone framing and read as cards in the band. */
-.odc-record-body .trm-hero, .odc-record-body .est-hero {
+.odc-record-body .est-hero {
     border-radius: var(--radius-md); box-shadow: var(--mud-elevation-1);
 }
-.odc-record-body .trm-hero-head, .odc-record-body .est-hero-head { padding: 20px 20px 14px; gap: var(--space-4); }
-.odc-record-body .trm-hero-kind, .odc-record-body .est-hero-kind {
+.odc-record-body .est-hero-head { padding: 20px 20px 14px; gap: var(--space-4); }
+.odc-record-body .est-hero-kind {
     font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans);
 }
-.odc-record-body .trm-hero-sub, .odc-record-body .est-hero-sub {
+.odc-record-body .est-hero-sub {
     font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); margin-top: 5px;
 }
-.odc-record-body .trm-hero-value, .odc-record-body .est-hero-value {
+.odc-record-body .est-hero-value {
     font: var(--fw-medium) var(--fs-h6)/1 var(--font-mono); letter-spacing: normal;
 }
 .odc-record-body .trm-delta, .odc-record-body .est-delta {

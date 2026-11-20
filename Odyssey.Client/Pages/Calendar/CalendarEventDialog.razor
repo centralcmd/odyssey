@@ -22,7 +22,6 @@
 
 @inject ICalendarApiClient CalendarApi
 @inject ILocationsApiClient Locations
-@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @using Odyssey.Client.Pages.Weather
 
@@ -203,6 +202,8 @@
         }
     </Footer>
 </OdsModal>
+
+<OdsConfirm @ref="_deleteConfirm" />
 
 @code {
     // Above the form: the version conflict (focusable, with its two actions) or a preview / write failure (v3 §B, §C).

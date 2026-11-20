@@ -13,7 +13,7 @@ namespace Odyssey.Context.Migrations
     /// both directions. InnoDB requires an index on a foreign-key column at all times, and the two
     /// indexes being swapped are the only ones leading with <c>AccountId</c> / <c>ContractId</c>; EF's
     /// scaffolded order (every <c>DropIndex</c> ahead of every <c>CreateIndex</c>) fails with errno
-    /// 1553 — the defect <c>AccountTermLabelMigrationTests</c> pins for the earlier swap.
+    /// 1553 — the same defect the earlier <c>AddAccountTermLabel</c> swap hit.
     /// </para>
     ///
     /// <para>

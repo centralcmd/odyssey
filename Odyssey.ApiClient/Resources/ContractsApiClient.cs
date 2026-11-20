@@ -48,8 +48,8 @@ public interface IContractsApiClient
 
     /// <summary>
     /// Re-writes one party in place (issue #121). The body is a <b>full replacement</b> of the link —
-    /// role, target and both dates — so a caller that omits a date clears it and one that omits the
-    /// role resets it to <c>Unspecified</c>.
+    /// role, target and both dates — so a caller that omits a date clears it. The role is required:
+    /// omitting it is a <c>400</c>.
     /// </summary>
     Task<ApiResult> UpdatePartyAsync(
         Guid contractId, Guid partyId, ContractPartyRequest request, CancellationToken ct = default);

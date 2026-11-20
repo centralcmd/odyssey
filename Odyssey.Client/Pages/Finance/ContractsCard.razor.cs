@@ -17,6 +17,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContractsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ContractListItem> _contracts = [];
     private readonly Dictionary<Guid, ExistingContract> _details = new();
@@ -373,7 +375,7 @@ public partial class ContractsCard
                     && c.EndDate is { } end && DaysUntil(end) >= 0 && DaysUntil(end) <= EndingWindowDays)
                 .OrderBy(c => c.EndDate)
                 .Select(c => Dated(c, "Ending soon", PageHeaderSeverity.Warning,
-                    $"Term ends {c.EndDate:MMM dd, yyyy}.")));
+                    $"Term ends {OdsDates.Long(c.EndDate!.Value)}.")));
 
             problems.AddRange(live
                 .Where(c => c.Status == ContractStatus.Upcoming
@@ -819,12 +821,9 @@ public partial class ContractsCard
     private async Task ConfirmDelete(ContractListItem c)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete contract",
-            $"Permanently delete '{c.Name}' and all its party and document links? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete contract", $"Permanently delete '{c.Name}' and all its party and document links? This cannot be undone.", "Delete");
 
-        if (confirmed == true && (await Contracts.DeleteAsync(c.ContractId)).Toast(Snackbar, "Delete failed", "Contract deleted."))
+        if (confirmed && (await Contracts.DeleteAsync(c.ContractId)).Toast(Snackbar, "Delete failed", "Contract deleted."))
         {
             _contracts.Remove(c);
             _details.Remove(c.ContractId);
@@ -835,7 +834,7 @@ public partial class ContractsCard
         }
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Contract ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Contract"));
 
     // ── Add/edit-party dialog ────────────────────────────────────────────────────
     // One dialog serves both (issue #121's new PUT): _editingParty is what switches it between
@@ -995,16 +994,16 @@ public partial class ContractsCard
     /// so it carries when that moment was. Null where the record has no date to point at.</summary>
     private static string? StatusFoot(ExistingContract c, bool oneOff) => c.Status switch
     {
-        ContractStatus.Archived => c.Archived is { } a ? $"since {LongDate(a)}" : null,
+        ContractStatus.Archived => c.Archived is { } a ? $"since {OdsDates.Long(a)}" : null,
         ContractStatus.Draft => "not yet marked ready for signature",
         ContractStatus.Ready => c.Ready is { } r
-            ? $"ready since {LongDate(r)} — waiting on a signature"
+            ? $"ready since {OdsDates.Long(r)} — waiting on a signature"
             : "waiting on a signature",
-        ContractStatus.Paused => c.Paused is { } p ? $"since {LongDate(p)}" : null,
-        ContractStatus.Expired => c.EndDate is { } e ? $"since {LongDate(e)}" : null,
-        ContractStatus.Upcoming => c.StartDate is { } s ? $"starts {LongDate(s)}" : null,
-        _ when oneOff => c.CompletionDate is { } d ? $"completed {LongDate(d)}" : null,
-        _ => c.StartDate is { } s ? $"since {LongDate(s)}" : null,
+        ContractStatus.Paused => c.Paused is { } p ? $"since {OdsDates.Long(p)}" : null,
+        ContractStatus.Expired => c.EndDate is { } e ? $"since {OdsDates.Long(e)}" : null,
+        ContractStatus.Upcoming => c.StartDate is { } s ? $"starts {OdsDates.Long(s)}" : null,
+        _ when oneOff => c.CompletionDate is { } d ? $"completed {OdsDates.Long(d)}" : null,
+        _ => c.StartDate is { } s ? $"since {OdsDates.Long(s)}" : null,
     };
 
     /// <summary>
@@ -1165,17 +1164,11 @@ public partial class ContractsCard
                 Label = "Copy reference number",
                 TrailingIcon = "content_copy",
                 OnClick = EventCallback.Factory.Create(this,
-                    () => Clipboard.CopyAsync(referenceNumber, "Reference number copied.")),
+                    () => Clipboard.CopyAsync(referenceNumber, OdsCopied.Value("Reference number"))),
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(c.ContractId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(c.ContractId))));
 
         if (_canUpdate)
         {
@@ -1215,7 +1208,6 @@ public partial class ContractsCard
         return items;
     }
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Collapsed headline figure (mirrors the design's conHeadline) ──────────────
     private (bool HasValue, string Value, string Word, string Cls) Headline(ContractListItem c)
@@ -1227,7 +1219,7 @@ public partial class ContractsCard
         if (c.Status == ContractStatus.Paused)
         {
             return c.Paused is { } pausedAt
-                ? (true, pausedAt.ToString("MMM dd, yyyy"), "paused", "paused")
+                ? (true, OdsDates.Long(pausedAt), "paused", "paused")
                 : (false, "Paused", "paused", "paused");
         }
 
@@ -1247,7 +1239,7 @@ public partial class ContractsCard
         if (c.Status == ContractStatus.Ready)
         {
             return c.Ready is { } readyAt
-                ? (true, readyAt.ToString("MMM dd, yyyy"), "ready for signature", "soon")
+                ? (true, OdsDates.Long(readyAt), "ready for signature", "soon")
                 : (false, "Ready", "ready for signature", "soon");
         }
 
@@ -1255,12 +1247,12 @@ public partial class ContractsCard
         if (c.CompletionDate is { } completion)
         {
             if (c.Status == ContractStatus.Archived)
-                return (true, completion.ToString("MMM dd, yyyy"), "archived", "archived");
+                return (true, OdsDates.Long(completion), "archived", "archived");
             var toGo = (completion.Date - Today).Days;
             var oneOffWord = toGo > 0
                 ? $"completes in {toGo} day{(toGo == 1 ? "" : "s")}"
                 : "one-off";
-            return (true, completion.ToString("MMM dd, yyyy"), oneOffWord, "");
+            return (true, OdsDates.Long(completion), oneOffWord, "");
         }
 
         switch (c.Status)
@@ -1269,19 +1261,19 @@ public partial class ContractsCard
             {
                 var days = (start.Date - Today).Days;
                 var word = days <= 0 ? "starts today" : $"starts in {days} day{(days == 1 ? "" : "s")}";
-                return (true, start.ToString("MMM dd, yyyy"), word, "");
+                return (true, OdsDates.Long(start), word, "");
             }
             case ContractStatus.Expired when c.EndDate is { } end:
             {
                 var days = (Today - end.Date).Days;
                 var word = days <= 0 ? "expired today" : $"expired {days} day{(days == 1 ? "" : "s")} ago";
-                return (true, end.ToString("MMM dd, yyyy"), word, "expired");
+                return (true, OdsDates.Long(end), word, "expired");
             }
             case ContractStatus.Archived:
             {
                 var anchor = c.EndDate ?? c.StartDate;
                 return anchor is { } a
-                    ? (true, a.ToString("MMM dd, yyyy"), "archived", "archived")
+                    ? (true, OdsDates.Long(a), "archived", "archived")
                     : (false, "Archived", "archived", "archived");
             }
             default: // Active
@@ -1290,7 +1282,7 @@ public partial class ContractsCard
                     var days = (activeEnd.Date - Today).Days;
                     var soon = days <= EndingWindowDays;
                     var word = days <= 0 ? "ends today" : $"ends in {days} day{(days == 1 ? "" : "s")}";
-                    return (true, activeEnd.ToString("MMM dd, yyyy"), word, soon ? "soon" : "");
+                    return (true, OdsDates.Long(activeEnd), word, soon ? "soon" : "");
                 }
                 return (false, "Open-ended", "no end date", "");
         }

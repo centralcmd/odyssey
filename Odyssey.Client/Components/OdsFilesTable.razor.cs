@@ -316,7 +316,7 @@ public partial class OdsFilesTable
         FormatSize?.Invoke(file.SizeBytes) ?? DefaultFormatSize(file.SizeBytes);
 
     private string DateText(DateTime uploadedUtc) =>
-        FormatDate?.Invoke(uploadedUtc) ?? uploadedUtc.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+        FormatDate?.Invoke(uploadedUtc) ?? OdsDates.LongUnpadded(uploadedUtc.ToLocalTime());
 
     /// <summary>Compact form for the validity columns — four extra date columns can't each carry a
     /// long-form date without overflowing the row.</summary>

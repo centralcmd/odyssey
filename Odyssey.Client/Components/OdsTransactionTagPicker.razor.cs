@@ -255,7 +255,4 @@ public partial class OdsTransactionTagPicker
 
         StateHasChanged();
     }
-
-    /// <summary>Clears the picker's own duplicate-name verdict — for a host reopening or resubmitting.</summary>
-    public void ClearDuplicateError() => _duplicateError = null;
 }

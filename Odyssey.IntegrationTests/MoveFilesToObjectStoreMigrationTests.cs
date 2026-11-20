@@ -30,12 +30,11 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
     public async Task The_reference_counters_set_is_the_same_before_and_after_the_migration()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         try
         {
             await using var context = NewContext();
-            await MigrationSeam.MigrateToAsync(context, Baseline);
             var before = await ReferencingColumnsAsync(context);
             await MigrationSeam.MigrateToAsync(context, Migration);
             var after = await ReferencingColumnsAsync(context);
@@ -117,13 +116,6 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

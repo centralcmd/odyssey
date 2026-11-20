@@ -22,15 +22,11 @@
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
 
-    <MudTextField @bind-Value="_name"
-                  Label="Statement name"
-                  Required="true"
-                  Placeholder="e.g. Tax year 2025"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Error="@_nameError"
-                  ErrorText="Give the statement a name."
-                  Immediate="true" />
+    <OdsField @bind-Value="_name"
+              Label="Statement name"
+              Required="true"
+              Placeholder="e.g. Tax year 2025"
+              Error="@(_nameError ? "Give the statement a name." : null)" />
 
     <OdsFormRow>
         <OdsNumberField Value="@((decimal?)_fiscalYear)" ValueChanged="OnYearChanged"
@@ -85,14 +81,11 @@
         <div></div>
     </OdsFormRow>
 
-    <MudTextField @bind-Value="_notes"
-                  Label="Notes"
-                  Placeholder="Anything worth remembering about this statement…"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Lines="3"
-                  Class="odc-field-multiline"
-                  FullWidth="true" />
+    <OdsField @bind-Value="_notes"
+              Label="Notes"
+              Placeholder="Anything worth remembering about this statement…"
+              Multiline="true"
+              Rows="3" />
 
     @* Derivation tags stay edit-only: POST /api/tax-statements carries no tag ids, and the tags are
        set by their own PUT against an id that does not exist until the statement is created. *@

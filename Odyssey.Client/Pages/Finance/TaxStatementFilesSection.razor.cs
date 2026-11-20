@@ -12,6 +12,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementFilesSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter, EditorRequired] public Guid StatementId { get; set; }
 
     /// <summary>Statement name — shown as the context line in the file viewer.</summary>
@@ -164,7 +166,7 @@ public partial class TaxStatementFilesSection
         if (CanDownload)
             menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)) });
 
-        menu.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied.")) });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), OdsCopied.Id("File")))));
 
         return menu;
     }
@@ -175,8 +177,7 @@ public partial class TaxStatementFilesSection
         if (content is null)
         { Snackbar.Add("Download failed.", Severity.Error); return; }
 
-        var contentType = content.ContentType ?? "application/octet-stream";
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileMetadata.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, file.FileMetadata.FileName);
     }
 
     // "Preview" opens the design-system file viewer (FilePreviewDialog), the same
@@ -207,12 +208,9 @@ public partial class TaxStatementFilesSection
 
     private async Task ConfirmDetachAsync(ExistingTaxStatementFile file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach document",
-            $"Detach '{file.FileMetadata.FileName}' from this tax statement?",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileMetadata.FileName}' from this tax statement?", "Detach", "link_off");
 
-        if (confirmed == true
+        if (confirmed
             && (await TaxStatements.DetachFileAsync(StatementId, file.FileMetadata.Id)).Toast(Snackbar, "Detach failed", "Document detached."))
         {
             await OnChanged.InvokeAsync();

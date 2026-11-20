@@ -17,6 +17,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ExistingTaxStatement> _statements = [];
     // Server-computed rollup backing the header count + the year-over-year overview charts (issue
@@ -435,11 +437,8 @@ public partial class TaxStatementsCard
     private async Task ConfirmDelete(ExistingTaxStatement s)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete tax statement",
-            $"Delete '{s.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed == true && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
+        var confirmed = await _confirm.AskAsync("Delete tax statement", $"Delete '{s.Name}'? This cannot be undone.", "Delete");
+        if (confirmed && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
         {
             _statements.Remove(s);
             _reports.Remove(s.TaxStatementId);
@@ -453,7 +452,7 @@ public partial class TaxStatementsCard
         }
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tax statement ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Tax statement"));
 
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a
     /// record body labels, it does not act — so "Attach documents" is the documents section's only entry
@@ -505,13 +504,7 @@ public partial class TaxStatementsCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId))));
 
         if (_canUpdate)
         {
@@ -574,7 +567,6 @@ public partial class TaxStatementsCard
 
     private static string? StatusFoot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Foot(s);
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────
     // Mirrors the design system's taxMoney: the amount with its ISO code trailing (e.g.

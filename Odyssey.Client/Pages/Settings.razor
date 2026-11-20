@@ -63,7 +63,7 @@
     @* The setup signal (issue #445, extended by #8). An unreadable credential is an OUTAGE, not a
        settings problem: the value is stored and its consumer is failing right now, and neither the
        cause nor the fix is a Save. So it goes in the header's severity rollup — the same gesture
-       Accounts, Insurance and Tax statements use for a data condition needing attention — and
+       Accounts and Tax statements use for a data condition needing attention — and
        deliberately NOT into BlockingProblems, which exists to explain a disabled Save button. Merging
        them would make Save look blocked by something Save cannot fix.
 

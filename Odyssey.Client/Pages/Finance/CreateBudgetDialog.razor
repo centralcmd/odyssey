@@ -18,15 +18,11 @@
                OnSubmit="SaveAsync">
 
     <!-- Budget name -->
-    <MudTextField @bind-Value="_name"
-                  Label="Budget name"
-                  Required="true"
-                  Placeholder="e.g. January 2025"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Error="@_nameError"
-                  ErrorText="Give the budget a name."
-                  Immediate="true" />
+    <OdsField @bind-Value="_name"
+              Label="Budget name"
+              Required="true"
+              Placeholder="e.g. January 2025"
+              Error="@(_nameError ? "Give the budget a name." : null)" />
 
     <!-- Start + End date -->
     <OdsFormRow>

@@ -50,11 +50,10 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_is_purely_additive_over_a_populated_database()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
 
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
             await SeedAccountEstimateAndSmartTagAsync(context);
         }
 
@@ -493,13 +492,4 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 }

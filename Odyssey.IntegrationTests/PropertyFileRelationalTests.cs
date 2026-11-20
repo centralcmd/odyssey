@@ -51,11 +51,10 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_is_purely_additive_and_reversible_over_a_populated_database()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
 
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
             await context.Database.ExecuteSqlRawAsync($"""
                 INSERT INTO `Properties` (`PropertyId`, `Name`, `Description`, `Type`, `CurrencyCode`, `CreatedAt`, `UpdatedAt`)
                 VALUES ('{Guid.NewGuid()}', 'Pre-existing', '', 0, 'USD', '2026-01-01', '2026-01-01')
@@ -514,14 +513,5 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
         }
 
         return new OdysseyContext(builder.Options);
-    }
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 }

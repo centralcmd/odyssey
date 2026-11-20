@@ -85,7 +85,7 @@
                                         <span class="prop-lib-ic"><OdsMIcon Name="@ContentTypeIcon(file.ContentType)" Size="16" /></span>
                                         <span class="prop-lib-text">
                                             <span class="prop-lib-name">@file.FileName</span>
-                                            <span class="prop-lib-meta">@ContentTypeShort(file.ContentType) · @OdsFileUploadDefaults.FmtSize(file.SizeBytes) · uploaded @LongDate(file.UploadedAtUtc)</span>
+                                            <span class="prop-lib-meta">@ContentTypeShort(file.ContentType) · @OdsFileUploadDefaults.FmtSize(file.SizeBytes) · uploaded @OdsDates.Long(file.UploadedAtUtc)</span>
                                         </span>
                                         @if (ReasonOf(state, file) is { } reason)
                                         {

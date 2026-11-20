@@ -72,7 +72,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
     public async Task Every_property_and_vehicle_account_becomes_a_property_under_the_same_guid()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         try
         {
@@ -80,7 +80,6 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
             AccountTypeRetirementReport? report;
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 seed = await SeedAsync(context);
                 report = await AccountTypeRetirementReport.ReadIfPendingAsync(context, CancellationToken.None);
             }
@@ -226,13 +225,12 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
     public async Task A_replay_is_idempotent_before_the_check_and_reported_as_drift_after_it()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         try
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 await SeedAsync(context);
                 await MigrationSeam.MigrateToAsync(context, Subject);
             }
@@ -285,14 +283,13 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
     public async Task A_retained_account_and_its_property_are_two_records_under_one_guid()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         try
         {
             Seeded seed;
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 seed = await SeedAsync(context);
                 await MigrationSeam.MigrateToAsync(context, Subject);
 
@@ -354,12 +351,11 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
         }
 
         // A populated database at the baseline: counted before, logged after, exactly once.
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
         try
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 await SeedAsync(context);
             }
 

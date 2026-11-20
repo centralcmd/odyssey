@@ -262,9 +262,36 @@ public class TuningSystemSettingsApiTests
     /// Every one of the fifteen, below its minimum and above its maximum. The message asserted is the
     /// attribute's own <c>ErrorMessage</c> — which names the bound and why it exists — rather than a
     /// bare "out of range", because that explanation is the only thing the administrator sees.
+    ///
+    /// <para>
+    /// Run against the attributes directly, as model validation runs them, rather than one host per
+    /// case: that the bounds are the pair is <c>SystemSettingsBoundsTests</c>' job, and that the
+    /// attributes are wired on the HTTP path is the representative theory below.
+    /// </para>
     /// </summary>
     [Theory]
     [MemberData(nameof(OutOfRangeCases))]
+    public void OutsideTheRange_IsRejected_WithTheFieldKeyedMessage(string field, int value, string expectedFragment)
+    {
+        var request = new SystemSettingsUpdate();
+        typeof(SystemSettingsUpdate).GetProperty(field)!.SetValue(request, value);
+
+        var results = new List<ValidationResult>();
+        Assert.False(Validator.TryValidateObject(
+            request, new ValidationContext(request), results, validateAllProperties: true));
+
+        var error = Assert.Single(results);
+        Assert.Equal([field], error.MemberNames);
+        Assert.Contains(expectedFragment, error.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same rule over real HTTP, for representatives only: a two-ended int range, a single-direction
+    /// key pinned at its shipped default, and a ceiling-derived key whose message renders the
+    /// <c>RangeAttribute</c> placeholders.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(RepresentativeOutOfRangeCases))]
     public async Task Put_OutsideTheRange_IsRejected_WithTheFieldKeyedMessage(
         string field, int value, string expectedFragment)
     {
@@ -280,6 +307,29 @@ public class TuningSystemSettingsApiTests
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains(field, body, StringComparison.Ordinal);
         Assert.Contains(expectedFragment, body, StringComparison.Ordinal);
+    }
+
+    public static TheoryData<string, int, string> RepresentativeOutOfRangeCases()
+    {
+        // One end each, taken from the full table so the value and fragment cannot drift from it:
+        // below a two-ended floor, above a single-direction ceiling pinned at its default, and above a
+        // ceiling-derived maximum whose message renders the {1}/{2} placeholders.
+        (string Field, bool Below)[] representatives =
+        [
+            (nameof(SystemSettingsUpdate.FileAnalysisMaxTokens), true),
+            (nameof(SystemSettingsUpdate.RecurrenceMaxGeneratedOccurrences), false),
+            (nameof(SystemSettingsUpdate.AccountMaxSmartTagsPerAccount), false),
+        ];
+
+        var rows = OutOfRangeCases().Select(row => ((string)row[0], (int)row[1], (string)row[2])).ToList();
+        var data = new TheoryData<string, int, string>();
+        foreach (var (field, below) in representatives)
+        {
+            var (_, value, fragment) = rows.Where(row => row.Item1 == field).OrderBy(row => row.Item2).ElementAt(below ? 0 : 1);
+            data.Add(field, value, fragment);
+        }
+
+        return data;
     }
 
     public static TheoryData<string, int, string> OutOfRangeCases()

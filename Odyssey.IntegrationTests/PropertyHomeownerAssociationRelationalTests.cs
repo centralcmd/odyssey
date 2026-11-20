@@ -34,12 +34,11 @@ public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_adds_a_nullable_set_null_key_and_leaves_existing_rows_null()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
 
         var propertyId = Guid.NewGuid();
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
             await context.Database.ExecuteSqlRawAsync($"""
                 INSERT INTO `Properties` (`PropertyId`, `Name`, `Description`, `Type`, `CurrencyCode`, `CreatedAt`, `UpdatedAt`)
                 VALUES ('{propertyId}', 'Pre-existing', '', 0, 'USD', '2026-01-01', '2026-01-01');
@@ -188,13 +187,4 @@ public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 }

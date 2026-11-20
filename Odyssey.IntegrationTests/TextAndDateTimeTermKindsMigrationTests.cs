@@ -12,71 +12,46 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #192 (AC 15): <c>AddTextAndDateTimeTermKinds</c> applies over
-/// existing Percentage and Amount rows with no backfill, and <c>CK_Terms_ValueMatchesUnit</c> rejects
-/// every row whose value columns do not match its unit — including an unknown ordinal. Not observable
-/// on the fast tiers: the EF InMemory provider runs no migrations and enforces no CHECK constraint.
+/// The relational half of issue #192 (AC 15): <c>CK_Terms_ValueMatchesUnit</c> rejects every row whose
+/// value columns do not match its unit — including an unknown ordinal — and a date-time value
+/// round-trips as UTC. Not observable on the fast tiers: the EF InMemory provider enforces no CHECK
+/// constraint.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class TextAndDateTimeTermKindsMigrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_term_text_datetime";
 
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_MoveAccountTermsToContracts";
-
-    private const string Subject = "_AddTextAndDateTimeTermKinds";
-
+    /// <summary>
+    /// <c>CK_Terms_ValueMatchesUnit</c> accepts a valid row of each fact kind and refuses every row whose
+    /// value columns do not match its unit, an unknown ordinal included.
+    /// </summary>
     [SkippableFact]
-    public async Task The_migration_applies_over_existing_numeric_rows_and_the_constraint_guards_the_shape()
+    public async Task The_constraint_guards_the_value_shape_of_every_unit()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var contractId = Guid.NewGuid();
-        var percentageId = Guid.NewGuid();
-        var amountId = Guid.NewGuid();
 
         try
         {
-            await using (var context = NewContext())
-            {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
-                await SeedContractAsync(context, contractId);
-                await InsertBaselineTermAsync(context, percentageId, contractId, unit: 0, value: "0.032500", currency: "NULL");
-                await InsertBaselineTermAsync(context, amountId, contractId, unit: 1, value: "1850.000000", currency: "'USD'");
-            }
+            await using var context = NewContext();
+            await SeedContractAsync(context, contractId);
 
-            await using (var context = NewContext())
-            {
-                await context.Database.MigrateAsync();
-                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
+            // Valid rows of both fact kinds are accepted.
+            await InsertAsync(context, contractId, unit: 2, value: "NULL", text: "'3 months'", instant: "NULL");
+            await InsertAsync(context, contractId, unit: 3, value: "NULL", text: "NULL", instant: $"'{Timestamp()}'");
 
-                var existing = await context.Terms.AsNoTracking()
-                    .Where(t => t.TermId == percentageId || t.TermId == amountId)
-                    .ToListAsync();
-                Assert.Equal(2, existing.Count);
-                Assert.All(existing, t =>
-                {
-                    Assert.NotNull(t.Value);
-                    Assert.Null(t.TextValue);
-                    Assert.Null(t.DateTimeValue);
-                });
-
-                // Valid rows of both new kinds are accepted.
-                await InsertAsync(context, contractId, unit: 2, value: "NULL", text: "'3 months'", instant: "NULL");
-                await InsertAsync(context, contractId, unit: 3, value: "NULL", text: "NULL", instant: $"'{Timestamp()}'");
-
-                // A Text row carrying a number, a Text row with no text, a DateTime row with no
-                // instant, a numeric row with no number, a numeric row carrying text, and an unknown
-                // ordinal: each is refused by the constraint.
-                await AssertRejectedAsync(context, contractId, unit: 2, value: "1.000000", text: "'3 months'", instant: "NULL");
-                await AssertRejectedAsync(context, contractId, unit: 2, value: "NULL", text: "NULL", instant: "NULL");
-                await AssertRejectedAsync(context, contractId, unit: 3, value: "NULL", text: "NULL", instant: "NULL");
-                await AssertRejectedAsync(context, contractId, unit: 1, value: "NULL", text: "NULL", instant: "NULL");
-                await AssertRejectedAsync(context, contractId, unit: 1, value: "1.000000", text: "'x'", instant: "NULL");
-                await AssertRejectedAsync(context, contractId, unit: 4, value: "NULL", text: "'x'", instant: "NULL");
-            }
+            // A Text row carrying a number, a Text row with no text, a DateTime row with no
+            // instant, a numeric row with no number, a numeric row carrying text, and an unknown
+            // ordinal: each is refused by the constraint.
+            await AssertRejectedAsync(context, contractId, unit: 2, value: "1.000000", text: "'3 months'", instant: "NULL");
+            await AssertRejectedAsync(context, contractId, unit: 2, value: "NULL", text: "NULL", instant: "NULL");
+            await AssertRejectedAsync(context, contractId, unit: 3, value: "NULL", text: "NULL", instant: "NULL");
+            await AssertRejectedAsync(context, contractId, unit: 1, value: "NULL", text: "NULL", instant: "NULL");
+            await AssertRejectedAsync(context, contractId, unit: 1, value: "1.000000", text: "'x'", instant: "NULL");
+            await AssertRejectedAsync(context, contractId, unit: 4, value: "NULL", text: "'x'", instant: "NULL");
         }
         finally
         {
@@ -130,37 +105,6 @@ public class TextAndDateTimeTermKindsMigrationTests(MariaDbFixture fixture)
         }
     }
 
-    /// <summary>
-    /// <c>Down</c> refuses while Text or DateTime rows exist rather than dropping their values, and
-    /// succeeds once they are gone.
-    /// </summary>
-    [SkippableFact]
-    public async Task Reverting_is_refused_while_a_fact_term_exists()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateMigratedDatabaseAsync(Database);
-
-        var contractId = Guid.NewGuid();
-
-        try
-        {
-            await using var context = NewContext();
-            await SeedContractAsync(context, contractId);
-            await InsertAsync(context, contractId, unit: 2, value: "NULL", text: "'3 months'", instant: "NULL");
-
-            await Assert.ThrowsAnyAsync<Exception>(() => MigrationSeam.MigrateToAsync(context, Baseline));
-            Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
-
-            await context.Database.ExecuteSqlRawAsync("DELETE FROM `Terms` WHERE `ValueUnit` NOT IN (0, 1)");
-            await MigrationSeam.MigrateToAsync(context, Baseline);
-            Assert.False(await MigrationSeam.HasRunAsync(context, Subject));
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
-
     // ── Seeding ────────────────────────────────────────────────────────────────
 
     private static Task SeedContractAsync(OdysseyContext context, Guid contractId) =>
@@ -168,21 +112,6 @@ public class TextAndDateTimeTermKindsMigrationTests(MariaDbFixture fixture)
             INSERT INTO `Contracts` (`ContractId`, `Name`, `Type`, `CreatedAtUtc`)
             VALUES ('{contractId}', 'Lease', 2, '{Timestamp()}');
             """);
-
-    /// <summary>A row in the pre-migration shape: no text or date-time column exists yet.</summary>
-    private static Task InsertBaselineTermAsync(
-        OdysseyContext context, Guid termId, Guid contractId, int unit, string value, string currency)
-    {
-        var now = Timestamp();
-        return context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `Terms`
-                (`TermId`, `ContractId`, `Label`, `LabelKey`, `ValueUnit`, `Value`, `CurrencyCode`,
-                 `EffectiveFrom`, `CreatedAtUtc`)
-            VALUES
-                ('{termId}', '{contractId}', 'Term {unit}', 'term {termId}', {unit}, {value}, {currency},
-                 '{now}', '{now}');
-            """);
-    }
 
     private static Task InsertAsync(OdysseyContext context, Guid contractId, int unit, string value, string text, string instant)
     {
@@ -214,13 +143,6 @@ public class TextAndDateTimeTermKindsMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

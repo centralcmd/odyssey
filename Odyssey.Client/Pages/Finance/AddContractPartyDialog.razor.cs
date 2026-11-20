@@ -164,7 +164,7 @@ public partial class AddContractPartyDialog
     /// <summary>
     /// Ids already linked to this contract <b>for the chosen kind AND in the chosen role</b>. Both
     /// halves matter: uniqueness is <i>(contract, target, role)</i>, so a record linked as Seller is
-    /// still offerable as Service provider — and a contract role, unlike an insurance one, implies
+    /// still offerable as Buyer — and a contract role implies
     /// nothing about which kind of record holds it. The party BEING EDITED is not "already linked" as
     /// far as its own picker is concerned; only its siblings are.
     /// </summary>

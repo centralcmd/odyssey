@@ -86,7 +86,10 @@ public class JournalTagIconApiTests
         var data = new TheoryData<Kind, string>();
         foreach (var kind in Enum.GetValues<Kind>())
         {
-            foreach (var icon in new[] { "local_offer", "", "  ", "Beach_Access", "<svg>", "not_an_icon_zq", new string('q', TagIcons.MaxKeyLength + 1) })
+            // Representatives only: the full list runs in Odyssey.Core.Tests against the attribute stack
+            // on every [TagIcon] property (TagIconsTests) and every tag service (JournalTagIconServiceTests).
+            // "<svg>" reaches [TagIcon] and the never-echoes check; the over-long key reaches [StringLength].
+            foreach (var icon in new[] { "<svg>", new string('q', TagIcons.MaxKeyLength + 1) })
             {
                 data.Add(kind, icon);
             }
