@@ -68,10 +68,10 @@ public partial class ExchangeRateSyncSurfaceTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims));
+        ctx.UseInteractivity();
         _popover = ctx.Render<MudPopoverProvider>();
         _dialogs = ctx.Render<MudDialogProvider>();
         ctx.Render<MudSnackbarProvider>();
-        CurrenciesCard.InteractiveCheck = static () => true;
         return (ctx, sync, currencies);
     }
 

@@ -26,7 +26,7 @@ namespace Odyssey.Client.Tests;
 /// a linked location's weather sections, the options cache, the bounded claims refresh and the quiet toast.
 /// </summary>
 [Collection(nameof(WeatherWidgetSeam))]
-public partial class WeatherPointsUiTests : IDisposable
+public partial class WeatherPointsUiTests
 {
     private static readonly Guid OsloId = Guid.Parse("0510a000-0000-0000-0000-000000000001");
     private static readonly Guid BergenId = Guid.Parse("0510a000-0000-0000-0000-000000000002");
@@ -38,12 +38,6 @@ public partial class WeatherPointsUiTests : IDisposable
         PermissionClaims.WeatherPointsDelete, PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate,
         PermissionClaims.SystemSettingsRead,
     ];
-
-    public void Dispose()
-    {
-        WeatherPointsPage.InteractiveCheck = OperatingSystem.IsBrowser;
-        LocationsPage.InteractiveCheck = OperatingSystem.IsBrowser;
-    }
 
     // ── Navigation and the page gate (AC 1, 22) ───────────────────────────────────────────────────
 
@@ -1284,7 +1278,7 @@ public partial class WeatherPointsUiTests : IDisposable
         // Both pages draw OdsLocationMap in an expanded record.
         ctx.Services.AddSingleton(new Mock<IMapStylesCache>().Object);
         ctx.Services.AddSingleton(Mock.Of<Odyssey.Client.Theme.IUserPreferenceService>(p => p.Current == new Odyssey.Client.Theme.UserPreferencesPage(true, "NOK", "NOK")));
-        WeatherPointsPage.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         return ctx;
     }
 
@@ -1318,7 +1312,7 @@ public partial class WeatherPointsUiTests : IDisposable
     {
         var ctx = PageContext(weather ?? Weather(), [PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate, PermissionClaims.WeatherRead], locations);
         ctx.Services.AddSingleton(new Mock<IClipboardService>().Object);
-        LocationsPage.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         return ctx;
     }
 

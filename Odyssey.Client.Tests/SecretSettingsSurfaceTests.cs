@@ -20,16 +20,8 @@ namespace Odyssey.Client.Tests;
 /// The Credentials group on <c>/settings</c> (issue #444 §16 ACs 16, 35, 39–41), plus the source-lints
 /// that pin the two properties no render can prove.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class SecretSettingsSurfaceTests : IDisposable
+public class SecretSettingsSurfaceTests
 {
-    /// <summary>
-    /// Restores the page's browser-check seam after every test. It is <c>internal static</c>, so a
-    /// test that moved it and did not put it back would change what every later test sees — the
-    /// process-wide-versus-per-instance hazard CLAUDE.md records for <c>RequestCapCeilings</c>.
-    /// </summary>
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static string PageMarkup() =>
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
 
@@ -309,7 +301,6 @@ public class SecretSettingsSurfaceTests : IDisposable
         Assert.Equal(SecretSettingKeys.EmailPassword, field.Instance.SecretKey);
         Assert.DoesNotContain("No settings match", page.Markup, StringComparison.Ordinal);
     }
-
 
     /// <summary>
     /// The five migrated credentials render as rows, each with the title, description, consequence and

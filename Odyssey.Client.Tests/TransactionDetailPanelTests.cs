@@ -21,7 +21,6 @@ namespace Odyssey.Client.Tests;
 /// Account tile's. None of that shows as broken in a screenshot of one seeded transaction, which is
 /// why it is pinned here. The section's file load is skipped off-browser, so these render no requests.
 /// </remarks>
-[Collection(TransactionDialogCollection.Name)]
 public sealed class TransactionDetailPanelTests : IAsyncLifetime
 {
     private readonly BunitContext ctx = new();
@@ -30,6 +29,8 @@ public sealed class TransactionDetailPanelTests : IAsyncLifetime
     {
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
+        // The panel's files section does not load its list here; these tests assert the frame alone.
+        ctx.UseInteractivity(false);
         var uploadLimits = new Mock<IUploadLimitsCache>();
         uploadLimits.Setup(u => u.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(UploadLimitsCache.Fallback);
         ctx.Services.AddSingleton(uploadLimits.Object);

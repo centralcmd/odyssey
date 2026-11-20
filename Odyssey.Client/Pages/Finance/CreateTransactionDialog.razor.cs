@@ -89,20 +89,11 @@ public partial class CreateTransactionDialog
         : "Income — click the sign, or type − in the amount, for expense.";
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
-    /// <summary>
-    /// Whether the dialog is running interactively; the claim and reference-data load is skipped
-    /// off-browser (prerender).
-    /// </summary>
-    /// <remarks>
-    /// A swappable seam, as <c>TransactionListView.InteractiveCheck</c> is, so bUnit can drive the
-    /// edit-mode save path. Process-wide: a test class that moves it must restore it and run in the
-    /// <c>TransactionDialogCollection</c>.
-    /// </remarks>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
             return;
 
         var user = await AuthenticationStateProvider.GetUserAsync();

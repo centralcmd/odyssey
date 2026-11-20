@@ -20,12 +20,8 @@ namespace Odyssey.Client.Tests;
 /// system-settings-data.js): the section order, the explicit tighten-only rows, the per-row "last
 /// changed" stamp, the header rollup's label and the persistent alert a 403 save raises.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class SystemSettingsDesignSyncTests : IDisposable
+public class SystemSettingsDesignSyncTests
 {
-    /// <summary>Restores the page's browser-check seam, which is <c>internal static</c>.</summary>
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private const string DesignData = "ui_kits/web/system-settings-data.js";
 
     [SkippableFact]

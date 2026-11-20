@@ -65,15 +65,11 @@ public partial class CurrenciesCard
     private int _archivedCount => _allCurrencies.Count - _activeCount;
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.Count > 0;
 
-    /// <summary>
-    /// Whether the page runs interactively; a swappable seam for the reason <c>Settings.InteractiveCheck</c>
-    /// is one. Process-wide, so a test that moves it restores it (<c>ExchangeRateSyncCollection</c>).
-    /// </summary>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
             return;
 
         await LoadPermissionsAsync();

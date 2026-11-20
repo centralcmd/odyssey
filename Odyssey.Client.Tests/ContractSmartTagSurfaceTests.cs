@@ -696,6 +696,8 @@ public class ContractSmartTagSurfaceTests
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
+        // The embedded ledger's own claim load stays off: these tests drive the scoped read alone.
+        ctx.UseInteractivity(false);
 
         var tags = watched ?? [Tag(RentTagId, "Rent"), Tag(UtilitiesTagId, "Utilities")];
 

@@ -25,7 +25,6 @@ namespace Odyssey.Client.Tests;
 /// detaching to the Documents section — and it pins the required date, the one Save-blocking rule the
 /// form adds on top of the DTO.
 /// </summary>
-[Collection(TransactionDialogCollection.Name)]
 public sealed class TransactionDialogTests : IAsyncLifetime
 {
     private static readonly Guid AccountId = Guid.NewGuid();
@@ -44,9 +43,8 @@ public sealed class TransactionDialogTests : IAsyncLifetime
     public TransactionDialogTests()
     {
         // A bUnit host is not a browser, so the dialog's reference-data load (which resolves the
-        // transaction's account — without it Save stops at validation) would be skipped. Restored on
-        // teardown.
-        CreateTransactionDialog.InteractiveCheck = static () => true;
+        // transaction's account — without it Save stops at validation) would be skipped.
+        ctx.UseInteractivity();
 
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
@@ -92,7 +90,6 @@ public sealed class TransactionDialogTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        CreateTransactionDialog.InteractiveCheck = static () => OperatingSystem.IsBrowser();
         await ctx.DisposeAsync();
     }
 

@@ -38,7 +38,6 @@ public class WeatherDayHoursTests : IDisposable
     {
         WeatherDayHours.ViewerOffset = static utc => TimeZoneInfo.Local.GetUtcOffset(utc);
         WeatherRetry.CoolDown = TimeSpan.FromSeconds(10);
-        WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
         WeatherWidget.LocalNow = static () => DateTime.Now;
     }
 
@@ -585,9 +584,9 @@ public class WeatherDayHoursTests : IDisposable
     [Fact]
     public void On_the_dashboard_card_the_panel_heading_sits_one_level_below_the_cards_h2()
     {
-        WeatherWidget.InteractiveCheck = static () => true;
         WeatherWidget.LocalNow = static () => new DateTime(2026, 10, 23, 10, 0, 0);
         var (ctx, weather) = Context();
+        ctx.UseInteractivity();
         using var _ = ctx;
         weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(Current()));
         weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), null, It.IsAny<CancellationToken>()))

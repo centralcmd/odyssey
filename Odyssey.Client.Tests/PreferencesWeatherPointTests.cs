@@ -22,16 +22,13 @@ namespace Odyssey.Client.Tests;
 /// Preferences → Weather point): the dashboard card's choice, saved through the weather endpoint and
 /// never in the page's preferences blob.
 /// </summary>
-[Collection(nameof(PreferencesSeam))]
-public class PreferencesWeatherPointTests : IDisposable
+public class PreferencesWeatherPointTests
 {
     private static readonly WeatherPointRef Home = new() { WeatherPointId = Guid.NewGuid(), Name = "Home" };
     private static readonly WeatherPointRef Cabin = new() { WeatherPointId = Guid.NewGuid(), Name = "Cabin" };
 
     private readonly Mock<IWeatherApiClient> weather = new();
     private readonly Mock<IUserPreferenceService> preferences = new();
-
-    public void Dispose() => Preferences.InteractiveCheck = OperatingSystem.IsBrowser;
 
     [Fact]
     public async Task The_row_offers_the_household_default_first_and_opens_on_the_stored_place()
@@ -194,7 +191,7 @@ public class PreferencesWeatherPointTests : IDisposable
             : [PermissionClaims.UserPreferencesRead, PermissionClaims.WeatherRead]);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(auth);
         ctx.Services.AddSingleton<IWeatherPointOptionsCache>(new WeatherPointOptionsCache(weather.Object, auth));
-        Preferences.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         return ctx;
     }
 
@@ -205,7 +202,3 @@ public class PreferencesWeatherPointTests : IDisposable
                 [.. permissions.Select(p => new Claim(PermissionClaims.Type, p))], "test"))));
     }
 }
-
-/// <summary>Serialises the tests that set the Preferences page's static interactivity seam.</summary>
-[CollectionDefinition(nameof(PreferencesSeam), DisableParallelization = true)]
-public sealed class PreferencesSeam;

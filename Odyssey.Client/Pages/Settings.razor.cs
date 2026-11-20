@@ -156,23 +156,11 @@ public partial class Settings : IDisposable
     // client catalogue with these, so the server stays the single authority on which secrets exist.
     private readonly Dictionary<string, SecretSettingStatusDto> _secretStatuses = new(StringComparer.Ordinal);
 
-    /// <summary>
-    /// The interactivity check, as a seam (issue #444 §13 step 4a). <c>OnInitializedAsync</c> has to
-    /// early-return on the prerender pass, but that check is <c>false</c> in a bUnit host too, so a
-    /// render of this page would stop at the loading skeleton with no rows to assert against — and the
-    /// secret row would ship with no test that can render it inside the page it lives on.
-    ///
-    /// <para>
-    /// Following the precedent <c>PageStateService</c>'s <c>internal</c> constructor already sets for
-    /// exactly this problem. It is <c>internal</c>, so only <c>Odyssey.Client.Tests</c> can move it; a
-    /// test that does must restore it.
-    /// </para>
-    /// </summary>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
             return;
 
         await PageState.RestoreOrSeedAsync<SettingsPageState>(PageStateKey, ApplyPageState, BuildPageState);

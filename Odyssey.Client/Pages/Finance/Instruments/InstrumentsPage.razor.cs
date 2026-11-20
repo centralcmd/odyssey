@@ -30,11 +30,7 @@ public partial class InstrumentsPage : IDisposable
     /// <summary>The deep link (§3.3): <c>/instruments?instrument={id}</c>. Parsed with <see cref="Guid.TryParse(string?, out Guid)"/>.</summary>
     [SupplyParameterFromQuery(Name = "instrument")] public string? InstrumentQuery { get; set; }
 
-    /// <summary>
-    /// Whether the page runs interactively; a swappable seam, as on Currencies. Process-wide, so a test that moves
-    /// it restores it (<c>InstrumentsCollection</c>).
-    /// </summary>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     private List<ExistingInstrument> _instruments = [];
     private InstrumentSummary? _summary;
@@ -184,7 +180,7 @@ public partial class InstrumentsPage : IDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
             return;
 
         await LoadPermissionsAsync();
