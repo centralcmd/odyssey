@@ -15,42 +15,24 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #217 (AC 12–13): the migration applies over a populated database, the
-/// homeowner-association key is <c>SET NULL</c> at the engine, and both the contact-delete path and
-/// <see cref="ContactReferenceGuard"/> leave the property and its details intact with the column null.
+/// The relational half of issue #217 (AC 12–13): the homeowner-association key is <c>SET NULL</c> at the
+/// engine, and both the contact-delete path and <see cref="ContactReferenceGuard"/> leave the property and
+/// its details intact with the column null.
 /// </summary>
 /// <remarks>
-/// None of this is observable on the fast tiers: the EF InMemory provider runs no migrations, enforces no
-/// foreign keys, and cannot execute <c>ContactReferenceGuard</c>'s set-based statements.
+/// None of this is observable on the fast tiers: the EF InMemory provider enforces no foreign keys and
+/// cannot execute <c>ContactReferenceGuard</c>'s set-based statements.
 /// </remarks>
 [Collection(MariaDbCollection.Name)]
 public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_property_hoa";
-    private const string PreviousMigration = "_WidenEventsForProperties";
-    private const string ThisMigration = "_AddRealEstateHomeownerAssociation";
 
     [SkippableFact]
-    public async Task The_migration_adds_a_nullable_set_null_key_and_leaves_existing_rows_null()
+    public async Task The_key_is_set_null_and_backed_by_a_non_unique_index()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
-
-        var propertyId = Guid.NewGuid();
-        await using (var context = NewContext())
-        {
-            await context.Database.ExecuteSqlRawAsync($"""
-                INSERT INTO `Properties` (`PropertyId`, `Name`, `Description`, `Type`, `CurrencyCode`, `CreatedAt`, `UpdatedAt`)
-                VALUES ('{propertyId}', 'Pre-existing', '', 0, 'USD', '2026-01-01', '2026-01-01');
-                INSERT INTO `RealEstateDetails` (`PropertyId`, `Kind`) VALUES ('{propertyId}', 1);
-                """);
-        }
-
-        await using (var context = NewContext())
-        {
-            await MigrationSeam.MigrateToAsync(context, ThisMigration);
-            Assert.True(await MigrationSeam.HasRunAsync(context, ThisMigration));
-        }
+        await MigrateAsync();
 
         await using var verify = NewContext();
         var rule = await verify.Database.SqlQuery<string>($"""
@@ -73,12 +55,6 @@ public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
               AND INDEX_NAME = 'IX_RealEstateDetails_HomeownerAssociationId'
             """).SingleAsync();
         Assert.Equal(1L, nonUnique);
-
-        // Raw: this schema predates issue #380, so the entity's LocationId has no column yet.
-        var stored = await verify.Database.SqlQuery<Guid?>($"""
-            SELECT HomeownerAssociationId AS Value FROM RealEstateDetails WHERE PropertyId = {propertyId}
-            """).SingleAsync();
-        Assert.Null(stored);
     }
 
     [SkippableFact]

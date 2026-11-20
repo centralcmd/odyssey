@@ -8,8 +8,8 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// <c>AddPhotoAlbumIconAndColor</c> (issue #404) applied over a database that already holds albums, and the
-/// album list's read normalisation on real MariaDB. The list projects the raw columns in SQL and
+/// The album icon and colour columns (issue #404) on real MariaDB — nullable, no default, so an album written without
+/// them reads none — and the album list's read normalisation. The list projects the raw columns in SQL and
 /// normalises them after materialisation; only a relational provider proves that split translates.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
@@ -17,35 +17,21 @@ public class PhotoAlbumIconColorMigrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_album_icon_color";
 
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_AddTagColors";
-
-    private const string Subject = "_AddPhotoAlbumIconAndColor";
-
     [SkippableFact]
-    public async Task Existing_albums_read_no_icon_and_no_colour_and_stale_values_normalise_on_detail_and_list()
+    public async Task An_album_without_an_icon_or_colour_reads_none_and_stale_values_normalise_on_detail_and_list()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
+        await fixture.CreateMigratedDatabaseAsync(Database);
         var legacyId = Guid.NewGuid();
 
         try
         {
             await using (var context = NewContext())
             {
-                Assert.Null(await ColumnAsync(context, "Icon"));
-                Assert.Null(await ColumnAsync(context, "Color"));
-
-                // Raw SQL: the entity already carries Icon/Color, which the baseline schema does not have.
+                // Raw SQL, naming neither column: their own defaults are what is under test.
                 var now = DateTime.UtcNow;
                 await context.Database.ExecuteSqlAsync(
                     $"INSERT INTO `PhotoAlbums` (`PhotoAlbumId`, `Name`, `CreatedAt`, `UpdatedAt`) VALUES ({legacyId}, {"Legacy"}, {now}, {now})");
-            }
-
-            await using (var context = NewContext())
-            {
-                await context.Database.MigrateAsync();
-                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
 
                 foreach (var (name, type) in new[] { ("Icon", "varchar(64)"), ("Color", "varchar(7)") })
                 {

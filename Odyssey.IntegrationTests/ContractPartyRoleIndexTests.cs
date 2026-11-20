@@ -7,6 +7,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Odyssey.Context;
+using Odyssey.Dtos;
 using Xunit;
 using ContextAccountType = Odyssey.Context.AccountType;
 
@@ -114,7 +115,15 @@ public class ContractPartyRoleIndexTests(MariaDbFixture fixture)
     {
         if (contactId is { } contact)
         {
-            await BaselineContacts.AddOrganizationAsync(context, contact, "Counterparty");
+            context.Contacts.Add(new Contact
+            {
+                ContactId = contact,
+                ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+                NormalizedName = "COUNTERPARTY",
+                Type = ContactType.Organization,
+                OrganizationDetails = new() { LegalName = "Counterparty" },
+            });
+            await context.SaveChangesAsync();
         }
 
         if (accountId is { } account)

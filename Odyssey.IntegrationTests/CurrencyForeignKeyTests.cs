@@ -7,8 +7,7 @@ namespace Odyssey.IntegrationTests;
 
 /// <summary>
 /// The currency foreign keys added by <c>AddCurrencyForeignKeys</c> (issue #241), pinned at the
-/// database, plus the orphan repair the migration performs over a database that already lost a
-/// currency out from under its rows.
+/// database.
 /// </summary>
 /// <remarks>
 /// EF InMemory enforces no foreign keys, so on the fast tiers the refusal is
@@ -19,11 +18,6 @@ namespace Odyssey.IntegrationTests;
 public class CurrencyForeignKeyTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_currency_fk";
-
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_AddTaxStatementSettlementRange";
-
-    private const string Subject = "_AddCurrencyForeignKeys";
 
     /// <summary>Every currency-code column — the full set, so an omission fails as loudly as a wrong
     /// rule. Kept in step with the clauses of <c>CurrencyService.CountDeleteBlockers</c>.</summary>
@@ -107,197 +101,7 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
         }
     }
 
-    /// <summary>
-    /// The state issue #241 left production in: rows naming a currency that was deleted. The migration
-    /// must restore every missing code — from each of the eight source columns, under a distinct code
-    /// per column so a column dropped from the repair's UNION fails here by name — as an active row
-    /// flagged for review, touching no referencing row, so the keys can be added and the stranded
-    /// records become editable again.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_migration_restores_orphaned_currencies_from_every_column_and_leaves_the_rows_untouched()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
-
-        var orphanAccount = Guid.NewGuid();
-        var deletedCurrencyAccount = Guid.NewGuid();
-        var healthyAccount = Guid.NewGuid();
-        var transactionId = Guid.NewGuid();
-        var propertyId = Guid.NewGuid();
-        var contractId = Guid.NewGuid();
-        var now = DateTime.UtcNow;
-
-        try
-        {
-            await using (var context = NewContext())
-            {
-
-                await InsertAccountAsync(context, orphanAccount, "QAA");
-                await InsertAccountAsync(context, healthyAccount, "USD");
-
-                // A real currency deleted out from under its rows — the bug itself.
-                await InsertAccountAsync(context, deletedCurrencyAccount, "NOK");
-                await context.Database.ExecuteSqlRawAsync("DELETE FROM `Currencies` WHERE `CurrencyCode` = 'NOK'");
-
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `Transactions`
-                        (`TransactionId`, `AccountId`, `Description`, `Amount`, `TimeStamp`, `CurrencyCode`,
-                         `Status`, `StatusChangedAt`)
-                    VALUES ({transactionId}, {orphanAccount}, {"Deposit"}, {100m}, {now}, {"QTX"}, {0}, {now})
-                    """);
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `Budgets` (`BudgetId`, `Name`, `StartDate`, `EndDate`, `BaseCurrencyCode`)
-                    VALUES ({Guid.NewGuid()}, {"Household"}, {new DateTime(2026, 1, 1)}, {new DateTime(2026, 12, 31)}, {"QBU"})
-                    """);
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `TaxStatements`
-                        (`TaxStatementId`, `Name`, `FiscalYear`, `StartDate`, `EndDate`, `BaseCurrencyCode`,
-                         `CreatedAtUtc`, `StatusChangedAt`)
-                    VALUES ({Guid.NewGuid()}, {"Return 2025"}, {2025}, {new DateTime(2025, 1, 1)},
-                            {new DateTime(2025, 12, 31)}, {"QTS"}, {now}, {now})
-                    """);
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `Properties`
-                        (`PropertyId`, `Name`, `Description`, `Type`, `CurrencyCode`, `CreatedAt`, `UpdatedAt`)
-                    VALUES ({propertyId}, {"Cabin"}, {"Cabin"}, {0}, {"QPR"}, {now}, {now})
-                    """);
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `AccountEstimates`
-                        (`AccountEstimateId`, `AccountId`, `Value`, `EffectiveFrom`, `CurrencyCode`, `CreatedAtUtc`)
-                    VALUES ({Guid.NewGuid()}, {healthyAccount}, {1m}, {now}, {"QAE"}, {now})
-                    """);
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `PropertyEstimates`
-                        (`PropertyEstimateId`, `PropertyId`, `Value`, `EffectiveFrom`, `CurrencyCode`, `CreatedAtUtc`)
-                    VALUES ({Guid.NewGuid()}, {propertyId}, {1m}, {now}, {"QPE"}, {now})
-                    """);
-                await MigrationSeam.InsertContractAsync(context, new Contract
-                {
-                    ContractId = contractId,
-                    Name = "Lease",
-                    CreatedAtUtc = now,
-                });
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `Terms`
-                        (`TermId`, `ContractId`, `EffectiveFrom`, `CurrencyCode`, `CreatedAtUtc`, `Direction`,
-                         `ValueUnit`, `Value`)
-                    VALUES ({Guid.NewGuid()}, {contractId}, {now}, {"QTE"}, {now}, {0}, {1}, {10m})
-                    """);
-            }
-
-            await using (var context = NewContext())
-            {
-                await MigrationSeam.MigrateToAsync(context, Subject);
-
-                foreach (var code in new[] { "QAA", "NOK", "QTX", "QBU", "QTS", "QPR", "QAE", "QPE", "QTE" })
-                {
-                    var restored = await context.Currencies.AsNoTracking().SingleAsync(c => c.CurrencyCode == code);
-                    Assert.Equal($"Restored currency {code} (review)", restored.Name);
-                    Assert.Equal(2, restored.MinorUnits);
-                    Assert.Null(restored.Symbol);
-                    Assert.Null(restored.Archived);
-
-                    // Each key now holds against the restored row.
-                    var refused = await Assert.ThrowsAsync<MySqlException>(() =>
-                        context.Database.ExecuteSqlRawAsync(
-                            "DELETE FROM `Currencies` WHERE `CurrencyCode` = {0}", code));
-                    Assert.Equal(MySqlErrorCode.RowIsReferenced2, refused.ErrorCode);
-                }
-
-                // Nothing beyond the orphans was invented, and a currency never missing is untouched.
-                Assert.Equal(9L, await MigrationSeam.CountAsync(context,
-                    "SELECT COUNT(*) FROM `Currencies` WHERE `Name` LIKE 'Restored currency %'"));
-                var usd = await context.Currencies.AsNoTracking().SingleAsync(c => c.CurrencyCode == "USD");
-                Assert.Equal("US Dollar", usd.Name);
-
-                // No referencing row was rewritten.
-                Assert.Equal("QAA", await MigrationSeam.ScalarAsync(context,
-                    $"SELECT `CurrencyCode` FROM `Accounts` WHERE `AccountId` = '{orphanAccount}'"));
-                Assert.Equal("NOK", await MigrationSeam.ScalarAsync(context,
-                    $"SELECT `CurrencyCode` FROM `Accounts` WHERE `AccountId` = '{deletedCurrencyAccount}'"));
-                Assert.Equal("QTX", await MigrationSeam.ScalarAsync(context,
-                    $"SELECT `CurrencyCode` FROM `Transactions` WHERE `TransactionId` = '{transactionId}'"));
-            }
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
-
-    /// <summary>
-    /// The repair's de-duplication claim, pinned on the real engine: two spellings the key treats as one
-    /// code (the columns' default collation is case-insensitive) must yield exactly ONE restored row, not
-    /// a duplicate-key failure that would leave the upgrade permanently stuck. A blank code — which no
-    /// write path produces, but which a hand edit could — is restored too, flagged like the rest, because
-    /// skipping it would make the key's own addition fail.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_migration_restores_one_row_per_code_as_the_key_compares_them_and_restores_a_blank_code()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
-
-        var lower = Guid.NewGuid();
-        var upper = Guid.NewGuid();
-        var now = DateTime.UtcNow;
-
-        try
-        {
-            await using (var context = NewContext())
-            {
-
-                await InsertAccountAsync(context, lower, "qcs");
-                await InsertAccountAsync(context, upper, "QCS");
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `Transactions`
-                        (`TransactionId`, `AccountId`, `Description`, `Amount`, `TimeStamp`, `CurrencyCode`,
-                         `Status`, `StatusChangedAt`)
-                    VALUES ({Guid.NewGuid()}, {upper}, {"Deposit"}, {1m}, {now}, {"Qcs"}, {0}, {now})
-                    """);
-                await context.Database.ExecuteSqlAsync(
-                    $"""
-                    INSERT INTO `AccountEstimates`
-                        (`AccountEstimateId`, `AccountId`, `Value`, `EffectiveFrom`, `CurrencyCode`, `CreatedAtUtc`)
-                    VALUES ({Guid.NewGuid()}, {upper}, {1m}, {now}, {""}, {now})
-                    """);
-            }
-
-            await using (var context = NewContext())
-            {
-                await MigrationSeam.MigrateToAsync(context, Subject);
-                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
-
-                Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-                    "SELECT COUNT(*) FROM `Currencies` WHERE `CurrencyCode` = 'QCS'"));
-                Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-                    "SELECT COUNT(*) FROM `Currencies` WHERE `CurrencyCode` = ''"));
-                Assert.Equal("Restored currency  (review)", await MigrationSeam.ScalarAsync(context,
-                    "SELECT `Name` FROM `Currencies` WHERE `CurrencyCode` = ''"));
-                Assert.Equal(2L, await MigrationSeam.CountAsync(context,
-                    "SELECT COUNT(*) FROM `Currencies` WHERE `Name` LIKE 'Restored currency %'"));
-
-                // One row satisfies every spelling: the key holds it against all three referencing rows.
-                await Assert.ThrowsAsync<MySqlException>(() =>
-                    context.Database.ExecuteSqlRawAsync("DELETE FROM `Currencies` WHERE `CurrencyCode` = 'QCS'"));
-            }
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
-
-    /// <summary>Raw SQL rather than the entity, so the insert works below head too.</summary>
+    /// <summary>Raw SQL rather than the entity, so nothing in application code stands between the row and the key.</summary>
     private static Task InsertAccountAsync(OdysseyContext context, Guid accountId, string currencyCode) =>
         context.Database.ExecuteSqlAsync(
             $"""

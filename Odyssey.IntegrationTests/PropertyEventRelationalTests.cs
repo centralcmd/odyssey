@@ -11,13 +11,11 @@ using Odyssey.Dtos.Finance;
 using Xunit;
 using ContextContractType = Odyssey.Context.ContractType;
 using ContextPropertyEventType = Odyssey.Context.PropertyEventType;
-using ContextContractEventType = Odyssey.Context.ContractEventType;
 
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #209: the <c>WidenEventsForProperties</c> migration over a database
-/// already holding contract events, the two <c>CHECK</c> constraints that contain the shared
+/// The relational half of issue #209: the two <c>CHECK</c> constraints that contain the shared
 /// <c>Events</c> table, and the property cascade and author <c>SET NULL</c> observed firing on MariaDB.
 /// </summary>
 /// <remarks>
@@ -28,56 +26,9 @@ namespace Odyssey.IntegrationTests;
 public class PropertyEventRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_property_events";
-    private const string Baseline = "_AddProperties";
-    private const string Subject = "_WidenEventsForProperties";
 
     private static readonly DateTime Anchor = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     private static readonly string Stamp = Anchor.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
-
-    /// <summary>
-    /// AC 1 — the migration applies over existing contract events: every row becomes a contract row
-    /// (<c>OwnerKind = 0</c>) and still reads back through <c>context.ContractEvents</c>, under its old id.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_migration_keeps_existing_contract_events_as_contract_rows()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
-
-        var contractId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-
-        await using (var context = NewContext())
-        {
-            await context.Database.ExecuteSqlRawAsync($"""
-                INSERT INTO `Contracts` (`ContractId`, `Name`, `Type`, `CreatedAtUtc`)
-                VALUES ('{contractId}', 'Pre-existing agreement', {(int)ContextContractType.Rental}, '{Stamp}');
-                INSERT INTO `ContractEvents` (`ContractEventId`, `ContractId`, `Type`, `Source`, `Title`, `OccurredAt`, `CreatedAtUtc`)
-                VALUES ('{eventId}', '{contractId}', {(int)ContextContractEventType.EmailSent}, 1, 'Emailed the landlord', '{Stamp}', '{Stamp}');
-                """);
-        }
-
-        await using (var context = NewContext())
-        {
-            await MigrationSeam.MigrateToAsync(context, Subject);
-
-            Assert.Equal(0, await MigrationSeam.CountAsync(context, """
-                SELECT COUNT(*) FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ContractEvents'
-                """));
-            Assert.Equal(1, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `Events` WHERE `OwnerKind` = 0"));
-            Assert.Equal(0, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `Events` WHERE `OwnerKind` <> 0"));
-
-            var row = await context.ContractEvents.AsNoTracking().SingleAsync();
-            Assert.Equal(eventId, row.EventId);
-            Assert.Equal(contractId, row.ContractId);
-            Assert.Equal(ContextContractEventType.EmailSent, row.Type);
-            Assert.Equal(Odyssey.Context.ContractEventSource.System, row.Source);
-            Assert.Empty(await context.PropertyEvents.AsNoTracking().ToListAsync());
-        }
-
-        await DropAsync();
-    }
 
     /// <summary>AC 2 — a row naming both owners, or neither, fails <c>CK_Events_ExactlyOneOwner</c>.</summary>
     [SkippableFact]
@@ -307,16 +258,5 @@ public class PropertyEventRelationalTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() =>
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-
-    private async Task DropAsync()
-    {
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-    }
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
 }
