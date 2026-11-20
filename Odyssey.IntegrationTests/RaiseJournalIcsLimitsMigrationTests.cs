@@ -24,11 +24,10 @@ public class RaiseJournalIcsLimitsMigrationTests(MariaDbFixture fixture)
     public async Task Up_moves_only_untouched_defaults_and_Down_reverses_only_what_it_moved()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
         try
         {
             await using var context = Context();
-            await MigrationSeam.MigrateToAsync(context, Baseline);
 
             // Untouched defaults: export size and both counts. An administrator saved the import size at 64,
             // the default value itself — "deliberately set back to the default" must not be moved.
@@ -63,11 +62,10 @@ public class RaiseJournalIcsLimitsMigrationTests(MariaDbFixture fixture)
     public async Task Up_and_Down_move_all_four_untouched_defaults()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
         try
         {
             await using var context = Context();
-            await MigrationSeam.MigrateToAsync(context, Baseline);
 
             await MigrationSeam.MigrateToAsync(context, Subject);
 
@@ -102,13 +100,6 @@ public class RaiseJournalIcsLimitsMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

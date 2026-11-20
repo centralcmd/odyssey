@@ -43,12 +43,11 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_keeps_every_existing_account_and_contact_party_unchanged()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
 
         Guid accountPartyId = Guid.NewGuid(), contactPartyId = Guid.NewGuid(), accountId, contactId, contractId;
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
             accountId = await SeedAccountAsync(context);
             contactId = await SeedContactAsync(context);
             // Raw SQL, like the parties below: this schema predates columns the model now maps.
@@ -304,15 +303,6 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));
-    }
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private async Task MigrateAsync()

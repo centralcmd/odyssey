@@ -19,15 +19,6 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_exchange_rate_inversion";
 
-    /// <summary>The migration directly before <see cref="MigrationRunner.RatePositiveMigration"/>.</summary>
-    private static string PreviousMigration(OdysseyContext context)
-    {
-        var all = context.Database.GetMigrations().ToList();
-        var index = all.FindIndex(id => id.EndsWith("_" + MigrationRunner.RatePositiveMigration, StringComparison.Ordinal));
-        Assert.True(index > 0, "The CHECK migration must exist and not be the first.");
-        return all[index - 1];
-    }
-
     [SkippableFact] // AC 13
     public async Task The_database_refuses_a_zero_rate()
     {
@@ -54,7 +45,7 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
     public async Task A_pending_check_migration_names_the_rows_it_would_reject_and_applies_nothing()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseBeforeMigrationAsync(Database, "_" + MigrationRunner.RatePositiveMigration);
 
         try
         {
@@ -62,7 +53,6 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
             var good = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToList();
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync(PreviousMigration(context));
                 var i = 0;
                 foreach (var (id, rate) in bad.Select((id, n) => (id, n == 0 ? -1m : 0m)).Concat(good.Select(id => (id, 1.5m))))
                 {

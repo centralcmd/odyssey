@@ -30,11 +30,10 @@ public class LocationRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_creates_the_table_from_the_previous_one()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
 
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
             Assert.False(await MigrationSeam.TableExistsAsync(context, "Locations"));
             await MigrationSeam.MigrateToAsync(context, ThisMigration);
             Assert.True(await MigrationSeam.TableExistsAsync(context, "Locations"));
@@ -296,14 +295,5 @@ public class LocationRelationalTests(MariaDbFixture fixture)
         }
 
         return new OdysseyContext(options.Options);
-    }
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 }

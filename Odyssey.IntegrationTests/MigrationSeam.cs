@@ -23,6 +23,13 @@ namespace Odyssey.IntegrationTests;
 /// </para>
 ///
 /// <para>
+/// The "migrate to N−1" step is not replayed from empty by each test:
+/// <see cref="MariaDbFixture.CreateDatabaseAtMigrationAsync"/> hands out a copy of a template migrated to that point,
+/// built once per container (<see cref="MigratedSchemaTemplate"/>). <see cref="MigrateToAsync"/> is what the test
+/// then runs, up to its subject or back down across it.
+/// </para>
+///
+/// <para>
 /// Migration ids are resolved by their NAME suffix rather than written out with their timestamps. A
 /// re-scaffold changes the timestamp and nothing else; a test that hardcoded it would fail for a reason
 /// that has nothing to do with what it asserts.
@@ -36,13 +43,6 @@ internal static class MigrationSeam
     {
         var migrator = context.GetService<IMigrator>();
         await migrator.MigrateAsync(IdOf(context, nameSuffix), ct);
-    }
-
-    /// <summary>Reverts everything, i.e. migrates down past the first migration.</summary>
-    public static async Task MigrateToEmptyAsync(OdysseyContext context, CancellationToken ct = default)
-    {
-        var migrator = context.GetService<IMigrator>();
-        await migrator.MigrateAsync(Migration.InitialDatabase, ct);
     }
 
     /// <summary>The full id (timestamp + name) of the migration whose name ends with the suffix.</summary>

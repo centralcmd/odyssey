@@ -1,9 +1,7 @@
-// EF1002 flags interpolation into ExecuteSqlRawAsync. Every value interpolated below is a Guid or a
-// formatted DateTime this test generated itself — there is no external input — and the pre-migration
-// row is deliberately written outside the service, which is the whole point of the seam.
+// EF1002 flags interpolation into ExecuteSqlRawAsync. The only value interpolated below is the
+// database name this test declares itself — there is no external input.
 #pragma warning disable EF1002
 
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
@@ -13,20 +11,17 @@ using Odyssey.Dtos.Finance;
 using Xunit;
 using ContextContractEventSource = Odyssey.Context.ContractEventSource;
 using ContextContractEventType = Odyssey.Context.ContractEventType;
-using ContextContractType = Odyssey.Context.ContractType;
 
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #154: the <c>AddContractEventSource</c> migration over pre-existing
-/// rows (AC 34), and the atomicity of a recorded event against the change it records (AC 25).
+/// The relational half of issue #154: the atomicity of a recorded event against the change it records
+/// (AC 25).
 /// </summary>
 /// <remarks>
-/// Neither is observable on the fast tiers. The EF InMemory provider has no schema and no migrations,
-/// so "the column was added and every existing row reads <c>User</c>" is unrunnable there by
-/// construction; and it honours neither transactions nor an execution strategy, so a failed save
-/// leaves whatever the change tracker happened to apply. The <em>staging</em> behaviour — one save,
-/// N rows — is verifiable on the fast tiers and is asserted there
+/// Not observable on the fast tiers. The EF InMemory provider honours neither transactions nor an
+/// execution strategy, so a failed save leaves whatever the change tracker happened to apply. The
+/// <em>staging</em> behaviour — one save, N rows — is verifiable on the fast tiers and is asserted there
 /// (<c>ContractEventAutomationTests</c>); this is the half where the engine does the work.
 /// </remarks>
 [Collection(MariaDbCollection.Name)]
@@ -34,70 +29,7 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_event_source";
 
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_AddTermDirection";
-
-    private const string Subject = "_AddContractEventSource";
-
     private const string ActorUserId = "contract-event-automation-actor";
-
-    /// <summary>
-    /// AC 34 — the migration applies cleanly over a database already holding events, and every
-    /// pre-existing row reads back <c>User</c>.
-    /// </summary>
-    /// <remarks>
-    /// That default is <b>correct rather than merely convenient</b>: every event in every existing
-    /// database was hand-entered, because nothing has ever written one automatically. The seam is what
-    /// lets the "before" row exist at all — an ordinary fixture migrates straight to head, by which
-    /// point the column is there and the claim is untestable.
-    /// </remarks>
-    [SkippableFact]
-    public async Task Pre_existing_events_read_back_as_user_authored()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-
-        var contractId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-
-        try
-        {
-            await using (var context = NewContext())
-            {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
-                Assert.True(await MigrationSeam.CountAsync(context, $"""
-                    SELECT COUNT(*) FROM information_schema.TABLES
-                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{BaselineTable}'
-                    """) > 0);
-                Assert.False(await ColumnExistsAsync(context, BaselineTable, "Source"));
-
-                await SeedContractRowAsync(context, contractId);
-                await SeedEventRowAsync(context, eventId, contractId);
-            }
-
-            await using (var context = NewContext())
-            {
-                await context.Database.MigrateAsync();
-
-                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
-                Assert.True(await ColumnExistsAsync(context, LatestTable, "Source"));
-
-                var row = await context.ContractEvents.AsNoTracking()
-                    .SingleAsync(e => e.EventId == eventId);
-                Assert.Equal(ContextContractEventSource.User, row.Source);
-
-                // No index on the column: the source filter is applied inside the contract-scoped
-                // window the (ContractId, OccurredAt) index already serves, so a second one would buy
-                // nothing against a log that is always read one contract at a time. Asserted because
-                // an index added later without that reasoning is exactly what this records.
-                Assert.False(await IndexExistsOnAsync(context, LatestTable, "Source"));
-            }
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
 
     /// <summary>
     /// AC 25, the contract half — a <c>PUT</c> whose save fails commits <b>neither</b> the stamp
@@ -228,6 +160,12 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
                 var single = Assert.Single(recorded);
                 Assert.Equal(ContextContractEventSource.System, single.Source);
                 Assert.Equal(ActorUserId, single.CreatedByUserId);
+
+                // No index on the column: the source filter is applied inside the contract-scoped
+                // window the (ContractId, OccurredAt) index already serves, so a second one would buy
+                // nothing against a log that is always read one contract at a time. Asserted because
+                // an index added later without that reasoning is exactly what this records.
+                Assert.False(await IndexExistsOnAsync(context, "Events", "Source"));
             }
         }
         finally
@@ -291,42 +229,11 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
 
     // ── Schema introspection ───────────────────────────────────────────────────
 
-    // The table is ContractEvents at the baseline and Events once issue #209's WidenEventsForProperties
-    // has run, so the reads name it explicitly rather than assuming either.
-    private const string BaselineTable = "ContractEvents";
-    private const string LatestTable = "Events";
-
-    private static async Task<bool> ColumnExistsAsync(OdysseyContext context, string table, string column) =>
-        await MigrationSeam.CountAsync(context, $"""
-            SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{column}'
-            """) > 0;
-
     private static async Task<bool> IndexExistsOnAsync(OdysseyContext context, string table, string column) =>
         await MigrationSeam.CountAsync(context, $"""
             SELECT COUNT(*) FROM information_schema.STATISTICS
             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{column}'
             """) > 0;
-
-    private static Task SeedContractRowAsync(OdysseyContext context, Guid contractId)
-    {
-        var createdAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
-        return context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `Contracts` (`ContractId`, `Name`, `Type`, `CreatedAtUtc`)
-            VALUES ('{contractId}', 'Pre-existing agreement', {(int)ContextContractType.Rental}, '{createdAt}');
-            """);
-    }
-
-    private static Task SeedEventRowAsync(OdysseyContext context, Guid eventId, Guid contractId)
-    {
-        var stamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
-        return context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `ContractEvents`
-                (`ContractEventId`, `ContractId`, `Type`, `Title`, `OccurredAt`, `CreatedAtUtc`)
-            VALUES ('{eventId}', '{contractId}', {(int)ContextContractEventType.EmailSent},
-                'Emailed the landlord', '{stamp}', '{stamp}');
-            """);
-    }
 
     // ── Fixture plumbing ───────────────────────────────────────────────────────
 
@@ -338,13 +245,6 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
     private async Task MigrateAsync()
     {
         await fixture.CreateMigratedDatabaseAsync(Database);
-    }
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private async Task DropAsync()

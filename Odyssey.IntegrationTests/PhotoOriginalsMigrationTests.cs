@@ -28,14 +28,13 @@ public class PhotoOriginalsMigrationTests(MariaDbFixture fixture)
     public async Task Existing_photos_stay_valid_and_legacy_across_the_migration()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
         var photoId = Guid.NewGuid();
         var fileId = Guid.NewGuid();
 
         try
         {
             await using var context = NewContext();
-            await MigrationSeam.MigrateToAsync(context, Baseline);
             await InsertLegacyAsync(context, photoId, fileId);
 
             await context.Database.MigrateAsync();
@@ -135,13 +134,6 @@ public class PhotoOriginalsMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

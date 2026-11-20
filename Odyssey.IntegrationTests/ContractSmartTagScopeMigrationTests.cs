@@ -35,7 +35,7 @@ public class ContractSmartTagScopeMigrationTests(MariaDbFixture fixture)
     public async Task The_backfill_copies_each_shape_and_is_idempotent_and_the_check_holds()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         var term = Guid.NewGuid();
         var oneOff = Guid.NewGuid();
@@ -47,7 +47,6 @@ public class ContractSmartTagScopeMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 await SeedAsync(context, term, "'2021-03-01 09:30:00'", "'2026-08-31 18:00:00'", "NULL");
                 await SeedAsync(context, oneOff, "NULL", "NULL", "'2025-05-01 00:00:00'");
                 await SeedAsync(context, staleOneOff, "'2021-03-01 00:00:00'", "'2022-03-01 00:00:00'", "'2025-05-01 00:00:00'");
@@ -113,13 +112,6 @@ public class ContractSmartTagScopeMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

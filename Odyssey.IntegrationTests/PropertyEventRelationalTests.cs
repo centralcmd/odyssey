@@ -42,14 +42,13 @@ public class PropertyEventRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_keeps_existing_contract_events_as_contract_rows()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         var contractId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, Baseline);
             await context.Database.ExecuteSqlRawAsync($"""
                 INSERT INTO `Contracts` (`ContractId`, `Name`, `Type`, `CreatedAtUtc`)
                 VALUES ('{contractId}', 'Pre-existing agreement', {(int)ContextContractType.Rental}, '{Stamp}');
@@ -309,13 +308,6 @@ public class PropertyEventRelationalTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

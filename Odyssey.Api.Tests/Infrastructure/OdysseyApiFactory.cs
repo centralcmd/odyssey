@@ -29,7 +29,6 @@ public class OdysseyApiFactory(
     OdysseyApiFactory? sharingStoreWith = null)
     : WebApplicationFactory<Program>
 {
-    private readonly string applicationDatabaseName = sharingStoreWith?.applicationDatabaseName ?? $"app-{Guid.NewGuid()}";
     private readonly string domainDatabaseName = sharingStoreWith?.domainDatabaseName ?? $"domain-{Guid.NewGuid()}";
 
     /// <summary>
@@ -137,13 +136,6 @@ public class OdysseyApiFactory(
         {
             services.RemoveBuiltInLoggingProviders();
             services.DisposeRateLimitersOnStop();
-            services.RemoveAll<DbContextOptions<OdysseyContext>>();
-            services.AddDbContext<OdysseyContext>(options =>
-                options.UseInMemoryDatabase(applicationDatabaseName, DatabaseRoot)
-                    // UserAdministrationService's delete opens a transaction so the acceptance-row
-                    // pseudonymization commits with the deletion (issue #354 §6) — a genuine no-op on
-                    // InMemory, which would otherwise throw rather than ignore it.
-                    .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
             // OdysseyContext — finance, journal, photos, calendars and contacts in one model — is
             // registered on a fixed in-memory name by DatabaseExtension, so isolate it per factory to
             // avoid cross-test pollution.
@@ -151,8 +143,9 @@ public class OdysseyApiFactory(
             services.AddDbContext<OdysseyContext>(options =>
                 options.UseInMemoryDatabase(domainDatabaseName, DatabaseRoot)
                     // EF Core InMemory doesn't support real transactions and throws by default rather
-                    // than silently no-opping — ContactVCardService's import path opens one for
-                    // atomicity (issue #338 review), which is a genuine no-op here. The actual
+                    // than silently no-opping — ContactVCardService's import path and
+                    // UserAdministrationService's delete (issue #354 §6) each open one for atomicity,
+                    // which is a genuine no-op here. The actual
                     // transactional guarantee is verified by Odyssey.IntegrationTests against real
                     // MariaDB; this just lets that code path run in the fast InMemory-backed API tests.
                     .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)));

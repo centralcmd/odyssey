@@ -33,10 +33,9 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_creates_the_tables_and_seeds_the_four_settings()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
 
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
         Assert.False(await MigrationSeam.TableExistsAsync(context, "WeatherLocations"));
         await MigrationSeam.MigrateToAsync(context, ThisMigration);
 
@@ -58,10 +57,9 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     public async Task The_split_migration_gives_both_halves_the_old_switch()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, ThisMigration);
 
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, ThisMigration);
         var on = Guid.NewGuid();
         var off = Guid.NewGuid();
         await context.Database.ExecuteSqlRawAsync($"""
@@ -85,10 +83,9 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     public async Task The_station_migration_starts_measured_history_over_and_keeps_the_forecast()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, SplitMigration);
 
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, SplitMigration);
         var id = Guid.NewGuid();
         await context.Database.ExecuteSqlRawAsync($"""
             SET FOREIGN_KEY_CHECKS = 0;
@@ -609,15 +606,6 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
         .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
         .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private sealed class FixedTime : TimeProvider
     {
