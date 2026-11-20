@@ -31,7 +31,7 @@ namespace Odyssey.Api.Tests;
 /// rate row is a real table, and the one base currency elected across both directions cannot be shown
 /// without one.
 /// </remarks>
-public class ContractTermDirectionApiTests
+public class ContractTermDirectionApiTests(ContractTermDirectionApiTests.Host host) : SharedApiHostTests<ContractTermDirectionApiTests.Host>(host)
 {
     private const string ActorUserId = "contract-term-direction-actor-id";
     private const string Path = "/api/contracts";
@@ -53,7 +53,7 @@ public class ContractTermDirectionApiTests
     public async Task Post_EchoesTheDirection_AndOmittingItMeansOutgoing(
         TermDirection? sent, TermDirection expected)
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -77,7 +77,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Post_IncomingOnAPercentageTerm_IsAccepted()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -102,7 +102,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Post_AnUnrecognisedDirection_Is400FromModelValidation_AndWritesNothing()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -129,7 +129,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Put_CorrectingTheDirection_Replaces_RatherThanForkingTheSeries()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -152,7 +152,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Put_OmittingTheDirection_ResetsTheTermToOutgoing()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -182,7 +182,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Post_WithANestedRelatedObject_CreatesNothingBeyondTheTerm()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -221,7 +221,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Direction_IsPresentOnEveryProjectionOfATermRow()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, type: ContractType.Employment);
 
@@ -266,7 +266,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Summary_AnUnconvertibleIncomingCurrency_IsNamedAndLeftOutOfTheNet()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var employment = await CreateContractAsync(client, type: ContractType.Employment, start: FixedToday.AddDays(-30));
@@ -294,7 +294,7 @@ public class ContractTermDirectionApiTests
     [Fact]
     public async Task Summary_TheBaseCurrencyVote_CountsBothDirections_AndElectsOneBase()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await SeedRateAsync(factory, "USD", "EUR", 0.50m);
         using var client = factory.CreateClient();
 
@@ -437,7 +437,7 @@ public class ContractTermDirectionApiTests
         return factory;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         /// <param name="sharingStoreWith">
         /// A factory whose InMemory store this one joins. Two of the assertions here need a SECOND
@@ -458,4 +458,7 @@ public class ContractTermDirectionApiTests
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }
