@@ -42,12 +42,17 @@
     <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\HexColorNegativeCorpus.cs" Link="TestShared\HexColorNegativeCorpus.cs" />
+    <Compile Include="..\TestShared\Lookups\*.cs" Link="TestShared\Lookups\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\InstrumentPrices\*.cs" Link="TestShared\InstrumentPrices\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- The map origin accept/reject table (issue #370), also run against the client's shell check. -->
     <None Include="..\TestShared\MapOriginVectors.json" Link="Fixtures\MapOriginVectors.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Odyssey.Testing" />
   </ItemGroup>
 
 </Project>

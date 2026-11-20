@@ -26,6 +26,7 @@
   <ItemGroup>
     <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
+    <Compile Include="..\TestShared\Lookups\*.cs" Link="TestShared\Lookups\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\PerfTier.cs" Link="TestShared\PerfTier.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\News\*.cs" Link="TestShared\News\%(Filename)%(Extension)" />
@@ -50,6 +51,10 @@
          untrusted input. Strip-then-verify only means something when the verifier shares no code with
          the stripper. -->
     <PackageReference Include="MetadataExtractor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Odyssey.Testing" />
   </ItemGroup>
 
 </Project>
