@@ -31,7 +31,7 @@ namespace Odyssey.Api.Tests;
 /// the value it reads was ever validated.
 /// </para>
 /// </summary>
-public class ProcessorAdvisoryApiTests
+public class ProcessorAdvisoryApiTests(ProcessorAdvisoryApiTests.Host host) : SharedApiHostTests<ProcessorAdvisoryApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string ActorUserId = "66666666-6666-6666-6666-666666666666";
@@ -44,7 +44,7 @@ public class ProcessorAdvisoryApiTests
     [Fact]
     public async Task WhenTheHostDoesNotContainTheProcessorName_AnAdvisoryIsCarried()
     {
-        await using var factory = await FactoryWithBaseUrlAsync("https://gateway.example.test/v1");
+        var factory = await FactoryWithBaseUrlAsync("https://gateway.example.test/v1");
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -58,7 +58,7 @@ public class ProcessorAdvisoryApiTests
     [Fact]
     public async Task WhenTheHostContainsTheProcessorName_ThereIsNoAdvisory()
     {
-        await using var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
+        var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -77,7 +77,7 @@ public class ProcessorAdvisoryApiTests
     [InlineData("://broken")]
     public async Task WhenTheBaseUrlIsEmptyOrUnparseable_ThereIsNoAdvisory(string baseUrl)
     {
-        await using var factory = await FactoryWithBaseUrlAsync(baseUrl);
+        var factory = await FactoryWithBaseUrlAsync(baseUrl);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -93,7 +93,7 @@ public class ProcessorAdvisoryApiTests
     [Fact]
     public async Task TheAdvisoryEchoesTheHostOnly_NeverUserinfoPathOrQuery()
     {
-        await using var factory = await FactoryWithBaseUrlAsync("https://apikey:secret@gateway.internal/v1?token=leaky");
+        var factory = await FactoryWithBaseUrlAsync("https://apikey:secret@gateway.internal/v1?token=leaky");
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -114,7 +114,7 @@ public class ProcessorAdvisoryApiTests
     [Fact]
     public async Task RenamingTheProcessorAwayFromTheHost_StillSaves()
     {
-        await using var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
+        var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -136,7 +136,7 @@ public class ProcessorAdvisoryApiTests
     [InlineData("anthro pic")]
     public async Task ProcessorNamePunctuationAndCase_DoNotProduceASpuriousAdvisory(string processor)
     {
-        await using var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
+        var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -156,7 +156,7 @@ public class ProcessorAdvisoryApiTests
     [Fact]
     public async Task ALegalNameWithExtraWords_TripsTheHeuristic_AndThatIsAcceptedNotABug()
     {
-        await using var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
+        var factory = await FactoryWithBaseUrlAsync("https://api.anthropic.com");
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -168,15 +168,17 @@ public class ProcessorAdvisoryApiTests
     }
 
     /// <summary>
-    /// A factory whose <c>FileAnalysisBaseUrl</c> row is planted directly (issue #439). Direct rather
+    /// The shared host with its <c>FileAnalysisBaseUrl</c> row planted directly (issue #439). Direct rather
     /// than through the API on purpose: half these cases — an empty value, an unparseable one, one
     /// carrying <c>userinfo</c> and a query — are values the write validator refuses, and the advisory
     /// still has to behave when a restore or a hand edit has left one in the row.
     /// </summary>
-    private static async Task<OdysseyApiFactory> FactoryWithBaseUrlAsync(string baseUrl)
+    private async Task<OdysseyApiFactory> FactoryWithBaseUrlAsync(string baseUrl)
     {
-        var factory = new OdysseyApiFactory(ReadAndSecurity, ActorUserId);
-        await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisBaseUrl, baseUrl);
-        return factory;
+        await Factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisBaseUrl, baseUrl);
+        return Factory;
     }
+
+    /// <summary>The class's shared host: an administrator with the security claim.</summary>
+    public sealed class Host() : OdysseyApiFactory(ReadAndSecurity, ActorUserId);
 }

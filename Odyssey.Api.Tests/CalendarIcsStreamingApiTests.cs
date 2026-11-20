@@ -32,7 +32,8 @@ namespace Odyssey.Api.Tests;
 /// InMemory, so it covers what every export and import produces; the real-engine behaviour (no export transaction,
 /// the batch transactions, the query counts) is in <c>Odyssey.IntegrationTests</c>.
 /// </summary>
-public class CalendarIcsStreamingApiTests
+public class CalendarIcsStreamingApiTests(CalendarIcsStreamingApiTests.Host host)
+    : SharedApiHostTests<CalendarIcsStreamingApiTests.Host>(host)
 {
     private const string ActorUserId = "calendar-ics-streaming-actor";
     private const string CalendarsPath = "/api/calendars";
@@ -92,7 +93,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Summaries_match_their_exports_and_the_rows_header()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Counts");
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Standup", count: 3);
@@ -124,7 +125,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Every_export_carries_the_download_headers()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Headers");
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Weekly", count: 2);
@@ -150,7 +151,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Count_cap_refuses_each_export_and_summary_with_the_calendar_code_and_unlimited_admits_them()
     {
-        await using var factory = new ApiFactory(WithSettings);
+        var factory = Factory.ForCaller(WithSettings);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Capped");
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Six", count: 6);
@@ -198,7 +199,7 @@ public class CalendarIcsStreamingApiTests
     {
         // AC 3 on the per-calendar and the series export (the aggregate paths are in CalendarEventsIcsApiTests). A
         // single event cannot reach the 1 MB floor of the cap, so its writer is covered in CalendarIcsExportByteCapTests.
-        await using var factory = new ApiFactory(WithSettings);
+        var factory = Factory.ForCaller(WithSettings);
         using var client = factory.CreateClient();
         await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxExportMegabytes = 1 });
         var calendar = await CreateCalendarAsync(client, "Bulky");
@@ -226,7 +227,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Summaries_return_404_exactly_where_their_exports_do()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
 
@@ -241,7 +242,7 @@ public class CalendarIcsStreamingApiTests
     public async Task A_summary_followed_at_once_by_its_export_succeeds()
     {
         // AC 18b: the summary holds its permits only while it plans, so the download never 429s its own user.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Sequence");
 
@@ -257,7 +258,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task An_occurrence_moved_to_another_calendar_is_an_exdate_here_and_a_standalone_event_there()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var a = await CreateCalendarAsync(client, "A");
         var b = await CreateCalendarAsync(client, "B");
@@ -286,7 +287,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task An_intact_series_still_collapses_to_one_rule_in_its_own_calendar()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var a = await CreateCalendarAsync(client, "Intact");
         await CreateSeriesAsync(client, a.CalendarId, "Intact", count: 4);
@@ -302,7 +303,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Every_exported_vevent_carries_status_and_its_stamps()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Stamps");
         await CreateSeriesAsync(client, calendar.CalendarId, "Rule", count: 2);
@@ -341,7 +342,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task An_aggregate_export_imported_back_keeps_the_stored_external_uid()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Google");
         var id = await SeedRowAsync(factory, calendar.CalendarId, "From Google", externalUid: "abc@google.com");
@@ -359,7 +360,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Importing_one_export_into_another_calendar_twice_updates_the_second_time()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var a = await CreateCalendarAsync(client, "Source");
         var b = await CreateCalendarAsync(client, "Copy");
@@ -384,7 +385,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task The_345_F1_chain_cannot_overwrite_a_row_of_the_originating_calendar()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var a = await CreateCalendarAsync(client, "A");
         var b = await CreateCalendarAsync(client, "B");
@@ -422,7 +423,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Place_detail_round_trips_without_growing_through_an_importer_without_locations_read()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Places");
         var cafe = await SeedLocationAsync(factory, "Café");
@@ -449,7 +450,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task A_file_exported_without_locations_read_never_turns_its_detail_into_a_place()
     {
-        await using var factory = new ApiFactory(WithPlaces);
+        var factory = Factory.ForCaller(WithPlaces);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Holder");
         var file = Vcalendar(Vevent("detail-only@example.com", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z",
@@ -471,7 +472,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task A_cancelled_uid_the_calendar_does_not_hold_is_skipped()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Unknown");
 
@@ -484,7 +485,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task A_matching_cancelled_event_is_kept_unless_removals_are_allowed()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Kept");
         var id = await SeedRowAsync(factory, calendar.CalendarId, "Keep me", externalUid: "keep@example.com");
@@ -499,8 +500,8 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task With_allow_removals_and_calendar_delete_a_cancelled_event_is_removed_and_audited_by_id()
     {
-        var logs = new CapturingLoggerProvider();
-        await using var factory = new ApiFactory(ReadWrite, logs);
+        var factory = Factory;
+        var logs = factory.Logs!;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Removed");
         var id = await SeedRowAsync(factory, calendar.CalendarId, "Secret title", externalUid: "gone@example.com");
@@ -520,7 +521,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Allow_removals_without_calendar_delete_is_a_403_and_nothing_is_applied()
     {
-        await using var factory = new ApiFactory(ReadWriteNoDelete);
+        var factory = Factory.ForCaller(ReadWriteNoDelete);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "NoDelete");
         var file = Vcalendar(
@@ -540,6 +541,7 @@ public class CalendarIcsStreamingApiTests
     {
         // A fixed clock, so which occurrences are past is decided by the test and never by when it runs.
         var now = new DateTime(2031, 3, 1, 12, 0, 0, DateTimeKind.Utc);
+        // A host of its own: the clock is a replaced service.
         await using var factory = new ApiFactory(ReadWrite, clock: new FakeTimeProvider(now));
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "SeriesGone");
@@ -563,7 +565,7 @@ public class CalendarIcsStreamingApiTests
     public async Task A_cancelled_recurrence_id_component_excludes_that_occurrence_and_keeps_the_series()
     {
         // Issue #519 supersedes this test's Spec A form (S6): a cancelled override is an exclusion, gated like a removal.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Exception");
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Weekly", count: 3);
@@ -592,7 +594,7 @@ public class CalendarIcsStreamingApiTests
     public async Task For_one_uid_the_last_component_wins_between_live_and_cancelled(bool liveFirst)
     {
         // AC 17c: live then cancelled removes the event; cancelled then live leaves it live.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Order");
         await SeedRowAsync(factory, calendar.CalendarId, "Stored", externalUid: "same@example.com");
@@ -618,7 +620,7 @@ public class CalendarIcsStreamingApiTests
     public async Task An_event_created_and_cancelled_in_one_batch_counts_as_neither_imported_nor_removed()
     {
         // Architect nit 9: the row never reached the database, so the result must not report a removal.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Net zero");
         var live = Vevent("fresh@example.com", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:Fresh");
@@ -637,7 +639,7 @@ public class CalendarIcsStreamingApiTests
     public async Task A_uid_over_255_characters_skips_its_event_and_the_batch_still_commits()
     {
         // Architect finding 4: under strict mode it used to fail the whole batch's save, so the file never completed.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Long uid");
 
@@ -658,7 +660,7 @@ public class CalendarIcsStreamingApiTests
     [InlineData("unterminated")]
     public async Task An_oversized_or_unclosed_component_refuses_the_whole_file_before_anything_is_applied(string shape)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Broken");
         var bad = shape switch
@@ -691,7 +693,7 @@ public class CalendarIcsStreamingApiTests
     {
         // Architect finding 1: CalendarIcsMaxAggregateOccurrences bounds series expansion only (§3 component 5,
         // Non-Goal 4). The factory's real ImportExportLimitsLookup serves the shipped defaults.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Many standalone");
         var count = SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences + 1;
@@ -708,7 +710,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task Generated_series_occurrences_still_count_against_the_budget_across_the_whole_import()
     {
-        await using var factory = new ApiFactory(WithSettings);
+        var factory = Factory.ForCaller(WithSettings);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Budgeted");
         await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxAggregateOccurrences = 15 });
@@ -732,8 +734,8 @@ public class CalendarIcsStreamingApiTests
         // Security finding 1: a batch is applied once its components reach ImportBatchCharBudget, so 500 near-cap
         // components can never be held at once. Each component here is ~3 Mi characters, so 16 Mi is crossed by the
         // sixth: twelve components commit as two batches of six, which the per-batch log line shows.
-        var logs = new CapturingLoggerProvider();
-        await using var factory = new ApiFactory(ReadWrite, logs);
+        var factory = Factory;
+        var logs = factory.Logs!;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Sized");
         var padding = string.Concat(Enumerable.Repeat("X-PAD:" + new string('p', 1018) + "\r\n", 3 * 1024));
@@ -752,7 +754,7 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task A_file_whose_first_component_is_unclosed_is_a_plain_400()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Unclosed");
 
@@ -772,6 +774,7 @@ public class CalendarIcsStreamingApiTests
         // size to keep the file small; the committed-batch semantics at the production batch size are
         // CalendarIcsStreamingIntegrationTests' twin on MariaDB.
         const int batchSize = 5;
+        // A host of its own: the batch size is a replaced service.
         await using var factory = new ApiFactory(WithSettings, importBatchGroups: batchSize);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Partial");
@@ -810,6 +813,7 @@ public class CalendarIcsStreamingApiTests
         // proves the spool existed while the request ran, so its absence afterwards is the deletion, not a body that
         // was never written to disk.
         var probe = new SpoolProbe($"spool-{Guid.NewGuid():N}");
+        // A host of its own: the probe is a startup filter.
         await using var factory = new ApiFactory(ReadWrite, startup: probe);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Spooled");
@@ -1083,7 +1087,10 @@ public class CalendarIcsStreamingApiTests
         return await client.PostAsync($"{CalendarsPath}/{calendarId}/ics", content);
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    /// <summary>The class's shared host: a calendar editor, with logs captured and cleared per test.</summary>
+    public sealed class Host() : ApiFactory(ReadWrite, new CapturingLoggerProvider());
+
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(
             IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null, TimeProvider? clock = null,
@@ -1119,8 +1126,15 @@ public class CalendarIcsStreamingApiTests
                 {
                     services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
                 }
-            })
+            }) =>
+            Logs = logs;
+
+        public CapturingLoggerProvider? Logs { get; }
+
+        public override async Task ResetStoreAsync()
         {
+            await base.ResetStoreAsync();
+            Logs?.Clear();
         }
     }
 }

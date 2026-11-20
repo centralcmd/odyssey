@@ -11,15 +11,12 @@ namespace Odyssey.Api.Tests;
 /// (found while implementing issue #382 point 4; Swagger UI was unusable until this was fixed). The
 /// generator now qualifies only the ambiguous names with their namespace.
 /// </summary>
-public class OpenApiSchemaIdTests
+public class OpenApiSchemaIdTests(OpenApiSchemaIdTests.Host host) : SharedApiHostTests<OpenApiSchemaIdTests.Host>(host)
 {
     [Fact]
     public async Task TheDocument_GeneratesWithCollidingTypeNamesDisambiguated()
     {
-        using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
-
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await Factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -64,16 +61,16 @@ public class OpenApiSchemaIdTests
         Assert.DoesNotContain("Finance" + name, ids);
     }
 
-    private static async Task<IReadOnlyList<string>> SchemaIdsAsync()
+    private async Task<IReadOnlyList<string>> SchemaIdsAsync()
     {
-        using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
-
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await Factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("components").GetProperty("schemas")
             .EnumerateObject().Select(schema => schema.Name).ToList();
     }
+
+    /// <summary>The class's shared host: the document is anonymous, so only the configuration differs.</summary>
+    public sealed class Host() : OdysseyApiFactory(configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
 }

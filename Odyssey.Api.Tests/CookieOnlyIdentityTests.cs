@@ -14,12 +14,16 @@ namespace Odyssey.Api.Tests;
 /// The API is cookie-only (issue #245): no bearer handler is registered, <c>/login</c> refuses to issue a
 /// token and <c>/refresh</c> answers <c>404</c>. A bearer token would outlive a password reset, a disable
 /// or a delete, because only the cookie re-checks the security stamp.
+///
+/// <para>
+/// One host serves the class (<see cref="SharedHost"/>): every test that signs in makes an account of its own, and
+/// nothing here changes host-wide state.
+/// </para>
 /// </summary>
-public sealed class CookieOnlyIdentityTests : IDisposable
+public sealed class CookieOnlyIdentityTests(CookieOnlyIdentityTests.SharedHost factory) : IClassFixture<CookieOnlyIdentityTests.SharedHost>
 {
-    private readonly PasswordGateFactory factory = new();
-
-    public void Dispose() => factory.Dispose();
+    /// <summary>The class's real-cookie host.</summary>
+    public sealed class SharedHost() : PasswordGateFactory();
 
     [Fact]
     public async Task NoBearerScheme_IsRegistered_AndTheCookieIsTheDefault()

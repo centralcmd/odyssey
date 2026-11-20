@@ -18,11 +18,14 @@ namespace Odyssey.Api.Tests;
 /// (the disabled-flag path); this file is specifically the claim boundary and the 404 path that
 /// only a real routed request (not a direct controller construction) can prove.
 /// </summary>
-public class ExchangeRatesApiTests
+public class ExchangeRatesApiTests(ExchangeRatesApiTests.Host host) : SharedApiHostTests<ExchangeRatesApiTests.Host>(host)
 {
     private const string ActorUserId = "exchange-rates-actor-id";
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     private static string RatePath(Guid id) => $"/api/exchange-rates/{id}";
@@ -56,7 +59,7 @@ public class ExchangeRatesApiTests
     [Fact]
     public async Task Put_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(RatePath(Guid.NewGuid()), Update(1m));
@@ -67,7 +70,7 @@ public class ExchangeRatesApiTests
     [Fact]
     public async Task Put_WithoutUpdateClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         var rateId = await SeedRateAsync(factory);
         using var client = factory.CreateClient();
 
@@ -81,7 +84,7 @@ public class ExchangeRatesApiTests
     {
         // The read claim alone must not satisfy the update policy — read and update are distinct
         // claims (mirroring create/delete), not a single "any exchangerates.* claim" check.
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead]);
         var rateId = await SeedRateAsync(factory);
         using var client = factory.CreateClient();
 
@@ -93,7 +96,7 @@ public class ExchangeRatesApiTests
     [Fact]
     public async Task Put_WithUpdateClaim_CorrectsRateAndPersists()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate]);
         var rateId = await SeedRateAsync(factory);
         using var client = factory.CreateClient();
 
@@ -113,7 +116,7 @@ public class ExchangeRatesApiTests
     [Fact]
     public async Task Put_WithUnknownId_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate]);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(RatePath(Guid.NewGuid()), Update(1m));
@@ -124,7 +127,7 @@ public class ExchangeRatesApiTests
     [Fact]
     public async Task Put_ZeroRate_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate]);
         var rateId = await SeedRateAsync(factory);
         using var client = factory.CreateClient();
 

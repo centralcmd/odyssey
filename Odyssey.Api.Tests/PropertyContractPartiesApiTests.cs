@@ -221,14 +221,12 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     [Fact]
     public async Task PartyWrites_WithoutContractsUpdate_Return403()
     {
-        await using var owner = new ApiFactory(FullAccess);
+        var owner = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(owner);
         var contractId = await SeedContractAsync(owner, "Cabin insurance", ContextContractType.Insurance,
             (propertyId, ContextContractPartyRole.Insured));
         var partyId = await ReadAsync(owner, c => c.ContractParties.Select(p => p.ContractPartyId).SingleAsync());
-        await using var reader = new ApiFactory(
-            [PermissionClaims.ContractsRead, PermissionClaims.PropertiesRead], owner);
-        using var client = reader.CreateClient();
+        using var client = owner.ClientFor([PermissionClaims.ContractsRead, PermissionClaims.PropertiesRead]);
         var body = new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Object };
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(PartiesPath(contractId), body)).StatusCode);
@@ -310,10 +308,9 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     [InlineData(PermissionClaims.ContractsRead)]
     public async Task GetPropertyContracts_WithOnlyOneOfTheTwoClaims_Returns403(string onlyClaim)
     {
-        await using var owner = new ApiFactory(Reader);
+        var owner = Factory.ForCaller(Reader);
         var propertyId = await SeedPropertyAsync(owner);
-        await using var factory = new ApiFactory([onlyClaim], owner);
-        using var client = factory.CreateClient();
+        using var client = owner.ClientFor([onlyClaim]);
 
         var response = await client.GetAsync(PropertyContractsPath(propertyId));
 
@@ -343,11 +340,10 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     [Fact]
     public async Task ContractCount_WithoutContractsRead_IsNull_OnListAndGet()
     {
-        await using var owner = new ApiFactory(Reader);
+        var owner = Factory.ForCaller(Reader);
         var propertyId = await SeedPropertyAsync(owner);
         await SeedContractAsync(owner, "Mortgage", ContextContractType.Loan, (propertyId, ContextContractPartyRole.Collateral));
-        await using var guest = new ApiFactory([PermissionClaims.PropertiesRead], owner);
-        using var client = guest.CreateClient();
+        using var client = owner.ClientFor([PermissionClaims.PropertiesRead]);
 
         var page = await client.GetFromJsonAsync<PagedResult<ExistingProperty>>(PropertiesPath);
         Assert.Null(page!.Items.Single(p => p.PropertyId == propertyId).ContractCount);
@@ -478,12 +474,6 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions, Action<IServiceCollection>? extra = null)
             : base(permissions, ActorUserId, configuration: null, configureServices: services => Configure(services, extra))
-        {
-        }
-
-        public ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory sharing)
-            : base(permissions, ActorUserId, configuration: null, configureServices: services => Configure(services, null),
-                sharingStoreWith: sharing)
         {
         }
 

@@ -18,15 +18,26 @@ namespace Odyssey.Api.Tests;
 /// builder call leaves the app building, booting and logging in with the feature doing nothing at all.
 /// These tests pin the registration, the claim itself, the platform claims the subclassing must not
 /// drop, and the two different ways a compliance-computation failure has to behave.
+///
+/// <para>
+/// The real-cookie tests share one host (<see cref="LegalLoginFactory"/>, a class fixture), reset before each test to
+/// no published Terms of Service and a readable license (<see cref="LegalLoginFactory.ResetAsync"/>); each signs in a
+/// user of its own.
+/// </para>
 /// </summary>
-public class LegalClaimsFactoryTests
+public class LegalClaimsFactoryTests(LegalLoginFactory sharedHost) : IClassFixture<LegalLoginFactory>, IAsyncLifetime
 {
+    public Task InitializeAsync() => sharedHost.ResetAsync();
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
+    private static string UniqueAddress(string label) => $"{label}-{Guid.NewGuid():N}@example.com";
+
     /// <summary>AC 23 — the container resolves the custom factory, not Identity's default.</summary>
     [Fact]
     public void UserClaimsPrincipalFactory_ResolvesToTheLegalComplianceFactory()
     {
-        using var factory = new OdysseyApiFactory();
-        using var scope = factory.Services.CreateScope();
+        using var scope = sharedHost.Services.CreateScope();
 
         var resolved = scope.ServiceProvider.GetRequiredService<IUserClaimsPrincipalFactory<ApplicationUser>>();
 
@@ -37,11 +48,12 @@ public class LegalClaimsFactoryTests
     [Fact]
     public async Task FirstLogin_OfANewUser_CarriesPendingAcceptanceForBothDocuments()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("first@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("first");
+        await factory.CreateUserAsync(email);
         await factory.PublishTermsOfServiceAsync("Terms v1");
 
-        using var client = await factory.LoginAsync("first@example.com");
+        using var client = await factory.LoginAsync(email);
 
         var pending = await PendingClaimsAsync(client);
         Assert.Equal([LegalClaims.License, LegalClaims.TermsOfService], pending);
@@ -51,11 +63,12 @@ public class LegalClaimsFactoryTests
     [Fact]
     public async Task Login_OfACompliantUser_CarriesNoPendingAcceptanceClaim()
     {
-        await using var factory = new LegalLoginFactory();
+        var factory = sharedHost;
+        var email = UniqueAddress("compliant");
         await factory.PublishTermsOfServiceAsync("Terms v1");
-        await factory.CreateUserAsync("compliant@example.com", acceptLegalDocuments: true);
+        await factory.CreateUserAsync(email, acceptLegalDocuments: true);
 
-        using var client = await factory.LoginAsync("compliant@example.com");
+        using var client = await factory.LoginAsync(email);
 
         Assert.Empty(await PendingClaimsAsync(client));
     }
@@ -64,10 +77,11 @@ public class LegalClaimsFactoryTests
     [Fact]
     public async Task WithNoTermsOfServicePublished_OnlyTheLicenseIsOutstanding()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("nolicense@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("nolicense");
+        await factory.CreateUserAsync(email);
 
-        using var client = await factory.LoginAsync("nolicense@example.com");
+        using var client = await factory.LoginAsync(email);
 
         Assert.Equal([LegalClaims.License], await PendingClaimsAsync(client));
     }
@@ -80,11 +94,12 @@ public class LegalClaimsFactoryTests
     [Fact]
     public async Task ThePrincipal_StillCarriesRolePermissionAndSecurityStampClaims()
     {
-        await using var factory = new LegalLoginFactory();
+        var factory = sharedHost;
+        var email = UniqueAddress("admin");
         await factory.CreateUserAsync(
-            "admin@example.com", RoleDefinitions.AdminId, acceptLegalDocuments: true);
+            email, RoleDefinitions.AdminId, acceptLegalDocuments: true);
 
-        using var client = await factory.LoginAsync("admin@example.com");
+        using var client = await factory.LoginAsync(email);
         var claims = await ClaimsAsync(client);
 
         var securityStampClaimType = factory.Services.GetRequiredService<IOptions<IdentityOptions>>()
@@ -103,10 +118,11 @@ public class LegalClaimsFactoryTests
     [Fact]
     public async Task AFailureDuringRevalidation_KeepsAGatedSessionGatedRatherThanSigningItOut()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("gated@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("gated");
+        await factory.CreateUserAsync(email);
 
-        using var client = await factory.LoginAsync("gated@example.com");
+        using var client = await factory.LoginAsync(email);
         Assert.Equal(HttpStatusCode.UnavailableForLegalReasons, (await client.PutAsJsonAsync("/api/profile", new { })).StatusCode);
 
         factory.License.ShouldThrow = true;
@@ -122,10 +138,11 @@ public class LegalClaimsFactoryTests
     [Fact]
     public async Task AFailureDuringRevalidation_DoesNotGateAnAlreadyCompliantSession()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("healthy@example.com", acceptLegalDocuments: true);
+        var factory = sharedHost;
+        var email = UniqueAddress("healthy");
+        await factory.CreateUserAsync(email, acceptLegalDocuments: true);
 
-        using var client = await factory.LoginAsync("healthy@example.com");
+        using var client = await factory.LoginAsync(email);
         Assert.True((await client.GetAsync("/api/profile")).IsSuccessStatusCode);
 
         factory.License.ShouldThrow = true;
@@ -138,15 +155,16 @@ public class LegalClaimsFactoryTests
     [Fact]
     public async Task AFailureDuringLogin_FailsTheLogin()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("brokenlogin@example.com", acceptLegalDocuments: true);
+        var factory = sharedHost;
+        var email = UniqueAddress("brokenlogin");
+        await factory.CreateUserAsync(email, acceptLegalDocuments: true);
 
         factory.License.ShouldThrow = true;
 
         using var client = factory.CreateClient();
         var response = await client.PostAsJsonAsync(
             "/login?useCookies=true",
-            new { email = "brokenlogin@example.com", password = LegalLoginFactory.Password });
+            new { email, password = LegalLoginFactory.Password });
 
         Assert.False(response.IsSuccessStatusCode);
     }

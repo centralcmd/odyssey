@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// guess while the server enforced something else — the exact drift Wave 4 exists to remove.
 /// </para>
 /// </summary>
-public class UploadLimitsApiTests
+public class UploadLimitsApiTests(UploadLimitsApiTests.Host host) : SharedApiHostTests<UploadLimitsApiTests.Host>(host)
 {
     private const string Path = "/api/upload-limits";
 
@@ -28,7 +28,7 @@ public class UploadLimitsApiTests
     [Fact]
     public async Task Get_ServesTheEffectiveCap_WithoutAnyClaim()
     {
-        await using var factory = new ApiFactory(NoClaims);
+        var factory = Factory.ForCaller(NoClaims);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -47,7 +47,7 @@ public class UploadLimitsApiTests
     [Fact]
     public async Task Get_WhenTheStoredValueIsUnusable_IsServiceUnavailable()
     {
-        await using var factory = new ApiFactory(NoClaims);
+        var factory = Factory.ForCaller(NoClaims);
         await SystemSettingsSeed.SetAsync(factory.Services,
             SystemSettingsKeys.FileStorageMaxUploadMegabytes, "not-a-number");
         using var client = factory.CreateClient();
@@ -65,7 +65,7 @@ public class UploadLimitsApiTests
     [Fact]
     public async Task Get_WithNoStoredRow_ServesTheDefaultRatherThanDegrading()
     {
-        await using var factory = new ApiFactory(NoClaims);
+        var factory = Factory.ForCaller(NoClaims);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -76,7 +76,7 @@ public class UploadLimitsApiTests
     [Fact]
     public async Task Get_ReflectsALoweredCap()
     {
-        await using var factory = new ApiFactory(NoClaims);
+        var factory = Factory.ForCaller(NoClaims);
         await SystemSettingsSeed.SetAsync(factory.Services,
             SystemSettingsKeys.FileStorageMaxUploadMegabytes, "5");
         using var client = factory.CreateClient();
@@ -87,6 +87,9 @@ public class UploadLimitsApiTests
         Assert.Equal(5 * 1024L * 1024L, dto.MaxUploadBytes);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions);
 }
