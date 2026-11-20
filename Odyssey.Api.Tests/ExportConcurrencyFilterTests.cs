@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Api.Tests.Infrastructure;
 using Microsoft.Extensions.Time.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -252,7 +253,7 @@ public class ExportConcurrencyFilterTests
     public async Task ProgressGuard_Abort_LogsTheRouteTemplate_NeverTheCallerSuppliedPath()
     {
         // CodeQL "log entries created from user input": the request path is the caller's, the template is the server's.
-        var logger = new CapturingLogger<ExportConcurrencyFilter>();
+        var logger = new RecordingLogger<ExportConcurrencyFilter>();
         var (filter, context, clock, lifetime, _) = Guarded(logger);
         context.HttpContext.Request.Path = "/api/calendars/x%0AFORGED/ics";
         context.HttpContext.SetEndpoint(new RouteEndpoint(

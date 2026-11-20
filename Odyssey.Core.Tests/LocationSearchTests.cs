@@ -6,6 +6,7 @@ using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Journal.Geocoding;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -19,16 +20,16 @@ public class LocationSearchTests
     private static string Fixture(string name) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "Geocoding", name));
 
-    private static (LocationSearchService Service, StubHandler Kartverket, StubHandler OpenMeteo) Build(
+    private static (LocationSearchService Service, RecordingHttpHandler Kartverket, RecordingHttpHandler OpenMeteo) Build(
         Func<HttpRequestMessage, Task<HttpResponseMessage>>? kartverket = null,
         Func<HttpRequestMessage, Task<HttpResponseMessage>>? openMeteo = null,
         TimeProvider? time = null)
     {
-        var k = new StubHandler(kartverket ?? (request => Task.FromResult(Json(
+        var k = Stashing(kartverket ?? (request => Task.FromResult(Json(
             request.RequestUri!.AbsolutePath.StartsWith("/adresser", StringComparison.Ordinal)
                 ? Fixture("kartverket-adresser-storgata-1.json")
                 : Fixture("kartverket-stedsnavn-storgata-1.json")))));
-        var o = new StubHandler(openMeteo ?? (_ => Task.FromResult(Json(Fixture("openmeteo-lisbon.json")))));
+        var o = Stashing(openMeteo ?? (_ => Task.FromResult(Json(Fixture("openmeteo-lisbon.json")))));
         var sources = new ILocationSearchSource[]
         {
             new KartverketLocationSearch(new HttpClient(k) { BaseAddress = new Uri(KartverketLocationSearch.BaseAddress) }, time),
@@ -36,6 +37,14 @@ public class LocationSearchTests
         };
         return (new LocationSearchService(sources, new LocationSearchCache()), k, o);
     }
+
+    /// <summary>Hands each responder the request with the client's token stashed on it, which <c>Hang</c> waits on.</summary>
+    private static RecordingHttpHandler Stashing(Func<HttpRequestMessage, Task<HttpResponseMessage>> respond) =>
+        new((request, cancellationToken) =>
+        {
+            request.Options.Set(new HttpRequestOptionsKey<CancellationToken>("ct"), cancellationToken);
+            return respond(request);
+        });
 
     private static HttpResponseMessage Json(string body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
@@ -52,9 +61,9 @@ public class LocationSearchTests
         var response = await service.SearchAsync(Norway("storgata 1"));
 
         Assert.Empty(openMeteo.Requests);
-        Assert.All(kartverket.Requests, uri => Assert.Equal("ws.geonorge.no", uri.Host));
-        Assert.Contains(kartverket.Requests, uri => uri.AbsolutePath == "/adresser/v1/sok");
-        Assert.Contains(kartverket.Requests, uri => uri.AbsolutePath == "/stedsnavn/v1/navn");
+        Assert.All(kartverket.Requests, r => Assert.Equal("ws.geonorge.no", r.Uri!.Host));
+        Assert.Contains(kartverket.Requests, r => r.Uri!.AbsolutePath == "/adresser/v1/sok");
+        Assert.Contains(kartverket.Requests, r => r.Uri!.AbsolutePath == "/stedsnavn/v1/navn");
         Assert.False(response.Partial);
         Assert.Equal("© Kartverket", response.Attribution.Text);
 
@@ -164,7 +173,7 @@ public class LocationSearchTests
         var response = await service.SearchAsync(World("lisbon"));
 
         Assert.Empty(kartverket.Requests);
-        var request = Assert.Single(openMeteo.Requests);
+        var request = Assert.Single(openMeteo.Requests).Uri!;
         Assert.Equal("geocoding-api.open-meteo.com", request.Host);
         Assert.Equal("© Open-Meteo", response.Attribution.Text);
 
@@ -333,7 +342,7 @@ public class LocationSearchTests
     }
 
     private static async Task AssertUnavailableAtTheBudgetAsync(
-        FakeTimeProvider time, StubHandler provider, int requests, Task<LocationSearchResponse> search)
+        FakeTimeProvider time, RecordingHttpHandler provider, int requests, Task<LocationSearchResponse> search)
     {
         // The budget starts before the provider is called, so once the requests are in flight it is running.
         var deadline = DateTime.UtcNow.AddSeconds(10);
@@ -366,7 +375,7 @@ public class LocationSearchTests
 
         await Assert.ThrowsAsync<GeocodingUnavailableException>(() => service.SearchAsync(Norway("storgata 1")));
         Assert.Equal(2, kartverket.Requests.Count);
-        Assert.All(kartverket.Requests, uri => Assert.Equal("ws.geonorge.no", uri.Host));
+        Assert.All(kartverket.Requests, r => Assert.Equal("ws.geonorge.no", r.Uri!.Host));
     }
 
     private static HttpResponseMessage Redirect()
@@ -450,14 +459,14 @@ public class LocationSearchTests
         await service.SearchAsync(World(query + " x"));
 
         var expectedNorway = LocationRules.NormalizeQuery(query);
-        foreach (var uri in kartverket.Requests)
+        foreach (var uri in kartverket.Requests.Select(r => r.Uri!))
         {
             var parameters = System.Web.HttpUtility.ParseQueryString(uri.Query);
             Assert.Equal(expectedNorway, parameters["sok"]);
             Assert.Equal("10", parameters["treffPerSide"]);
         }
 
-        var world = System.Web.HttpUtility.ParseQueryString(Assert.Single(openMeteo.Requests).Query);
+        var world = System.Web.HttpUtility.ParseQueryString(Assert.Single(openMeteo.Requests).Uri!.Query);
         Assert.Equal(LocationRules.NormalizeQuery(query + " x"), world["name"]);
         Assert.Equal("10", world["count"]);
     }
@@ -587,20 +596,5 @@ public class LocationSearchTests
         });
 
         Assert.Equal(20, LocationSearchService.Normalize(raw).Count);
-    }
-
-    /// <summary>Records each request URI and answers it with the supplied behaviour.</summary>
-    private sealed class StubHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> respond) : HttpMessageHandler
-    {
-        private readonly ConcurrentQueue<Uri> requests = new();
-
-        public IReadOnlyList<Uri> Requests => [.. requests];
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            requests.Enqueue(request.RequestUri!);
-            request.Options.Set(new HttpRequestOptionsKey<CancellationToken>("ct"), cancellationToken);
-            return respond(request);
-        }
     }
 }

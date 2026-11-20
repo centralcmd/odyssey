@@ -13,6 +13,7 @@ using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 using IcalCalendar = Ical.Net.Calendar;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
@@ -650,7 +651,7 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
     [Fact]
     public async Task A_rule_change_that_would_drop_a_stored_override_is_gated_and_applies_with_allow_removals()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, logs: logs);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Gated");
@@ -1007,12 +1008,12 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
         // One root, as the base factory keeps: a fresh root per factory would build EF a service provider per factory.
         private static readonly Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot StoreRoot = new();
 
-        public ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock = null, CapturingLoggerProvider? logs = null)
+        public ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock = null, RecordingLoggerProvider? logs = null)
             : this(permissions, clock, logs, $"calendar-recurrence-{Guid.NewGuid()}")
         {
         }
 
-        private ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock, CapturingLoggerProvider? logs, string name)
+        private ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock, RecordingLoggerProvider? logs, string name)
             : base(permissions, ActorUserId, configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();

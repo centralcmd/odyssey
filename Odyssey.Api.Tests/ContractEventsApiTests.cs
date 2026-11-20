@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Context.Authorization;
@@ -1123,16 +1124,11 @@ public class ContractEventsApiTests(ContractEventsApiTests.Host host) : SharedAp
                 configureServices: services =>
                 {
                     services.RemoveAll<TimeProvider>();
-                    services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedNow));
+                    services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedNow));
                 },
                 sharingStoreWith: sharingStoreWith)
         {
         }
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>

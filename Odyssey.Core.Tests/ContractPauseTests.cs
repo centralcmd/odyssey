@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
@@ -26,14 +27,8 @@ public class ContractPauseTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class Caps : ISystemSettingsLookup
     {
-
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FinanceRequestCaps(25, 50, 500, 1000));
 
@@ -42,19 +37,19 @@ public class ContractPauseTests
     }
 
     private ContractService CreateService(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new Caps(), NullLogger<ContractPartyService>.Instance);
 
     private ContractFileService Files(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new Caps());
 
     private ContractSummaryService Summaries(OdysseyContext context) =>
-        new(context, new FixedTimeProvider(FixedToday), new Caps());
+        new(context, new FakeTimeProvider(FixedToday), new Caps());
 
     // SIGNED by default (issue #145): the signature layer outranks the date chain, so an unsigned
     // contract reads Draft/Ready and could never be paused at all. Pausing is about the date chain,
@@ -136,7 +131,7 @@ public class ContractPauseTests
         // A later clock — only a fresh stamp could move, so a moved value is the defect.
         var later = new ContractService(
             context, TestContextFactory.ContactLookup(journal),
-            new FixedTimeProvider(FixedToday.AddDays(3)), NullLogger<ContractService>.Instance);
+            new FakeTimeProvider(FixedToday.AddDays(3)), NullLogger<ContractService>.Instance);
         var second = await later.Update(created.ContractId, Write(created, isPaused: true), userId: null);
 
         Assert.Equal(first!.Paused, second!.Paused);

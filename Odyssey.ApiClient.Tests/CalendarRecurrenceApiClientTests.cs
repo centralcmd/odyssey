@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -16,25 +17,9 @@ public class CalendarRecurrenceApiClientTests
 {
     private static readonly Guid Id = Guid.Parse("7c1d0000-0000-0000-0000-000000000001");
 
-    private sealed class RecordingHandler(HttpStatusCode status, string? body) : HttpMessageHandler
+    private static (CalendarApiClient Client, RecordingHttpHandler Handler) Create(HttpStatusCode status, string? body)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            var response = new HttpResponseMessage(status);
-            if (body is not null)
-                response.Content = new StringContent(body, Encoding.UTF8, "application/json");
-            return response;
-        }
-    }
-
-    private static (CalendarApiClient Client, RecordingHandler Handler) Create(HttpStatusCode status, string? body)
-    {
-        var handler = new RecordingHandler(status, body);
+        var handler = new RecordingHttpHandler(status, body);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new CalendarApiClient(api), handler);
     }

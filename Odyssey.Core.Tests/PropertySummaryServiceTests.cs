@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
@@ -15,22 +16,17 @@ public class PropertySummaryServiceTests
 {
     private static readonly DateTimeOffset Now = new(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
 
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
-    }
-
     private static DateTime Utc(int year, int month, int day) => new(year, month, day, 0, 0, 0, DateTimeKind.Utc);
 
     private static PropertySummaryService Summary(OdysseyContext context) =>
-        new(context, new CurrencyConversionService(context), new FixedTimeProvider(Now));
+        new(context, new CurrencyConversionService(context), new FakeTimeProvider(Now));
 
     private static async Task<Guid> PropertyAsync(
         OdysseyContext context, NewProperty body, decimal? estimate = null, DateTime? disposed = null, bool archived = false)
     {
         body.DisposedDate = disposed;
         body.Archived = archived;
-        var id = (await new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now)).Create(body, userId: null, claims: LocationClaims.Trusted)).PropertyId;
+        var id = (await new PropertyService(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(Now)).Create(body, userId: null, claims: LocationClaims.Trusted)).PropertyId;
         if (estimate is { } value)
         {
             context.PropertyEstimates.Add(new PropertyEstimate

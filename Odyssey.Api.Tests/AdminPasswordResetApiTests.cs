@@ -14,6 +14,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 
@@ -588,7 +589,7 @@ public class AdminPasswordResetApiTests(AdminPasswordResetApiTests.Host host)
                 configureServices?.Invoke(services);
             })
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {

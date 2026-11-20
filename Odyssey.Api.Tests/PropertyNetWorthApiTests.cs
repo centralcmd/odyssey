@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
@@ -25,11 +26,6 @@ public class PropertyNetWorthApiTests
 
     private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(
             permissions,
@@ -37,7 +33,7 @@ public class PropertyNetWorthApiTests
             configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedNow));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedNow));
             });
 
     private static readonly string[] Entitled =

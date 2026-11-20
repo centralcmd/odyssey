@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -19,12 +20,7 @@ public class PropertyEventAutomationTests
     private static readonly DateTime Now = new(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
     private const string Actor = "property-automation-actor";
 
-    private sealed class FixedTimeProvider(DateTime now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(now);
-    }
-
-    private static PropertyService Service(OdysseyContext context) => new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
+    private static PropertyService Service(OdysseyContext context) => new(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(Now));
 
     private static List<PropertyEvent> Events(OdysseyContext context, Guid propertyId) =>
         [.. context.PropertyEvents.AsNoTracking().Where(e => e.PropertyId == propertyId).OrderBy(e => e.Type)];

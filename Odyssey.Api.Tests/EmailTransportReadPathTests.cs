@@ -4,6 +4,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 
@@ -37,7 +38,7 @@ public class EmailTransportReadPathTests
     {
         // AC 10. The row is present and empty — the state the migration seeds and the state an
         // administrator clearing the field produces.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(logger, rows: new()
         {
             [SystemSettingsKeys.EmailSmtpHost] = string.Empty,
@@ -54,7 +55,7 @@ public class EmailTransportReadPathTests
     {
         // The pre-seed database. Absent and empty must behave identically — an empty dictionary cannot
         // say which of the two happened, which is why the reader returns an explicit per-key state.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(logger, rows: []);
 
         await sender.SendConfirmationLinkAsync(new ApplicationUser(), Recipient, ConfirmationLink);
@@ -69,7 +70,7 @@ public class EmailTransportReadPathTests
         // AC 13, and the sharpest case in the suite. SystemSettingsReader.GetBoolAsync would resolve
         // "yes" to the compiled `true` and connect with STARTTLS — which reads as the safe direction
         // until the administrator's stored value was `false` for an implicit-TLS relay on 465.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(logger, rows: new()
         {
             [SystemSettingsKeys.EmailSmtpHost] = "smtp.example.test",
@@ -91,7 +92,7 @@ public class EmailTransportReadPathTests
     {
         // AC 13, the int half. Note the asymmetry with the next test: unparseable is refused, whereas
         // out-of-range is clamped. A port that parses is a usable number.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(logger, rows: new()
         {
             [SystemSettingsKeys.EmailSmtpHost] = "smtp.example.test",
@@ -116,7 +117,7 @@ public class EmailTransportReadPathTests
         // The observable is that the send is ATTEMPTED: the host is unreachable, so delivery fails at
         // the relay rather than being skipped before a socket is opened. A refusal would have logged
         // "cannot be used" and never reached MailKit.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(logger, rows: new()
         {
             [SystemSettingsKeys.EmailSmtpHost] = SmtpEmailSenderTestHarness.UnreachableHost,
@@ -135,7 +136,7 @@ public class EmailTransportReadPathTests
         // AC 13b. An http:// PUBLIC host planted by a restore or a hand edit never passed the PUT
         // path's validator, and this is the field issue #8 §10.2 calls the weakest point in the
         // feature — so the send refuses rather than composing a reset link against it.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(logger, rows: new()
         {
             [SystemSettingsKeys.EmailSmtpHost] = SmtpEmailSenderTestHarness.UnreachableHost,
@@ -159,7 +160,7 @@ public class EmailTransportReadPathTests
         // AC 12. The same sender instance — MapIdentityApi resolves IEmailSender once from the root
         // provider and caches it for the app's lifetime, so "the next send" has to mean the next call
         // on THIS object, not the next process.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var provider = CreateProvider();
         Write(provider, new() { [SystemSettingsKeys.EmailSmtpHost] = string.Empty });
         var sender = CreateSender(logger, provider);
@@ -169,7 +170,7 @@ public class EmailTransportReadPathTests
 
         // Entries, not Messages: Messages is a projection built fresh on every read, so clearing it
         // clears a copy and the assertions below would still see the first send's lines.
-        logger.Entries.Clear();
+        logger.Clear();
         Write(provider, new() { [SystemSettingsKeys.EmailSmtpHost] = SmtpEmailSenderTestHarness.UnreachableHost });
 
         await sender.SendConfirmationLinkAsync(new ApplicationUser(), Recipient, ConfirmationLink);
@@ -185,7 +186,7 @@ public class EmailTransportReadPathTests
     // deliberately malformed — rows, which is the whole subject here.
 
     private static SmtpEmailSender CreateSender(
-        CapturingLogger<SmtpEmailSender> logger, Dictionary<string, string> rows)
+        RecordingLogger<SmtpEmailSender> logger, Dictionary<string, string> rows)
     {
         var provider = CreateProvider();
         Write(provider, rows);
@@ -193,7 +194,7 @@ public class EmailTransportReadPathTests
     }
 
     private static SmtpEmailSender CreateSender(
-        CapturingLogger<SmtpEmailSender> logger, ServiceProvider provider) =>
+        RecordingLogger<SmtpEmailSender> logger, ServiceProvider provider) =>
         new(
             provider.GetRequiredService<IServiceScopeFactory>(),
             new AllowAllThrottle(),

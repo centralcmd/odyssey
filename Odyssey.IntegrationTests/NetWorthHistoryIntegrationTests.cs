@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -36,11 +37,6 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
     private const string Database = "odyssey_net_worth_history";
 
     private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
 
     // ── AC21 — exactly one migration, and it swaps the index rather than adding one ────────────
 
@@ -159,7 +155,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         await SeedPropertyAsync(context, "USD");
 
         var totalsService = new AccountTotalsService(
-            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow));
+            context, new CurrencyConversionService(context), new FakeTimeProvider(FixedNow));
         var query = new NetWorthHistoryQuery { MainCurrency = "USD", Interval = NetWorthInterval.Monthly };
 
         counter.Reset();
@@ -229,7 +225,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         Assert.Equal([2, 1, 1, 1], history.Points.Select(point => point.ContributingPropertyCount));
 
         var totals = await new AccountTotalsService(
-            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
+            context, new CurrencyConversionService(context), new FakeTimeProvider(FixedNow))
             .ComputeAsync("USD", includeProperties: true);
         var full = await ServiceFor(context).ComputeAsync(
             new NetWorthHistoryQuery { MainCurrency = "USD", Interval = NetWorthInterval.Monthly }, includeProperties: true);
@@ -478,7 +474,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         await using var context = new OdysseyContext(options);
 
         var totals = await new AccountTotalsService(
-            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
+            context, new CurrencyConversionService(context), new FakeTimeProvider(FixedNow))
             .ComputeAsync("USD", includeProperties: false);
 
         // Live + archived only. Archiving is a list filter; closing ends the term, and `Closed == now`
@@ -501,7 +497,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────
 
     private static NetWorthHistoryService ServiceFor(OdysseyContext context) =>
-        new(context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow));
+        new(context, new CurrencyConversionService(context), new FakeTimeProvider(FixedNow));
 
     private static async Task SeedPortfolioAsync(OdysseyContext context)
     {

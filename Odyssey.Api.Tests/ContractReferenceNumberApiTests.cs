@@ -5,10 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using ContractType = Odyssey.Dtos.Finance.ContractType;
 
@@ -218,7 +220,7 @@ public class ContractReferenceNumberApiTests(ContractReferenceNumberApiTests.Hos
         const string Accepted = "LOGPROBE-ACCEPTED-7731";
         const string Refused = "LOGPROBE-REFUSED\n-7731";
 
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, services => services.AddSingleton<ILoggerProvider>(logs));
         using var client = factory.CreateClient();
 
@@ -375,14 +377,9 @@ public class ContractReferenceNumberApiTests(ContractReferenceNumberApiTests.Hos
         : OdysseyApiFactory(permissions, ActorUserId, configureServices: services =>
         {
             services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+            services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
             extra?.Invoke(services);
         });
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
 
     /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
     public sealed class Host() : ApiFactory([]);

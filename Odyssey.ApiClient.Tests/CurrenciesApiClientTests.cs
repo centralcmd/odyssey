@@ -1,33 +1,16 @@
 using System.Net;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
 
 public class CurrenciesApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (T Client, RecordingHttpHandler Handler) Create<T>(Func<IOdysseyApi, T> factory)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public HttpResponseMessage Response { get; set; } =
-            new(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""{"items":[],"offset":0,"limit":50,"totalCount":0}""",
-                                            System.Text.Encoding.UTF8, "application/json"),
-            };
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(Response);
-        }
-    }
-
-    private static (T Client, RecordingHandler Handler) Create<T>(Func<IOdysseyApi, T> factory)
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (factory(api), handler);
     }

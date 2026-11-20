@@ -9,6 +9,7 @@ using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -780,7 +781,7 @@ public class SecretSettingsApiTests(SecretSettingsApiTests.Host host) : SharedAp
 
     private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions) : ApiFactory(permissions)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {

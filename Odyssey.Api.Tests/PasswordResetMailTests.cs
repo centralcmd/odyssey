@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Api.Email;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -87,7 +88,7 @@ public class PasswordResetMailTests
     [InlineData("Testing")]
     public async Task WithNoSmtpHost_TheLinkIsLoggedInDevelopmentAndTesting(string environmentName)
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger, environmentName: environmentName);
 
         await sender.SendPasswordResetCodeAsync(new ApplicationUser(), "user@example.com", Code);
@@ -105,7 +106,7 @@ public class PasswordResetMailTests
         // with no SMTP host — that ValidateOnStart gate went when the host moved into the settings
         // store (issue #8 §11.3) — so this branch is reachable there, and this gate is the only thing
         // standing between an unconfigured relay and a token in the log.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger, environmentName: environmentName);
 
         await sender.SendPasswordResetCodeAsync(new ApplicationUser(), "user@example.com", Code);
@@ -121,7 +122,7 @@ public class PasswordResetMailTests
     {
         // MapIdentityApi never calls SendPasswordResetLinkAsync; it is kept as an explicit no-op so
         // nobody re-implements the reset mail in the overload that is never invoked.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger);
 
         await sender.SendPasswordResetLinkAsync(

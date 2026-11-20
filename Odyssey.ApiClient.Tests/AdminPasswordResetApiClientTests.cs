@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Auth;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -180,10 +181,12 @@ public class AdminPasswordResetApiClientTests
         return document.RootElement.GetProperty(property).GetString();
     }
 
-    private static (ServiceProvider Provider, StubHandler Handler) Build(
+    private static (ServiceProvider Provider, RecordingHttpHandler Handler) Build(
         HttpStatusCode status, string? body, bool throws = false)
     {
-        var handler = new StubHandler(status, body, throws);
+        var handler = throws
+            ? new RecordingHttpHandler(_ => throw new HttpRequestException("the API is unreachable")) { AnswersAntiforgeryToken = true }
+            : new RecordingHttpHandler(status, body, RecordingHttpHandler.ProblemMediaType) { AnswersAntiforgeryToken = true };
         var services = new ServiceCollection();
         services.AddOdysseyApiClient();
         services.AddScoped(sp =>
@@ -193,44 +196,5 @@ public class AdminPasswordResetApiClientTests
             return new HttpClient(antiforgery) { BaseAddress = new Uri("http://localhost/") };
         });
         return (services.BuildServiceProvider(), handler);
-    }
-
-    private sealed class StubHandler(HttpStatusCode status, string? body, bool throws) : HttpMessageHandler
-    {
-        public string? LastPath { get; private set; }
-
-        public HttpMethod? LastMethod { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            // The antiforgery handler fetches a token ahead of the POST; answer it so the request under
-            // test reaches this handler.
-            if (request.RequestUri!.AbsolutePath.EndsWith("/api/antiforgery/token", StringComparison.Ordinal))
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("""{"token":"token"}""", Encoding.UTF8, "application/json"),
-                };
-            }
-
-            LastPath = request.RequestUri.AbsolutePath;
-            LastMethod = request.Method;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-
-            if (throws)
-            {
-                throw new HttpRequestException("the API is unreachable");
-            }
-
-            var response = new HttpResponseMessage(status);
-            if (body is not null)
-            {
-                response.Content = new StringContent(body, Encoding.UTF8, "application/problem+json");
-            }
-
-            return response;
-        }
     }
 }

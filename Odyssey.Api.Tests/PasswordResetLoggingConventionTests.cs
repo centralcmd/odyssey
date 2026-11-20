@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -25,7 +26,7 @@ public class PasswordResetLoggingConventionTests
     [Fact]
     public void OnlyTheResetRoute_GetsTheFilter()
     {
-        var logger = new CapturingLogger<PasswordResetLoggingConventionTests>();
+        var logger = new RecordingLogger<PasswordResetLoggingConventionTests>();
         var builder = new FakeConventionBuilder();
         builder.LogPasswordResetCompletion(logger);
 
@@ -42,7 +43,7 @@ public class PasswordResetLoggingConventionTests
     [Fact]
     public void TheRouteIsMatchedCaseInsensitively()
     {
-        var logger = new CapturingLogger<PasswordResetLoggingConventionTests>();
+        var logger = new RecordingLogger<PasswordResetLoggingConventionTests>();
         var builder = new FakeConventionBuilder();
         builder.LogPasswordResetCompletion(logger);
 
@@ -57,7 +58,7 @@ public class PasswordResetLoggingConventionTests
     {
         // The failure mode: a future ASP.NET version renames the route, the filter is never attached,
         // and completed resets stop being logged with nothing to notice it by.
-        var logger = new CapturingLogger<PasswordResetLoggingConventionTests>();
+        var logger = new RecordingLogger<PasswordResetLoggingConventionTests>();
         var builder = new FakeConventionBuilder();
         builder.LogPasswordResetCompletion(logger);
 
@@ -76,7 +77,7 @@ public class PasswordResetLoggingConventionTests
     [Fact]
     public void WithTheRoutePresent_NothingIsReported()
     {
-        var logger = new CapturingLogger<PasswordResetLoggingConventionTests>();
+        var logger = new RecordingLogger<PasswordResetLoggingConventionTests>();
         var builder = new FakeConventionBuilder();
         builder.LogPasswordResetCompletion(logger);
 

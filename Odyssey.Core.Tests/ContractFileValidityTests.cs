@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
@@ -25,11 +26,6 @@ public class ContractFileValidityTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class StubCaps(int maxFilesPerContract) : ISystemSettingsLookup
     {
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
@@ -41,19 +37,19 @@ public class ContractFileValidityTests
     }
 
     private ContractService CreateService(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new StubCaps(maxFilesPerContract), NullLogger<ContractPartyService>.Instance);
 
     private ContractFileService Files(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new StubCaps(maxFilesPerContract));
 
     private ContractSummaryService Summaries(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, new FixedTimeProvider(FixedToday), new StubCaps(maxFilesPerContract));
+        new(context, new FakeTimeProvider(FixedToday), new StubCaps(maxFilesPerContract));
 
     private static NewContract NewContractRequest() => new()
     {

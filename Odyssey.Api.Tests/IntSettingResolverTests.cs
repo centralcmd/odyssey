@@ -3,6 +3,7 @@ using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.SystemSettings;
 
@@ -23,10 +24,10 @@ public class IntSettingResolverTests
     private static IntSettingSpec Spec(ConservativeDirection direction = ConservativeDirection.Smaller) =>
         new(Key, Default: 20, Min: 1, Max: 50, direction);
 
-    private static (IntSettingResolver Resolver, CapturingLogger<IntSettingResolverTests> Logger, ManualClock Clock) Create()
+    private static (IntSettingResolver Resolver, RecordingLogger<IntSettingResolverTests> Logger, ManualClock Clock) Create()
     {
         var clock = new ManualClock();
-        var logger = new CapturingLogger<IntSettingResolverTests>();
+        var logger = new RecordingLogger<IntSettingResolverTests>();
         var cache = new MemoryCache(new MemoryCacheOptions { Clock = clock });
         return (new IntSettingResolver(cache, logger, "test"), logger, clock);
     }

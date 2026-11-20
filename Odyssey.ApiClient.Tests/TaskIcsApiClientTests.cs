@@ -1,5 +1,6 @@
 using System.Net;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -11,24 +12,9 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class TaskIcsApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (TaskApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""{"taskCount":3,"attachmentCount":2,"attachmentBytes":4096}""",
-                                            System.Text.Encoding.UTF8, "application/json"),
-            });
-        }
-    }
-
-    private static (TaskApiClient Client, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"taskCount":3,"attachmentCount":2,"attachmentBytes":4096}""");
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:5188/") });
         return (new TaskApiClient(api), handler);
     }

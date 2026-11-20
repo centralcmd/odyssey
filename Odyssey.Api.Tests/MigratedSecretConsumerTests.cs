@@ -8,6 +8,8 @@ using Odyssey.Context.Secrets;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos.Application;
 using Odyssey.Testing;
+using Odyssey.Testing.Http;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 using Odyssey.Core.Finance;
@@ -77,7 +79,7 @@ public class MigratedSecretConsumerTests
     public async Task AnUnreadableApiKey_FailsClosed_AndNeverFallsBackToConfiguration()
     {
         var reader = new StubSecretSettingsReader().Unreadable(SecretSettingKeys.FileAnalysisApiKey);
-        var logger = new CapturingLogger<FileAnalysisApiKeyHandler>();
+        var logger = new RecordingLogger<FileAnalysisApiKeyHandler>();
         var (client, inner) = RecordingClientFor(reader, logger);
 
         var exception = await Assert.ThrowsAsync<Odyssey.Core.Finance.FileAnalysisCredentialException>(
@@ -125,20 +127,17 @@ public class MigratedSecretConsumerTests
     public async Task TheApiKeyDoesNotFollowARedirect_AndIsNeverAttachedTwice()
     {
         var reader = new StubSecretSettingsReader().Found(SecretSettingKeys.FileAnalysisApiKey, "sk-ant-first");
-        var inner = new RecordingHandler
+        var inner = new RecordingHttpHandler(_ => new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
         {
-            Respond = () => new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
-            {
-                Headers = { Location = new Uri("https://attacker.test/v1/messages") },
-            },
-        };
+            Headers = { Location = new Uri("https://attacker.test/v1/messages") },
+        });
         var client = ClientFor(reader, inner: inner);
 
         var response = await client.PostAsync("https://provider.test/v1/messages", new StringContent("{}"));
 
         // Returned, not followed: exactly one request, and it went to the configured host.
         Assert.Equal(HttpStatusCode.TemporaryRedirect, response.StatusCode);
-        Assert.Equal(1, inner.Requests);
+        Assert.Single(inner.Requests);
         Assert.Equal("provider.test", inner.LastRequest!.RequestUri!.Host);
 
         // A request arriving with a stale key carries exactly one value afterwards — the current one.
@@ -160,7 +159,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task WithNeitherHalfStored_TheSendIsAttemptedUnauthenticated()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, smtpHost: SmtpEmailSenderTestHarness.UnreachableHost);
 
@@ -185,7 +184,7 @@ public class MigratedSecretConsumerTests
             .Found(SecretSettingKeys.EmailPassword, "relay-password");
         secrets.Unreadable(unreadableKey);
 
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, smtpHost: SmtpEmailSenderTestHarness.UnreachableHost, secrets: secrets);
 
@@ -210,7 +209,7 @@ public class MigratedSecretConsumerTests
     [InlineData(SecretSettingKeys.EmailPassword)]
     public async Task WithOnlyOneHalfStored_TheSendIsSkipped(string storedKey)
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -230,7 +229,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task WithBothHalvesStored_TheSendReachesTheTransport()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -252,7 +251,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task ASendCycle_NeverLogsTheStoredCredential()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -276,7 +275,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task AnUnsetHashKey_UsesAPerProcessKey_AndSaysSo()
     {
-        var logger = new CapturingLogger<EmailRecipientHashKey>();
+        var logger = new RecordingLogger<EmailRecipientHashKey>();
         var first = HashKeyFor(new StubSecretSettingsReader(), logger);
         var second = HashKeyFor(new StubSecretSettingsReader());
 
@@ -302,7 +301,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task AnUnreadableHashKey_LogsAnError_AndIsDistinguishableFromUnset()
     {
-        var logger = new CapturingLogger<EmailRecipientHashKey>();
+        var logger = new RecordingLogger<EmailRecipientHashKey>();
         var provider = HashKeyFor(
             new StubSecretSettingsReader().Unreadable(SecretSettingKeys.EmailRecipientHashKey), logger);
 
@@ -336,7 +335,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task TheHashKeyProvider_NeverLogsTheKey()
     {
-        var logger = new CapturingLogger<EmailRecipientHashKey>();
+        var logger = new RecordingLogger<EmailRecipientHashKey>();
         var provider = HashKeyFor(
             new StubSecretSettingsReader().Found(SecretSettingKeys.EmailRecipientHashKey, Sentinel), logger);
 
@@ -431,10 +430,10 @@ public class MigratedSecretConsumerTests
 
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────
 
-    private static (HttpClient Client, RecordingHandler Inner) RecordingClientFor(
-        StubSecretSettingsReader reader, CapturingLogger<FileAnalysisApiKeyHandler>? logger = null)
+    private static (HttpClient Client, RecordingHttpHandler Inner) RecordingClientFor(
+        StubSecretSettingsReader reader, RecordingLogger<FileAnalysisApiKeyHandler>? logger = null)
     {
-        var inner = new RecordingHandler();
+        var inner = new RecordingHttpHandler();
         return (ClientFor(reader, logger, inner), inner);
     }
 
@@ -445,52 +444,30 @@ public class MigratedSecretConsumerTests
     /// </summary>
     private static HttpClient ClientFor(
         StubSecretSettingsReader reader,
-        CapturingLogger<FileAnalysisApiKeyHandler>? logger = null,
-        RecordingHandler? inner = null)
+        RecordingLogger<FileAnalysisApiKeyHandler>? logger = null,
+        RecordingHttpHandler? inner = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ISecretSettingsReader>(reader);
 
         var handler = new FileAnalysisApiKeyHandler(
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            logger ?? new CapturingLogger<FileAnalysisApiKeyHandler>())
+            logger ?? new RecordingLogger<FileAnalysisApiKeyHandler>())
         {
-            InnerHandler = inner ?? new RecordingHandler(),
+            InnerHandler = inner ?? new RecordingHttpHandler(),
         };
 
         return new HttpClient(handler);
     }
 
     private static EmailRecipientHashKey HashKeyFor(
-        StubSecretSettingsReader reader, CapturingLogger<EmailRecipientHashKey>? logger = null)
+        StubSecretSettingsReader reader, RecordingLogger<EmailRecipientHashKey>? logger = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ISecretSettingsReader>(reader);
 
         return new EmailRecipientHashKey(
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            logger ?? new CapturingLogger<EmailRecipientHashKey>());
-    }
-
-    /// <summary>
-    /// Records what actually reached the wire. It never follows anything: a redirect response is
-    /// returned to the caller, which is the behaviour <c>AllowAutoRedirect = false</c> produces on the
-    /// real client's primary handler.
-    /// </summary>
-    private sealed class RecordingHandler : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public int Requests { get; private set; }
-
-        public Func<HttpResponseMessage> Respond { get; init; } = () => new(HttpStatusCode.OK);
-
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastRequest = request;
-            Requests++;
-            return Task.FromResult(Respond());
-        }
+            logger ?? new RecordingLogger<EmailRecipientHashKey>());
     }
 }

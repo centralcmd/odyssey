@@ -3,6 +3,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using MudBlazor.Services;
 using Odyssey.Client.Pages.Finance;
@@ -79,7 +80,7 @@ public class ContractPartyTileTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
         ctx.Services.AddInertSmartTagSection();
-        ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
+        ctx.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Today));
         // The Documents section renders in the same detail view, and its files table resolves the
         // issuer options and the contacts.create claim for its Edit dialog (issue #146).
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
@@ -103,7 +104,7 @@ public class ContractPartyTileTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
         ctx.Services.AddInertSmartTagSection();
-        ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
+        ctx.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Today));
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedOut());
@@ -574,11 +575,6 @@ public class ContractPartyTileTests
         return [.. cut.FindAll(".mud-menu-item .odc-menu-item-body > span:first-child")
             .Select(node => node.TextContent.Trim())
             .Where(text => text.Length > 0)];
-    }
-
-    private sealed class FixedTime(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     /// <summary>
