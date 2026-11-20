@@ -467,7 +467,7 @@ public partial class BackgroundJobs
         {
             Icon = "fingerprint",
             Label = "Copy run ID",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(run.Id.ToString(), "Run ID copied.")),
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(run.Id.ToString(), OdsCopied.Id("Run"))),
         },
     ];
 

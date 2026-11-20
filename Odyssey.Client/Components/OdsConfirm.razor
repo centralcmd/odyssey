@@ -1,0 +1,61 @@
+@*
+    OdsConfirm — ask a yes/no question in the design system's destructive confirmation, from code.
+
+    A page renders one <OdsConfirm @ref="_confirm" /> and awaits _confirm.AskAsync(…): true when the
+    danger action was chosen, false on Cancel, Esc, the scrim or the close button. It wraps
+    OdsConfirmDialog, so every such prompt is an alertdialog described by its body, with the
+    error-toned icon and Cancel focused on open, instead of MudBlazor's unstyled message box. On close,
+    focus goes to returnFocusToId when given, else back to the row menu trigger that opened it, else
+    to the page heading.
+
+    Use OdsConfirmDialog directly when the dialog should stay open with the server's refusal.
+*@
+
+@implements IDisposable
+
+<OdsConfirmDialog Open="_open" OpenChanged="OnOpenChanged"
+                  Title="@_title" Body="@_body" ConfirmLabel="@_confirmLabel"
+                  Icon="@_icon" SubmitIcon="@_icon"
+                  ReturnFocusToId="@_returnFocusToId"
+                  OnConfirm="Confirm" />
+
+@code {
+    private bool _open;
+    private string _title = string.Empty;
+    private string _body = string.Empty;
+    private string _confirmLabel = string.Empty;
+    private string _icon = "delete";
+    private string? _returnFocusToId;
+    private TaskCompletionSource<bool>? _answer;
+
+    /// <summary>
+    /// Opens the confirmation. A question still open when another is asked is answered false.
+    /// </summary>
+    /// <param name="icon">The lead and button glyph: <c>delete</c>, or <c>link_off</c> for a detach.</param>
+    /// <param name="returnFocusToId">Where focus lands on close; by default the menu trigger or control that opened it.</param>
+    public Task<bool> AskAsync(
+        string title, string body, string confirmLabel, string icon = "delete", string? returnFocusToId = null)
+    {
+        _answer?.TrySetResult(false);
+        _answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        (_title, _body, _confirmLabel, _icon, _returnFocusToId) = (title, body, confirmLabel, icon, returnFocusToId);
+        _open = true;
+        StateHasChanged();
+        return _answer.Task;
+    }
+
+    private Task<string?> Confirm()
+    {
+        _answer?.TrySetResult(true);
+        return Task.FromResult<string?>(null);
+    }
+
+    private void OnOpenChanged(bool open)
+    {
+        _open = open;
+        if (!open)
+            _answer?.TrySetResult(false);
+    }
+
+    public void Dispose() => _answer?.TrySetResult(false);
+}

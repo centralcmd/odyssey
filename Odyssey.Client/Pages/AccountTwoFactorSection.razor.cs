@@ -219,13 +219,13 @@ public partial class AccountTwoFactorSection
         _phase = Phase.Idle;
     }
 
-    private Task CopySharedKey() => Clipboard.CopyAsync(Status.SharedKey, "Setup key copied.");
+    private Task CopySharedKey() => Clipboard.CopyAsync(Status.SharedKey, OdsCopied.Value("Setup key"));
 
     private async Task CopyCodes()
     {
         // Only flip the button to "Copied" when the copy actually succeeded; on
         // failure CopyAsync toasts the error and the codes stay on screen.
-        if (!await Clipboard.CopyAsync(string.Join("\n", _recoveryCodes), "Recovery codes copied."))
+        if (!await Clipboard.CopyAsync(string.Join("\n", _recoveryCodes), OdsCopied.Value("Recovery codes")))
             return;
 
         _codesCopied = true;

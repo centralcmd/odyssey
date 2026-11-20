@@ -198,7 +198,6 @@ public partial class AccountSmartTagsSection
         string Icon, string Title, string Description, string? ActionLabel = null, string? ActionIcon = null,
         EventCallback OnAction = default);
 
-    private static string ScopeDay(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     /// <summary>
     /// The scope line, straight off the response. <c>toExclusive</c> is the NEXT midnight, so the
@@ -212,8 +211,8 @@ public partial class AccountSmartTagsSection
             if (!IsScoped || !CanReadTransactions || _scope is null)
                 return null;
 
-            var from = _scope.From is { } f ? ScopeDay(f) : null;
-            var last = _scope.ToExclusive is { } t ? ScopeDay(t.AddDays(-1)) : null;
+            var from = _scope.From is { } f ? OdsDates.Long(f) : null;
+            var last = _scope.ToExclusive is { } t ? OdsDates.Long(t.AddDays(-1)) : null;
             var window = (from, last) switch
             {
                 ({ } a, { } b) => $"{a} – {b}",

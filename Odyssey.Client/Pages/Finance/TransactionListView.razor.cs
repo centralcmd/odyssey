@@ -146,7 +146,7 @@ public partial class TransactionListView
     }
 
     private Task CopyIdAsync(Guid transactionId) =>
-        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
+        Clipboard.CopyAsync(transactionId.ToString(), OdsCopied.Id("Transaction"));
 
     private async Task ChangedAsync()
     {

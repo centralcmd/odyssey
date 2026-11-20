@@ -18,6 +18,8 @@ namespace Odyssey.Client.Pages.Journal;
 
 public partial class JournalCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<JournalEntrySummary> _entries = [];                       // server-filtered display list
     private readonly Dictionary<Guid, ExistingJournalEntry> _details = new();
@@ -693,12 +695,9 @@ public partial class JournalCard
     private async Task ConfirmDelete(JournalEntrySummary e)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete entry",
-            DeleteMessage(e.Title),
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete entry", DeleteMessage(e.Title), "Delete");
 
-        if (confirmed == true && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
+        if (confirmed && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
         {
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
@@ -716,7 +715,7 @@ public partial class JournalCard
         await LoadEntries();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Entry ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Entry"));
 
     // ── Create ──────────────────────────────────────────────────────────────────
     private Guid _createKey;
@@ -857,11 +856,7 @@ public partial class JournalCard
             Icon = "event_note", Label = "Export VJOURNAL",
             OnClick = EventCallback.Factory.Create(this, () => ExportEntryAsync(e)),
         });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId))));
 
         if (_canUpdate)
         {

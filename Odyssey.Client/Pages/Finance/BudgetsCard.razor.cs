@@ -19,6 +19,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class BudgetsCard
 {
+    private OdsConfirm _confirm = default!;
+
     private List<ExistingBudget> _budgets = [];
     // Server-computed rollup backing the header count + planned balance (issue #372) — it spans every
     // budget, unlike the server-filtered display list, without fetching one.
@@ -442,11 +444,8 @@ public partial class BudgetsCard
         if (!_canDelete)
             return;
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete budget",
-            $"Delete '{budget.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed == true)
+        var confirmed = await _confirm.AskAsync("Delete budget", $"Delete '{budget.Name}'? This cannot be undone.", "Delete");
+        if (confirmed)
             await DeleteBudget(budget);
     }
 
@@ -463,7 +462,7 @@ public partial class BudgetsCard
     }
 
     private Task CopyBudgetId(Guid budgetId) =>
-        Clipboard.CopyAsync(budgetId.ToString(), "Budget ID copied.");
+        Clipboard.CopyAsync(budgetId.ToString(), OdsCopied.Id("Budget"));
 
     // ── Row actions ──────────────────────────────────────────────────────
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a
@@ -508,13 +507,7 @@ public partial class BudgetsCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyBudgetId(budget.BudgetId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyBudgetId(budget.BudgetId))));
 
         if (_canUpdate)
         {
@@ -558,7 +551,6 @@ public partial class BudgetsCard
 
     private static string Lines(int count, string noun) => BudgetBalanceVisuals.Lines(count, noun);
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     private string FormatMoney(decimal value, string? currencyCode) =>
         OdsMoney.Format(value, currencyCode, MinorUnits(currencyCode));

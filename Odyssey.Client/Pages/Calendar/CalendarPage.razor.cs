@@ -116,8 +116,8 @@ public partial class CalendarPage
                 var start = CalendarGridMath.StartOfWeek(_anchor, 1);
                 var end = start.AddDays(6);
                 return start.Year == end.Year
-                    ? $"{start:MMM d} – {end:MMM d, yyyy}"
-                    : $"{start:MMM d, yyyy} – {end:MMM d, yyyy}";
+                    ? $"{start:MMM d} – {OdsDates.LongUnpadded(end)}"
+                    : $"{OdsDates.LongUnpadded(start)} – {OdsDates.LongUnpadded(end)}";
             }
 
             return _anchor.ToString("MMMM yyyy");

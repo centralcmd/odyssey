@@ -422,7 +422,7 @@ public partial class TransactionsCard
     }
 
     private Task CopyId(Guid transactionId) =>
-        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
+        Clipboard.CopyAsync(transactionId.ToString(), OdsCopied.Id("Transaction"));
 
     public void Dispose() => _listLoader.Dispose();
 }

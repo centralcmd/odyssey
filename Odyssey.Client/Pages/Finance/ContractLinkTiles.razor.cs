@@ -56,15 +56,8 @@ public partial class ContractLinkTiles
         {
             Icon = "content_copy",
             Label = "Copy name",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(link.Name, "Name copied to clipboard.")),
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(link.Name, OdsCopied.Value("Name"))),
         },
-        new()
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this,
-                () => Clipboard.CopyAsync(link.ContractId.ToString(), "ID copied to clipboard.")),
-        },
+        OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(link.ContractId.ToString(), OdsCopied.Id("Contract")))),
     ];
 }

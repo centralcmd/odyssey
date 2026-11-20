@@ -6,7 +6,6 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
@@ -399,6 +398,8 @@
                        Account="_estimateAccount"
                        OnSaved="OnEstimateCreated" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // The meta-line entries that carry a glyph. Inline render fragments are Razor syntax, so they
