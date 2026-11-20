@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
+using DataAnnotations = System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Core.Tests;
 
@@ -184,6 +185,46 @@ public class TagIconsTests
         var attribute = new TagIconAttribute();
         Assert.Equal(valid, attribute.IsValid(value));
         Assert.Equal(TagIcons.InvalidIconMessage, attribute.FormatErrorMessage("Icon"));
+    }
+
+    public static TheoryData<string> InvalidIconKeys() =>
+    [
+        TagIcons.Default, PhotoAlbumIcons.Default, CalendarIcons.Default, "", "  ", "Beach_Access", "Landscape",
+        "<svg>", "not_an_icon_zq", new string('q', TagIcons.MaxKeyLength + 1),
+    ];
+
+    /// <summary>
+    /// Every invalid key against the attribute stack each <c>[TagIcon]</c> DTO property actually carries
+    /// (<c>[StringLength]</c> included), as model validation runs it: exactly one error, the shared message.
+    /// This is what lets the HTTP tier keep only representatives (<c>JournalTagIconApiTests</c>) — it
+    /// proves wiring per endpoint, this proves the list per property.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(InvalidIconKeys))]
+    public void Every_TagIcon_property_reports_one_shared_error_for_every_invalid_key(string value)
+    {
+        var properties = typeof(TagIcons).Assembly.GetTypes()
+            .SelectMany(type => type.GetProperties())
+            .Where(property => property.IsDefined(typeof(TagIconAttribute), inherit: false))
+            .ToList();
+        Assert.True(properties.Count >= 7, $"Scan set unexpectedly small ({properties.Count}).");
+
+        foreach (var property in properties)
+        {
+            if (string.IsNullOrWhiteSpace(value) && property.IsDefined(typeof(DataAnnotations.RequiredAttribute), inherit: false))
+            {
+                continue;
+            }
+
+            var results = new List<DataAnnotations.ValidationResult>();
+            var context = new DataAnnotations.ValidationContext(new object()) { MemberName = property.Name };
+            var attributes = property.GetCustomAttributes(typeof(DataAnnotations.ValidationAttribute), inherit: false)
+                .Cast<DataAnnotations.ValidationAttribute>();
+
+            Assert.False(DataAnnotations.Validator.TryValidateValue(value, context, results, attributes),
+                $"{property.DeclaringType!.Name}.{property.Name}");
+            Assert.Equal([TagIcons.InvalidIconMessage], results.Select(result => result.ErrorMessage));
+        }
     }
 
     /// <summary>
