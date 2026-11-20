@@ -165,7 +165,6 @@
 .wx-fail { flex-wrap: wrap; }
 .wx-fail-help { color: var(--mud-palette-text-secondary); }
 
-
 /* ---------- Hours of one day (issues #414, #415) ----------
    Design system · weather.css. The panel a day card opens, under the whole strip: a native table labelled by the panel's
    visually hidden heading; gap rows span the table; "Forecast ends" sits OUTSIDE the scroll wrapper so it never scrolls away. The wrapper
@@ -318,9 +317,6 @@
   .wp-page .odc-sortsel { flex-wrap: wrap; max-width: 100%; min-width: 0; }
   .wp-page .ph-filter-bar > * { max-width: 100%; min-width: 0 !important; }
 }
-/* A loading row on the Weather points page holds the RecordCard's 88 px floor. */
-.wp-skel-row { height: 88px; border-radius: var(--radius-md); }
-.wp-skel-list { display: flex; flex-direction: column; gap: 10px; }
 
 /* New weather point → Search address (design system · weather.css). The search sits in the dialog body like the
    location dialog's find step; a pick reuses that dialog's provenance card (.loc-picked) above the position fields. */

@@ -595,18 +595,6 @@ html:not([data-theme='dark']) { --user-text-l: min(l, 0.48); }
 .aam-group-pill.asset { background: var(--finance-income-soft); color: var(--finance-income); }
 .aam-group-pill.liability { background: var(--finance-expense-soft); color: var(--finance-expense); }
 
-/* ---- Add-file: locked account context strip ---- */
-.efm-context {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; border-radius: 10px;
-  background: var(--mud-palette-background);
-  border: 1px solid var(--mud-palette-lines-default);
-}
-.efm-context-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 9px; }
-.efm-context-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.efm-context-acct { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: var(--mud-palette-text-primary); }
-.efm-context-facts { font-size: 0.75rem; color: var(--mud-palette-text-secondary); }
-
 /* ---- Add-file: per-file validity editor ----
    Rendered beneath each row via OdsFileUpload's RenderFileExtra slot. The dropzone /
    file-list / kind-picker chrome that used to live here is gone — those surfaces now
