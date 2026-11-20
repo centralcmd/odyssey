@@ -255,17 +255,19 @@ public class OdysseyApiFactory(
     /// Returns a SHARED host to the state a freshly built one starts in, so a test class can boot one host for
     /// all its tests (see <see cref="SharedApiHostClients"/>) and still give every test an empty store. It:
     /// <list type="bullet">
-    /// <item><description>empties the InMemory database and re-applies <c>HasData</c> (currencies, roles, settings),
-    /// keeping only the <c>FileStorageVolumes</c> rows the startup verifier wrote — the volume registry the
-    /// host resolved at boot names them;</description></item>
+    /// <item><description>restores the default caller's permissions (<see cref="UsePermissions"/>);</description></item>
+    /// <item><description>empties the InMemory database and, on a host with a file volume, re-applies <c>HasData</c>
+    /// (currencies, roles, settings) the way its startup verification did, keeping only the <c>FileStorageVolumes</c>
+    /// rows that verification wrote — the volume registry the host resolved at boot names them. A host without a
+    /// volume never ran <c>EnsureCreated</c>, so its store is left empty, as a fresh one's is;</description></item>
     /// <item><description>deletes every file on the temp volume except the volume marker and the store's own
     /// folders, so a file name a previous test used cannot turn the next one's into <c>name (2)</c>;</description></item>
-    /// <item><description>clears the host's <see cref="IMemoryCache"/> (settings lookups cache for 30 s) and
-    /// restores <see cref="FileVolumeSpace"/>.</description></item>
+    /// <item><description>clears the host's <see cref="IMemoryCache"/> (settings lookups cache for 30 s), restores
+    /// <see cref="FileVolumeSpace"/> and marks every volume available again.</description></item>
     /// </list>
     /// Any other singleton state — a rate-limit partition, a fake clock, a hand-held cache outside
-    /// <see cref="IMemoryCache"/>, a degraded-volume flag — survives, which is why a test that changes such state
-    /// keeps a fresh host of its own.
+    /// <see cref="IMemoryCache"/>, a captured log, a stub's call counter — survives unless the factory overrides this
+    /// method to reset it too, which is why a test that changes such state otherwise keeps a fresh host of its own.
     /// </summary>
     public virtual async Task ResetStoreAsync()
     {
@@ -296,6 +298,16 @@ public class OdysseyApiFactory(
         }
 
         FileVolumeSpace.Override = new TestSpaceProbe().Override;
+
+        // A volume a test drove Degraded (a refused reserve, a vanished file) would otherwise stay so for the next
+        // test until the 15-second re-probe; a fresh host starts with every volume available.
+        if (Services.GetService<FileStorageVolumeRegistry>() is { } registry)
+        {
+            foreach (var volume in registry.Volumes)
+            {
+                registry.MarkAvailable(volume);
+            }
+        }
 
         if (OwnsFileVolume && Directory.Exists(fileVolumePath))
         {

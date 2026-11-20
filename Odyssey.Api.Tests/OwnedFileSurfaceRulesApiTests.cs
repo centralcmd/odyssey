@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// detaching an unattached file was a <c>204</c> on accounts and transactions; and attach answered
 /// <c>204</c> on two surfaces and an empty <c>201</c> on three.
 /// </summary>
-public sealed class OwnedFileSurfaceRulesApiTests
+public class OwnedFileSurfaceRulesApiTests(OwnedFileSurfaceRulesApiTests.Host host) : SharedApiHostTests<OwnedFileSurfaceRulesApiTests.Host>(host)
 {
     public enum Surface
     {
@@ -36,7 +36,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [MemberData(nameof(Surfaces))]
     public async Task Attach_Answers201WithTheCreatedLink(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
 
@@ -54,7 +54,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [MemberData(nameof(Surfaces))]
     public async Task AttachingTheSameFileTwice_IsAConflict(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
 
@@ -66,7 +66,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [MemberData(nameof(Surfaces))]
     public async Task DetachingTwice_TheSecondIsNotFound(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
 
@@ -81,7 +81,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [MemberData(nameof(Surfaces))]
     public async Task DetachingANeverAttachedFile_IsNotFound(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
 
@@ -92,7 +92,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [MemberData(nameof(Surfaces))]
     public async Task DetachingFromAnUnknownOwner_IsNotFound(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
 
@@ -104,7 +104,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [MemberData(nameof(Surfaces))]
     public async Task AttachingToAnUnknownOwner_IsNotFound(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
 
@@ -119,7 +119,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [InlineData(Surface.Property)]
     public async Task UpdatingANeverAttachedFile_IsNotFound(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
 
@@ -144,7 +144,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [InlineData(Surface.Property)]
     public async Task AnInvalidReattach_IsABadRequest_NotAConflict(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.Created, (await AttachAsync(client, surface, seeded)).StatusCode);
@@ -174,7 +174,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [InlineData(Surface.Transaction)]
     public async Task NonDocumentSurfaces_StillAcceptAContentTypeOffTheDocumentList(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "text/plain");
         using var client = factory.CreateClient();
 
@@ -188,7 +188,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [Fact]
     public async Task TaxStatementDownload_CarriesTheSharedSafeDownloadHeaders()
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "application/pdf");
         using var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.Created, (await AttachAsync(client, Surface.TaxStatement, seeded)).StatusCode);
@@ -212,7 +212,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
     [InlineData(Surface.Property)]
     public async Task DocumentSurfaces_RefuseAContentTypeOffTheSharedAllowList(Surface surface)
     {
-        await using var factory = new OdysseyApiFactory(RolePermissions.AllClaims);
+        var factory = Factory.ForCaller(RolePermissions.AllClaims);
         var seeded = await SeedAsync(factory, "text/plain");
         using var client = factory.CreateClient();
 
@@ -365,4 +365,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
             account.AccountId, transaction.TransactionId, taxStatement.TaxStatementId,
             contract.ContractId, property.PropertyId, metadata.Id, metadata.Sha256Hash);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

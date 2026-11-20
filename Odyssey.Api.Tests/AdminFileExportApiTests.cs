@@ -23,7 +23,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class AdminFileExportApiTests
+public class AdminFileExportApiTests(AdminFileExportApiTests.Host host) : SharedApiHostTests<AdminFileExportApiTests.Host>(host)
 {
     private const string ActorUserId = "file-export-actor-id";
     private const string ExportPath = "/api/admin/files/export";
@@ -35,7 +35,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(ExportPath);
@@ -46,7 +46,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_WithoutFilesExportAllPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(ExportPath);
@@ -57,7 +57,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_WithPermissionAndFeatureEnabled_ReturnsZipAttachment()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "pdf-bytes");
         using var client = factory.CreateClient();
 
@@ -78,7 +78,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_Archive_ContainsFileMapAndOneEntryPerFile()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         var idA = await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "A");
         var idB = await SeedFileAsync(factory, "statement.csv", "text/csv", "B");
         using var client = factory.CreateClient();
@@ -104,7 +104,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_FileMap_ContainsOnlyIdAndFileName()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "A");
         using var client = factory.CreateClient();
 
@@ -119,7 +119,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_SanitizesUnsafeNamesAndDeduplicates()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "1");
         await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "2");      // duplicate name
         await SeedFileAsync(factory, "../../etc/passwd", "text/plain", "3");      // path traversal attempt
@@ -150,7 +150,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_MissingBlobContent_ReturnsServerError()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedOrphanMetadataAsync(factory, "orphan.pdf", "application/pdf");
         using var client = factory.CreateClient();
 
@@ -162,7 +162,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Export_NoFiles_ReturnsZipWithEmptyMap()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         using var client = factory.CreateClient();
 
         using var archive = await GetArchiveAsync(client);
@@ -177,7 +177,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task ExportFiltered_WithoutFilesExportAllPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(FilteredExportPath);
@@ -188,7 +188,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task ExportFiltered_NoFilter_MatchesUnfilteredExport()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "A");
         await SeedFileAsync(factory, "statement.csv", "text/csv", "B");
         using var client = factory.CreateClient();
@@ -202,7 +202,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task ExportFiltered_BySearch_MatchesOnlyFilenamesContainingTheTerm()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedFileAsync(factory, "annual-receipt.pdf", "application/pdf", "A");
         await SeedFileAsync(factory, "statement.csv", "text/csv", "B");
         using var client = factory.CreateClient();
@@ -216,7 +216,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task ExportFiltered_ByMultipleKinds_MatchesAnySelectedKind()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "A");
         await SeedFileAsync(factory, "photo.png", "image/png", "B");
         await SeedFileAsync(factory, "notes.txt", "text/plain", "C");
@@ -236,7 +236,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task ExportFiltered_SearchAndKindCombine_AsAnAndAcrossDimensions()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         await SeedFileAsync(factory, "receipt.pdf", "application/pdf", "A");   // matches both
         await SeedFileAsync(factory, "receipt.png", "image/png", "B");        // matches search, not kind
         await SeedFileAsync(factory, "statement.pdf", "application/pdf", "C"); // matches kind, not search
@@ -251,7 +251,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task ExportFiltered_FileName_UsesFilteredSuffix()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(FilteredExportPath);
@@ -266,7 +266,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Summary_WithoutPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(SummaryPath);
@@ -277,7 +277,7 @@ public class AdminFileExportApiTests
     [Fact]
     public async Task Summary_ReportsFileCountAndTotalSize()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesExportAll]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesExportAll]);
         // Distinct byte lengths so the summed size is unambiguous: 3 + 7 = 10 bytes.
         await SeedFileAsync(factory, "a.pdf", "application/pdf", "aaa");
         await SeedFileAsync(factory, "b.pdf", "application/pdf", "bbbbbbb");
@@ -355,6 +355,9 @@ public class AdminFileExportApiTests
         await context.SaveChangesAsync();
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

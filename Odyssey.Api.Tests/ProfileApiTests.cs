@@ -10,7 +10,7 @@ namespace Odyssey.Api.Tests;
 /// API tests for the self-service profile endpoints (issue #316): round-trip, completeness, the §9
 /// validation rules, and that <c>IsComplete</c> is server-computed (never over-postable).
 /// </summary>
-public sealed class ProfileApiTests
+public class ProfileApiTests(ProfileApiTests.Host host) : SharedApiHostTests<ProfileApiTests.Host>(host)
 {
     private const string Path = "/api/profile";
 
@@ -31,7 +31,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Get_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new OdysseyApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -42,7 +42,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Get_NewUser_ReturnsEmptyIncompleteProfile()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         var profile = await client.GetFromJsonAsync<ProfileDto>(Path);
@@ -56,7 +56,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_Then_Get_RoundTrips_AndReportsComplete()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         var put = await client.PutAsJsonAsync(Path, CompleteProfile());
@@ -78,7 +78,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_MissingRequiredField_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         var request = CompleteProfile();
@@ -92,7 +92,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_EmailFormatDisplayName_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         var request = CompleteProfile();
@@ -106,7 +106,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_ControlCharacterInName_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         var request = CompleteProfile();
@@ -120,7 +120,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_FutureBirthDate_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         var request = CompleteProfile();
@@ -134,7 +134,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_BirthDateBefore1900_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         var request = CompleteProfile();
@@ -148,7 +148,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_UndefinedSex_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         // Sex = 99 is not a defined enum member → [EnumDataType] model validation rejects it.
@@ -168,7 +168,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_OverLengthFirstName_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         // 129 chars exceeds the [StringLength(128)] on FirstName → rejected by [ApiController] validation.
@@ -183,7 +183,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_IsCompleteFalseOnCompleteBody_IsIgnored_ServerComputesTrue()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         // A complete body that over-posts IsComplete=false — the server ignores the flag and computes it.
@@ -206,7 +206,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_OptionalFieldsClearOnBlank()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         await client.PutAsJsonAsync(Path, CompleteProfile());
@@ -229,7 +229,7 @@ public sealed class ProfileApiTests
     [Fact]
     public async Task Put_CannotOverpostCompletenessOnIncompleteBody()
     {
-        await using var factory = new OdysseyApiFactory(Authenticated);
+        var factory = Factory.ForCaller(Authenticated);
         using var client = factory.CreateClient();
 
         // IsComplete is response-only; supplying it on an incomplete body cannot force a save.
@@ -244,4 +244,7 @@ public sealed class ProfileApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

@@ -29,7 +29,7 @@ namespace Odyssey.Api.Tests;
 /// that field and nothing else. With <c>[ApiController]</c> the framework short-circuits to a
 /// <see cref="ValidationProblemDetails"/> 400 before the service runs.
 /// </summary>
-public class DtoValidationBoundaryTests
+public class DtoValidationBoundaryTests(DtoValidationBoundaryTests.Host host) : SharedApiHostTests<DtoValidationBoundaryTests.Host>(host)
 {
     private const string ActorUserId = "dto-validation-actor";
 
@@ -46,7 +46,7 @@ public class DtoValidationBoundaryTests
         PermissionClaims.TransactionTagsRead, PermissionClaims.TransactionTagsCreate,
     ];
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     // ── Baseline (valid) request bodies ────────────────────────────────────────
@@ -151,7 +151,7 @@ public class DtoValidationBoundaryTests
     [Fact]
     public async Task CreateAccount_BaselineIsAccepted()
     {
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -172,7 +172,7 @@ public class DtoValidationBoundaryTests
     public async Task CreateAccount_NameAtExactStringLength_IsAccepted()
     {
         // The boundary is 256, not 255 — the max-length value must still be accepted.
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -196,7 +196,7 @@ public class DtoValidationBoundaryTests
     [Fact]
     public async Task CreateContract_BaselineIsAccepted()
     {
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -264,7 +264,7 @@ public class DtoValidationBoundaryTests
     [Fact]
     public async Task CreateExchangeRate_BaselineIsAccepted()
     {
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -295,7 +295,7 @@ public class DtoValidationBoundaryTests
     [Fact]
     public async Task CreateCurrency_BaselineIsAccepted()
     {
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -316,7 +316,7 @@ public class DtoValidationBoundaryTests
     public async Task CreateCurrency_MinorUnitsAtExactMax_IsAccepted()
     {
         // The boundary is 12, not 11 — the max value must still be accepted.
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -340,7 +340,7 @@ public class DtoValidationBoundaryTests
     [Fact]
     public async Task CreateContact_BaselineIsAccepted()
     {
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -370,7 +370,7 @@ public class DtoValidationBoundaryTests
     [Fact]
     public async Task CreateTransactionTag_BaselineIsAccepted()
     {
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -400,7 +400,7 @@ public class DtoValidationBoundaryTests
     [Fact]
     public async Task CreateBudget_BaselineIsAccepted()
     {
-        await using var factory = new ApiFactory(CreateClaims);
+        var factory = Factory.ForCaller(CreateClaims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -473,4 +473,7 @@ public class DtoValidationBoundaryTests
         body.CategoryType = (Odyssey.Dtos.Finance.BudgetCategoryType)999; // [EnumDataType]
         await PostExpectingBadRequest("/api/budget-items", body);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

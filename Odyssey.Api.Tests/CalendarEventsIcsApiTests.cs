@@ -15,7 +15,7 @@ using Odyssey.Api.Tests.Infrastructure;
 namespace Odyssey.Api.Tests;
 
 /// <summary>Single event / series / aggregate .ics export endpoints (issue #340).</summary>
-public class CalendarEventsIcsApiTests
+public class CalendarEventsIcsApiTests(CalendarEventsIcsApiTests.Host host) : SharedApiHostTests<CalendarEventsIcsApiTests.Host>(host)
 {
     private const string ActorUserId = "calendar-events-ics-actor-id";
     private const string CalendarsPath = "/api/calendars";
@@ -45,8 +45,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportEvent_NonRecurring_ReturnsStandaloneVEvent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Solo");
         var ev = await CreateEventAsync(client, calendar.CalendarId, "Dentist", new DateTime(2030, 3, 1, 9, 0, 0, DateTimeKind.Utc));
 
@@ -70,8 +70,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportEvent_OccurrenceOfSeries_ReturnsStandaloneVEvent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "OccurrenceExport");
         var pattern = await CreatePatternAsync(client, calendar.CalendarId, "Standup",
             new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
@@ -90,8 +90,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportEvent_UnknownId_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{CalendarEventsPath}/{Guid.NewGuid()}/ics");
 
@@ -101,8 +101,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportEvent_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync($"{CalendarEventsPath}/{Guid.NewGuid()}/ics");
 
@@ -114,8 +114,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportPattern_IntactSeries_EmitsSingleRRule()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Series");
         var pattern = await CreatePatternAsync(client, calendar.CalendarId, "Standup",
             new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 5,
@@ -138,8 +138,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportPattern_ClampedSeries_FlattensToStandaloneVEvents()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Clamped");
         var pattern = await CreatePatternAsync(client, calendar.CalendarId, "Month end",
             new DateTime(2030, 1, 31, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
@@ -154,8 +154,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportPattern_UnknownId_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{RecurrencePatternsPath}/{Guid.NewGuid()}/ics");
 
@@ -167,8 +167,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_NoFilter_IncludesEventsFromEveryCalendar_AndCollapsesIntactSeries()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendarA = await CreateCalendarAsync(client, "Work");
         var calendarB = await CreateCalendarAsync(client, "Home");
         await CreateEventAsync(client, calendarA.CalendarId, "Solo A", new DateTime(2030, 2, 1, 9, 0, 0, DateTimeKind.Utc));
@@ -199,8 +199,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_NoFilter_DegenerateYearlyRule_FlattensInsteadOf500()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Degenerate");
         await CreatePatternAsync(client, calendar.CalendarId, "Never happens",
             new DateTime(2030, 2, 28, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 3,
@@ -219,8 +219,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportPattern_DegenerateYearlyRule_FlattensInsteadOf500()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "DegeneratePattern");
         var pattern = await CreatePatternAsync(client, calendar.CalendarId, "Never happens",
             new DateTime(2030, 2, 28, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 3,
@@ -236,8 +236,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_ZeroMatches_ReturnsOkWithEmptyValidIcs()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{CalendarEventsPath}/ics");
 
@@ -250,8 +250,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_FileName_IsFixedName()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{CalendarEventsPath}/ics");
 
@@ -263,8 +263,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_EachVEvent_CarriesSourceCalendarCategory()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Categorized");
         await CreateEventAsync(client, calendar.CalendarId, "Tagged", new DateTime(2030, 2, 1, 9, 0, 0, DateTimeKind.Utc));
 
@@ -276,8 +276,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_DuplicateExternalUidAcrossCalendars_EmitsDistinctUids()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendarA = await CreateCalendarAsync(client, "ImportA");
         var calendarB = await CreateCalendarAsync(client, "ImportB");
 
@@ -298,8 +298,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_CalendarFilterNoDate_MatchesWholeCalendarExport_WhenNothingMoved()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Equivalence");
         await CreatePatternAsync(client, calendar.CalendarId, "Standup",
             new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
@@ -316,8 +316,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_OccurrenceMovedOutOfFilteredCalendar_FlattensAndExcludesMovedRow()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendarA = await CreateCalendarAsync(client, "MoveOutA");
         var calendarB = await CreateCalendarAsync(client, "MoveOutB");
         var pattern = await CreatePatternAsync(client, calendarA.CalendarId, "Standup",
@@ -338,8 +338,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_OccurrenceMovedIntoFilteredCalendar_IncludesItAsStandaloneVEvent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendarA = await CreateCalendarAsync(client, "MoveInA");
         var calendarB = await CreateCalendarAsync(client, "MoveInB");
         var pattern = await CreatePatternAsync(client, calendarB.CalendarId, "Standup",
@@ -359,8 +359,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_EntirePatternRelocated_StaysFlat()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendarA = await CreateCalendarAsync(client, "RelocateA");
         var calendarB = await CreateCalendarAsync(client, "RelocateB");
         var pattern = await CreatePatternAsync(client, calendarA.CalendarId, "Standup",
@@ -399,8 +399,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_PatternSplitAcrossCalendars_FlattensDespiteCanExportAsRulePassing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendarA = await CreateCalendarAsync(client, "SplitA");
         var calendarB = await CreateCalendarAsync(client, "SplitB");
         var pattern = await CreatePatternAsync(client, calendarA.CalendarId, "Standup",
@@ -437,8 +437,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_DateRangeFilter_NeverCollapsesEvenAnIntactSeries()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Windowed");
         await CreatePatternAsync(client, calendar.CalendarId, "Standup",
             new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc), occurrenceCount: 4,
@@ -462,8 +462,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_DateFilter_IncludesEventOverlappingWindowStart()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Overlap");
 
         // Spans midnight across the window boundary: starts before From but is still in progress.
@@ -490,8 +490,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_SearchFilter_MatchesTitleOnly()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Search");
         await CreateEventAsync(client, calendar.CalendarId, "Team Standup", new DateTime(2030, 2, 1, 9, 0, 0, DateTimeKind.Utc));
         await CreateEventAsync(client, calendar.CalendarId, "Dentist", new DateTime(2030, 2, 2, 9, 0, 0, DateTimeKind.Utc));
@@ -520,8 +520,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_CombinedFilters_AppliesAllConjunctively()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendarA = await CreateCalendarAsync(client, "CombinedA");
         var calendarB = await CreateCalendarAsync(client, "CombinedB");
 
@@ -549,8 +549,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_OnlyFromSet_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{CalendarEventsPath}/ics?from={Uri.EscapeDataString(DateTime.UtcNow.ToString("O"))}");
 
@@ -560,8 +560,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_ToBeforeFrom_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var from = new DateTime(2030, 2, 1, 0, 0, 0, DateTimeKind.Utc);
         var to = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -574,8 +574,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_SpanOver92Days_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var from = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var to = from.AddDays(93);
 
@@ -591,8 +591,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_ToEqualsFrom_ReturnsOk()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var same = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var response = await client.GetAsync(
@@ -604,8 +604,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_SpanExactly92Days_ReturnsOk()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "ExactSpan");
         var from = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var to = from.AddDays(92);
@@ -637,8 +637,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_FilteredMatchExceedsMaxVEvents_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithSizeCapControl);
         await CapExportEventsAsync(client, TestMaxExportEvents);
         var calendar = await CreateCalendarAsync(client, "TooManyFiltered");
         await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents + 1, "Match");
@@ -651,8 +651,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_FilteredMatchExactlyMaxVEvents_ReturnsOk()
     {
-        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithSizeCapControl);
         await CapExportEventsAsync(client, TestMaxExportEvents);
         var calendar = await CreateCalendarAsync(client, "ExactlyMaxFiltered");
         await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents, "Match");
@@ -667,8 +667,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_NoFilterRawRowsExceedFetchCap_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "TooManyRaw");
         await SeedStandaloneRowsAsync(factory, calendar.CalendarId, Odyssey.Dtos.SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows + 1, "Row");
 
@@ -685,8 +685,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_NoFilterRawRowsExactlyFetchCap_PassesFetchCheck()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "ExactlyFetchCap");
         await SeedStandaloneRowsAsync(factory, calendar.CalendarId, Odyssey.Dtos.SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows, "Row");
 
@@ -701,8 +701,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_NoFilterPostCollapseCountExceedsOutputCap_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithSizeCapControl);
         await CapExportEventsAsync(client, TestMaxExportEvents);
         var calendar = await CreateCalendarAsync(client, "TooManyOutput");
         // Under the fetch cap but over the output cap — all standalone, so nothing collapses and the raw count IS
@@ -750,8 +750,8 @@ public class CalendarEventsIcsApiTests
     [InlineData("")]
     public async Task ExportAggregate_OverByteCap_AbortsTheConnection(string query)
     {
-        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithSizeCapControl);
 
         (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
         {
@@ -769,8 +769,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportAggregate_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync($"{CalendarEventsPath}/ics");
 
@@ -780,8 +780,8 @@ public class CalendarEventsIcsApiTests
     [Fact]
     public async Task ExportPattern_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync($"{RecurrencePatternsPath}/{Guid.NewGuid()}/ics");
 
@@ -911,7 +911,7 @@ public class CalendarEventsIcsApiTests
         await ctx.SaveChangesAsync();
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateCalendarContext)
@@ -925,4 +925,7 @@ public class CalendarEventsIcsApiTests
             services.AddDbContext<CalendarContext>(options => options.UseInMemoryDatabase(calendarDatabaseName));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

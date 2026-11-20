@@ -19,7 +19,7 @@ namespace Odyssey.Api.Tests;
 /// on the resource's existing read claim, it aggregates over the <em>whole</em> set (the point — the
 /// header must not track the grid's filters), and it moves after a mutation.
 /// </summary>
-public class SummaryEndpointsApiTests
+public class SummaryEndpointsApiTests(SummaryEndpointsApiTests.Host host) : SharedApiHostTests<SummaryEndpointsApiTests.Host>(host)
 {
     private const string ActorUserId = "summary-actor-id";
 
@@ -32,7 +32,7 @@ public class SummaryEndpointsApiTests
     [InlineData("/api/tax-statements/summary")]
     public async Task Summary_Unauthenticated_ReturnsUnauthorized(string path)
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
@@ -45,7 +45,7 @@ public class SummaryEndpointsApiTests
     [InlineData("/api/tax-statements/summary")]
     public async Task Summary_WithoutReadPermission_ReturnsForbidden(string path)
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(path)).StatusCode);
@@ -60,7 +60,7 @@ public class SummaryEndpointsApiTests
     [InlineData("/api/tax-statements/summary", PermissionClaims.TaxesRead)]
     public async Task Summary_WithReadPermission_RoutesToSummaryNotById(string path, string claim)
     {
-        await using var factory = new ApiFactory([claim]);
+        var factory = Factory.ForCaller([claim]);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(path)).StatusCode);
@@ -71,7 +71,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task TransactionSummary_CountsAndTotals_SpanTheWholeLedger()
     {
-        await using var factory = new ApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         var accountId = await SeedAccountAsync(factory);
         await SeedAsync(factory, context =>
         {
@@ -98,7 +98,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task TransactionSummary_IsEmpty_WhenThereAreNoTransactions()
     {
-        await using var factory = new ApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
 
         var summary = await client.GetFromJsonAsync<TransactionSummary>("/api/transactions/summary");
@@ -144,7 +144,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task AccountSummary_BucketsByStatusAndType_AndExcludesArchivedFromTheAggregates()
     {
-        await using var factory = new ApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         var open = await SeedAccountAsync(factory, DtoAccountType.CheckingAccount);
         var closed = await SeedAccountAsync(factory, DtoAccountType.SavingsAccount, closed: true);
         var archived = await SeedAccountAsync(factory, DtoAccountType.SavingsAccount, archived: true);
@@ -183,7 +183,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task AccountSummary_InForceEstimateReplacesTheTransactionBalance()
     {
-        await using var factory = new ApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         await SeedAsync(factory, context =>
         {
@@ -219,7 +219,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task AccountSummary_OmitsZeroValueAccountsFromTheAllocations()
     {
-        await using var factory = new ApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         await SeedAccountAsync(factory);
         using var client = factory.CreateClient();
 
@@ -234,7 +234,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task BudgetSummary_CountsLiveBudgetsAndNetsTheirPlannedItems()
     {
-        await using var factory = new ApiFactory([PermissionClaims.BudgetsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.BudgetsRead]);
         await SeedAsync(factory, context =>
         {
             var live = Budget("2026");
@@ -260,7 +260,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task BudgetSummary_MovesAfterArchiving()
     {
-        await using var factory = new ApiFactory([PermissionClaims.BudgetsRead, PermissionClaims.BudgetsUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.BudgetsRead, PermissionClaims.BudgetsUpdate]);
         var budgetId = Guid.NewGuid();
         await SeedAsync(factory, context =>
         {
@@ -295,7 +295,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task TaxStatementSummary_ReturnsLiveYearsAscendingWithTheirDeclaredFigures()
     {
-        await using var factory = new ApiFactory([PermissionClaims.TaxesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TaxesRead]);
         await SeedAsync(factory, context =>
         {
             context.TaxStatements.Add(TaxStatement(2024, netWorth: 1_000_000m, assessedTax: 120_000m));
@@ -321,7 +321,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task TaxStatementSummary_CountsByStatus_PartitionsTheFile_WithArchivedOutrankingStatus()
     {
-        await using var factory = new ApiFactory([PermissionClaims.TaxesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TaxesRead]);
         await SeedAsync(factory, context =>
         {
             context.TaxStatements.Add(TaxStatement(2025, netWorth: 1m, assessedTax: 1m));
@@ -347,7 +347,7 @@ public class SummaryEndpointsApiTests
     [Fact]
     public async Task TaxStatementSummary_YearBoundsAreNull_WhenNothingIsOnFile()
     {
-        await using var factory = new ApiFactory([PermissionClaims.TaxesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TaxesRead]);
         using var client = factory.CreateClient();
 
         var summary = await client.GetFromJsonAsync<TaxStatementSummary>("/api/tax-statements/summary");
@@ -452,6 +452,9 @@ public class SummaryEndpointsApiTests
         await context.SaveChangesAsync();
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// Issue #279 over real HTTP: the icon on the tag write and read paths, model validation, the
 /// authorization boundary, and the icon fields on embedding reads.
 /// </summary>
-public class TransactionTagIconApiTests
+public class TransactionTagIconApiTests(TransactionTagIconApiTests.Host host) : SharedApiHostTests<TransactionTagIconApiTests.Host>(host)
 {
     private const string TagsPath = "/api/transaction-tags";
 
@@ -32,7 +32,7 @@ public class TransactionTagIconApiTests
     [Fact]
     public async Task Post_with_a_catalogue_icon_is_created_and_reads_back()
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin);
+        var factory = Factory.ForCaller(TagAdmin);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(TagsPath, new { name = "Groceries", archived = false, icon = "shopping_cart" });
@@ -45,7 +45,7 @@ public class TransactionTagIconApiTests
     [Fact]
     public async Task Post_without_an_icon_stores_null()
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin);
+        var factory = Factory.ForCaller(TagAdmin);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(TagsPath, new { name = "Groceries", archived = false });
@@ -58,7 +58,7 @@ public class TransactionTagIconApiTests
     [Fact]
     public async Task Put_changes_the_icon_and_an_omitted_icon_resets_it()
     {
-        await using var factory = new OdysseyApiFactory(TagAdmin);
+        var factory = Factory.ForCaller(TagAdmin);
         using var client = factory.CreateClient();
         var created = await client.PostAsJsonAsync(TagsPath, new { name = "Groceries", archived = false, icon = "shopping_cart" });
         var location = created.Headers.Location!;
@@ -124,7 +124,7 @@ public class TransactionTagIconApiTests
     [Fact]
     public async Task A_stored_unknown_key_reads_as_null_and_never_500s()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionTagsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionTagsRead]);
         var tagId = await SeedTagAsync(factory, "Legacy", "<script>retired</script>");
         using var client = factory.CreateClient();
 
@@ -156,7 +156,7 @@ public class TransactionTagIconApiTests
     [Fact]
     public async Task Transactions_read_alone_sees_the_display_icon_and_embedded_tag_icons_in_order()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         var accountId = await SeedAccountAsync(factory);
         var transactionId = await SeedTransactionAsync(factory, accountId,
             ("Zed", null), ("food", "restaurant"), ("Bills", "receipt_long"));
@@ -176,7 +176,7 @@ public class TransactionTagIconApiTests
     [Fact]
     public async Task An_untagged_transaction_has_the_default_display_icon_on_the_wire()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         var accountId = await SeedAccountAsync(factory);
         var transactionId = await SeedTransactionAsync(factory, accountId);
         using var client = factory.CreateClient();
@@ -189,7 +189,7 @@ public class TransactionTagIconApiTests
     [Fact]
     public async Task Account_smart_tags_carry_the_tag_icon()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead, PermissionClaims.AccountsUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead, PermissionClaims.AccountsUpdate]);
         var accountId = await SeedAccountAsync(factory);
         var iconned = await SeedTagAsync(factory, "Food", "restaurant");
         var stale = await SeedTagAsync(factory, "Legacy", "retired_key");
@@ -262,6 +262,9 @@ public class TransactionTagIconApiTests
         await context.SaveChangesAsync();
         return transaction.TransactionId;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }
 
 /// <summary>Sets a tag's stored icon directly, for the per-site embed tests beside each surface's own suite.</summary>
