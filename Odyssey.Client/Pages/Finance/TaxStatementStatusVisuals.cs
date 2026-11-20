@@ -73,13 +73,12 @@ public static class TaxStatementStatusVisuals
     {
         var parts = new List<string>();
         if (s.Archived is { } archivedAt)
-            parts.Add(LongDate(archivedAt));
+            parts.Add(OdsDates.Long(archivedAt));
         else if (s.StatusChangedAt != default)
-            parts.Add(LongDate(s.StatusChangedAt));
+            parts.Add(OdsDates.Long(s.StatusChangedAt));
         if (!string.IsNullOrWhiteSpace(s.StatusComment))
             parts.Add("see note above");
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 }

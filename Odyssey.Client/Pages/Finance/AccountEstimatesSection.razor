@@ -128,7 +128,7 @@
                     <div class="est-sub">
                         <span class="est-sub-label">Current value</span>
                         <span class="est-sub-rule"></span>
-                        <span class="est-sub-meta">in force · @DateTime.Now.ToString("MMM dd, yyyy")</span>
+                        <span class="est-sub-meta">in force · @OdsDates.Long(DateTime.Now)</span>
                     </div>
                     @if (_current is not null)
                     {
@@ -137,7 +137,7 @@
                                 <span class="est-now-label">Estimated value</span>
                                 <span class="est-now-value">@FormatMoney(_current.Value, Account.CurrencyCode)</span>
                                 <div class="est-now-foot">
-                                    <span>in force since @_current.EffectiveFrom.ToString("MMM dd, yyyy")</span>
+                                    <span>in force since @OdsDates.Long(_current.EffectiveFrom)</span>
                                     <span class="est-networth"><span class="material-icons">check</span>In net worth</span>
                                 </div>
                             </div>
@@ -181,7 +181,7 @@
                                     var isCurrent = _current is not null && e.AccountEstimateId == _current.AccountEstimateId;
                                     <tr class="@(isCurrent ? "current" : "")">
                                         <td>
-                                            <div class="est-cell-date">@e.EffectiveFrom.ToString("MMM dd, yyyy")</div>
+                                            <div class="est-cell-date">@OdsDates.Long(e.EffectiveFrom)</div>
                                             @if (!string.IsNullOrWhiteSpace(e.Note))
                                             {
                                                 <div class="est-row-note">@e.Note</div>

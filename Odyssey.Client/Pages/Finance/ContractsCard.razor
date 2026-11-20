@@ -228,7 +228,7 @@
                                                  ValueVariant="OdsInfoTileVariant.Sm"
                                                  Tone="@(completionPast ? OdsInfoTileTone.Default : OdsInfoTileTone.Info)"
                                                  Foot="@OdsInfoTile.Caption(completionPast ? "delivered on this date" : "upcoming")">
-                                        <Value>@LongDate(completion)</Value>
+                                        <Value>@OdsDates.Long(completion)</Value>
                                     </OdsInfoTile>
                                 }
                                 else
@@ -240,7 +240,7 @@
                                                      ValueVariant="OdsInfoTileVariant.Sm"
                                                      Tone="@(startFuture ? OdsInfoTileTone.Info : OdsInfoTileTone.Default)"
                                                      Foot="@OdsInfoTile.Caption(startFuture ? "upcoming" : null)">
-                                            <Value>@LongDate(start)</Value>
+                                            <Value>@OdsDates.Long(start)</Value>
                                         </OdsInfoTile>
                                     }
 
@@ -251,7 +251,7 @@
                                                  ValueVariant="@(detail.EndDate is null ? OdsInfoTileVariant.Text : OdsInfoTileVariant.Sm)"
                                                  Tone="@(endPast ? OdsInfoTileTone.Expense : OdsInfoTileTone.Default)"
                                                  Foot="@OdsInfoTile.Caption(detail.EndDate is null ? "runs until ended" : endPast ? "no longer in force" : "scheduled")">
-                                        <Value>@(detail.EndDate is { } end ? LongDate(end) : "Open-ended")</Value>
+                                        <Value>@(detail.EndDate is { } end ? OdsDates.Long(end) : "Open-ended")</Value>
                                     </OdsInfoTile>
                                 }
 
@@ -279,7 +279,7 @@
                                                  ValueVariant="OdsInfoTileVariant.Sm"
                                                  Tone="@(detail.Signed is null ? OdsInfoTileTone.Pending : OdsInfoTileTone.Default)"
                                                  Foot="@OdsInfoTile.Caption(detail.Signed is null ? "waiting on a signature" : "sent out on this date")">
-                                        <Value>@LongDate(readyAt)</Value>
+                                        <Value>@OdsDates.Long(readyAt)</Value>
                                     </OdsInfoTile>
                                 }
 
@@ -289,7 +289,7 @@
                                                  ValueVariant="OdsInfoTileVariant.Sm"
                                                  Tone="@ContractCardTone.Signed(detail.Status)"
                                                  Foot="@OdsInfoTile.Caption("signed by all parties")">
-                                        <Value>@LongDate(signedAt)</Value>
+                                        <Value>@OdsDates.Long(signedAt)</Value>
                                     </OdsInfoTile>
                                 }
 
@@ -298,7 +298,7 @@
                                     <OdsInfoTile Icon="pause_circle" Label="Paused"
                                                  ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Pending"
                                                  Foot="@OdsInfoTile.Caption("still listed and editable, not costing")">
-                                        <Value>@LongDate(pausedAt)</Value>
+                                        <Value>@OdsDates.Long(pausedAt)</Value>
                                     </OdsInfoTile>
                                 }
 
@@ -307,7 +307,7 @@
                                     <OdsInfoTile Icon="inventory_2" Label="Archived"
                                                  ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Muted"
                                                  Foot="@OdsInfoTile.Caption("hidden from the default list")">
-                                        <Value>@LongDate(archivedAt)</Value>
+                                        <Value>@OdsDates.Long(archivedAt)</Value>
                                     </OdsInfoTile>
                                 }
                             </OdsInfoTileGrid>

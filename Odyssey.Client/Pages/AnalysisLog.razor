@@ -288,7 +288,7 @@
         if (at is null)
             return "—";
         var utc = at.Value.ToUniversalTime();
-        return $"{utc.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture)} · {utc:HH:mm} UTC";
+        return $"{OdsDates.Long(utc)} · {utc:HH:mm} UTC";
     }
 
     private static string FormatDuration(long? ms) =>

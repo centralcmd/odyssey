@@ -578,7 +578,6 @@ public partial class TaxStatementsCard
 
     private static string? StatusFoot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Foot(s);
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────
     // Mirrors the design system's taxMoney: the amount with its ISO code trailing (e.g.

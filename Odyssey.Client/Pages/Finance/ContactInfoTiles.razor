@@ -46,14 +46,14 @@
         @if (person.DateOfBirth is { } dob)
         {
             <OdsInfoTile Icon="cake" Label="Date of birth" ValueVariant="OdsInfoTileVariant.Sm">
-                <Value>@LongDate(dob)</Value>
+                <Value>@OdsDates.Long(dob)</Value>
             </OdsInfoTile>
         }
         @if (person.DateOfDeath is { } dod)
         {
             <OdsInfoTile Icon="event_busy" Label="Date of death" ValueVariant="OdsInfoTileVariant.Sm"
                          Foot="@OdsInfoTile.Caption("the record stays live — nothing is archived")">
-                <Value>@LongDate(dod)</Value>
+                <Value>@OdsDates.Long(dod)</Value>
             </OdsInfoTile>
         }
         @if (person.Sex is { } sex)
@@ -107,14 +107,14 @@
         @if (org.EstablishedDate is { } established)
         {
             <OdsInfoTile Icon="foundation" Label="Established" ValueVariant="OdsInfoTileVariant.Sm">
-                <Value>@LongDate(established)</Value>
+                <Value>@OdsDates.Long(established)</Value>
             </OdsInfoTile>
         }
         @if (org.DissolvedDate is { } dissolved)
         {
             <OdsInfoTile Icon="event_busy" Label="Dissolved" ValueVariant="OdsInfoTileVariant.Sm"
                          Foot="@OdsInfoTile.Caption("reads as historical — still linkable")">
-                <Value>@LongDate(dissolved)</Value>
+                <Value>@OdsDates.Long(dissolved)</Value>
             </OdsInfoTile>
         }
     }
@@ -148,7 +148,6 @@
 
     private static string Dash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
 
-    private static string LongDate(DateTime value) => value.ToString("MMM dd, yyyy");
 
     private static string ShortDateTime(DateTime value) =>
         value.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt");

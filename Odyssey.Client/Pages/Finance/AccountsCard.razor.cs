@@ -600,7 +600,7 @@ public partial class AccountsCard
 
     private static string? EstimateFoot(ExistingAccount a) =>
         a.CurrentEstimatedValueEffectiveFrom is { } from
-            ? $"in force since {from.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)} · in net worth"
+            ? $"in force since {OdsDates.Long(from)} · in net worth"
             : "in net worth";
 
     private static string BalanceFoot(ExistingAccount a) =>
@@ -699,9 +699,9 @@ public partial class AccountsCard
     // present. Consolidates the formerly-separate Opened / Closed tiles under the Status tile.
     private static string GetLifecycle(ExistingAccount a)
     {
-        var parts = new List<string> { $"Opened {a.Opened.ToString("MMM dd, yyyy")}" };
-        if (a.Closed   is { } closed)   parts.Add($"Closed {closed.ToString("MMM dd, yyyy")}");
-        if (a.Archived is { } archived) parts.Add($"Archived {archived.ToString("MMM dd, yyyy")}");
+        var parts = new List<string> { $"Opened {OdsDates.Long(a.Opened)}" };
+        if (a.Closed   is { } closed)   parts.Add($"Closed {OdsDates.Long(closed)}");
+        if (a.Archived is { } archived) parts.Add($"Archived {OdsDates.Long(archived)}");
         return string.Join(" · ", parts);
     }
 

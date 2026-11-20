@@ -127,12 +127,12 @@
 
                             <OdsInfoTile Icon="event" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm"
                                          Foot="@OdsInfoTile.Caption("plan period opens")">
-                                <Value>@LongDate(budget.StartDate)</Value>
+                                <Value>@OdsDates.Long(budget.StartDate)</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="event_busy" Label="End date" ValueVariant="OdsInfoTileVariant.Sm"
                                          Foot="@OdsInfoTile.Caption("plan period closes")">
-                                <Value>@LongDate(budget.EndDate)</Value>
+                                <Value>@OdsDates.Long(budget.EndDate)</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="payments" Label="Base currency" Foot="@OdsInfoTile.Caption("reporting currency")">
@@ -142,7 +142,7 @@
                             <OdsInfoTile Icon="@(archived ? "inventory_2" : "check_circle")" Label="Status"
                                          ValueVariant="OdsInfoTileVariant.Text"
                                          Tone="@(archived ? OdsInfoTileTone.Muted : OdsInfoTileTone.Income)"
-                                         Foot="@OdsInfoTile.Caption(budget.Archived is { } archivedAt ? $"since {LongDate(archivedAt)}" : "in the default list")">
+                                         Foot="@OdsInfoTile.Caption(budget.Archived is { } archivedAt ? $"since {OdsDates.Long(archivedAt)}" : "in the default list")">
                                 <Value>@(archived ? "Archived" : "Active")</Value>
                             </OdsInfoTile>
 

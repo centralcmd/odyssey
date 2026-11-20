@@ -558,7 +558,6 @@ public partial class BudgetsCard
 
     private static string Lines(int count, string noun) => BudgetBalanceVisuals.Lines(count, noun);
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     private string FormatMoney(decimal value, string? currencyCode) =>
         OdsMoney.Format(value, currencyCode, MinorUnits(currencyCode));

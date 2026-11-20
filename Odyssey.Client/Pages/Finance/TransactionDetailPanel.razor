@@ -20,7 +20,7 @@
                 <Value>@SignedAmount</Value>
             </OdsInfoTile>
             <OdsInfoTile Icon="event" Label="Date" ValueVariant="OdsInfoTileVariant.Sm">
-                <Value>@Transaction.TimeStamp.ToLocalTime().ToString("MMM dd, yyyy")</Value>
+                <Value>@OdsDates.Long(Transaction.TimeStamp.ToLocalTime())</Value>
             </OdsInfoTile>
             <OdsInfoTile Icon="flag" Label="Status" ValueVariant="OdsInfoTileVariant.Text"
                          Foot="@OdsInfoTile.Caption(Transaction.StatusComment)">

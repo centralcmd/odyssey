@@ -206,14 +206,14 @@
                             @if (s.FiledAtUtc is { } filed)
                             {
                                 <OdsInfoTile Icon="outbox" Label="Filed to authority" ValueVariant="OdsInfoTileVariant.Sm">
-                                    <Value>@LongDate(filed)</Value>
+                                    <Value>@OdsDates.Long(filed)</Value>
                                 </OdsInfoTile>
                             }
 
                             @if (s.TaxOfficeApprovedAtUtc is { } approved)
                             {
                                 <OdsInfoTile Icon="verified" Label="Authority approved" ValueVariant="OdsInfoTileVariant.Sm">
-                                    <Value>@LongDate(approved)</Value>
+                                    <Value>@OdsDates.Long(approved)</Value>
                                 </OdsInfoTile>
                             }
 
@@ -223,7 +223,7 @@
                                          ValueVariant="@(settled ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)"
                                          Tone="@(settled ? OdsInfoTileTone.Income : OdsInfoTileTone.Pending)"
                                          Foot="@OdsInfoTile.Caption(settled ? null : "outstanding")">
-                                <Value>@(s.SettledAtUtc is { } paid ? LongDate(paid) : "Not yet")</Value>
+                                <Value>@(s.SettledAtUtc is { } paid ? OdsDates.Long(paid) : "Not yet")</Value>
                             </OdsInfoTile>
                         </OdsInfoTileGrid>
                     </Details>
@@ -284,7 +284,7 @@
                                         <span class="tx-role-cap">Settlement recorded</span>
                                         <span class="tx-role-range">
                                             <span class="material-icons" aria-hidden="true">date_range</span>
-                                            @LongDate(s.SettlementStartDate) → @LongDate(s.SettlementEndDate)
+                                            @OdsDates.Long(s.SettlementStartDate) → @OdsDates.Long(s.SettlementEndDate)
                                         </span>
                                         <span class="tx-role-tags">
                                             @if (s.SettlementTagIds.Count > 0)

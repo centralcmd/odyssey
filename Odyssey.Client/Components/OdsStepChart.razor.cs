@@ -222,7 +222,7 @@ public partial class OdsStepChart : IAsyncDisposable
     /// <summary>The hover readout's key line: the series (when several share the axis), the date, and whether it is scheduled.</summary>
     private string TipKey(Plot p, DateOnly date) =>
         $"{(_multi && !string.IsNullOrEmpty(p.Label) ? $"{p.Label} · " : "")}"
-        + date.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+        + OdsDates.LongUnpadded(date)
         + (IsScheduled(date) ? " · Scheduled" : "");
     private bool _multi;
     private bool _indexed;

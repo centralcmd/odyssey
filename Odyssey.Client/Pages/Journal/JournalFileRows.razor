@@ -36,7 +36,7 @@
             <span class="jec-file-size mono">@FormatSize(f.SizeBytes)</span>
             @* The size carries its unit, and the kind its own word; the date is the one bare value, so
                it says what it is for a reader who cannot see the column it sits in. *@
-            <span class="jec-file-up"><span class="sr-only">Uploaded </span>@(f.UploadedAtUtc == default ? Unknown : f.UploadedAtUtc.ToLocalTime().ToString("MMM d, yyyy"))</span>
+            <span class="jec-file-up"><span class="sr-only">Uploaded </span>@(f.UploadedAtUtc == default ? Unknown : OdsDates.LongUnpadded(f.UploadedAtUtc.ToLocalTime()))</span>
             <span class="je-cardmenu" id="@MenuId(Id, f.Id)">
                 <OdsMenu Items="BuildMenu(f)" AriaLabel="@($"Actions for file {f.FileName}")" />
             </span>

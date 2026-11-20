@@ -100,7 +100,7 @@ public partial class PropertyEstimatesSection
     {
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete estimate?",
-            $"Delete the {Money(estimate.Value)} estimate effective {LongDate(estimate.EffectiveFrom)}? The history keeps every other entry.",
+            $"Delete the {Money(estimate.Value)} estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? The history keeps every other entry.",
             yesText: "Delete", cancelText: "Cancel");
         if (confirmed != true)
             return;
@@ -170,9 +170,8 @@ public partial class PropertyEstimatesSection
         diff > 0 ? OdsInfoTileTone.Income : diff < 0 ? OdsInfoTileTone.Expense : OdsInfoTileTone.Default;
 
     private static string CurrentFoot(ExistingPropertyEstimate current) =>
-        $"since {LongDate(current.EffectiveFrom)}{(string.IsNullOrWhiteSpace(current.Note) ? "" : $" · {current.Note}")}";
+        $"since {OdsDates.Long(current.EffectiveFrom)}{(string.IsNullOrWhiteSpace(current.Note) ? "" : $" · {current.Note}")}";
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture);
 
     private static string MonthYear(DateTime date) =>
         date.ToString("MMM", CultureInfo.InvariantCulture) + " ’" + (date.Year % 100).ToString("00", CultureInfo.InvariantCulture);
