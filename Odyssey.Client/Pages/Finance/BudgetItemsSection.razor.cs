@@ -274,7 +274,7 @@ public partial class BudgetItemsSection
     }
 
     private Task CopyItemId(ExistingBudgetItem item) =>
-        Clipboard.CopyAsync(item.BudgetItemId.ToString(), "Budget item ID copied.");
+        Clipboard.CopyAsync(item.BudgetItemId.ToString(), OdsCopied.Id("Budget item"));
 
     // A tag can be planned for by one item only per budget; the picker marks the others "in use"
     // rather than hiding them, and always exempts the row's own current tag.

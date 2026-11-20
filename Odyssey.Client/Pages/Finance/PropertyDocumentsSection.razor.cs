@@ -203,7 +203,7 @@ public partial class PropertyDocumentsSection
                 Label = "Download",
                 OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)),
             },
-            OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied."))),
+            OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), OdsCopied.Id("File")))),
         ];
     }
 

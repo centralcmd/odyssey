@@ -315,11 +315,11 @@ public partial class ContractDetailView : IAsyncDisposable
             {
                 Icon = "content_copy",
                 Label = "Copy name",
-                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(visual.Name, "Name copied to clipboard.")),
+                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(visual.Name, OdsCopied.Value("Name"))),
             });
         }
 
-        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(party.ContractPartyId.ToString(), "ID copied to clipboard."))));
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(party.ContractPartyId.ToString(), OdsCopied.Id("Party")))));
 
         items.Add(new OdsMenuItem { Divider = true });
         items.Add(new OdsMenuItem

@@ -366,7 +366,7 @@ public partial class ExchangeRatesCard
     }
 
     private Task CopyId(Guid exchangeRateId) =>
-        Clipboard.CopyAsync(exchangeRateId.ToString(), "Exchange rate ID copied to clipboard.");
+        Clipboard.CopyAsync(exchangeRateId.ToString(), OdsCopied.Id("Exchange rate"));
 
     public void Dispose() => _listLoader.Dispose();
 }

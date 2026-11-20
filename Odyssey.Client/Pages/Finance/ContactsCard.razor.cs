@@ -644,7 +644,7 @@ public partial class ContactsCard
     }
 
     private Task CopyId(Guid contactId) =>
-        Clipboard.CopyAsync(contactId.ToString(), "Contact ID copied to clipboard.");
+        Clipboard.CopyAsync(contactId.ToString(), OdsCopied.Id("Contact"));
 
     // ── vCard export/import (issue #338) ──────────────────────────────────────
 

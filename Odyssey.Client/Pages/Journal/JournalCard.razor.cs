@@ -715,7 +715,7 @@ public partial class JournalCard
         await LoadEntries();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Entry ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Entry"));
 
     // ── Create ──────────────────────────────────────────────────────────────────
     private Guid _createKey;

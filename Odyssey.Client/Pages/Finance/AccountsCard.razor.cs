@@ -497,7 +497,7 @@ public partial class AccountsCard
     }
 
     private Task CopyAccountId(Guid accountId) =>
-        Clipboard.CopyAsync(accountId.ToString(), "Account ID copied.");
+        Clipboard.CopyAsync(accountId.ToString(), OdsCopied.Id("Account"));
 
     // Builds the API update payload from an account as it currently stands, overriding
     // only the lifecycle fields the row-menu toggles touch (close/reopen, archive).

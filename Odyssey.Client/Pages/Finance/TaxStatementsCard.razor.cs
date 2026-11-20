@@ -452,7 +452,7 @@ public partial class TaxStatementsCard
         }
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tax statement ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Tax statement"));
 
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a
     /// record body labels, it does not act — so "Attach documents" is the documents section's only entry

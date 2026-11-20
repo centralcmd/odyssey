@@ -834,7 +834,7 @@ public partial class ContractsCard
         }
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Contract ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Contract"));
 
     // ── Add/edit-party dialog ────────────────────────────────────────────────────
     // One dialog serves both (issue #121's new PUT): _editingParty is what switches it between
@@ -1164,7 +1164,7 @@ public partial class ContractsCard
                 Label = "Copy reference number",
                 TrailingIcon = "content_copy",
                 OnClick = EventCallback.Factory.Create(this,
-                    () => Clipboard.CopyAsync(referenceNumber, "Reference number copied.")),
+                    () => Clipboard.CopyAsync(referenceNumber, OdsCopied.Value("Reference number"))),
             });
         }
 

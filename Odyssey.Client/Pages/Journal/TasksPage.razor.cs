@@ -346,7 +346,7 @@ public partial class TasksPage
         await LoadTasks();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Task ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Task"));
 
     // ── VTODO/.ics export + import (issue #337) ────────────────────────────────────
     // Import creates or updates, so it needs BOTH claims (mirrors the server's stacked policies).

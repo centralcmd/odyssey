@@ -391,7 +391,7 @@ public partial class CurrenciesCard
     private static string MenuIdFor(string currencyCode) => $"cur-{currencyCode}-menu";
 
     private Task CopyCode(string currencyCode) =>
-        Clipboard.CopyAsync(currencyCode, "Currency code copied to clipboard.");
+        Clipboard.CopyAsync(currencyCode, OdsCopied.Value("Currency code"));
 
     public void Dispose() => _listLoader.Dispose();
 }

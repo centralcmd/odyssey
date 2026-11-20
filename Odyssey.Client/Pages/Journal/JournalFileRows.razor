@@ -127,7 +127,7 @@
             });
         }
 
-        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(f.Id.ToString(), "File ID copied."))));
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(f.Id.ToString(), OdsCopied.Id("File")))));
 
         if (OnRemove is { } remove)
         {

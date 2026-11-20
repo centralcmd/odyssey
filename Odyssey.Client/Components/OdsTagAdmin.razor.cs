@@ -517,7 +517,7 @@ public partial class OdsTagAdmin<TRow>
         await GetTags();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tag ID copied to clipboard.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Tag"));
 
     public void Dispose() => _listLoader.Dispose();
 }

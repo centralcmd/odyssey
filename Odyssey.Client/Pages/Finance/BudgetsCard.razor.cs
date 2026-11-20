@@ -462,7 +462,7 @@ public partial class BudgetsCard
     }
 
     private Task CopyBudgetId(Guid budgetId) =>
-        Clipboard.CopyAsync(budgetId.ToString(), "Budget ID copied.");
+        Clipboard.CopyAsync(budgetId.ToString(), OdsCopied.Id("Budget"));
 
     // ── Row actions ──────────────────────────────────────────────────────
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a

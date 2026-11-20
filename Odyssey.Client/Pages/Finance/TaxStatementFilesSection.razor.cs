@@ -166,7 +166,7 @@ public partial class TaxStatementFilesSection
         if (CanDownload)
             menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)) });
 
-        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied."))));
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), OdsCopied.Id("File")))));
 
         return menu;
     }

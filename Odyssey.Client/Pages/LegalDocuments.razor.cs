@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
@@ -181,6 +182,6 @@ public partial class LegalDocuments
             return;
         }
 
-        _copied = await Clipboard.CopyAsync(content, "Terms of Service copied to the clipboard.");
+        _copied = await Clipboard.CopyAsync(content, OdsCopied.Value("Terms of Service"));
     }
 }

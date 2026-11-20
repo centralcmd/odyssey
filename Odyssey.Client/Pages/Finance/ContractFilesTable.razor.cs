@@ -113,7 +113,7 @@ public partial class ContractFilesTable
             });
         }
 
-        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileId.ToString(), "File ID copied."))));
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileId.ToString(), OdsCopied.Id("File")))));
 
         return menu;
     }
