@@ -16,7 +16,7 @@ namespace Odyssey.IntegrationTests;
 /// and source; one priority per instrument; the widened <c>ExclusiveGuard</c>), the CHECKs, and the foreign keys'
 /// on-delete behaviour. None of it is observable on EF InMemory.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_instrument_prices";

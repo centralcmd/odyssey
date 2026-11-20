@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// and re-fetched rather than surfacing as a 409 (§16.3e), and the finalizing migration dropping a
 /// residual null journal-photo link.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
 {
     [SkippableFact]

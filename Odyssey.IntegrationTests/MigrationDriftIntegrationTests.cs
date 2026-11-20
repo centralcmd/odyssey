@@ -24,7 +24,7 @@ namespace Odyssey.IntegrationTests;
 /// deterministic.
 /// </para>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_migration_drift";

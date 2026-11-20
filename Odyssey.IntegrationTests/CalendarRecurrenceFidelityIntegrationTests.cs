@@ -25,7 +25,7 @@ namespace Odyssey.IntegrationTests;
 /// a 500 (AC 7, AC 19) — the per-statement lock wait, a forced deadlock retried by the shared strategy (AC 27b),
 /// two imports over the same series (AC 27), and the backfill leaving every calendar's events unchanged (AC 12).
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_recurrence_fidelity";

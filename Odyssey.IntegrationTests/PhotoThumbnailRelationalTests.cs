@@ -21,7 +21,7 @@ namespace Odyssey.IntegrationTests;
 /// Issue #362 on MariaDB: the migration's seed, CHECKs and keys (AC 20), and the rename's one atomic save — a
 /// <c>409 rename-busy</c> commits nothing, name included (AC 17), which EF InMemory cannot show.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
 {
     [SkippableFact]

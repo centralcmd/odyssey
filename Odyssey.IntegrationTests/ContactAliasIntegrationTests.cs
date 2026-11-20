@@ -19,7 +19,7 @@ namespace Odyssey.IntegrationTests;
 /// which is precisely why the alias and middle-name search arms, which pass a raw un-uppercased
 /// pattern, are asserted HERE rather than in <c>Odyssey.Core.Tests</c>.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactAliasIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contact_aliases";

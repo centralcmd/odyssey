@@ -22,7 +22,7 @@ namespace Odyssey.IntegrationTests;
 /// Spec B paths that touch series membership (AC 14), and the series-delete copy at its 200,000-row bound inside one
 /// transaction (AC 5). The EF InMemory tiers run no cascade and no transaction, so none of this is visible there.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOutputHelper output)
 {
     private const string Database = "odyssey_calendar_attachments";

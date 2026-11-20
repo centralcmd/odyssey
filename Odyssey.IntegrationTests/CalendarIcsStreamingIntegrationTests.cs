@@ -20,7 +20,7 @@ namespace Odyssey.IntegrationTests;
 /// stays flat on a large export and import (AC 1, AC 16, at reduced scale). The EF InMemory provider honours neither
 /// transactions nor the execution strategy and runs no interceptor, so none of this is observable on the fast tiers.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
 {
     private const string User = "calendar-ics-streaming";

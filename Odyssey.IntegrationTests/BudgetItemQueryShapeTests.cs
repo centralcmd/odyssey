@@ -29,7 +29,7 @@ namespace Odyssey.IntegrationTests;
 /// whatever the query did.
 /// </para>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class BudgetItemQueryShapeTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_budget_query_shape";

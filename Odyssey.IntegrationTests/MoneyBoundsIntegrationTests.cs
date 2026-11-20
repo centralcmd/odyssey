@@ -15,7 +15,7 @@ namespace Odyssey.IntegrationTests;
 /// floor is stored as zero (the silent failure it pre-empts). EF InMemory stores any <c>decimal</c>,
 /// so none of this is observable on the fast tiers.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class MoneyBoundsIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_money_bounds";

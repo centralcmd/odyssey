@@ -29,7 +29,7 @@ namespace Odyssey.IntegrationTests;
 /// tier cannot be the place that decides it.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_net_worth_history";

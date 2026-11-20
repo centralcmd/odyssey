@@ -17,7 +17,7 @@ namespace Odyssey.IntegrationTests;
 /// in batches and its resumption, the link races, and write fencing on the real concurrency token. None of it is observable on the EF
 /// InMemory provider, which runs no migrations, enforces no key and cannot run <c>ExecuteDelete</c>.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class WeatherRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_weather";

@@ -13,7 +13,7 @@ namespace Odyssey.IntegrationTests;
 /// replaces, shifts, adds and removes windows in one save without tripping the unique index (AC 22, 26), and the
 /// relational purger handles coverage, the marker and the windows (AC 16).
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_weather_windows_services";

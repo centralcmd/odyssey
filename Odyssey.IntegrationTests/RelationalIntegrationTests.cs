@@ -36,7 +36,7 @@ namespace Odyssey.IntegrationTests;
 /// that decimal/datetime columns round-trip at full precision. Also runs the demo seeder end to
 /// end to confirm referential integrity on a relational store.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class RelationalIntegrationTests(MariaDbFixture fixture)
 {
     [SkippableFact]

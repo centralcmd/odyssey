@@ -15,7 +15,7 @@ namespace Odyssey.IntegrationTests;
 /// locks: a busy <c>StoredFileBuckets</c> row is a <c>503</c> with <c>Retry-After</c> that writes nothing, and parallel
 /// uploads each get their own object while the bucket count stays consistent.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class StoredFileUploadRelationalTests(MariaDbFixture fixture)
 {
     private static readonly byte[] Pdf = "%PDF-1.7 relational upload"u8.ToArray();
