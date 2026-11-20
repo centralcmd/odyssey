@@ -30,9 +30,8 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
     public async Task The_migrations_copy_every_legacy_row_once_and_drop_the_old_table()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
 
         var userId = Guid.NewGuid().ToString();
         await InsertUserAsync(context, userId);
@@ -81,9 +80,8 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
     public async Task The_copy_aborts_naming_a_legacy_row_that_violates_a_constraint()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
         var bad = Guid.NewGuid();
         // Succeeded with no finish time: allowed by the old table, refused by CK_JobRuns_FinishedMatchesStatus.
         await InsertLegacyAsync(context, bad, trigger: 0, status: 1, errorKind: null, finished: null, requester: null, inserted: 0, deleted: 0, rejected: 0);
@@ -99,9 +97,8 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
     public async Task The_drop_aborts_and_keeps_the_table_when_a_copy_is_missing_or_differs()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
         await InsertLegacyAsync(context, first, trigger: 0, status: 1, errorKind: null, finished: Started.AddMinutes(1), requester: null, inserted: 4, deleted: 0, rejected: 0);
@@ -340,13 +337,4 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
         .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
         .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 }

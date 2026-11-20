@@ -118,7 +118,7 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
     public async Task The_migration_restores_orphaned_currencies_from_every_column_and_leaves_the_rows_untouched()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         var orphanAccount = Guid.NewGuid();
         var deletedCurrencyAccount = Guid.NewGuid();
@@ -132,7 +132,6 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
 
                 await InsertAccountAsync(context, orphanAccount, "QAA");
                 await InsertAccountAsync(context, healthyAccount, "USD");
@@ -245,7 +244,7 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
     public async Task The_migration_restores_one_row_per_code_as_the_key_compares_them_and_restores_a_blank_code()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         var lower = Guid.NewGuid();
         var upper = Guid.NewGuid();
@@ -255,7 +254,6 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
 
                 await InsertAccountAsync(context, lower, "qcs");
                 await InsertAccountAsync(context, upper, "QCS");
@@ -329,13 +327,6 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

@@ -26,7 +26,7 @@ public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
     public async Task A_pre_existing_tag_survives_the_upgrade_with_no_icon_and_the_column_is_nullable_varchar_64()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         var tagId = Guid.NewGuid();
 
@@ -34,7 +34,6 @@ public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 Assert.Null(await ColumnAsync(context));
                 // Raw SQL: the entity already carries Icon, which the baseline schema does not have.
                 await MigrationSeam.InsertTransactionTagAsync(context, tagId, "Groceries");
@@ -85,13 +84,6 @@ public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

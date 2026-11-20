@@ -37,12 +37,11 @@ public class WeatherPointsMigrationTests(MariaDbFixture fixture)
     public async Task The_pair_converts_every_weather_location_into_a_point_under_the_same_id()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         List<DateOnly> daysBefore;
         await using (var context = NewContext())
         {
-            await MigrationSeam.MigrateToAsync(context, Baseline);
             await AttributionUsers.EnsureAsync(context, AdminId, ReaderId, MalformedReaderId);
             await SeedOldShapeAsync(context);
             daysBefore = await ReadDatesAsync(context, $"SELECT `LocalDate` FROM `WeatherDays` WHERE `LocationId` = '{Both}' ORDER BY `LocalDate`");
@@ -255,15 +254,6 @@ public class WeatherPointsMigrationTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
         .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
         .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private sealed class Settings : IWeatherSettingsLookup
     {

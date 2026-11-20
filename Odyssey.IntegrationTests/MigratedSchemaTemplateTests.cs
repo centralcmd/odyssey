@@ -6,8 +6,9 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// A copy of the migrated template is the same database as one migrated from empty: every private-database test that
-/// uses <see cref="MariaDbFixture.CreateMigratedDatabaseAsync"/> rests on this, so it is checked rather than assumed.
+/// A copy of a template is the same database as one migrated through the chain: every private-database test that uses
+/// <see cref="MariaDbFixture.CreateMigratedDatabaseAsync"/> or <see cref="MariaDbFixture.CreateDatabaseAtMigrationAsync"/>
+/// rests on this, so it is checked rather than assumed — at head, and at one migration below it.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class MigratedSchemaTemplateTests(MariaDbFixture fixture)
@@ -15,11 +16,43 @@ public class MigratedSchemaTemplateTests(MariaDbFixture fixture)
     private const string Migrated = "odyssey_template_check_migrated";
     private const string Copied = "odyssey_template_check_copied";
 
+    /// <summary>
+    /// An intermediate target with the shapes a copy has to reproduce — a generated column with a unique index on it
+    /// (<c>JobRuns.ExclusiveGuard</c>), <c>CHECK</c> constraints, foreign keys and seeded rows — and with later
+    /// migrations still pending, so the copy's history has to stop exactly where the template's did.
+    /// </summary>
+    private const string Intermediate = "_AddJobRuns";
+
     [SkippableFact]
     public async Task A_copy_matches_a_database_migrated_from_empty_in_schema_and_rows()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
 
+        await MigrateTheSlowWayAsync(nameSuffix: null);
+        await fixture.CreateMigratedDatabaseAsync(Copied);
+
+        await AssertSameAsync();
+    }
+
+    [SkippableFact]
+    public async Task A_copy_at_an_intermediate_migration_matches_a_database_migrated_to_it_in_schema_and_rows()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+
+        await MigrateTheSlowWayAsync(Intermediate);
+        var copy = await fixture.CreateDatabaseAtMigrationAsync(Copied, Intermediate);
+
+        await AssertSameAsync();
+
+        // The copy is a usable seam baseline: the rest of the chain applies on top of it.
+        await using var context = ContextFor(copy);
+        Assert.NotEmpty(await context.Database.GetPendingMigrationsAsync());
+        await context.Database.MigrateAsync();
+        Assert.Empty(await context.Database.GetPendingMigrationsAsync());
+    }
+
+    private async Task MigrateTheSlowWayAsync(string? nameSuffix)
+    {
         await using (var server = new MySqlConnection(fixture.OdysseyConnectionString))
         {
             await server.OpenAsync();
@@ -27,15 +60,19 @@ public class MigratedSchemaTemplateTests(MariaDbFixture fixture)
             await reset.ExecuteNonQueryAsync();
         }
 
-        var migratedConnection = fixture.ConnectionStringFor(Migrated);
-        await using (var context = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(migratedConnection, ServerVersion.AutoDetect(migratedConnection)).Options))
+        await using var context = ContextFor(fixture.ConnectionStringFor(Migrated));
+        if (nameSuffix is null)
         {
             await context.Database.MigrateAsync();
         }
+        else
+        {
+            await MigrationSeam.MigrateToAsync(context, nameSuffix);
+        }
+    }
 
-        await fixture.CreateMigratedDatabaseAsync(Copied);
-
+    private async Task AssertSameAsync()
+    {
         await using var connection = new MySqlConnection(fixture.OdysseyConnectionString);
         await connection.OpenAsync();
         foreach (var (aspect, query) in Aspects)
@@ -56,6 +93,10 @@ public class MigratedSchemaTemplateTests(MariaDbFixture fixture)
             Assert.True(rows[0] == rows[1], $"The copy's `{table}` rows differ from a migrated database's.");
         }
     }
+
+    private static OdysseyContext ContextFor(string connectionString) =>
+        new(new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)).Options);
 
     /// <summary>Each aspect of a schema, read for one database (<c>@schema</c>) as sorted lines that name no schema.</summary>
     private static readonly (string Aspect, string Query)[] Aspects =

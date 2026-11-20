@@ -23,7 +23,7 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
     public async Task Up_deletes_partnered_fetched_reverse_rows_only_and_Down_re_derives_them()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseBeforeMigrationAsync(Database, "_" + Migration);
 
         try
         {
@@ -38,7 +38,6 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync(PreviousMigration(context));
 
                 // 2 currencies × 3 days × both directions, as the release-1 sync wrote them: one save per
                 // observation, so both rows of a day share CreatedAt.
@@ -120,13 +119,12 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
     public async Task Up_is_a_no_op_on_a_database_that_holds_only_the_published_direction()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseBeforeMigrationAsync(Database, "_" + Migration);
 
         try
         {
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync(PreviousMigration(context));
                 context.ExchangeRates.Add(Fetched("USD", "NOK", 10m, Day, Day));
                 await context.SaveChangesAsync();
             }
@@ -154,26 +152,11 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
         Provider = ExchangeRateProvider.NorgesBank,
     };
 
-    private static string PreviousMigration(OdysseyContext context)
-    {
-        var all = context.Database.GetMigrations().ToList();
-        var index = all.FindIndex(id => id.EndsWith("_" + Migration, StringComparison.Ordinal));
-        Assert.True(index > 0, "The release-2 migration must exist and not be the first.");
-        return all[index - 1];
-    }
-
     private OdysseyContext NewContext()
     {
         var connection = fixture.ConnectionStringFor(Database);
         return new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connection, ServerVersion.AutoDetect(connection)).Options);
-    }
-
-    private async Task RecreateAsync()
-    {
-        await using var admin = AdminContext();
-        await admin.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private async Task DropAsync()

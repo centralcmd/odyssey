@@ -28,7 +28,7 @@ public class JournalTaskPhotoTagIconMigrationTests(MariaDbFixture fixture)
     public async Task Pre_existing_tags_survive_the_upgrade_with_no_icon_and_each_column_is_nullable_varchar_64()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
 
         var ids = Tables.ToDictionary(table => table, _ => Guid.NewGuid());
 
@@ -36,7 +36,6 @@ public class JournalTaskPhotoTagIconMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
                 foreach (var table in Tables)
                 {
                     Assert.Null(await ColumnAsync(context, table));
@@ -105,13 +104,6 @@ public class JournalTaskPhotoTagIconMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {
