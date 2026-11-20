@@ -17,14 +17,14 @@ using static Odyssey.Api.Tests.News.NewsApiTestSupport;
 namespace Odyssey.Api.Tests.News;
 
 /// <summary>News tags, the status endpoint, the manual run and the claim gate of every news endpoint (issue #470 §5.4, §5.5).</summary>
-public sealed class NewsTagsStatusApiTests
+public sealed class NewsTagsStatusApiTests(NewsTagsStatusApiTests.Host host) : SharedApiHostTests<NewsTagsStatusApiTests.Host>(host)
 {
     private const string Tags = "/api/news-tags";
 
     [Fact]
     public async Task Tags_are_created_updated_archived_and_a_duplicate_name_in_any_case_is_409()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
 
         var created = await client.PostAsJsonAsync(Tags, new NewNewsTag { Name = "  World ", Icon = null, Color = "#a1b2c3" });
@@ -55,7 +55,7 @@ public sealed class NewsTagsStatusApiTests
     [Fact]
     public async Task The_list_is_paged_searched_filtered_and_sorted_like_every_tag_list()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.WithContextAsync(async context =>
         {
             context.NewsTags.Add(new NewsTag { NewsTagId = Guid.NewGuid(), Name = "Bravo", NameKey = "bravo", Description = "Sport", CreatedAtUtc = Base, UpdatedAtUtc = Base });
@@ -82,7 +82,7 @@ public sealed class NewsTagsStatusApiTests
     [Fact]
     public async Task AC71_All_500_tags_come_back_in_one_response_and_the_501st_is_422()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.WithContextAsync(async context =>
         {
             for (var i = 0; i < NewsLimits.MaxTags; i++)
@@ -103,7 +103,7 @@ public sealed class NewsTagsStatusApiTests
     [Fact]
     public async Task AC9_A_tag_in_use_is_409_with_counts_and_changes_nothing()
     {
-        await using var admin = new OdysseyApiFactory(AllNewsClaims);
+        var admin = Factory.ForCaller(AllNewsClaims);
         var tag = await admin.SeedTagAsync("Used");
         var feed = await admin.SeedFeedAsync();
         var article = (await admin.SeedArticlesAsync(feed, 1))[0];
@@ -125,7 +125,7 @@ public sealed class NewsTagsStatusApiTests
     [Fact]
     public async Task An_unused_tag_deletes_and_then_is_404()
     {
-        await using var admin = new OdysseyApiFactory(AllNewsClaims);
+        var admin = Factory.ForCaller(AllNewsClaims);
         var tag = await admin.SeedTagAsync("Unused");
         using var client = admin.CreateClient();
 
@@ -136,7 +136,7 @@ public sealed class NewsTagsStatusApiTests
     [Fact]
     public async Task AC42_AC58_Status_answers_200_with_the_resolved_text_quota_its_reached_flag_and_feed_titles()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.NewsTextStoreMaxGiB, "1");
         var feed = await factory.SeedFeedAsync(state: s => s.QuarantinedAtUtc = Base, articles: 4);
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
@@ -235,12 +235,12 @@ public sealed class NewsTagsStatusApiTests
     [MemberData(nameof(Gates))]
     public async Task AC2_Every_news_endpoint_is_403_without_its_claim(string method, string url, string claim, object? body)
     {
-        await using var without = new OdysseyApiFactory([.. AllNewsClaims.Where(c => c != claim)]);
-        await using var with = new OdysseyApiFactory([claim]);
+        // One store: the refused request writes nothing, so the permitted one sees what a fresh host would.
+        IReadOnlyCollection<string> without = [.. AllNewsClaims.Where(c => c != claim)], with = [claim];
 
-        foreach (var (factory, forbidden) in new[] { (without, true), (with, false) })
+        foreach (var (permissions, forbidden) in new[] { (without, true), (with, false) })
         {
-            using var client = factory.CreateClient();
+            using var client = Factory.ClientFor(permissions);
             using var request = new HttpRequestMessage(new HttpMethod(method), url) { Content = body is null ? null : JsonBody(body) };
             var status = (await client.SendAsync(request)).StatusCode;
             if (forbidden)
@@ -254,4 +254,7 @@ public sealed class NewsTagsStatusApiTests
             }
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }
