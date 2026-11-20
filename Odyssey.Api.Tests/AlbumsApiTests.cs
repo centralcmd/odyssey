@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Odyssey.Api.Tests;
 
-public class AlbumsApiTests
+public class AlbumsApiTests(AlbumsApiTests.Host host) : SharedApiHostTests<AlbumsApiTests.Host>(host)
 {
     private const string ActorUserId = "albums-actor-id";
     private const string Path = "/api/albums";
@@ -24,7 +24,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task List_Guest_ReturnsForbidden()
     {
-        await using var factory = new OdysseyApiFactory(permissions: [], actorUserId: ActorUserId);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Path)).StatusCode);
     }
@@ -32,7 +32,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task Create_OverMemberCap_ReturnsBadRequest()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var tooMany = new Guid[PhotoLimits.MaxAlbumMembers + 1];
@@ -43,7 +43,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task Create_WithOrderedMembers_ReturnsThemInOrder()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var a = await CreatePhoto(factory, client);
         var b = await CreatePhoto(factory, client);
@@ -56,7 +56,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task Create_CoverNotAMember_ReturnsUnprocessableEntity()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var a = await CreatePhoto(factory, client);
         var stranger = await CreatePhoto(factory, client);
@@ -68,7 +68,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task SamePhoto_CanBelongToTwoAlbums()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var photo = await CreatePhoto(factory, client);
 
@@ -85,7 +85,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task Update_ReplacesMembership_AndCoverRemovedByReplaceIsNulled()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var a = await CreatePhoto(factory, client);
         var b = await CreatePhoto(factory, client);
@@ -105,7 +105,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task Delete_Album_LeavesMemberPhotosIntact()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var photo = await CreatePhoto(factory, client);
         var album = await CreateAlbum(client, new NewPhotoAlbum { Name = "Trip", PhotoIds = [photo] });
@@ -128,7 +128,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task Author_DisplayName_Resolves_On_List_And_Detail()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         await factory.SeedActorUserAsync(displayName: "Ada L.");
         using var client = factory.CreateClient();
         var photo = await CreatePhoto(factory, client);
@@ -147,7 +147,7 @@ public class AlbumsApiTests
     [Fact]
     public async Task Author_NoProfileName_And_NoUsersRead_ReturnsUnknownUser_NotEmail()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         var userName = await factory.SeedActorUserAsync();
         using var client = factory.CreateClient();
         var photo = await CreatePhoto(factory, client);
@@ -165,4 +165,7 @@ public class AlbumsApiTests
         post.EnsureSuccessStatusCode();
         return (await post.Content.ReadFromJsonAsync<ExistingPhotoAlbum>())!;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([], ActorUserId);
 }

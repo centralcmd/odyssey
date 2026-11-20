@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// The two administrator prompt-guidance settings (issue #433 §5, §8): the multi-line pipeline, the
 /// ordinary claim, the digest-only audit line and the disclosure flags.
 /// </summary>
-public class PromptAdditionSettingsApiTests
+public class PromptAdditionSettingsApiTests(PromptAdditionSettingsApiTests.Host host) : SharedApiHostTests<PromptAdditionSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string DisclosurePath = "/api/file-analysis/disclosure";
@@ -32,7 +32,7 @@ public class PromptAdditionSettingsApiTests
     [Fact]
     public async Task Get_ServesBothAdditionsEmpty_ByDefault()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -44,7 +44,7 @@ public class PromptAdditionSettingsApiTests
     [Fact]
     public async Task Put_NormalisesLineBreaksAndTrims_AndTheResponseCarriesTheStoredValue()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -60,7 +60,7 @@ public class PromptAdditionSettingsApiTests
     [Fact]
     public async Task Put_ExactlyTheLimit_IsAccepted_EvenWhenCrlfMakesTheRawValueLonger()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
         var crlf = string.Concat(Enumerable.Repeat("abc\r\n", 999)) + "abcd";
         Assert.True(crlf.Length > PromptAdditionRule.MaxLength);
@@ -80,7 +80,7 @@ public class PromptAdditionSettingsApiTests
     [InlineData("zero-width")]
     public async Task Put_AnInvalidValue_Is400_KeyedOnTheField_WithoutEchoingIt(string kind)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
         var value = kind switch
         {
@@ -102,7 +102,7 @@ public class PromptAdditionSettingsApiTests
     [Fact]
     public async Task Put_WithoutTheUpdateClaim_Is403()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -135,7 +135,7 @@ public class PromptAdditionSettingsApiTests
     [Fact]
     public async Task Put_ANonEmptyAddition_CarriesTheReconsentAdvisory()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -151,7 +151,7 @@ public class PromptAdditionSettingsApiTests
     [Fact]
     public async Task Disclosure_ServesTheFieldListAndFlags_AndAFlagChangeMovesTheVersion()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var before = await client.GetFromJsonAsync<FileAnalysisDisclosureDto>(DisclosurePath);
@@ -195,7 +195,7 @@ public class PromptAdditionSettingsApiTests
         Assert.Equal(2, SystemSettingsRegistry.All.OfType<StringSetting>().Count(s => s.Multiline));
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
@@ -209,4 +209,7 @@ public class PromptAdditionSettingsApiTests
             builder.ConfigureServices(services => services.AddSingleton<ILoggerProvider>(Logs));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

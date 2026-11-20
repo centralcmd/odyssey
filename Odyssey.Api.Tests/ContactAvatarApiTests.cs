@@ -26,7 +26,7 @@ namespace Odyssey.Api.Tests;
 /// assert nothing.
 /// </para>
 /// </summary>
-public class ContactAvatarApiTests
+public class ContactAvatarApiTests(ContactAvatarApiTests.Host host) : SharedApiHostTests<ContactAvatarApiTests.Host>(host)
 {
     private const string ActorUserId = "avatar-actor-id";
 
@@ -53,13 +53,13 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task Reading_an_image_needs_only_contacts_read()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         await UploadAsync(client, contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
 
-        await using var reader = new ApiFactory(ReadOnly, sharingStoreWith: factory);
-        using var readerClient = reader.CreateClient();
+        var reader = Factory;
+        using var readerClient = reader.ClientFor(ReadOnly);
 
         var response = await readerClient.GetAsync($"/api/contacts/{contactId}/avatar");
 
@@ -71,7 +71,7 @@ public class ContactAvatarApiTests
     {
         // The image IS contact data. Gating it on files.read as well would mirror, on the read path,
         // exactly the claim-coupling the write path refuses.
-        await using var factory = new ApiFactory([PermissionClaims.FilesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.FilesRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/contacts/{Guid.NewGuid()}/avatar");
@@ -85,7 +85,7 @@ public class ContactAvatarApiTests
         // The boundedness argument in the flesh: contacts.update alone buys "<= 2 MB, one of three
         // still image types, magic-checked, <= 1024 square, non-animated, stripped and re-validated,
         // with a generated filename" — and nothing files.create would buy.
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -99,7 +99,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task Writing_an_image_without_contacts_update_is_forbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         var upload = await UploadAsync(client, Guid.NewGuid(), ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -114,7 +114,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task An_uploaded_image_comes_back_with_the_headers_an_inline_untrusted_body_needs()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         await UploadAsync(client, contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -141,7 +141,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task The_stored_bytes_are_returned_not_the_uploaded_ones()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -159,7 +159,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task A_matching_if_none_match_returns_304_with_no_body()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         await UploadAsync(client, contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -178,7 +178,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task A_stale_if_none_match_returns_the_body()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         await UploadAsync(client, contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -196,7 +196,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task A_second_upload_replaces_the_first_and_re_keys_the_url()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -218,7 +218,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task Removing_an_image_leaves_the_contact_intact_and_its_image_absent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         await UploadAsync(client, contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -237,7 +237,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task Removing_an_image_a_contact_does_not_have_is_a_404()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -247,7 +247,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task Uploading_to_a_contact_that_does_not_exist_is_a_404()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await UploadAsync(client, Guid.NewGuid(), ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -262,7 +262,7 @@ public class ContactAvatarApiTests
     [InlineData("image/gif")]
     public async Task A_type_outside_the_avatar_allow_list_is_a_400_naming_the_accepted_types(string contentType)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -279,7 +279,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task A_png_declared_as_jpeg_is_a_400()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -291,7 +291,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task An_over_dimension_image_is_a_400_naming_the_dimension_cap()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -307,7 +307,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task An_animated_image_is_a_400()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -319,7 +319,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task No_error_body_carries_a_filename_a_hash_or_a_byte_count_of_the_stored_image()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -340,7 +340,7 @@ public class ContactAvatarApiTests
     public async Task The_stored_filename_is_generated_and_its_extension_follows_the_validated_type(
         string contentType, string extension)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client, firstName: "Ada", lastName: "Lovelace");
 
@@ -372,7 +372,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task A_form_body_carrying_a_fileId_neither_repoints_the_avatar_nor_touches_that_file()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
 
@@ -434,7 +434,7 @@ public class ContactAvatarApiTests
         // The unique index prevents SHARING a file; it does not prevent a row pointing somewhere it
         // should not. Without the read-path content-type check this would stream a tax statement to any
         // contacts.read holder — a Guest included.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         var pdfId = await MisPoint(factory, contactId);
@@ -448,7 +448,7 @@ public class ContactAvatarApiTests
     [Fact]
     public async Task Deleting_a_mis_pointed_image_detaches_without_destroying_the_file()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         var pdfId = await MisPoint(factory, contactId);
@@ -468,7 +468,7 @@ public class ContactAvatarApiTests
     {
         // The site an earlier draft MISSED, and the likeliest of the three to be reached: replacing an
         // image is an ordinary action while deleting one is not.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contactId = await CreatePersonAsync(client);
         var pdfId = await MisPoint(factory, contactId);
@@ -601,7 +601,10 @@ public class ContactAvatarApiTests
         return context.Contacts.Single(c => c.ContactId == contactId).AvatarFileId;
     }
 
-    private sealed class ApiFactory(
+    public class ApiFactory(
         IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
         : OdysseyApiFactory(permissions, ActorUserId, sharingStoreWith: sharingStoreWith);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

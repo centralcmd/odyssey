@@ -43,7 +43,7 @@ namespace Odyssey.Api.Tests;
 /// cleanup, so they live in <c>Odyssey.IntegrationTests</c> against real MariaDB.
 /// </para>
 /// </remarks>
-public class ContractPartyRoleMatrixApiTests
+public class ContractPartyRoleMatrixApiTests(ContractPartyRoleMatrixApiTests.Host host) : SharedApiHostTests<ContractPartyRoleMatrixApiTests.Host>(host)
 {
     private const string Path = "/api/contracts";
 
@@ -61,9 +61,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_WithASuggestedRole_Returns201AndPersistsIt()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -82,9 +82,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_WithAnAllowedRole_Returns201()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         Assert.Equal(ContractPartyRoleLegality.Allowed,
@@ -105,9 +105,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_WithARejectedRole_Returns422NamingTheLegalRoles_AndWritesNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -127,9 +127,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task UpdateParty_WithARejectedRole_Returns422_AndLeavesThePartyAlone()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -163,9 +163,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task EveryMatrixCell_IsAcceptedOrRefusedExactlyAsDeclared()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var legal = 0;
         var rejected = 0;
@@ -225,9 +225,9 @@ public class ContractPartyRoleMatrixApiTests
     public async Task AddParty_WithAnObjectRoleItsTypeTakes_Returns201AndPersistsIt(
         ContractType type, ContractPartyRole role)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, type);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -252,9 +252,9 @@ public class ContractPartyRoleMatrixApiTests
     public async Task AddParty_WithAnObjectRoleItsTypeRejects_Returns422_AndWritesNothing(
         ContractType type, ContractPartyRole role)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, type);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -277,10 +277,10 @@ public class ContractPartyRoleMatrixApiTests
     [InlineData(ContractType.Loan, ContractPartyRole.Collateral)]
     public async Task AddParty_InANewRole_TakesEitherTargetKind(ContractType type, ContractPartyRole role)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
         var contactId = await SeedContactAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, type);
 
@@ -300,9 +300,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_WithGuarantor_Returns201_OnEveryContractType()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         foreach (var type in Enum.GetValues<ContractType>())
         {
@@ -323,9 +323,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task ARejectedRoleOnARental_NamesTheLegalRoles_InSuggestedThenAllowedOrder()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -346,10 +346,10 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task TwoObjectPartiesAgainstDifferentTargets_BothPersist_AndADuplicateIs409()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
         var secondAccountId = await SeedAccountAsync(factory, "Holiday Cabin");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Purchase);
 
@@ -378,9 +378,9 @@ public class ContractPartyRoleMatrixApiTests
     [InlineData(99)]
     public async Task AddParty_WithAnUndefinedRoleOrdinal_Returns400(int ordinal)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new { accountId, role = ordinal });
@@ -397,9 +397,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_InANewRole_WithANestedAccountObject_NeitherCreatesNorMutatesIt()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new
@@ -427,11 +427,11 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_InANewRole_OnAFullContract_Returns422KeyedOnTheTargetField()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
         var accountId = await SeedAccountAsync(factory);
         var contactId = await SeedContactAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         (await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -455,11 +455,11 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_OnAFullContract_WithAnIllegalRole_ReportsTheRole_NotTheCap()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
         var accountId = await SeedAccountAsync(factory);
         var contactId = await SeedContactAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         (await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -488,10 +488,10 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task UpdateParty_OnAContractAboveItsCap_Returns200()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -537,9 +537,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task UpdateContract_ToATypeThatRejectsAnExistingParty_Returns422_AndWritesNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -581,9 +581,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task UpdateContract_ToATypeEveryPartySurvives_Returns200()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         (await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -610,9 +610,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task UpdateContract_KeepingTheType_IsNotRefusedByALegacyParty()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         (await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -649,9 +649,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task LoanContracts_RoundTripAndTakeLenderAndBorrowerOnly()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Loan);
         Assert.Equal(ContractType.Loan, (await GetAsync(client, id)).Type);
@@ -686,9 +686,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task AddParty_WithANestedAccountObject_NeitherCreatesNorMutatesIt()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var accountId = await SeedAccountAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, ContractType.Rental);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new
@@ -722,9 +722,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task DeleteContact_NamedAsAContractBeneficiary_Returns409_NamingTheContract()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContactsDelete]);
+        var factory = Factory;
         var (contactId, contractId) = await SeedBeneficiaryAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.ContactsDelete]);
 
         var delete = await client.DeleteAsync($"/api/contacts/{contactId}");
 
@@ -819,9 +819,9 @@ public class ContractPartyRoleMatrixApiTests
     [Fact]
     public async Task DeleteContact_WithDetach_WithContractsUpdate_IsNotForbidden()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContactsDelete]);
+        var factory = Factory;
         var (contactId, _) = await SeedBeneficiaryAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.ContactsDelete]);
 
         var delete = await client.DeleteAsync($"/api/contacts/{contactId}?detachBlockingLinks=true");
 
@@ -877,7 +877,7 @@ public class ContractPartyRoleMatrixApiTests
     }
 
     /// <summary>The shared fixture, with the same fixed clock the sibling contract suite uses.</summary>
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         private const string ActorUserId = "contract-matrix-actor";
 
@@ -975,4 +975,7 @@ public class ContractPartyRoleMatrixApiTests
         return problem.RootElement.TryGetProperty("errors", out var errors)
             && errors.EnumerateObject().Any(error => string.Equals(error.Name, field, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

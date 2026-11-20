@@ -21,7 +21,7 @@ using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 
 namespace Odyssey.Api.Tests;
 
-public class AccountEstimatesApiTests
+public class AccountEstimatesApiTests(AccountEstimatesApiTests.Host host) : SharedApiHostTests<AccountEstimatesApiTests.Host>(host)
 {
     private const string ActorUserId = "account-estimates-actor-id";
 
@@ -40,7 +40,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(EstimatesPath(Guid.NewGuid()));
@@ -51,7 +51,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task List_WithoutEstimatesReadPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(EstimatesPath(Guid.NewGuid()));
@@ -62,7 +62,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Write_WithReadOnlyPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.AccountsEstimatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsEstimatesRead]);
         var accountId = await SeedAccountAsync(factory);
         using var client = factory.CreateClient();
 
@@ -79,7 +79,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Read_WithReadPermission_Succeeds()
     {
-        await using var factory = new ApiFactory([PermissionClaims.AccountsEstimatesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsEstimatesRead]);
         var accountId = await SeedAccountAsync(factory);
         using var client = factory.CreateClient();
 
@@ -95,7 +95,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Post_ValidEstimate_ReturnsCreatedAndIsRetrievable()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "USD");
         using var client = factory.CreateClient();
 
@@ -111,7 +111,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Post_WithoutCurrency_DefaultsToAccountCurrency()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "EUR");
         using var client = factory.CreateClient();
 
@@ -125,7 +125,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Post_CurrencyDifferentFromAccount_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "USD");
         using var client = factory.CreateClient();
 
@@ -137,7 +137,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Post_OnMissingAccount_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(EstimatesPath(Guid.NewGuid()), Estimate(1000m, new DateTime(2026, 1, 1)));
@@ -148,7 +148,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Post_Duplicate_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
@@ -162,7 +162,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Current_RespectsAsOfAndSupersession()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
@@ -176,7 +176,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Put_EstimateNotOnAccount_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
@@ -188,7 +188,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Delete_ExistingEstimate_ReturnsNoContent()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
@@ -202,7 +202,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task Delete_EstimateNotOnAccount_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
@@ -214,7 +214,7 @@ public class AccountEstimatesApiTests
     [Fact]
     public async Task GetAccount_ExposesCurrentEstimatedValue()
     {
-        await using var factory = new ApiFactory([.. WriteAndRead, PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([.. WriteAndRead, PermissionClaims.AccountsRead]);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "USD");
         using var client = factory.CreateClient();
 
@@ -253,6 +253,9 @@ public class AccountEstimatesApiTests
         return accountId;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

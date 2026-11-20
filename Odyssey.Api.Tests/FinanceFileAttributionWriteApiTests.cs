@@ -32,7 +32,7 @@ namespace Odyssey.Api.Tests;
 /// instead, by the per-action source guard in <see cref="FinanceFileAttributionGuardTests"/>.
 /// </para>
 /// </remarks>
-public sealed class FinanceFileAttributionWriteApiTests
+public class FinanceFileAttributionWriteApiTests(FinanceFileAttributionWriteApiTests.Host host) : SharedApiHostTests<FinanceFileAttributionWriteApiTests.Host>(host)
 {
     private const string UploaderUserId = "write-uploader-id";
     private const string UploaderEmail = "write-uploader@example.com";
@@ -134,7 +134,7 @@ public sealed class FinanceFileAttributionWriteApiTests
     [Fact]
     public async Task GetBudgetTransactions_CarriesNoFilesToday_AndEnrichesAnyItDoesCarry()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         var budgetId = await SeedBudgetWithFiledTransactionAsync(factory);
 
@@ -331,4 +331,7 @@ public sealed class FinanceFileAttributionWriteApiTests
         db.FileMetadata.Add(metadata);
         return metadata;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

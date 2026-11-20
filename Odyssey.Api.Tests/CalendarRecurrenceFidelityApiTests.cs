@@ -29,7 +29,7 @@ namespace Odyssey.Api.Tests;
 /// consent checks, the zoned export and the grouped import with its removal gate. The series lock, the SQL window
 /// and the races are covered against MariaDB in <c>Odyssey.IntegrationTests</c>.
 /// </summary>
-public class CalendarRecurrenceFidelityApiTests
+public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTests.Host host) : SharedApiHostTests<CalendarRecurrenceFidelityApiTests.Host>(host)
 {
     private const string ActorUserId = "calendar-recurrence-actor";
     private const string CalendarsPath = "/api/calendars";
@@ -50,8 +50,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_weekly_0900_oslo_series_keeps_its_local_time_and_its_instants_move_at_the_march_change()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Oslo");
 
         var series = await CreatePatternAsync(client, new NewRecurrencePattern
@@ -76,8 +76,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_weekly_monday_2330_los_angeles_series_falls_on_local_mondays()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "LA");
 
         var series = await CreatePatternAsync(client, new NewRecurrencePattern
@@ -96,8 +96,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_wall_clock_in_a_gap_moves_forward_and_an_ambiguous_one_takes_the_earlier_instant()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Gaps");
 
         var gap = await CreateEventAsync(client, calendar.CalendarId, "Gap", Wall(2026, 3, 29, 2, 30), Wall(2026, 3, 29, 4, 30), "Europe/Oslo");
@@ -114,8 +114,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_floating_event_reads_back_unconverted_and_exports_without_z()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Floating");
 
         var created = await CreateEventAsync(client, calendar.CalendarId, "Legacy", Wall(2030, 6, 1, 9), Wall(2030, 6, 1, 10), null);
@@ -141,8 +141,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_description_edit_keeps_an_overridden_title_and_a_deleted_occurrence()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Template");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 5);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -174,8 +174,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task Moving_a_weekly_series_from_mondays_to_tuesdays_drops_its_future_exceptions_and_counts_them()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Days");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 4);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -197,8 +197,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task Changing_the_interval_from_one_to_two_drops_exactly_the_odd_week_exceptions()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Interval");
         var until = Wall(2026, 3, 9, 9);
         var series = await CreatePatternAsync(client, Rule(calendar.CalendarId, count: null) with { RecurrenceEndDate = until });
@@ -222,8 +222,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task Giving_a_floating_series_a_zone_keeps_every_key_and_drops_nothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Zone only");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 4);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -246,8 +246,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task The_preview_reports_the_counts_the_put_then_applies_and_saves_nothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Preview");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 4);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -274,8 +274,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_stale_expected_version_is_a_409_and_changes_nothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Stale");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 3);
         await UpdatePatternAsync(client, series.RecurrencePatternId, Rule(calendar.CalendarId, count: 3) with { Title = "Moved on" });
@@ -291,8 +291,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task Drops_beyond_the_confirmed_counts_are_a_409_carrying_the_actual_counts_and_change_nothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Consent");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 3);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -362,8 +362,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_body_carrying_server_set_fields_changes_none_of_them()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Server set");
         var created = await CreateEventAsync(client, calendar.CalendarId, "Plain", Wall(2030, 6, 1, 9), Wall(2030, 6, 1, 10), null);
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 2);
@@ -400,8 +400,8 @@ public class CalendarRecurrenceFidelityApiTests
     [InlineData("W. Europe Standard Time")]
     public async Task A_zone_that_is_not_an_iana_id_is_a_400_on_every_write(string zone)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Zones");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 2);
         var created = await CreateEventAsync(client, calendar.CalendarId, "E", Wall(2030, 6, 1, 9), Wall(2030, 6, 1, 10), null);
@@ -432,8 +432,8 @@ public class CalendarRecurrenceFidelityApiTests
     {
         // §5.1 "Their Kind is ignored": Z and no designator name the same wall-clock. An offset cannot be ignored — binding
         // has already turned it into server-local time — so it is refused rather than read two ways (PR #528 review A3).
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Designators");
         HttpResponseMessage Post(string start, string end) => client.PostAsync(EventsPath, new StringContent(
             $$"""{"calendarId":"{{calendar.CalendarId}}","title":"T","startDateTime":"{{start}}","endDateTime":"{{end}}","timeZoneId":"Europe/Oslo"}""",
@@ -453,8 +453,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task An_all_day_zone_is_stored_as_null_and_a_put_without_a_zone_keeps_the_stored_one()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Keep zone");
 
         var allDay = (await (await client.PostAsJsonAsync(EventsPath, new NewCalendarEvent
@@ -480,8 +480,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task Deleting_an_occurrence_records_an_exclusion_that_a_series_edit_does_not_bring_back()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Stays deleted");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 3);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -499,8 +499,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task An_occurrence_write_keys_a_legacy_series_inline_and_reports_a_detached_row()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Legacy");
         var (patternId, rowIds) = await SeedLegacySeriesAsync(factory, calendar.CalendarId, rescheduleThird: true);
 
@@ -552,8 +552,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_zoned_series_with_an_exclusion_and_an_override_round_trips_in_either_component_order()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Round trip");
         var series = await CreatePatternAsync(client, new NewRecurrencePattern
         {
@@ -616,8 +616,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task An_override_only_file_updates_the_stored_occurrence_and_marks_it_an_override()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Override only");
         await ImportAsync(client, calendar.CalendarId, Vcalendar(Master("ext-9")));
 
@@ -636,8 +636,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_reimport_keeps_a_local_edit_and_a_local_deletion()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Keep local");
         var file = Vcalendar(Master("ext-10"));
         await ImportAsync(client, calendar.CalendarId, file);
@@ -704,8 +704,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task Reimporting_one_exported_occurrence_makes_it_an_override_that_a_series_edit_keeps()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Single");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 3);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -726,8 +726,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task An_unknown_tzid_is_skipped_and_a_windows_tzid_is_mapped_and_a_floating_time_takes_the_default_zone()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Import zones");
         var file = Vcalendar(
             Vevent("mars", "DTSTART;TZID=Mars/Olympus:20300601T090000", "DTEND;TZID=Mars/Olympus:20300601T100000", "SUMMARY:Mars"),
@@ -752,8 +752,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_file_with_too_many_components_for_its_size_is_refused_before_anything_is_applied()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Tiny components");
         var file = "BEGIN:VCALENDAR\r\n" + string.Concat(Enumerable.Repeat("BEGIN:VEVENT\r\nEND:VEVENT\r\n", 2000)) + "END:VCALENDAR\r\n";
 
@@ -769,8 +769,8 @@ public class CalendarRecurrenceFidelityApiTests
     [Fact]
     public async Task A_mix_of_floating_and_zoned_rows_pages_identically_under_every_view_zone()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var calendar = await CreateCalendarAsync(client, "Mixed");
         await SeedMixedRowsAsync(factory, calendar.CalendarId, 60);
         var from = Utc(2026, 3, 20, 0);
@@ -1009,7 +1009,7 @@ public class CalendarRecurrenceFidelityApiTests
         return await client.PostAsync($"{CalendarsPath}/{calendarId}/ics", content);
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         // One root, so two factories naming one database share its store.
         private static readonly Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot StoreRoot = new();
@@ -1040,4 +1040,7 @@ public class CalendarRecurrenceFidelityApiTests
             databaseName = name;
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

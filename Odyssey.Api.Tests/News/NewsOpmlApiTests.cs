@@ -38,7 +38,7 @@ namespace Odyssey.Api.Tests.News;
 /// The OPML endpoints of issue #508 over HTTP (§5, amendments v4–v7). Test names carry the AC they pin; the service
 /// rules are covered in <c>Odyssey.Core.Tests</c> and the MariaDB-only ones in <c>Odyssey.IntegrationTests</c>.
 /// </summary>
-public sealed class NewsOpmlApiTests
+public class NewsOpmlApiTests(NewsOpmlApiTests.Host host) : SharedApiHostTests<NewsOpmlApiTests.Host>(host)
 {
     private const string Opml = "/api/news-feeds/opml";
     private const string FilteredExport = "/api/news-feeds/opml/export";
@@ -67,7 +67,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC1_The_export_is_200_with_the_download_headers_and_an_opml_2_document()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.SeedFeedAsync(url: "https://one.example/rss");
         await factory.SeedFeedAsync(url: "https://two.example/rss");
         using var client = factory.CreateClient();
@@ -108,7 +108,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC39_AC40_The_filtered_export_writes_the_named_feeds_and_their_tags_once()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var tagged = await factory.SeedFeedAsync(url: "https://a.example/rss");
         var b = await factory.SeedFeedAsync(url: "https://b.example/rss");
         var c = await factory.SeedFeedAsync(url: "https://c.example/rss");
@@ -141,7 +141,7 @@ public sealed class NewsOpmlApiTests
     [MemberData(nameof(BadExportBodies))]
     public async Task AC41_A_missing_empty_invalid_or_over_long_list_is_400(string json)
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(FilteredExport, new StringContent(json, Encoding.UTF8, "application/json"));
@@ -154,7 +154,7 @@ public sealed class NewsOpmlApiTests
     {
         // TestServer does not enforce [RequestSizeLimit] (Kestrel does), so the cap is pinned on the endpoint's metadata:
         // without it a well-formed body of any size would be read.
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var _ = factory.CreateClient();
 
         var endpoint = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
@@ -169,7 +169,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC41_A_list_of_only_unknown_ids_is_200_with_an_empty_body_and_no_rows()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.SeedFeedAsync();
         using var client = factory.CreateClient();
 
@@ -196,7 +196,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC42_Both_exports_share_the_global_export_limiter()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
         var global = factory.Services.GetRequiredService<GlobalExportConcurrencyLimiter>();
         var leases = Enumerable.Range(0, 4).Select(_ => global.Limiter.AttemptAcquire()).ToList();
@@ -231,7 +231,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC7_Without_news_tags_create_the_feeds_import_and_the_missing_tag_is_reported()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate]);
+        var factory = Factory.ForCaller([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate]);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(Opml, Upload(Document("https://a.example/rss", "https://b.example/rss")));
@@ -269,7 +269,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC23_A_created_feed_derives_its_health_whatever_the_file_says()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
         var file = "<opml xmlns:odyssey=\"urn:odyssey:opml:1\"><body><outline xmlUrl=\"https://a.example/rss\" odyssey:health=\"Healthy\" id=\"x\"/></body></opml>";
 
@@ -282,7 +282,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC26_A_missing_file_is_file_required_and_a_txt_file_is_wrong_type()
     {
-        await using var factory = new OdysseyApiFactory(ImportClaims);
+        var factory = Factory.ForCaller(ImportClaims);
         using var client = factory.CreateClient();
 
         var missing = await client.PostAsync(Opml, new MultipartFormDataContent { { new StringContent("x"), "other" } });
@@ -306,7 +306,7 @@ public sealed class NewsOpmlApiTests
     [InlineData("feeds.opml", null)]
     public async Task The_accepted_extensions_and_declared_types_import(string fileName, string? contentType)
     {
-        await using var factory = new OdysseyApiFactory(ImportClaims);
+        var factory = Factory.ForCaller(ImportClaims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(Opml, Upload(Document("https://a.example/rss"), fileName, contentType));
@@ -317,7 +317,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC25_An_unreadable_file_is_400_and_the_body_carries_no_parser_text()
     {
-        await using var factory = new OdysseyApiFactory(ImportClaims);
+        var factory = Factory.ForCaller(ImportClaims);
         using var client = factory.CreateClient();
 
         foreach (var content in new[] { "<rss version=\"2.0\"><channel/></rss>", "<opml><head/></opml>", "<opml><body><outline", "\u0089PNG\r\n\u001a\n" })
@@ -335,7 +335,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC27_More_distinct_feeds_than_the_entry_cap_is_422_with_the_limit_and_nothing_written()
     {
-        await using var factory = new OdysseyApiFactory(ImportClaims);
+        var factory = Factory.ForCaller(ImportClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.NewsOpmlMaxImportEntries, "100");
         using var client = factory.CreateClient();
 
@@ -355,7 +355,7 @@ public sealed class NewsOpmlApiTests
     {
         // Under TestServer the transport limit feature is absent, so the multipart limit refuses the body as a binding
         // failure (400); on Kestrel the same request is the middleware's 413 (the vCard import's precedent).
-        await using var factory = new OdysseyApiFactory(ImportClaims);
+        var factory = Factory.ForCaller(ImportClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.NewsOpmlMaxImportMegabytes, "1");
         using var client = factory.CreateClient();
         var padding = "<!--" + new string('x', 60_000) + "-->";
@@ -405,7 +405,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC29_A_second_import_is_429_and_the_refusal_releases_the_shared_permit()
     {
-        await using var factory = new OdysseyApiFactory([.. ImportClaims, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate, PermissionClaims.TasksRead]);
+        var factory = Factory.ForCaller([.. ImportClaims, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate, PermissionClaims.TasksRead]);
         using var client = factory.CreateClient();
         var limiter = factory.Services.GetRequiredService<NewsOpmlImportLimiter>();
 
@@ -465,7 +465,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC29_An_import_while_two_other_imports_hold_the_shared_limit_is_429()
     {
-        await using var factory = new OdysseyApiFactory([.. ImportClaims, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate, PermissionClaims.TasksRead]);
+        var factory = Factory.ForCaller([.. ImportClaims, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate, PermissionClaims.TasksRead]);
         using var client = StreamingClient(factory);
 
         // Two task imports whose bodies have not finished arriving hold both shared permits.
@@ -492,7 +492,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC29_A_second_concurrent_import_is_429_while_the_first_upload_is_still_arriving()
     {
-        await using var factory = new OdysseyApiFactory(ImportClaims);
+        var factory = Factory.ForCaller(ImportClaims);
         using var client = StreamingClient(factory);
         var gate = new TaskCompletionSource();
         var held = client.PostAsync(Opml, SlowUpload(gate.Task, "feeds.opml", "text/x-opml"));
@@ -593,7 +593,7 @@ public sealed class NewsOpmlApiTests
     [Fact]
     public async Task AC35_The_size_cap_needs_the_security_claim_and_the_entry_cap_can_only_be_lowered()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden,
@@ -711,4 +711,7 @@ public sealed class NewsOpmlApiTests
 
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

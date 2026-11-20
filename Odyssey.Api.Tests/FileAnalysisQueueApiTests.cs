@@ -21,14 +21,14 @@ namespace Odyssey.Api.Tests;
 /// The queued analyze contract on the wire (issue #444 §6): <c>202</c> with a <c>Location</c> to the job, a
 /// <c>409</c> naming the open job, the job read's polling headers, and the run log's refusal of a manual run.
 /// </summary>
-public class FileAnalysisQueueApiTests
+public class FileAnalysisQueueApiTests(FileAnalysisQueueApiTests.Host host) : SharedApiHostTests<FileAnalysisQueueApiTests.Host>(host)
 {
     private static readonly string[] Claims = [PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisCreate];
 
     [Fact]
     public async Task Analyze_Is202_WithALocationToTheJob()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await factory.EnableFileAnalysisAsync();
         var (accountId, fileId, _) = await SeedStatementAsync(factory);
         using var client = factory.CreateClient();
@@ -46,7 +46,7 @@ public class FileAnalysisQueueApiTests
     [Fact]
     public async Task Analyze_WhileAJobIsOpen_Is409_NamingTheOpenJob()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await factory.EnableFileAnalysisAsync();
         var (accountId, fileId, accountFileId) = await SeedStatementAsync(factory);
         var openId = await SeedJobAsync(factory, accountFileId, ContextJobStatus.Queued);
@@ -64,7 +64,7 @@ public class FileAnalysisQueueApiTests
     [Fact]
     public async Task Analyze_AboveTheCeiling_Is422_WithTheLimit()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await factory.EnableFileAnalysisAsync();
         var (accountId, fileId, _) = await SeedStatementAsync(factory, FileAnalysisJobTiming.MaxAnalysisFileBytes + 1);
         using var client = factory.CreateClient();
@@ -83,7 +83,7 @@ public class FileAnalysisQueueApiTests
     public async Task ReadingAnOpenJob_AsksTheClientToPoll_AndForbidsCaching()
     {
         // Analysis is never enabled here: the job read answers with the switch off (issue #444 §6).
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         var (_, _, accountFileId) = await SeedStatementAsync(factory);
         var jobId = await SeedJobAsync(factory, accountFileId, ContextJobStatus.Queued);
         using var client = factory.CreateClient();
@@ -98,7 +98,7 @@ public class FileAnalysisQueueApiTests
     [Fact]
     public async Task ReadingAFinishedJob_CarriesNoRetryAfter()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         var (_, _, accountFileId) = await SeedStatementAsync(factory);
         var jobId = await SeedJobAsync(factory, accountFileId, ContextJobStatus.Completed);
         using var client = factory.CreateClient();
@@ -199,4 +199,7 @@ public class FileAnalysisQueueApiTests
         await context.SaveChangesAsync();
         return (account.AccountId, fileId, accountFile.Id);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

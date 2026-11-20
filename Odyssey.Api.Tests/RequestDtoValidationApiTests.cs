@@ -13,7 +13,7 @@ namespace Odyssey.Api.Tests;
 /// that does not exist: a <c>400</c> therefore proves validation ran first, where a <c>404</c> would
 /// mean the body got through.
 /// </summary>
-public sealed class RequestDtoValidationApiTests
+public class RequestDtoValidationApiTests(RequestDtoValidationApiTests.Host host) : SharedApiHostTests<RequestDtoValidationApiTests.Host>(host)
 {
     public static TheoryData<string, string, string> OutOfRangeFileTypes() => new()
     {
@@ -41,7 +41,7 @@ public sealed class RequestDtoValidationApiTests
     [MemberData(nameof(OutOfRangeFileTypes))]
     public async Task Attach_WithADefinedFileType_PassesValidation(string route, string field, string updateClaim)
     {
-        await using var factory = new OdysseyApiFactory([updateClaim, PermissionClaims.FilesRead]);
+        var factory = Factory.ForCaller([updateClaim, PermissionClaims.FilesRead]);
         using var client = factory.CreateClient();
 
         var body = new Dictionary<string, object> { ["fileId"] = Guid.NewGuid(), [field] = 1 };
@@ -89,7 +89,7 @@ public sealed class RequestDtoValidationApiTests
     [InlineData("{\"role\":null}")]
     public async Task AssignRole_WithoutARole_IsRejectedByModelValidation(string json)
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsync($"/api/users/{Guid.NewGuid()}/role",
@@ -105,7 +105,7 @@ public sealed class RequestDtoValidationApiTests
     [Fact]
     public async Task AssignRole_WithARoleExactlyTheColumnWidth_PassesModelValidation()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}/role",
@@ -119,7 +119,7 @@ public sealed class RequestDtoValidationApiTests
     [Fact]
     public async Task AssignRole_WithARoleLongerThanTheColumn_IsRejectedByModelValidation()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}/role",
@@ -131,4 +131,7 @@ public sealed class RequestDtoValidationApiTests
     }
 
     private sealed record ValidationProblem(Dictionary<string, string[]> Errors);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

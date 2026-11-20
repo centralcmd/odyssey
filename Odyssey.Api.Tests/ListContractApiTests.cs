@@ -15,7 +15,7 @@ namespace Odyssey.Api.Tests;
 /// accounts endpoint: the <see cref="PagedResult{T}"/> shape, allowlisted-sort fallback, offset/limit
 /// clamping, and server-side search.
 /// </summary>
-public class ListContractApiTests
+public class ListContractApiTests(ListContractApiTests.Host host) : SharedApiHostTests<ListContractApiTests.Host>(host)
 {
     private const string ActorUserId = "list-contract-actor-id";
 
@@ -50,7 +50,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_ReturnsPagedResultEnvelope_WithTotalCount()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Alpha", "Bravo", "Charlie");
 
@@ -65,7 +65,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_NoSortBy_UsesResourceDefault()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Bravo", "Alpha");
 
@@ -79,7 +79,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_InvalidSortBy_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Alpha");
 
@@ -93,7 +93,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_SortDir_BindsCaseInsensitively_AndReversesOrder()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Bravo", "Alpha", "Charlie");
 
@@ -108,7 +108,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_InvalidSortDir_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Alpha");
 
@@ -121,7 +121,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_OversizedLimit_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Alpha");
 
@@ -134,7 +134,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_NegativeOffset_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Alpha");
 
@@ -147,7 +147,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_OverCapStatusesFilter_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Alpha");
 
@@ -162,7 +162,7 @@ public class ListContractApiTests
     [Fact]
     public async Task List_Search_FiltersAcrossTheWholeSet()
     {
-        await using var factory = new ApiFactory(WriteAndRead);
+        var factory = Factory.ForCaller(WriteAndRead);
         using var client = factory.CreateClient();
         await SeedAsync(factory, client, "Savings Pot", "Checking", "Holiday Savings");
 
@@ -173,6 +173,9 @@ public class ListContractApiTests
         Assert.All(page.Items, account => Assert.Contains("Savings", account.Name, StringComparison.OrdinalIgnoreCase));
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

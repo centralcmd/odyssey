@@ -22,7 +22,7 @@ namespace Odyssey.Api.Tests;
 /// and on both reads, the new <c>PUT</c> and <c>GET</c>, their claim gating, clear-by-omission and the
 /// model-validation rejections. AC 1–8, 10, 12, 16, 18 and 20.
 /// </summary>
-public sealed class ContractFileValidityApiTests
+public class ContractFileValidityApiTests(ContractFileValidityApiTests.Host host) : SharedApiHostTests<ContractFileValidityApiTests.Host>(host)
 {
     private const string Path = "/api/contracts";
     private const string ActorUserId = "contract-doc-actor";
@@ -41,7 +41,7 @@ public sealed class ContractFileValidityApiTests
     private static readonly DateTime ValidTo = new(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime IssuedAt = new(2025, 12, 18, 0, 0, 0, DateTimeKind.Utc);
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     // ── AC 1, 2, 4: the two reads agree, and omission means null ───────────────
@@ -49,7 +49,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Attach_WithAllFourFields_IsReturnedByBothReads()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await SeedFileAsync(factory);
@@ -84,7 +84,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Attach_WithAPreChangePayload_Succeeds_AndStoresNullForAllFour()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await SeedFileAsync(factory);
@@ -106,7 +106,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_ReturnsNoContent_AndTheListReflectsIt()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await AttachAsync(factory, client, contractId);
@@ -135,7 +135,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_OmittingTheFourFields_ClearsThem()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var contactId = await SeedContactAsync(factory);
@@ -167,7 +167,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_FileAttachedToAnotherContract_ReturnsNotFound_AndMutatesNothing()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractA = await CreateContractAsync(client);
         var contractB = await CreateContractAsync(client);
@@ -189,7 +189,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_WithoutContractsUpdate_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         var put = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}/files/{Guid.NewGuid()}",
@@ -205,7 +205,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_WithContractsUpdateButNoFilesRead_Succeeds()
     {
-        await using var seeding = new ApiFactory(ReadWriteWithFiles);
+        var seeding = Factory.ForCaller(ReadWriteWithFiles);
         using var seedingClient = seeding.CreateClient();
         var contractId = await CreateContractAsync(seedingClient);
         var fileId = await AttachAsync(seeding, seedingClient, contractId);
@@ -223,7 +223,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task ListFiles_WithoutContractsRead_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ContractsUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.ContractsUpdate]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{Path}/{Guid.NewGuid()}/files");
@@ -234,7 +234,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task ListFiles_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{Path}/{Guid.NewGuid()}/files");
@@ -247,7 +247,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task ListFiles_NoDocuments_ReturnsEmptyArray_MissingContractReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -270,7 +270,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task ListFiles_ResolvesAttachedByName_AndNeverRendersTheIdAsAName()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         await SeedActorProfileAsync(factory);
         var contractId = await CreateContractAsync(client);
@@ -287,7 +287,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task ListFiles_UnresolvableAttacher_ReturnsTheNeutralLabel_NotTheId()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         await AttachAsync(factory, client, contractId);
@@ -314,7 +314,7 @@ public sealed class ContractFileValidityApiTests
             ? [.. ReadWriteWithFiles, PermissionClaims.UsersRead]
             : ReadWriteWithFiles;
 
-        await using var factory = new ApiFactory(permissions);
+        var factory = Factory.ForCaller(permissions);
         using var client = factory.CreateClient();
         // No profile at all, so the resolver's only remaining candidate is the email.
         await SeedActorProfileAsync(factory, displayName: null);
@@ -346,7 +346,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Attach_WithANestedContactObjectAsIssuedBy_IsRejected_AndTouchesNoContact()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await SeedFileAsync(factory);
@@ -377,7 +377,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_AgainstAnArchivedContract_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, endDate: DateTime.UtcNow.AddDays(-1));
         var fileId = await AttachAsync(factory, client, contractId);
@@ -404,7 +404,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_FileTypeOutsideTheEnumRange_ReturnsBadRequest_AndMutatesNothing()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await AttachAsync(factory, client, contractId);
@@ -425,7 +425,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_OmittingFileType_ReturnsBadRequest_AndDoesNotDefaultToSigned()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await AttachAsync(factory, client, contractId, fileType: ContractFileType.Correspondence);
@@ -446,7 +446,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_InvertedTerm_ReturnsBadRequest_WithTheErrorOnValidTo()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await AttachAsync(factory, client, contractId);
@@ -465,7 +465,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_UnknownIssuer_ReturnsBadRequest_WithTheErrorOnIssuedBy()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await AttachAsync(factory, client, contractId);
@@ -484,7 +484,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task Put_DateOutsideTheStorableRange_ReturnsBadRequestNamingThatDate()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await AttachAsync(factory, client, contractId);
@@ -507,7 +507,7 @@ public sealed class ContractFileValidityApiTests
     [Fact]
     public async Task ListFiles_APreExistingViolatingRow_IsStillReturnedUnchanged()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var fileId = await AttachAsync(factory, client, contractId);
@@ -657,4 +657,7 @@ public sealed class ContractFileValidityApiTests
         contract.Archived = archived;
         await db.SaveChangesAsync();
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

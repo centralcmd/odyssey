@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Odyssey.Api.Tests;
 
-public class PhotosApiTests
+public class PhotosApiTests(PhotosApiTests.Host host) : SharedApiHostTests<PhotosApiTests.Host>(host)
 {
     private const string ActorUserId = "photos-actor-id";
     private const string Path = "/api/photos";
@@ -40,24 +40,24 @@ public class PhotosApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(null);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(Path)).StatusCode);
     }
 
     [Fact]
     public async Task List_Guest_WithoutPhotoClaims_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Path)).StatusCode);
     }
 
     [Fact]
     public async Task Mutations_WithReadOnly_ReturnForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload());
         Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
@@ -68,8 +68,8 @@ public class PhotosApiTests
     public async Task Post_WithPhotosCreate_AndNoFileClaims_Succeeds()
     {
         // Issue #428 AC 3: a photo is photo data — photos.create alone uploads one; files.* plays no part.
-        await using var factory = new ApiFactory([PermissionClaims.PhotosCreate, PermissionClaims.PhotosRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.PhotosCreate, PermissionClaims.PhotosRead]);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client);
         Assert.Equal(HttpStatusCode.Created, post.StatusCode);
@@ -80,8 +80,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_NonImageFile_Returns415_AndWritesNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, bytes: "%PDF-1.7"u8.ToArray(), fileName: "doc.pdf", contentType: "application/pdf");
 
@@ -93,8 +93,8 @@ public class PhotosApiTests
     public async Task Post_ImageTypeWhoseBytesDisagree_Returns415()
     {
         // Declared PNG, JPEG magic bytes: the magic-byte check refuses it (issue #428 §6).
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, fileName: "p.png", contentType: "image/png");
 
@@ -104,8 +104,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_Svg_Returns415()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(
             client, bytes: "<svg xmlns=\"http://www.w3.org/2000/svg\"/>"u8.ToArray(), fileName: "x.svg", contentType: "image/svg+xml");
@@ -116,8 +116,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_WithoutAFile_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsync(Path, new MultipartFormDataContent { { new StringContent("t"), "title" } });
 
@@ -128,9 +128,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_JsonBodyWithFileId_IsRefused_AndMakesNoPhoto()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, new { fileId });
 
@@ -142,8 +142,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_CoordinateOutOfRange_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { CapturedLatitude = 200 });
         Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
@@ -152,8 +152,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_LongitudeOutOfRange_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { CapturedLongitude = 200 });
         Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
@@ -164,8 +164,8 @@ public class PhotosApiTests
     [InlineData(2101)]
     public async Task Post_TakenAtOutsideYearWindow_ReturnsBadRequest(int year)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { TakenAt = new DateTime(year, 6, 1, 0, 0, 0, DateTimeKind.Unspecified) });
         Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
@@ -174,8 +174,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_OverTagLinkCap_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var tooMany = new Guid[PhotoLimits.MaxLinksPerKind + 1];
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { TagIds = tooMany });
@@ -190,9 +190,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_OverALoweredTagLinkCap_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.PhotoMaxLinksPerKind, "1");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { TagIds = [Guid.NewGuid(), Guid.NewGuid()] });
 
@@ -204,8 +204,8 @@ public class PhotosApiTests
     [Fact]
     public async Task List_OverCapTagFilter_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var tagIds = string.Join("&", Enumerable.Range(0, 51).Select(_ => $"tagIds={Guid.NewGuid()}"));
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Path}?{tagIds}")).StatusCode);
@@ -216,8 +216,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_Get_Update_Archive_Delete_RoundTrip()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload { Title = "Sunset", Caption = "Golden hour" });
         Assert.Equal("image/jpeg", created.ContentType);
@@ -243,8 +243,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Stats_CountsActivePhotosFavouritesAndTags_ExcludingArchived()
     {
-        await using var factory = new ApiFactory(ReadWriteWithTags);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithTags);
 
         var tagPost = await client.PostAsJsonAsync("/api/photo-tags", new NewPhotoTag { Name = "StatsTag" });
         tagPost.EnsureSuccessStatusCode();
@@ -268,8 +268,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Get_IncludesTheUploadedFileName()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload(), "original.jpg");
         Assert.Equal("original.jpg", created.FileName);
@@ -282,8 +282,8 @@ public class PhotosApiTests
     public async Task Put_Rename_WithPhotosUpdate_AndNoFilesUpdate_RenamesThePhoto_NotTheStoredFile()
     {
         // ReadWrite holds no files.* claim at all: the rename is photo data (issue #428 AC 15).
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, new NewPhotoUpload(), "original.jpg");
         var storedBefore = OriginalFiles(factory);
 
@@ -305,8 +305,8 @@ public class PhotosApiTests
     public async Task Put_Rename_SanitizesTheFileName()
     {
         // Issue #247's sanitizer, now on the photo's own name.
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, new NewPhotoUpload(), "original.jpg");
 
         var put = await client.PutAsJsonAsync($"{Path}/{created.PhotoId}", new UpdatePhoto { FileName = "beach\r\n\"day\".jpg" });
@@ -318,8 +318,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Put_RenameToNothingAfterSanitizing_Is400_AndThePhotoIsNotHalfUpdated()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, new NewPhotoUpload(), "keep.jpg");
 
         var put = await client.PutAsJsonAsync($"{Path}/{created.PhotoId}",
@@ -335,9 +335,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Put_Rename_LeavesThePhotosFormerFileUntouched()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (photoId, fileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, ActorUserId, "A.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var put = await client.PutAsJsonAsync($"{Path}/{photoId}", new UpdatePhoto { FileName = "B.jpg" });
 
@@ -359,8 +359,8 @@ public class PhotosApiTests
     public async Task Post_ImageWithNoReadableMetadata_Succeeds_WithNoMetadata()
     {
         // Real extractor over a bare JPEG header with no EXIF or dimensions: it finds nothing, and the add still succeeds.
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload());
         Assert.Null(created.TakenAt);
@@ -436,8 +436,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_UnknownTag_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { TagIds = [Guid.NewGuid()] });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, post.StatusCode);
@@ -446,9 +446,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_NonPersonContact_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var org = await PhotoTestSupport.SeedPersonAsync(factory, "Acme", Odyssey.Dtos.ContactType.Organization);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { PersonContactIds = [org] });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, post.StatusCode);
@@ -457,9 +457,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_PersonContact_LinksAndFilters()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var person = await PhotoTestSupport.SeedPersonAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload { PersonContactIds = [person] });
         Assert.Contains(person, created.PersonContactIds);
@@ -471,9 +471,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Get_AfterLinkedPersonDeleted_OmitsTheDanglingLink()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var person = await PhotoTestSupport.SeedPersonAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload { PersonContactIds = [person] });
 
@@ -493,8 +493,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Favourite_ToggleViaPut_AndFilter()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload { Title = "Fave" });
         Assert.Null(created.Favourited);
@@ -517,9 +517,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Read_DoesNotLeakContactName()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var person = await PhotoTestSupport.SeedPersonAsync(factory, "Grace Hopper");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload { PersonContactIds = [person] });
         var json = await client.GetStringAsync($"{Path}/{created.PhotoId}");
@@ -529,8 +529,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Post_WithNestedForeignObjects_DoesNotCreateThem()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // Form fields named like the entity's navigations bind to nothing (mass-assignment guard).
         var form = new MultipartFormDataContent();
@@ -557,8 +557,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Upload_StoresTheOriginalOnDisk_AndTheContentRouteServesItExactly()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var bytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(42);
 
         var created = await PhotoTestSupport.UploadPhotoAsync(client, new NewPhotoUpload { Title = "t" }, bytes, "beach.jpg");
@@ -622,8 +622,8 @@ public class PhotosApiTests
     [Fact]
     public async Task ContentRoute_WhenTheFileIsMissingFromTheVolume_IsAnIntegrityFault_NamingNoFile()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await PhotoTestSupport.UploadPhotoAsync(client, fileName: "Passport_Ola.jpg");
         using (var scope = factory.Services.CreateScope())
         {
@@ -645,8 +645,8 @@ public class PhotosApiTests
     [Fact]
     public async Task AnUploadedPhoto_IsNotOnTheFilesList()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.FilesRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.FilesRead]);
         await PhotoTestSupport.UploadPhotoAsync(client);
 
         var files = await client.GetPagedItemsAsync<Odyssey.Dtos.Finance.FileListItem>("/api/files");
@@ -666,10 +666,10 @@ public class PhotosApiTests
         [
             PermissionClaims.FilesRead, PermissionClaims.FilesUpdate, PermissionClaims.FilesDelete,
         ];
-        await using var factory = new ApiFactory(filesAll);
+        var factory = Factory;
         var (_, fileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, ActorUserId, "Holiday.jpg");
         var plain = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId, "receipt.jpg");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(filesAll);
 
         var listed = await client.GetPagedItemsAsync<Odyssey.Dtos.Finance.FileListItem>("/api/files");
         Assert.Equal([plain], listed!.Select(f => f.Id));
@@ -691,7 +691,7 @@ public class PhotosApiTests
     [Fact]
     public async Task APhotosFormerFileThatIsAlsoAnAttachment_StaysOnTheFilesList()
     {
-        await using var factory = new ApiFactory([PermissionClaims.FilesRead]);
+        var factory = Factory;
         var (_, fileId) = await PhotoTestSupport.SeedPhotoWithFormerFileAsync(factory, ActorUserId, "Shared.jpg");
         using (var scope = factory.Services.CreateScope())
         {
@@ -703,7 +703,7 @@ public class PhotosApiTests
             await context.SaveChangesAsync();
         }
 
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor([PermissionClaims.FilesRead]);
 
         var listed = await client.GetPagedItemsAsync<Odyssey.Dtos.Finance.FileListItem>("/api/files");
         Assert.Equal([fileId], listed!.Select(f => f.Id));
@@ -715,8 +715,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Upload_TheSameBytesTwice_Is409_NamingTheExistingPhotoToAReader_AndWritesNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var bytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(5);
         var first = await PhotoTestSupport.UploadPhotoAsync(client, bytes: bytes);
 
@@ -732,8 +732,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Upload_ADuplicate_WithoutPhotosRead_Is409_WithNoId()
     {
-        await using var factory = new ApiFactory([PermissionClaims.PhotosCreate]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.PhotosCreate]);
         var bytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(6);
         (await PhotoTestSupport.PostPhotoAsync(client, bytes: bytes)).EnsureSuccessStatusCode();
 
@@ -748,8 +748,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Upload_AnArchivedPhotosBytes_SaysItIsArchived()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var bytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(8);
         var first = await PhotoTestSupport.UploadPhotoAsync(client, bytes: bytes);
         (await client.PutAsJsonAsync($"{Path}/{first.PhotoId}", new UpdatePhoto { Archived = true })).EnsureSuccessStatusCode();
@@ -763,7 +763,7 @@ public class PhotosApiTests
     [Fact]
     public async Task Upload_TheBytesOfAnExistingPhoto_IsADuplicate_ButAFinanceFilesBytesAreNot()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var legacyBytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(11);
         var financeBytes = Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(12);
         await PhotoTestSupport.SeedPhotoAsync(factory, ActorUserId, bytes: legacyBytes);
@@ -780,7 +780,7 @@ public class PhotosApiTests
             await context.SaveChangesAsync();
         }
 
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         Assert.Equal(HttpStatusCode.Conflict, (await PhotoTestSupport.PostPhotoAsync(client, bytes: legacyBytes)).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await PhotoTestSupport.PostPhotoAsync(client, bytes: financeBytes)).StatusCode);
@@ -791,9 +791,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Upload_OverTheUploadCap_Is413_NamingTheCap()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
         var big = new byte[(1024 * 1024) + 10];
         Odyssey.Testing.FileStorage.PhotoTestData.Jpeg(1).CopyTo(big, 0);
 
@@ -806,9 +806,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Upload_BelowTheUploadReserve_Is507_AndWritesNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         factory.FileVolumeSpace.Override = (2L * 1024 * 1024 * 1024, 100L * 1024 * 1024 * 1024);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await PhotoTestSupport.PostPhotoAsync(client);
 
@@ -822,8 +822,8 @@ public class PhotosApiTests
     [Fact]
     public async Task Delete_ReleasesTheOriginal_Graced()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, new NewPhotoUpload { Title = "t" });
         Guid objectId;
         using (var scope = factory.Services.CreateScope())
@@ -854,9 +854,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Author_DisplayName_Resolves_On_List_And_Detail()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await factory.SeedActorUserAsync(displayName: "Ada L.");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload());
 
@@ -872,9 +872,9 @@ public class PhotosApiTests
     [Fact]
     public async Task Author_NoProfileName_And_NoUsersRead_ReturnsUnknownUser_NotEmail()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var userName = await factory.SeedActorUserAsync();
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var created = await CreateAsync(client, new NewPhotoUpload());
 
@@ -887,7 +887,7 @@ public class PhotosApiTests
         PhotoTestSupport.UploadPhotoAsync(client, request, fileName: fileName);
 
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions, PhotoMetadata? stubMetadata = null)
             : base(permissions, ActorUserId, configureServices: services => Configure(services, stubMetadata))
@@ -903,4 +903,7 @@ public class PhotosApiTests
             }
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

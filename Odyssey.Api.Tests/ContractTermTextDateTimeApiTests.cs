@@ -24,7 +24,7 @@ namespace Odyssey.Api.Tests;
 /// ORDINALS, because that is how they cross the wire, and so a date-time's offset reaches the binder
 /// exactly as a client wrote it.
 /// </summary>
-public class ContractTermTextDateTimeApiTests
+public class ContractTermTextDateTimeApiTests(ContractTermTextDateTimeApiTests.Host host) : SharedApiHostTests<ContractTermTextDateTimeApiTests.Host>(host)
 {
     private const string ActorUserId = "contract-term-text-actor-id";
     private const string Path = "/api/contracts";
@@ -43,7 +43,7 @@ public class ContractTermTextDateTimeApiTests
     [Fact]
     public async Task Post_Text_Returns201_WithTheTextTrimmedAndTheOtherValuesNull()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -63,7 +63,7 @@ public class ContractTermTextDateTimeApiTests
     [Fact]
     public async Task Post_DateTimeWithAnOffset_Returns201_NormalisedToUtcWithAZ()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -82,7 +82,7 @@ public class ContractTermTextDateTimeApiTests
     [Fact]
     public async Task Get_HistoryCurrentAndContract_CarryBothKinds()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -110,7 +110,7 @@ public class ContractTermTextDateTimeApiTests
     [Fact]
     public async Task Put_ChangesATermFromAmountToTextAndBack()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var term = await PostAsync(client, contractId, AmountBody());
@@ -167,7 +167,7 @@ public class ContractTermTextDateTimeApiTests
     [MemberData(nameof(ShapeViolations))]
     public async Task Post_ShapeViolation_Returns400KeyedOnTheField(string field, object body)
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -192,7 +192,7 @@ public class ContractTermTextDateTimeApiTests
     [InlineData("datetime", "2200-12-31T23:59:59Z")]
     public async Task Post_AtTheExactBoundary_Returns201(string kind, string? instant)
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var atMax = new string('x', TermTextValue.MaxLength);
@@ -215,7 +215,7 @@ public class ContractTermTextDateTimeApiTests
     [InlineData("SECRET-CLAUSE\u202Ereversed")]
     public async Task Post_RefusedText_IsNeverEchoedInTheBody(string text)
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -229,7 +229,7 @@ public class ContractTermTextDateTimeApiTests
     [Fact]
     public async Task Post_NumericKinds_StillSucceed()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -243,7 +243,7 @@ public class ContractTermTextDateTimeApiTests
     [Fact]
     public async Task Writes_WithoutContractsUpdate_Return403()
     {
-        await using var factory = await NewFactoryAsync([PermissionClaims.ContractsRead, PermissionClaims.ContractsCreate]);
+        var factory = Factory.ForCaller([PermissionClaims.ContractsRead, PermissionClaims.ContractsCreate]);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -360,7 +360,7 @@ public class ContractTermTextDateTimeApiTests
         public Dictionary<string, string[]>? Errors { get; init; }
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string> permissions)
+    public class ApiFactory(IReadOnlyCollection<string> permissions)
         : OdysseyApiFactory(permissions, ActorUserId, configuration: null, configureServices: services =>
         {
             services.RemoveAll<TimeProvider>();
@@ -371,4 +371,7 @@ public class ContractTermTextDateTimeApiTests
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

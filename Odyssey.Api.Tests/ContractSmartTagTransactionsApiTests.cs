@@ -20,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// status-code contract, the wire shape, and parity with <c>GET /api/transactions</c> — the endpoint's
 /// items come from the same pipeline, so they must search, sort, page and project identically.
 /// </summary>
-public partial class ContractSmartTagTransactionsApiTests
+public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransactionsApiTests.Host host) : SharedApiHostTests<ContractSmartTagTransactionsApiTests.Host>(host)
 {
     private const string UploaderUserId = "smart-tag-txn-uploader";
 
@@ -35,7 +35,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new OdysseyApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(Path(Guid.NewGuid()))).StatusCode);
@@ -46,7 +46,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [InlineData(PermissionClaims.TransactionsRead)]
     public async Task EitherClaimAlone_ReturnsForbidden(string claim)
     {
-        await using var factory = new OdysseyApiFactory([claim]);
+        var factory = Factory.ForCaller([claim]);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -56,7 +56,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task BothClaims_ReturnsOk()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -77,7 +77,7 @@ public partial class ContractSmartTagTransactionsApiTests
     {
         var claims = (string[])typeof(RolePermissions).GetField(role)!.GetValue(null)!;
 
-        await using var factory = new OdysseyApiFactory(claims);
+        var factory = Factory.ForCaller(claims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -88,7 +88,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task EveryTransaction_CarriesTheResolvedDisplayIcon()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using (var scope = factory.Services.CreateScope())
         {
@@ -115,7 +115,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task UnknownContract_Returns404_EchoingOnlyTheRouteId()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
@@ -134,7 +134,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [InlineData("?sortBy=Nonsense")]
     public async Task InvalidQuery_Returns400(string query)
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -144,7 +144,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task LimitAboveMax_Returns400()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -156,7 +156,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task OverLongSearch_Returns400()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
         var search = new string('a', ListDefaults.MaxSearchLength + 1);
@@ -171,7 +171,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task Envelope_IsCamelCase_WithAnOrdinalReasonAndNumericAmounts()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -196,7 +196,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task EmptyReason_SerialisesAsOrdinal_AndTheEmptySummaryHasAnArray()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory, withSmartTag: false);
         using var client = factory.CreateClient();
 
@@ -232,7 +232,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [InlineData("?search=nothing-matches-this")]
     public async Task Items_MatchTheTransactionList(string query)
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -251,7 +251,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task EachItem_IsFieldForFieldTheSingleRead()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -285,7 +285,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task WithoutAnyContactsClaim_TheMerchantEmbedIsIdAndNameOnly()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -305,7 +305,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task TransactionList_SearchSortAndPaging_ArePinned()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -442,4 +442,7 @@ public partial class ContractSmartTagTransactionsApiTests
 
         return new Seeded(contract.ContractId, landlord.ContactId, 4);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }
