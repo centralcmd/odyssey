@@ -41,7 +41,7 @@ internal static class FileAnalysisTestHarness
     {
         SeedRequester(context, RequesterId);
         var service = new FileAnalysisService(
-            context, provider, contactLookup, Options.Create(options), settingsLookup,
+            context, provider, contactLookup, settingsLookup,
             NullLogger<FileAnalysisService>.Instance, Queue(context, options, time), template ?? Template, time);
         Runners.AddOrUpdate(service, Runner(context, provider, settingsLookup, secrets, time, template));
         return service;

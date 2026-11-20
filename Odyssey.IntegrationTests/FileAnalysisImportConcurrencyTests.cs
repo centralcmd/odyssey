@@ -178,7 +178,6 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
 
     private static FileAnalysisService NewService(OdysseyContext context, NoopAnalysisProvider? provider = null) =>
         new(context, provider ?? new NoopAnalysisProvider(), new ContactLookup(context),
-            Options.Create(new FileAnalysisOptions { Enabled = true }),
             new EnabledSettingsLookup(), NullLogger<FileAnalysisService>.Instance,
             new FileAnalysisJobQueue(context, Options.Create(new FileAnalysisOptions()), TimeProvider.System,
                 NullLogger<FileAnalysisJobQueue>.Instance),

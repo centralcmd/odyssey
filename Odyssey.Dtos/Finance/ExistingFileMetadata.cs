@@ -20,8 +20,6 @@ public sealed record ExistingFileMetadata
 
     public required long SizeBytes { get; set; }
 
-    // public required string Sha256Hash { get; set; }
-
     public string? Description { get; set; }
 
     public required DateTime UploadedAtUtc { get; set; }

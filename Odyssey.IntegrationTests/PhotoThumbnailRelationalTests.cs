@@ -194,7 +194,6 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
     private static FileService Files(IServiceScope scope, IFileRenameObserver interfering) => new(
         scope.ServiceProvider.GetRequiredService<OdysseyContext>(),
         new FileValidationService(),
-        TimeProvider.System,
         // The interference runs after the thumbnail observer has read the job, so it lands between read and save.
         [new PhotoThumbnailRenameObserver(scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>()), interfering]);
 

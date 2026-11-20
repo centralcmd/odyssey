@@ -569,9 +569,6 @@ public partial class AccountsCard
         }
     }
 
-    // ── Display helpers ───────────────────────────────────────────────────────
-    private static string GetAccountTypeLabel(AccountType type) => AccountTypeVisuals.Label(type);
-
     // ── Record-card presentation ──────────────────────────────────────────────────
 
     /// <summary>The headline figure's colour role. The in-force estimate is what counts toward net
@@ -707,10 +704,6 @@ public partial class AccountsCard
         if (a.Archived is { } archived) parts.Add($"Archived {archived.ToString("MMM dd, yyyy")}");
         return string.Join(" · ", parts);
     }
-
-    private static string GetTypeMaterialIcon(AccountType type) => AccountTypeVisuals.MaterialIcon(type);
-    private static string GetTypeFgColor(AccountType type)      => AccountTypeVisuals.FgColor(type);
-    private static string GetTypeBgColor(AccountType type)      => AccountTypeVisuals.BgColor(type);
 
     // ── Balance display ───────────────────────────────────────────────────────
     private static string BalanceColor(decimal balance) => balance switch
