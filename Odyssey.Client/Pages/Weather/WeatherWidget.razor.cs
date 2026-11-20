@@ -5,6 +5,7 @@ using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
 
@@ -47,13 +48,12 @@ public partial class WeatherWidget
     /// <summary>The viewer's clock, as a seam for bUnit, so a run that straddles midnight cannot disagree with itself.</summary>
     internal static Func<DateTime> LocalNow = static () => DateTime.Now;
 
-    /// <summary>The interactivity check, as a seam for bUnit (the <c>Settings.InteractiveCheck</c> pattern).</summary>
-    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
         _hoursReads = new WeatherPointReads(Weather, ClockOrNull);
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
             return;
 
         var user = await Auth.GetUserAsync();
