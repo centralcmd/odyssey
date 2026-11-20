@@ -5,6 +5,7 @@ using MudBlazor.Services;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -185,8 +186,9 @@ public class ContractPauseSurfaceTests
         // components/Menu). The branch stays keyed on `unsigned`, so the item is withheld for the
         // right reason and not by an accident of the Active test above; what it must not carry is an
         // explanation only an opened menu could deliver.
+        // The window is wide enough for the branch's own comment, which the stripper blanks in place.
         Assert.Matches(
-            new Regex(@"else if\s*\(\s*unsigned && c\.Paused is null\s*\)[\s\S]{0,400}?Label\s*=\s*""Pause""[\s\S]{0,300}?Disabled\s*=\s*true"),
+            new Regex(@"else if\s*\(\s*unsigned && c\.Paused is null\s*\)[\s\S]{0,800}?Label\s*=\s*""Pause""[\s\S]{0,300}?Disabled\s*=\s*true"),
             source);
         Assert.DoesNotContain("Only a signed contract in force can be paused", source, StringComparison.Ordinal);
     }
@@ -347,10 +349,6 @@ public class ContractPauseSurfaceTests
 
     private static string Source(string fileName)
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName));
-        source = Regex.Replace(source, @"@\*[\s\S]*?\*@", string.Empty);
-        source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-        source = Regex.Replace(source, @"^\s*(///?).*$", string.Empty, RegexOptions.Multiline);
-        return source;
+        return SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName)));
     }
 }

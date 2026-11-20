@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Odyssey.Dtos.Application;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -73,7 +74,7 @@ public class UploadCapSourceTests
         {
             foreach (Match match in Regex.Matches(text, @"\d+L? \* 1024 \* 1024"))
             {
-                offenders.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} ('{match.Value}')");
+                offenders.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} ('{match.Value}')");
             }
         }
 
@@ -97,7 +98,7 @@ public class UploadCapSourceTests
         {
             foreach (Match match in Regex.Matches(text, @"\b\d+ MB\b"))
             {
-                offenders.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} ('{match.Value}')");
+                offenders.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} ('{match.Value}')");
             }
         }
 
@@ -210,7 +211,7 @@ public class UploadCapSourceTests
                 foreach (Match match in Regex.Matches(text, pattern))
                 {
                     offenders.Add(
-                        $"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} "
+                        $"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} "
                         + $"('{match.Value}' — name {constant})");
                 }
             }

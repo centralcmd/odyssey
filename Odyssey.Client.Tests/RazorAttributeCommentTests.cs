@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -90,7 +91,7 @@ public class RazorAttributeCommentTests
 
                 if (commented)
                 {
-                    offenders.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, start)}");
+                    offenders.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, start)}");
                 }
             }
         }

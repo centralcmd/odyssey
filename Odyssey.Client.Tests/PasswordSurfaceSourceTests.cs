@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Odyssey.Client.Auth;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -367,7 +368,7 @@ public class PasswordSurfaceSourceTests
         // The server half lives in Odyssey.Context, shared by the API and the migrations
         // job's bootstrap-admin seeder (issue #290) — it is no longer inline in Odyssey.Api/Program.cs.
         var policy = File.ReadAllText(
-            ClientSource.Sibling(Path.Combine("Odyssey.Context", "PasswordPolicy.cs")));
+            SourceTree.File(Path.Combine("Odyssey.Context", "PasswordPolicy.cs")));
         var configured = Regex.Match(policy, @"RequiredLength\s*=\s*(\d+)\s*;");
 
         Assert.True(configured.Success,

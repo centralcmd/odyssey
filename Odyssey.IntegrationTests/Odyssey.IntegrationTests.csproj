@@ -41,6 +41,7 @@
 
   <ItemGroup>
     <!-- Shared skip-or-fail rule for the self-skipping tiers (issue #257); linked, not referenced. -->
+    <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
     <Compile Include="..\TestShared\PerfTier.cs" Link="TestShared\PerfTier.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />

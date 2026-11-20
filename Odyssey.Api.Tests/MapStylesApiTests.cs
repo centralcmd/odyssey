@@ -6,6 +6,7 @@ using Odyssey.Api.Map;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -221,7 +222,7 @@ public class MapStylesApiTests(MapStylesApiTests.Host host) : SharedApiHostTests
     [Fact]
     public void Every_shipped_style_declares_the_remote_origins_it_loads_from()
     {
-        var directory = System.IO.Path.Combine(RepositoryRoot.Path, "Odyssey.Client", "wwwroot", "maps");
+        var directory = System.IO.Path.Combine(SourceTree.Root, "Odyssey.Client", "wwwroot", "maps");
         var files = Directory.GetFiles(directory, "*.json");
         Assert.NotEmpty(files);
 
@@ -295,7 +296,7 @@ public class MapStylesApiTests(MapStylesApiTests.Host host) : SharedApiHostTests
     [Fact]
     public void The_shipped_appsettings_section_validates()
     {
-        using var document = JsonDocument.Parse(RepositoryRoot.ReadAllText("Odyssey.Api/appsettings.json"));
+        using var document = JsonDocument.Parse(SourceTree.ReadAllText("Odyssey.Api/appsettings.json"));
         var map = document.RootElement.GetProperty("Map").Deserialize<MapOptions>()!;
 
         var result = Validate(map);

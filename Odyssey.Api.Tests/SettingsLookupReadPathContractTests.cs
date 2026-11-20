@@ -7,6 +7,7 @@ using Odyssey.Api.SystemSettings;
 using Odyssey.Context;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -259,7 +260,7 @@ public class SettingsLookupReadPathContractTests
     public void NoSettingsCacheEntry_IsStoredWithoutAnExpiry()
     {
         var files = new[] { Path.Combine("Odyssey.Api", "SystemSettings"), Path.Combine("Odyssey.Core", "SystemSettings") }
-            .SelectMany(folder => Directory.GetFiles(Path.Combine(RepositoryRootPath(), folder), "*.cs"))
+            .SelectMany(folder => Directory.GetFiles(SourceTree.File(folder), "*.cs"))
             .ToArray();
         Assert.Contains(files, file => file.EndsWith("WeatherSettingsLookup.cs", StringComparison.Ordinal));
         var calls = 0;
@@ -305,18 +306,6 @@ public class SettingsLookupReadPathContractTests
 
             yield return arguments;
         }
-    }
-
-    private static string RepositoryRootPath()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return dir!;
     }
 
     private sealed class ManualClock : ISystemClock

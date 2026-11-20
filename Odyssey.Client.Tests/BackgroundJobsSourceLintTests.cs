@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -52,8 +53,7 @@ public class BackgroundJobsSourceLintTests
     public void No_file_in_the_scan_set_renders_server_text_or_names_a_person_a_worker_a_file_or_a_place()
     {
         var hits = ScanSet()
-            .SelectMany(file => File.ReadAllLines(file).Select((line, i) => (file, line, i)))
-            .Where(x => !IsComment(x.line))
+            .SelectMany(file => SourceLint.StripComments(File.ReadAllText(file)).Split('\n').Select((line, i) => (file, line, i)))
             .SelectMany(x => Forbidden.Where(f => f.Pattern.IsMatch(x.line))
                 .Select(f => $"{Path.GetFileName(x.file)}:{x.i + 1} uses {f.Name}: {x.line.Trim()}"))
             .ToList();
@@ -86,7 +86,7 @@ public class BackgroundJobsSourceLintTests
         var folder = Path.Combine(ClientSource.Root, "Pages", "JobRuns");
         var sheet = File.ReadAllText(Path.Combine(folder, "JobRunDetailPanel.razor.css"));
         var used = Directory.EnumerateFiles(folder, "JobRunDetail*.razor")
-            .SelectMany(file => Regex.Matches(ClientSource.WithoutComments(File.ReadAllText(file)), @"class=""([^""]*)""")
+            .SelectMany(file => Regex.Matches(SourceLint.StripComments(File.ReadAllText(file)), @"class=""([^""]*)""")
                 .SelectMany(m => Regex.Matches(m.Groups[1].Value, @"\bbgj-[a-z-]+\b").Select(token => token.Value)))
             .Distinct()
             .ToList();
@@ -94,14 +94,5 @@ public class BackgroundJobsSourceLintTests
         Assert.Contains("bgj-detail", used);
         Assert.Contains("bgj-detail-grid", used);
         Assert.All(used, name => Assert.Matches($@"\.{Regex.Escape(name)}\b", sheet));
-    }
-
-    private static bool IsComment(string line)
-    {
-        var trimmed = line.TrimStart();
-        return trimmed.StartsWith("//", StringComparison.Ordinal)
-            || trimmed.StartsWith("*", StringComparison.Ordinal)
-            || trimmed.StartsWith("/*", StringComparison.Ordinal)
-            || trimmed.StartsWith("@*", StringComparison.Ordinal);
     }
 }

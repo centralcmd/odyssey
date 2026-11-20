@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -74,7 +75,7 @@ public class ImportExportSettingsSourceTests
             var text = File.ReadAllText(file);
             foreach (Match match in HardCodedMegabyteHint.Matches(text))
             {
-                violations.Add($"{relative}:{ClientSource.LineAt(text, match.Index)} — {match.Value}");
+                violations.Add($"{relative}:{SourceLint.LineAt(text, match.Index)} — {match.Value}");
             }
         }
 
@@ -100,7 +101,7 @@ public class ImportExportSettingsSourceTests
             var text = File.ReadAllText(file);
             foreach (Match tag in CapacityFieldTag.Matches(text))
             {
-                var line = ClientSource.LineAt(text, tag.Index);
+                var line = SourceLint.LineAt(text, tag.Index);
                 foreach (var required in new[] { "Label=", "AriaLabelledBy=", "AriaDescribedBy=" })
                 {
                     if (!tag.Value.Contains(required, StringComparison.Ordinal))
@@ -148,7 +149,7 @@ public class ImportExportSettingsSourceTests
         var violations = new List<string>();
         foreach (Match tag in tags)
         {
-            var line = ClientSource.LineAt(text, tag.Index);
+            var line = SourceLint.LineAt(text, tag.Index);
             if (!tag.Value.Contains("LabelId=", StringComparison.Ordinal))
                 violations.Add($"Settings.razor:{line} — missing LabelId");
             if (!tag.Value.Contains("HelpId=", StringComparison.Ordinal))

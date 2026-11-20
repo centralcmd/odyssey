@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using DataAnnotations = System.ComponentModel.DataAnnotations;
 
@@ -245,17 +246,14 @@ public class TagIconsTests
     [Fact]
     public void Only_the_two_projections_compute_the_display_icon()
     {
-        var root = Path.Combine(SolutionRoot(), "Odyssey.Core");
-        var files = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
-            .ToList();
+        var root = SourceTree.File("Odyssey.Core");
+        var files = SourceTree.Files(root).ToList();
 
         // A path-scoped lint whose scan set silently empties keeps passing after a move.
         Assert.True(files.Count > 50, $"Scan set unexpectedly small ({files.Count} files) under {root}.");
 
         var assigners = files
-            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\bDisplayIcon\s*=[^=>]"))
+            .Where(path => Regex.IsMatch(SourceLint.StripComments(File.ReadAllText(path)), @"\bDisplayIcon\s*=[^=>]"))
             .Select(Path.GetFileName)
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -263,17 +261,17 @@ public class TagIconsTests
 
         foreach (var name in assigners)
         {
-            var code = StripComments(File.ReadAllText(files.Single(path => Path.GetFileName(path) == name)));
+            var code = SourceLint.StripComments(File.ReadAllText(files.Single(path => Path.GetFileName(path) == name)));
             // Issue #392: the icon and the colour come from one ResolveDisplay call.
             Assert.Contains("TagIcons.ResolveDisplay(", code);
             Assert.Contains("TagIcons.Order(", code);
         }
 
-        var mapster = StripComments(File.ReadAllText(files.Single(path => Path.GetFileName(path) == "MapsterConfig.cs")));
+        var mapster = SourceLint.StripComments(File.ReadAllText(files.Single(path => Path.GetFileName(path) == "MapsterConfig.cs")));
         Assert.Contains("TagIcons.Normalize(", mapster);
 
         var tagSorters = files
-            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)),
+            .Where(path => Regex.IsMatch(SourceLint.StripComments(File.ReadAllText(path)),
                 @"\b(TransactionTags|EntryTags|ItemTags|Tags)\s*\.\s*OrderBy(Descending)?\s*\("))
             .Select(Path.GetFileName)
             .ToList();
@@ -289,13 +287,10 @@ public class TagIconsTests
     [Fact]
     public void No_transaction_only_catalogue_name_survives()
     {
-        var root = SolutionRoot();
+        var root = SourceTree.Root;
         var files = new[] { "Odyssey.Dtos", "Odyssey.Core", "Odyssey.Context", "Odyssey.Api", "Odyssey.ApiClient", "Odyssey.Client" }
-            .SelectMany(project => Directory.EnumerateFiles(Path.Combine(root, project), "*.*", SearchOption.AllDirectories))
-            .Where(path => path.EndsWith(".cs", StringComparison.Ordinal) || path.EndsWith(".razor", StringComparison.Ordinal) || path.EndsWith(".css", StringComparison.Ordinal))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                && !path.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}"))
+            .SelectMany(project => SourceTree.Files(project, "*.cs", "*.razor", "*.css"))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}"))
             .ToList();
 
         Assert.True(files.Count > 200, $"Scan set unexpectedly small ({files.Count} files) under {root}.");
@@ -309,20 +304,4 @@ public class TagIconsTests
 
     private static TagIconCandidate Tag(string name, string? icon = null, Guid? id = null) =>
         new(id ?? Guid.NewGuid(), name, icon, null);
-
-    private static string StripComments(string code) =>
-        Regex.Replace(Regex.Replace(code, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline),
-            @"//.*?$", string.Empty, RegexOptions.Multiline);
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution root from the test binary.");
-    }
 }

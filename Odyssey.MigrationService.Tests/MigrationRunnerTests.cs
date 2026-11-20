@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.MigrationService.Tests;
@@ -57,7 +58,7 @@ public class MigrationRunnerTests
     [Fact]
     public void MigrateAsync_IsCalledWithoutTheCallersCancellationToken()
     {
-        var source = File.ReadAllText(RunnerSourcePath());
+        var source = File.ReadAllText(SourceTree.File("Odyssey.MigrationService", "MigrationRunner.cs"));
 
         // Issue #380 §11 (N3) staged the run around the location conversion: one call migrates to
         // UnifyLocationsExpand, one migrates the rest, and the non-relational short-circuit keeps its own.
@@ -126,22 +127,4 @@ public class MigrationRunnerTests
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseInMemoryDatabase($"drift-guard-{Guid.NewGuid()}")
             .Options);
-
-    private static string RunnerSourcePath()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir, "Odyssey.MigrationService", "MigrationRunner.cs");
-            if (File.Exists(candidate) && File.Exists(Path.Combine(dir, "Odyssey.sln")))
-            {
-                return candidate;
-            }
-
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        throw new InvalidOperationException(
-            "Could not locate MigrationRunner.cs from " + AppContext.BaseDirectory);
-    }
 }

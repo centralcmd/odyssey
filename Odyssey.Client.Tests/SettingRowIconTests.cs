@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -50,7 +51,7 @@ public class SettingRowIconTests
     /// </summary>
     private static HashSet<string> FontLigatures()
     {
-        var path = ClientSource.Sibling(Path.Combine("Odyssey.Client.Tests", "MaterialIconsLigatures.txt"));
+        var path = SourceTree.File(Path.Combine("Odyssey.Client.Tests", "MaterialIconsLigatures.txt"));
         var ligatures = File.ReadAllLines(path)
             .Select(line => line.Trim())
             .Where(line => line.Length > 0 && !line.StartsWith('#'))

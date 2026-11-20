@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -61,24 +62,8 @@ public class BudgetItemWritePathSourceTests
     // the tests, where an Adapt in an assertion is legitimate.
     private static IEnumerable<string> SourceFiles()
     {
-        var root = SolutionRoot();
         return new[] { "Odyssey.Core", "Odyssey.Api", "Odyssey.MigrationService" }
-            .Select(project => Path.Combine(root, project))
-            .Where(Directory.Exists)
-            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
-            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
-    }
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution root from the test binary.");
+            .Where(project => Directory.Exists(SourceTree.File(project)))
+            .SelectMany(project => SourceTree.Files(project));
     }
 }
