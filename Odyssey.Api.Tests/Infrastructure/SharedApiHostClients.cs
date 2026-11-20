@@ -4,45 +4,50 @@ using Xunit;
 namespace Odyssey.Api.Tests.Infrastructure;
 
 /// <summary>
-/// Clients that carry their caller's claims per request, so one test host can serve every test in a class.
+/// How a test class runs every test on ONE host, with each test (and each client) authenticated as its own caller.
 ///
 /// <para>
 /// <b>Why.</b> Booting a host (DI, EF InMemory <c>EnsureCreated</c>, file-storage verification) costs far more than
-/// a test body, and the caller's claims used to be fixed per factory, so nearly every test built its own. A
-/// client from here sends <see cref="TestAuthHandler.PermissionsOverrideHeader"/> (and optionally
-/// <see cref="TestAuthHandler.ActorOverrideHeader"/>) on every request, and <see cref="TestAuthHandler"/> builds the
-/// same principal a factory with those permissions would. A second caller over the first one's data — what
-/// <c>sharingStoreWith</c> exists for — is just a second client on the same host.
+/// a test body, and the caller's claims used to be fixed per factory, so nearly every test built its own. Now the
+/// factory's default caller can be changed per test (<see cref="ForCaller{T}"/>), and a client from
+/// <see cref="ClientFor"/> sends <see cref="TestAuthHandler.PermissionsOverrideHeader"/> (and optionally
+/// <see cref="TestAuthHandler.ActorOverrideHeader"/>) on every request. Either way <see cref="TestAuthHandler"/>
+/// builds the same principal a factory constructed with those permissions would. A second caller over the first
+/// one's data — what <c>sharingStoreWith</c> exists for — is just a second client on the same host.
 /// </para>
 ///
 /// <para>
 /// <b>The pattern.</b> Derive the test class from <see cref="SharedApiHostTests{THost}"/> (an
-/// <c>IClassFixture</c> whose host is reset before every test), then:
+/// <c>IClassFixture</c> whose host is reset before every test, <see cref="OdysseyApiFactory.ResetStoreAsync"/>), then:
 /// <code>
 /// public class WidgetApiTests(WidgetApiTests.Host host) : SharedApiHostTests&lt;WidgetApiTests.Host&gt;(host)
 /// {
 ///     [Fact]
-///     public async Task List_WithoutReadClaim_IsForbidden()
+///     public async Task Update_WithoutUpdateClaim_IsForbidden()
 ///     {
-///         using var client = Factory.ClientWith();                       // authenticated, no claims
-///         using var reader = Factory.ClientWith(PermissionClaims.WidgetsRead);
-///         using var anonymous = Factory.AnonymousClient();               // 401 path
-///         using var other = Factory.ClientFor([PermissionClaims.WidgetsRead], actorUserId: "someone-else");
+///         var factory = Factory.ForCaller([PermissionClaims.WidgetsRead]); // this test's default caller
+///         using var client = factory.CreateClient();                       // ...and every helper's client
+///         using var writer = factory.ClientFor([PermissionClaims.WidgetsUpdate]);   // a second caller
+///         using var someoneElse = factory.ClientFor([PermissionClaims.WidgetsRead], actorUserId: "other-user");
+///         using var anonymous = factory.AnonymousClient();                 // the 401 path
 ///         ...
 ///     }
 ///
-///     public sealed class Host() : OdysseyApiFactory(permissions: null, actorUserId: "widget-actor");
+///     public sealed class Host() : OdysseyApiFactory([], actorUserId: "widget-actor");
 /// }
 /// </code>
+/// The host may derive from the class's own factory (stub services, a fixed clock); a factory whose stubs hold
+/// state (a call counter, captured logs) overrides <see cref="OdysseyApiFactory.ResetStoreAsync"/> to clear it.
 /// </para>
 ///
 /// <para>
 /// <b>When NOT to share.</b> Keep a fresh host (<c>await using var factory = new …Factory(…)</c>) when the test
-/// needs configuration of its own (<c>UseSetting</c>, a <c>configuration</c> dictionary, a replaced service, a
-/// production environment, an ephemeral key ring), or when it changes host-wide state that
-/// <see cref="OdysseyApiFactory.ResetStoreAsync"/> does not restore: a rate-limit or lockout partition, a fake
-/// <see cref="TimeProvider"/>, a singleton cache outside <c>IMemoryCache</c>, a degraded file volume. A class may
-/// mix both: share the host for the tests that can, build one for those that cannot.
+/// needs configuration or services of its own (<c>UseSetting</c>, a <c>configuration</c> dictionary, a replaced
+/// service, a production environment, an ephemeral key ring), when it needs two stores that really are separate
+/// (an export from one instance imported into another), or when it changes host-wide state the reset does not
+/// restore: a rate-limit window (a shared host raises every limit out of reach, so a test of one must not share),
+/// a lockout partition, a fake <see cref="TimeProvider"/> it advances, a singleton cache outside
+/// <c>IMemoryCache</c>. A class may mix both: share the host for the tests that can, build one for those that cannot.
 /// </para>
 /// </summary>
 public static class SharedApiHostClients

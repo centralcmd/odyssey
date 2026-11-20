@@ -22,6 +22,14 @@ namespace Odyssey.Api.Tests.Infrastructure;
 /// in-memory database and the <see cref="TestAuthHandler"/> wired in. Feature-specific tests
 /// derive a one-line subclass supplying their actor id, feature-flag <paramref name="configuration"/>,
 /// and any extra service overrides via <paramref name="configureServices"/>.
+///
+/// <para>
+/// <b>Prefer one host per test class.</b> Booting a host costs far more than a test body, so a new test class
+/// derives from <see cref="SharedApiHostTests{THost}"/> and sets each test's caller with
+/// <see cref="SharedApiHostClients.ForCaller{T}"/> or <see cref="SharedApiHostClients.ClientFor"/> instead of
+/// building a factory per test. <see cref="SharedApiHostClients"/> describes the pattern and when a test still
+/// needs a host of its own (its own configuration or services, or host-wide state the reset does not restore).
+/// </para>
 /// </summary>
 public class OdysseyApiFactory(
     IReadOnlyCollection<string>? permissions = null,
