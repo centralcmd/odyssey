@@ -51,6 +51,8 @@ public class FileStorageApiFactory : OdysseyApiFactory
                 ["FileStorage:Bindings:JournalFiles"] = "primary",
                 ["FileStorage:Bindings:ContactAvatars"] = "primary",
                 ["FileStorage:Bindings:NewsArticles"] = "primary",
+                ["FileStorage:Bindings:PodcastAudio"] = "primary",
+                ["FileStorage:Bindings:PodcastArtwork"] = "primary",
             },
             configureServices: services =>
             {

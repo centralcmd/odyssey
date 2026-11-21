@@ -221,7 +221,7 @@ public class BackgroundJobsPageTests
 
         var items = OpenMenu(f, cut).Select(i => i.TextContent.Trim()).ToList();
 
-        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Run instrument-price sync", "Run news feeds", "Run recurrence keys", "Refresh"], items);
+        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Run instrument-price sync", "Run news feeds", "Run recurrence keys", "Run podcast audio clean-up", "Refresh"], items);
         Assert.Equal("true", cut.Find("section[aria-label='Overview']").GetAttribute("aria-busy"));
     }
 
@@ -855,7 +855,8 @@ public class BackgroundJobsPageTests
             Job(JobType.ExchangeRateSync), Job(JobType.Weather, j => j.ManualRunAvailableAtUtc = available),
             Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails),
             Job(JobType.FileAnalysis, j => j.CanRunNow = false), Job(JobType.InstrumentPriceSync),
-            Job(JobType.NewsFeedFetch), Job(JobType.RecurrenceKeyBackfill)));
+            Job(JobType.NewsFeedFetch), Job(JobType.RecurrenceKeyBackfill),
+            Job(JobType.PodcastAudioDownload, j => j.CanRunNow = false), Job(JobType.PodcastAudioRetention)));
         var cut = await RenderLoaded(f);
         Assert.Contains(cut.Instance.RunItems, i => i.Job == JobType.Weather && i.Disabled);
 

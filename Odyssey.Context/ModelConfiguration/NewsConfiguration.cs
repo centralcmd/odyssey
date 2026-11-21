@@ -22,6 +22,18 @@ internal sealed class NewsFeedConfiguration : IEntityTypeConfiguration<NewsFeed>
     {
         entity.Property(f => f.UrlKeyHash).Hash();
         entity.HasIndex(f => f.UrlKeyHash).IsUnique();
+
+        // Podcasts (issue #556 §4.1): every existing feed becomes an article feed, and an existing row's auto-delete
+        // days start at the default the rule takes when it is first turned on.
+        entity.Property(f => f.Kind).HasConversion<byte>();
+        entity.Property(f => f.AutoDeleteAfterDays).HasDefaultValue(PodcastLimits.DefaultAutoDeleteDays);
+        entity.ToTable(tb =>
+        {
+            tb.HasCheckConstraint("CK_NewsFeeds_Kind", "`Kind` IN (0, 1)");
+            tb.HasCheckConstraint(
+                "CK_NewsFeeds_AutoDeleteDays",
+                $"`AutoDeleteAfterDays` BETWEEN {PodcastLimits.MinAutoDeleteDays} AND {PodcastLimits.MaxAutoDeleteDays}");
+        });
     }
 }
 
@@ -65,7 +77,13 @@ internal sealed class NewsStorageTotalConfiguration : IEntityTypeConfiguration<N
 {
     public void Configure(EntityTypeBuilder<NewsStorageTotal> entity)
     {
-        entity.ToTable(tb => tb.HasCheckConstraint("CK_NewsStorageTotals_SingleRow", "`Id` = 1"));
+        entity.ToTable(tb =>
+        {
+            tb.HasCheckConstraint("CK_NewsStorageTotals_SingleRow", "`Id` = 1");
+            tb.HasCheckConstraint(
+                "CK_NewsStorageTotals_PodcastBytesNonNegative",
+                "`AudioBytes` >= 0 AND `AudioPendingReleaseBytes` >= 0 AND `AudioReservedBytes` >= 0 AND `ArtworkBytes` >= 0");
+        });
         entity.HasData(new NewsStorageTotal { Id = NewsStorageTotal.SingletonId, ImageBytes = 0, TextAndSourceBytes = 0 });
     }
 }
@@ -121,6 +139,13 @@ internal sealed class NewsArticleConfiguration : IEntityTypeConfiguration<NewsAr
         entity.HasIndex(a => new { a.NewsFeedId, a.IsRead, a.FirstSeenAtUtc })
             .HasDatabaseName("IX_NewsArticles_Feed_Read_FirstSeen");
 
+        // Podcasts (issue #556 §4.8, §4.9): the article stream's and the episode list's no-feed-filter plan, so
+        // excluding the other kind stops after `limit` rows. FeedKind is an index aid only, like FeedVisible.
+        entity.Property(a => a.FeedKind).HasConversion<byte>();
+        entity.HasIndex(a => new { a.FeedKind, a.FeedVisible, a.SortAtUtc, a.NewsArticleId })
+            .IsDescending(false, false, true, false)
+            .HasDatabaseName("IX_NewsArticles_Kind_Visible_Sort");
+
         // Search (§8.4): part of the model, so the migration and the drift guard both see it.
         entity.HasIndex(a => new { a.Title, a.Author, a.Excerpt })
             .IsFullText()
@@ -133,6 +158,7 @@ internal sealed class NewsArticleConfiguration : IEntityTypeConfiguration<NewsAr
                 "(`IsRead` = 0 AND `ReadAtUtc` IS NULL) OR (`IsRead` = 1 AND `ReadAtUtc` IS NOT NULL)");
             tb.HasCheckConstraint(
                 "CK_NewsArticles_BodyOmittedReason", "`BodyOmittedReason` IS NULL OR `BodyOmittedReason` IN (1, 2)");
+            tb.HasCheckConstraint("CK_NewsArticles_FeedKind", "`FeedKind` IN (0, 1)");
         });
     }
 }

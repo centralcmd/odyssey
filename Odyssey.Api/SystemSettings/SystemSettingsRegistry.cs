@@ -46,6 +46,7 @@ internal static partial class SystemSettingsRegistry
         ..InstrumentPrices(),
         ..NewsReader(),
         ..NewsOpmlImport(),
+        ..Podcasts(),
         ..FileObjectStorage(),
         ..BackgroundJobs(),
     ];
