@@ -525,9 +525,13 @@ public sealed class NewsArticleService(
             }
         }
 
+        // Podcast feeds leave the article stream unless named (issue #556 §5.1 #5). This list — the join to the feed row,
+        // not the FeedKind copy on the article — is the authoritative filter, so an article of a feed whose type just
+        // changed is placed correctly before the purge loop rewrites its copy.
         var excluded = await context.NewsFeeds.AsNoTracking().News()
             .Where(f => f.DeletionRequestedAtUtc != null
-                || (!filter.IncludeArchivedFeeds && f.ArchivedAtUtc != null && !filter.FeedIds.Contains(f.NewsFeedId)))
+                || (!filter.IncludeArchivedFeeds && f.ArchivedAtUtc != null && !filter.FeedIds.Contains(f.NewsFeedId))
+                || (f.Kind == NewsFeedKind.Podcast && !filter.FeedIds.Contains(f.NewsFeedId)))
             .Select(f => f.NewsFeedId)
             .ToListAsync(cancellationToken);
 

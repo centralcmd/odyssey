@@ -42,8 +42,8 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [Authorize(Policy = PermissionClaims.NewsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<NewsFeedCatalogueEntry>))]
     [SwaggerOperation(Summary = "Every feed not pending deletion, unpaged and with no URL.")]
-    public async Task<IActionResult> Catalogue(CancellationToken cancellationToken = default) =>
-        Ok(await feeds.CatalogueAsync(cancellationToken));
+    public async Task<IActionResult> Catalogue([FromQuery] NewsFeedKindFilter? kind = null, CancellationToken cancellationToken = default) =>
+        Ok(await feeds.CatalogueAsync(cancellationToken, kind));
 
     [HttpGet("unread-counts")]
     [Authorize(Policy = PermissionClaims.NewsRead)]

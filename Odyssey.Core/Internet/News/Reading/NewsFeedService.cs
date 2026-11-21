@@ -18,6 +18,7 @@ public sealed class NewsFeedService(
     OdysseyContext context,
     INewsSettingsLookup settings,
     INewsFetchStateFlags flags,
+    Podcasts.IPodcastAudioRequests audioRequests,
     TimeProvider time,
     ILogger<NewsFeedService> logger)
 {
@@ -52,6 +53,8 @@ public sealed class NewsFeedService(
                 feeds = feeds.Where(f => context.NewsFeedTags.Any(l => l.NewsFeedId == f.NewsFeedId && l.NewsTagId == tagId));
             }
 
+            feeds = ByKind(feeds, query.Kind);
+
             if (ListQuery.NormalizeSearch(query.Search) is { } term)
             {
                 var pattern = ListQuery.ContainsPattern(term);
@@ -75,11 +78,12 @@ public sealed class NewsFeedService(
             return ListQuery.ToPagedResult(sorted, offset, limit);
         });
 
-    /// <summary>Every feed not pending deletion, unpaged, with no URL (§5.1 item 2).</summary>
-    public Task<List<NewsFeedCatalogueEntry>> CatalogueAsync(CancellationToken cancellationToken) =>
+    /// <summary>Every feed not pending deletion, unpaged, with no URL (§5.1 item 2), optionally of one kind (#556 §5.1 #4).</summary>
+    public Task<List<NewsFeedCatalogueEntry>> CatalogueAsync(CancellationToken cancellationToken, NewsFeedKindFilter? kind = null) =>
         NewsQueryGuard.RunAsync(async () =>
         {
-            var rows = await LoadRowsAsync(context.NewsFeeds.AsNoTracking().News().Where(f => f.DeletionRequestedAtUtc == null), cancellationToken);
+            var rows = await LoadRowsAsync(
+                ByKind(context.NewsFeeds.AsNoTracking().News().Where(f => f.DeletionRequestedAtUtc == null), kind), cancellationToken);
             // Read articles changed since they were read: no maintained counter, so one grouped count per request.
             var updated = await context.NewsArticles.AsNoTracking()
                 .Where(NewsReadStatusFilter.IsUpdatedSinceRead)
@@ -114,8 +118,9 @@ public sealed class NewsFeedService(
     public Task<NewsUnreadCounts> UnreadCountsAsync(CancellationToken cancellationToken) =>
         NewsQueryGuard.RunAsync(async () =>
         {
+            // Podcast feeds stay out of the article stream's badges (issue #556 §5.1 #5).
             var visible = context.NewsFeeds.AsNoTracking()
-                .Where(f => f.DeletionRequestedAtUtc == null && f.ArchivedAtUtc == null);
+                .Where(f => f.DeletionRequestedAtUtc == null && f.ArchivedAtUtc == null && f.Kind == NewsFeedKind.Article);
             var byFeed = await (from feed in visible
                                 join counter in context.NewsFeedCounters.AsNoTracking() on feed.NewsFeedId equals counter.NewsFeedId
                                 select new { feed.NewsFeedId, counter.UnreadCount })
@@ -163,6 +168,7 @@ public sealed class NewsFeedService(
     public async Task<ExistingNewsFeed> CreateAsync(NewNewsFeed request, bool canManage, string userId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var kind = ValidateKind(request.Kind, request.AutoDownload, request.AutoDeleteEnabled);
         var address = NewsFeedUrlRules.Validate(request.Url, await settings.GetAllowListAsync(cancellationToken));
         var resolved = await settings.GetAsync(cancellationToken);
         var tagIds = NewsFilterIds.Normalize(request.TagIds);
@@ -190,6 +196,11 @@ public sealed class NewsFeedService(
                 IsActive = true,
                 CreatedAtUtc = now,
                 SettingsVersion = Guid.NewGuid(),
+                Kind = kind,
+                AutoDownload = request.AutoDownload,
+                AutoDeleteEnabled = request.AutoDeleteEnabled,
+                AutoDeleteAfterDays = request.AutoDeleteAfterDays,
+                AutoDeleteChangedAtUtc = request.AutoDeleteEnabled ? now : null,
             };
             context.NewsFeeds.Add(feed);
             context.NewsFeedFetchStates.Add(new NewsFeedFetchState
@@ -217,12 +228,13 @@ public sealed class NewsFeedService(
     public async Task<ExistingNewsFeed?> UpdateAsync(Guid id, UpdateNewsFeed request, bool canManage, string userId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var kind = ValidateKind(request.Kind!.Value, request.AutoDownload!.Value, request.AutoDeleteEnabled!.Value);
         var outcome = await NewsQueryGuard.RunAsync(async () =>
         {
             var feed = await TrackedFeedAsync(id, cancellationToken);
             if (feed is null)
             {
-                return (Found: false, UrlChanged: false, Accepted: false, Host: (string?)null);
+                return (Found: false, UrlChanged: false, Accepted: false, Host: (string?)null, KindChange: (NewsFeedKind?)null);
             }
 
             if (request.Version != feed.SettingsVersion)
@@ -253,6 +265,26 @@ public sealed class NewsFeedService(
             feed.DownloadImages = request.DownloadImages!.Value;
             feed.IsActive = request.IsActive!.Value;
             feed.SettingsVersion = Guid.NewGuid();
+            var now = Now;
+            var kindChanged = feed.Kind != kind;
+            if (kindChanged)
+            {
+                // §5.1 #2: a type change re-parses the next fetch fully, and a podcast baseline older than it stops
+                // counting, so switching never downloads a back catalogue.
+                feed.Kind = kind;
+                feed.KindChangedAtUtc = now;
+            }
+
+            var autoDeleteDays = request.AutoDeleteAfterDays!.Value;
+            if (request.AutoDeleteEnabled!.Value && (!feed.AutoDeleteEnabled || feed.AutoDeleteAfterDays != autoDeleteDays))
+            {
+                // §3.7: enabling the rule or changing its days starts every countdown at the change, never earlier.
+                feed.AutoDeleteChangedAtUtc = now;
+            }
+
+            feed.AutoDownload = request.AutoDownload!.Value;
+            feed.AutoDeleteEnabled = request.AutoDeleteEnabled.Value;
+            feed.AutoDeleteAfterDays = autoDeleteDays;
             if (request.TagIds is not null)
             {
                 await StageTagsAsync(id, request.TagIds, cancellationToken);
@@ -268,11 +300,21 @@ public sealed class NewsFeedService(
                     {
                         await flags.ClearSuggestionAsync(context, id, suggestion, cancellationToken);
                     }
+                }
 
+                if (urlChanged || kindChanged)
+                {
                     await flags.RequestValidatorsResetAsync(context, id, Now, cancellationToken);
                 }
+
+                if (kindChanged && kind == NewsFeedKind.Article)
+                {
+                    // §5.1 #2: pending downloads stop now; stored audio is released by the purge loop's cleanup and a
+                    // running download stops at its next lease renewal.
+                    await audioRequests.CancelPendingForFeedAsync(context, id, cancellationToken);
+                }
             }, cancellationToken);
-            return (Found: true, UrlChanged: urlChanged, Accepted: accepted, Host: host);
+            return (Found: true, UrlChanged: urlChanged, Accepted: accepted, Host: host, KindChange: kindChanged ? kind : (NewsFeedKind?)null);
         });
 
         if (!outcome.Found)
@@ -291,6 +333,11 @@ public sealed class NewsFeedService(
         else
         {
             logger.LogInformation("News feed {FeedId} updated by {ActorUserId}.", id, userId);
+        }
+
+        if (outcome.KindChange is { } changedTo)
+        {
+            logger.LogInformation("News feed {FeedId}: type changed to {Kind} by {ActorUserId}.", id, changedTo, userId);
         }
 
         context.ChangeTracker.Clear();
@@ -450,6 +497,37 @@ public sealed class NewsFeedService(
 
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// The feed type and the automation rule (issue #556 §5.1): an unknown type is a <c>400</c>, and either automation
+    /// switch on an article feed a <c>422</c> keyed by the switch.
+    /// </summary>
+    private static NewsFeedKind ValidateKind(NewsFeedKind kind, bool autoDownload, bool autoDeleteEnabled)
+    {
+        if (kind is not (NewsFeedKind.Article or NewsFeedKind.Podcast))
+        {
+            throw NewsErrors.FeedKindUnknown();
+        }
+
+        if (kind == NewsFeedKind.Article && autoDownload)
+        {
+            throw NewsErrors.AutomationNotPodcast("autoDownload");
+        }
+
+        if (kind == NewsFeedKind.Article && autoDeleteEnabled)
+        {
+            throw NewsErrors.AutomationNotPodcast("autoDeleteEnabled");
+        }
+
+        return kind;
+    }
+
+    private static IQueryable<NewsFeed> ByKind(IQueryable<NewsFeed> feeds, NewsFeedKindFilter? kind) => kind switch
+    {
+        NewsFeedKindFilter.Article => feeds.Where(f => f.Kind == NewsFeedKind.Article),
+        NewsFeedKindFilter.Podcast => feeds.Where(f => f.Kind == NewsFeedKind.Podcast),
+        _ => feeds,
+    };
+
     private async Task<List<NewsFeedRow>> LoadRowsAsync(IQueryable<NewsFeed> feeds, CancellationToken cancellationToken)
     {
         var list = await feeds.ToListAsync(cancellationToken);
@@ -466,8 +544,51 @@ public sealed class NewsFeedService(
         var tags = (await context.NewsFeedTags.AsNoTracking().News().Where(l => ids.Contains(l.NewsFeedId))
                 .Select(l => new { l.NewsFeedId, l.NewsTagId }).ToListAsync(cancellationToken))
             .ToLookup(l => l.NewsFeedId, l => l.NewsTagId);
+        var podcasts = await LoadPodcastFactsAsync([.. list.Where(f => f.Kind == NewsFeedKind.Podcast).Select(f => f.NewsFeedId)], cancellationToken);
         return [.. list.Select(f => new NewsFeedRow(
-            f, states.GetValueOrDefault(f.NewsFeedId), counters.GetValueOrDefault(f.NewsFeedId), [.. tags[f.NewsFeedId].Order()]))];
+            f, states.GetValueOrDefault(f.NewsFeedId), counters.GetValueOrDefault(f.NewsFeedId), [.. tags[f.NewsFeedId].Order()],
+            podcasts.GetValueOrDefault(f.NewsFeedId)))];
+    }
+
+    /// <summary>
+    /// The podcast block's facts for the podcast feeds of one projection (issue #556 §5.1 #3): the details row, the show
+    /// artwork when stored, and three grouped counts on the per-feed audio index.
+    /// </summary>
+    private async Task<Dictionary<Guid, NewsFeedPodcastFacts>> LoadPodcastFactsAsync(List<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var details = await context.PodcastFeedDetails.AsNoTracking().News().Where(d => ids.Contains(d.NewsFeedId))
+            .ToDictionaryAsync(d => d.NewsFeedId, cancellationToken);
+        var artworkIds = details.Values.Where(d => d.ArtworkId != null).Select(d => d.ArtworkId!.Value).ToList();
+        var storedArtwork = (await context.PodcastArtwork.AsNoTracking().News()
+                .Where(a => artworkIds.Contains(a.PodcastArtworkId) && a.State == PodcastArtworkState.Stored)
+                .Select(a => a.PodcastArtworkId).ToListAsync(cancellationToken))
+            .ToHashSet();
+        var episodes = await context.PodcastEpisodeAudio.AsNoTracking().News().Where(a => ids.Contains(a.NewsFeedId))
+            .GroupBy(a => a.NewsFeedId)
+            .Select(g => new
+            {
+                FeedId = g.Key,
+                Episodes = g.Count(),
+                Stored = g.Count(a => a.State == PodcastAudioState.Stored),
+                Bytes = g.Where(a => a.State == PodcastAudioState.Stored).Sum(a => a.SizeBytes ?? 0),
+            })
+            .ToDictionaryAsync(g => g.FeedId, cancellationToken);
+        return ids.ToDictionary(id => id, id =>
+        {
+            var detail = details.GetValueOrDefault(id);
+            var counts = episodes.GetValueOrDefault(id);
+            return new NewsFeedPodcastFacts(
+                detail,
+                detail?.ArtworkId is { } artwork && storedArtwork.Contains(artwork) ? artwork : null,
+                counts?.Episodes ?? 0,
+                counts?.Stored ?? 0,
+                counts?.Bytes ?? 0);
+        });
     }
 
     private static IEnumerable<ExistingNewsFeed> Sort(List<ExistingNewsFeed> feeds, NewsFeedSortBy sortBy, SortDirection? direction)

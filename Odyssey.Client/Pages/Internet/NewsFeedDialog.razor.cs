@@ -179,6 +179,12 @@ public partial class NewsFeedDialog
                 DownloadImages = _downloadImages,
                 IsActive = _active,
                 TagIds = [.. _tagIds.Select(Guid.Parse)],
+                // A PUT is a full replacement (issue #556 §5.1 #2). Until the dialog edits the type and the podcast
+                // automation (#559), it sends the feed's current values back unchanged.
+                Kind = (_base ?? feed).Kind,
+                AutoDownload = (_base ?? feed).Podcast?.AutoDownload ?? false,
+                AutoDeleteEnabled = (_base ?? feed).Podcast?.AutoDeleteEnabled ?? false,
+                AutoDeleteAfterDays = (_base ?? feed).Podcast?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays,
             });
         }
         else

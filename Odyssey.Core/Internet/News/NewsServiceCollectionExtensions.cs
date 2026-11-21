@@ -28,6 +28,7 @@ public static class NewsServiceCollectionExtensions
         services.TryAddScoped<INewsSettingsLookup, NewsSettingsLookup>();
         services.TryAddSingleton<INewsCounterWriter, NewsCounterWriter>();
         services.TryAddSingleton<INewsFetchStateFlags, NewsFetchStateFlags>();
+        services.TryAddSingleton<Podcasts.IPodcastAudioRequests, Podcasts.PodcastAudioRequests>();
 
         services.TryAddSingleton<INewsDnsResolver, SystemNewsDnsResolver>();
         services.TryAddSingleton<NewsConnectGuard>();
