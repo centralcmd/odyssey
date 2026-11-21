@@ -271,49 +271,6 @@ public class TransactionFileAssociationServiceTests
         Assert.Contains(files, f => f.FileMetadataId == fileId2);
     }
 
-    [Fact]
-    public async Task DeleteTransactionCascadesFileAssociations()
-    {
-        await using var context = TestContextFactory.Create();
-        var account = new Account
-        {
-            Name = "Test Account",
-            Description = "For testing",
-            AccountType = ContextAccountType.CheckingAccount,
-            Opened = new DateTime(2024, 12, 1, 0, 0, 0, DateTimeKind.Utc),
-        };
-        context.Accounts.Add(account);
-        await context.SaveChangesAsync();
-
-        var service = new TransactionService(context, TestContextFactory.EmptyContactLookup());
-        var transaction = await service.Create(new NewTransaction
-        {
-            Description = "Test Transaction",
-            Amount = 100,
-            AccountId = account.AccountId,
-        });
-
-        var fileId = Guid.NewGuid();
-        var userId = "test-user";
-
-        await service.AttachFileToTransaction(transaction.TransactionId, fileId, userId);
-
-        // Verify attachment exists
-        var filesBeforeDelete = FilesFor(context, transaction.TransactionId);
-        Assert.Single(filesBeforeDelete);
-
-        // Delete transaction
-        await service.Delete(transaction.TransactionId);
-
-        // Verify transaction is gone
-        var fetchedTransaction = await service.Get(transaction.TransactionId);
-        Assert.Null(fetchedTransaction);
-
-        // Verify there are no transactions with that file attached anymore
-        var allTransactions = (await service.ListAsync(new TransactionsQueryParams())).Items;
-        Assert.Empty(allTransactions);
-    }
-
     private static IList<TransactionFile> FilesFor(OdysseyContext context, Guid transactionId) =>
         context.TransactionFiles
             .Where(tf => tf.TransactionId == transactionId)

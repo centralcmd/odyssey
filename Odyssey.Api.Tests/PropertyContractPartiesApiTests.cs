@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using static Odyssey.Api.Tests.PropertyApiTestSupport;
 using ContextAccountType = Odyssey.Context.AccountType;
@@ -377,7 +379,7 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     [Fact]
     public async Task DeleteProperty_OnTwoContracts_EventsEachRemoval_AndLogsEachRow_WithTheCallerAndOneTimestamp()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(FullAccess, services => services.AddSingleton<ILoggerProvider>(logs));
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell");
         var loanId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -424,7 +426,7 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     [Fact]
     public async Task PartyWriteLogLine_ForAPropertyParty_NamesTheKindAndGuid_AndNoPropertyField()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(FullAccess, services => services.AddSingleton<ILoggerProvider>(logs));
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell", city: "Øyer");
         var contractId = await SeedContractAsync(factory, "Cover", ContextContractType.Insurance);
@@ -480,14 +482,9 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
         private static void Configure(IServiceCollection services, Action<IServiceCollection>? extra)
         {
             services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+            services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
             extra?.Invoke(services);
         }
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     private static async Task<Guid> SeedAccountAsync(OdysseyApiFactory factory)

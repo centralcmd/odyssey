@@ -23,11 +23,8 @@ namespace Odyssey.Client.Tests;
 /// The Storage card on <c>/settings</c> (issue #346; Odyssey Design System · StorageHealth.jsx): the health
 /// panel in each state, its claim gate, its one row in the page-header signal, and the deletion grace row.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class StorageHealthSurfaceTests : IDisposable
+public class StorageHealthSurfaceTests
 {
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static FileStorageVolumeStatus Volume(Action<FileStorageVolumeStatus>? change = null)
     {
         var volume = new FileStorageVolumeStatus
@@ -178,7 +175,6 @@ public class StorageHealthSurfaceTests : IDisposable
             [Volume(v => { v.MaintenanceHaltedCheck = "VolumeLost"; v.MaintenanceHaltedAtUtc = Now.UtcDateTime; v.VerificationRetryMinutes = 15; })], Now));
         Assert.Contains("re-checks every 15 minutes", halted.Text, StringComparison.Ordinal);
     }
-
 
     [Theory]
     [InlineData(0, "0 bytes")]

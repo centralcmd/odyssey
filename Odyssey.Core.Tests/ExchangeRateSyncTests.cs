@@ -15,6 +15,7 @@ using Odyssey.Core.Jobs;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -321,7 +322,7 @@ public class ExchangeRateSyncTests
         // A re-requested day that is already stored is skipped, and a skipped row is never warned about.
         (await harness.Context.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom = new DateOnly(2026, 10, 23);
         await harness.Context.SaveChangesAsync();
-        harness.SyncLog.Entries.Clear();
+        harness.SyncLog.Clear();
         harness.Clock.Advance(TimeSpan.FromMinutes(2)); // past the manual-run cooldown
         var again = await harness.RunManualAsync();
 
@@ -1596,18 +1597,6 @@ public class ExchangeRateSyncTests
 
         Assert.Null(await h.SupportedList.ReadAsync());
         Assert.Equal(EntityState.Added, h.Context.Entry(h.Context.Currencies.Local.Single(c => c.CurrencyCode == "ZZZ")).State);
-    }
-
-    internal sealed class RecordingLogger<T> : ILogger<T>
-    {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            Entries.Add((logLevel, formatter(state, exception)));
     }
 
     private sealed class Harness : IAsyncDisposable

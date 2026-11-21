@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
+using Odyssey.Testing.Http;
 using Xunit;
 using Odyssey.Core.Finance;
 
@@ -31,25 +32,7 @@ public class ClaudeFileAnalysisProviderTests
 {
     private static readonly FileAnalysisTarget Target = new("https://gateway.internal", "claude-sonnet-5");
 
-    /// <summary>Records every request URI it sees and answers from a scripted queue.</summary>
-    private sealed class RecordingHandler(params Func<HttpRequestMessage, HttpResponseMessage>[] responses)
-        : HttpMessageHandler
-    {
-        public List<Uri> RequestUris { get; } = [];
-
-        public List<string?> ApiKeysSeen { get; } = [];
-
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            RequestUris.Add(request.RequestUri!);
-            ApiKeysSeen.Add(request.Headers.TryGetValues("x-api-key", out var values) ? values.First() : null);
-            var index = Math.Min(RequestUris.Count - 1, responses.Length - 1);
-            return Task.FromResult(responses[index](request));
-        }
-    }
-
-    private static ClaudeFileAnalysisProvider ProviderOver(RecordingHandler handler)
+    private static ClaudeFileAnalysisProvider ProviderOver(RecordingHttpHandler handler)
     {
         // No BaseAddress — the destination is a per-call parameter now (issue #439). Setting one here
         // would mask the very thing these tests check.
@@ -79,13 +62,13 @@ public class ClaudeFileAnalysisProviderTests
     [InlineData("https://127.0.0.1:8443", "https://127.0.0.1:8443/v1/messages")]
     public async Task TheRequestGoesToTheTargetsAuthorityPlusTheFixedPath(string baseUrl, string expected)
     {
-        var handler = new RecordingHandler(_ => Ok());
+        var handler = new RecordingHttpHandler(_ => Ok());
         var provider = ProviderOver(handler);
 
         await provider.ExtractTransactionsAsync(
             [1, 2, 3], "text/plain", "USD", "Extract.", new FileAnalysisTarget(baseUrl, "claude-sonnet-5"), 1024, null);
 
-        Assert.Equal(new Uri(expected), Assert.Single(handler.RequestUris));
+        Assert.Equal(new Uri(expected), Assert.Single(handler.Requests.Select(r => r.Uri!)));
     }
 
     /// <summary>The model in the target is the model in the request body — not one the provider chose.</summary>
@@ -93,7 +76,7 @@ public class ClaudeFileAnalysisProviderTests
     public async Task TheTargetsModel_IsWhatTheRequestBodyAsksFor()
     {
         string? body = null;
-        var handler = new RecordingHandler(request =>
+        var handler = new RecordingHttpHandler(request =>
         {
             body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return Ok();
@@ -120,32 +103,32 @@ public class ClaudeFileAnalysisProviderTests
     [InlineData(HttpStatusCode.PermanentRedirect)]
     public async Task ARedirect_IsRefused_WithNoRequestToTheRedirectTarget(HttpStatusCode status)
     {
-        var handler = new RecordingHandler(_ => Redirect(status, "https://other.host/v1/messages"));
+        var handler = new RecordingHttpHandler(_ => Redirect(status, "https://other.host/v1/messages"));
         var provider = ProviderOver(handler);
 
         await Assert.ThrowsAsync<FileAnalysisProviderException>(() =>
             provider.ExtractTransactionsAsync([1, 2, 3], "text/plain", "USD", "Extract.", Target, 1024, null));
 
-        var uri = Assert.Single(handler.RequestUris);
+        var uri = Assert.Single(handler.Requests.Select(r => r.Uri!));
         Assert.Equal("gateway.internal", uri.Host);
-        Assert.DoesNotContain(handler.RequestUris, u => u.Host == "other.host");
+        Assert.DoesNotContain(handler.Requests.Select(r => r.Uri!), u => u.Host == "other.host");
 
         // The key went to the configured host and to nowhere else — the bound this feature rests on.
-        Assert.Equal(["sk-test-key"], handler.ApiKeysSeen);
+        Assert.Equal(["sk-test-key"], handler.Requests.Select(r => r.Message.Headers.TryGetValues("x-api-key", out var values) ? values.First() : null));
     }
 
     /// <summary>The match call takes the same handler, so it gets the same refusal.</summary>
     [Fact]
     public async Task ARedirect_IsRefusedOnTheMatchCallToo()
     {
-        var handler = new RecordingHandler(_ =>
+        var handler = new RecordingHttpHandler(_ =>
             Redirect(HttpStatusCode.PermanentRedirect, "https://other.host/v1/messages"));
         var provider = ProviderOver(handler);
 
         await Assert.ThrowsAsync<FileAnalysisProviderException>(() =>
             provider.MatchTransactionsAsync([], [], [], Target, 1024, MatchPromptOptions.Legacy));
 
-        Assert.DoesNotContain(handler.RequestUris, u => u.Host == "other.host");
+        Assert.DoesNotContain(handler.Requests.Select(r => r.Uri!), u => u.Host == "other.host");
     }
 
     /// <summary>
@@ -158,7 +141,7 @@ public class ClaudeFileAnalysisProviderTests
     [Fact]
     public async Task TheRedirectTarget_NeverAppearsInTheExceptionMessage()
     {
-        var handler = new RecordingHandler(_ =>
+        var handler = new RecordingHttpHandler(_ =>
             Redirect(HttpStatusCode.PermanentRedirect, "https://attacker.example/collect?exfil=1"));
         var provider = ProviderOver(handler);
 
@@ -202,7 +185,7 @@ public class ClaudeFileAnalysisProviderTests
         IReadOnlyList<VocabularyEntry> contacts, IReadOnlyList<VocabularyEntry> tags, MatchPromptOptions options)
     {
         string? body = null;
-        var handler = new RecordingHandler(request =>
+        var handler = new RecordingHttpHandler(request =>
         {
             body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return MatchOk();
@@ -217,7 +200,7 @@ public class ClaudeFileAnalysisProviderTests
     public async Task ExtractionGuidance_IsAppendedAfterTheShippedRules_InTheDelimitedSection()
     {
         string? body = null;
-        var handler = new RecordingHandler(request =>
+        var handler = new RecordingHttpHandler(request =>
         {
             body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return Ok();
@@ -239,7 +222,7 @@ public class ClaudeFileAnalysisProviderTests
     public async Task NoExtractionGuidance_SendsTheShippedPromptUnchanged()
     {
         string? body = null;
-        var handler = new RecordingHandler(request =>
+        var handler = new RecordingHttpHandler(request =>
         {
             body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return Ok();

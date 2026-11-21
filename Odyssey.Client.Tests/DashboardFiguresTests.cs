@@ -16,7 +16,7 @@ namespace Odyssey.Client.Tests;
 /// <c>Symbol</c>/<c>MinorUnits</c> swap, or a transposed FROM/TO, passes every one of them. Hence pure
 /// functions and real assertions, per <see cref="AllocationLegend"/>'s precedent — <c>Home</c> itself
 /// cannot be rendered in a test, since its <c>OnInitializedAsync</c> early-returns off the browser and
-/// it has no <c>InteractiveCheck</c> seam.
+/// it does not read <c>IRenderInteractivity</c>.
 /// </para>
 /// </summary>
 public class DashboardFiguresTests

@@ -697,8 +697,12 @@ public class InstrumentPriceSyncAmendmentTests
             var query = System.Web.HttpUtility.ParseQueryString(request.RequestUri!.Query);
             Assert.All(query.AllKeys, key => Assert.Contains(key!, TiingoPriceSource.AllowedQueryKeys));
         });
-        Assert.NotEmpty(harness.Logs.Lines);
-        Assert.All(harness.Logs.Lines, line =>
+        // Every formatted message, its exception text and every scope — the same text the old capturing provider kept.
+        var lines = harness.Logs.Entries.Select(entry => entry.Message + " " + entry.Exception)
+            .Concat(harness.Logs.Scopes.Select(scope => scope.ToString() ?? string.Empty))
+            .ToList();
+        Assert.NotEmpty(lines);
+        Assert.All(lines, line =>
         {
             Assert.DoesNotContain(SyncHarness.Secret, line, StringComparison.Ordinal);
             Assert.DoesNotContain(symbol, line, StringComparison.Ordinal);

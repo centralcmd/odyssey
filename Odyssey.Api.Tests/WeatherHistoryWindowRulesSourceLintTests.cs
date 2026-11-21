@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -48,12 +49,9 @@ public class WeatherHistoryWindowRulesSourceLintTests
 
     private static IReadOnlyList<(string Path, string Code)> ScannedFiles() =>
         ScannedProjects
-            .SelectMany(project => Directory.EnumerateFiles(Path.Combine(RepositoryRoot.Path, project), "*.*", SearchOption.AllDirectories))
-            .Where(path => path.EndsWith(".cs", StringComparison.Ordinal) || path.EndsWith(".razor", StringComparison.Ordinal))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                           && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .SelectMany(project => SourceTree.Files(project, "*.cs", "*.razor"))
             .Where(path => !path.EndsWith(RulesFile, StringComparison.Ordinal))
-            .Select(path => (Path: path, Code: StripComments(File.ReadAllText(path))))
+            .Select(path => (Path: path, Code: SourceLint.StripComments(File.ReadAllText(path))))
             .Where(file => TouchesWindows.IsMatch(file.Code))
             .ToList();
 
@@ -82,7 +80,7 @@ public class WeatherHistoryWindowRulesSourceLintTests
 
         Assert.DoesNotContain("WeatherHistoryWindowDtos.cs", names);
 
-        var rules = StripComments(File.ReadAllText(Path.Combine(RepositoryRoot.Path, RulesFile)));
+        var rules = SourceLint.StripComments(File.ReadAllText(Path.Combine(SourceTree.Root, RulesFile)));
         Assert.Matches(ProducesAViolation, rules);
         Assert.Matches(DecidesAnOverlapCode, rules);
         Assert.Matches(OverlapComparison, rules);
@@ -105,14 +103,10 @@ public class WeatherHistoryWindowRulesSourceLintTests
                     (OpenEndComparison, "tests an earlier window for an open end"),
                 }
                 .Where(check => check.Pattern.IsMatch(file.Code))
-                .Select(check => $"{Path.GetRelativePath(RepositoryRoot.Path, file.Path)} {check.Rule}"))
+                .Select(check => $"{Path.GetRelativePath(SourceTree.Root, file.Path)} {check.Rule}"))
             .ToList();
 
         Assert.True(offenders.Count == 0,
             "These files restate a history-window rule instead of calling WeatherHistoryWindowRules: " + string.Join("; ", offenders));
     }
-
-    private static string StripComments(string code) =>
-        Regex.Replace(Regex.Replace(code, @"/\*.*?\*/|@\*.*?\*@", string.Empty, RegexOptions.Singleline),
-            @"//.*?$", string.Empty, RegexOptions.Multiline);
 }

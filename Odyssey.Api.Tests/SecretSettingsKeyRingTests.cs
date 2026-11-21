@@ -167,16 +167,18 @@ public class SecretSettingsKeyRingTests
     /// that fails to start reports as an opaque aggregate rather than as this message.
     /// </para>
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void EnsureWritable_OnAnUnwritableDirectory_Throws()
     {
-        // Self-skipping rather than SkippableFact: this project references no skip package, and the two
-        // conditions are environmental — POSIX mode bits are how a directory is made unwritable here,
-        // and a root process can write a 0500 directory regardless.
-        if (OperatingSystem.IsWindows() || Environment.UserName == "root")
+        // Both conditions are environmental: POSIX mode bits are how a directory is made unwritable
+        // here, and a root process can write a 0500 directory regardless. Reported as Skipped, not as a
+        // pass, so a run as root (a CI container, a cloud session) cannot look like coverage.
+        // A throwing guard rather than Skip.If, which the platform analyzer (CA1416) cannot see through.
+        if (OperatingSystem.IsWindows())
         {
-            return;
+            throw new SkipException("POSIX file modes are needed to make a directory unwritable.");
         }
+        Skip.If(Environment.UserName == "root", "A root process can write a 0500 directory, so there is nothing to refuse.");
 
         var directory = Directory.CreateTempSubdirectory("odyssey-unwritable-");
         try

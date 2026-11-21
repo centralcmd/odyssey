@@ -19,11 +19,8 @@ namespace Odyssey.Client.Tests;
 /// <c>/settings</c>, the consent bullet built from the disclosure, the match summary and wait copy, and
 /// the analysis log's guidance facts.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class GuidanceAndMatchingSurfaceTests : IDisposable
+public class GuidanceAndMatchingSurfaceTests
 {
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static readonly string[] AllFields = ["contactName", "contactAlias", "tagName", "tagDescription"];
 
     // ── OdsNoteField ─────────────────────────────────────────────────────────────────────────────

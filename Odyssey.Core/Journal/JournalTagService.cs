@@ -11,7 +11,8 @@ namespace Odyssey.Core.Journal;
 
 /// <summary>
 /// CRUD for the module-local journal tags: name search + archival-status filter + allowlisted sort,
-/// case-insensitive uniqueness among non-archived tags, and a delete-if-unused guard (in-use → 409).
+/// case-insensitive name uniqueness that a new or renamed tag checks against archived tags too, and a
+/// delete-if-unused guard (in-use → 409).
 /// </summary>
 public class JournalTagService
 {
@@ -69,7 +70,7 @@ public class JournalTagService
         TagIconGuard.EnsureKnown(request.Icon);
         TagColorGuard.EnsureValid(request.Color);
         var name = request.Name.Trim();
-        await EnsureNameAvailable(name, null, cancellationToken);
+        await EnsureNameAvailable(name, null, null, cancellationToken);
 
         var tag = new JournalTag
         {
@@ -98,7 +99,7 @@ public class JournalTagService
         }
 
         var name = request.Name.Trim();
-        await EnsureNameAvailable(name, id, cancellationToken);
+        await EnsureNameAvailable(name, id, tag.Name, cancellationToken);
 
         tag.Name = name;
         tag.Description = request.Description;
@@ -131,20 +132,44 @@ public class JournalTagService
         return true;
     }
 
-    // Case-insensitive uniqueness among non-archived tags, without a stored normalized column: the
-    // candidate names are compared in memory with OrdinalIgnoreCase, which behaves identically on the
-    // relational store (utf8mb4 *_ci collation) and the InMemory provider used by tests.
-    private async Task EnsureNameAvailable(string name, Guid? excludeId, CancellationToken cancellationToken)
+    /// <summary>
+    /// A new name, or a rename, must not match any other journal tag case-insensitively, archived ones included:
+    /// an archived tag is not offered by the pickers, so reusing its name would put two tags with one name in
+    /// the list the moment the archived one is restored. The design system's picker refuses such a name with
+    /// "“X” is an archived tag. Restore it on the Journal tags page to use it."; this is the server half.
+    /// </summary>
+    /// <remarks>
+    /// A tag that keeps its name is checked against ACTIVE tags only. Databases from before this rule can
+    /// hold an active and an archived tag with one name, and each must stay editable; restoring the archived
+    /// one is still refused while the active one holds the name. Names are compared in memory with
+    /// <see cref="StringComparison.OrdinalIgnoreCase"/>, which behaves identically on the relational store
+    /// (utf8mb4 *_ci collation) and the InMemory provider used by tests.
+    /// </remarks>
+    private async Task EnsureNameAvailable(string name, Guid? excludeId, string? currentName, CancellationToken cancellationToken)
     {
-        var existingNames = await context.JournalTags
-            .Where(t => t.Archived == null && (excludeId == null || t.JournalTagId != excludeId))
-            .Select(t => t.Name)
+        var renamed = currentName is null || !string.Equals(currentName.Trim(), name, StringComparison.OrdinalIgnoreCase);
+        var others = await context.JournalTags
+            .AsNoTracking()
+            .Where(t => excludeId == null || t.JournalTagId != excludeId)
+            .Select(t => new { t.Name, t.Archived })
             .ToListAsync(cancellationToken);
 
-        if (existingNames.Any(existing => string.Equals(existing, name, StringComparison.OrdinalIgnoreCase)))
+        var clash = others
+            .Where(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase))
+            .Where(t => t.Archived is null || renamed)
+            .OrderBy(t => t.Archived is null ? 0 : 1)
+            .FirstOrDefault();
+        if (clash is null)
         {
-            throw new DomainConflictException($"A journal tag named '{name}' already exists.");
+            return;
         }
+
+        // Keyed to `name` so the tag dialogs render it at the field rather than as an unattributed toast.
+        throw new DomainConflictException(
+            clash.Archived is null
+                ? $"A journal tag named '{name}' already exists."
+                : $"A journal tag named '{name}' already exists but is archived. Restore it, or rename it, to reuse the name.",
+            nameof(NewJournalTag.Name));
     }
 
     private void ApplyArchiveTransition(JournalTag tag, bool requestedArchived)

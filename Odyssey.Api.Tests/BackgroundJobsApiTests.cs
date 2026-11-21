@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Core.Jobs;
@@ -12,6 +13,7 @@ using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -783,10 +785,10 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
             "background-jobs-actor",
             // No photo volume: the file-storage job's "not configured" state is the host with no volume at all.
             configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" },
-            configureServices: services => services.AddSingleton<TimeProvider>(new FixedClock()),
+            configureServices: services => services.AddSingleton<TimeProvider>(new FakeTimeProvider(new DateTimeOffset(Now, TimeSpan.Zero))),
             sharingStoreWith: sharingStoreWith)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
@@ -816,11 +818,6 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
         public OdysseyContext Context { get; } = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
         public ValueTask DisposeAsync() => scope.DisposeAsync();
-    }
-
-    private sealed class FixedClock : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(Now, TimeSpan.Zero);
     }
 
     /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>

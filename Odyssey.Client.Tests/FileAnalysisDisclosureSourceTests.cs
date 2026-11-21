@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -52,7 +53,7 @@ public class FileAnalysisDisclosureSourceTests
                 if (!IsInComment(text, index))
                 {
                     var line = LineContaining(text, index);
-                    violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, index)} — {line.Trim()}");
+                    violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, index)} — {line.Trim()}");
                 }
 
                 index = text.IndexOf("claude-", index + 1, StringComparison.OrdinalIgnoreCase);
@@ -84,7 +85,7 @@ public class FileAnalysisDisclosureSourceTests
                 {
                     if (!IsInComment(text, index))
                     {
-                        violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, index)} — '{literal}'");
+                        violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, index)} — '{literal}'");
                     }
 
                     index = text.IndexOf(literal, index + 1, StringComparison.Ordinal);
@@ -147,26 +148,13 @@ public class FileAnalysisDisclosureSourceTests
     }
 
     /// <summary>
-    /// Whether <paramref name="index"/> sits inside a Razor block comment or a C# line comment.
-    /// Block-aware on purpose: a multi-line <c>@* … *@</c> explaining this very fix would otherwise
-    /// trip the lint on its own continuation lines, which is how a lint gets weakened to shut it up.
+    /// Whether <paramref name="index"/> sits inside a comment of any kind. Block-aware on purpose: a
+    /// multi-line <c>@* … *@</c> explaining this very fix would otherwise trip the lint on its own
+    /// continuation lines, which is how a lint gets weakened to shut it up. The shared stripper blanks
+    /// a comment in place, so a matched (non-blank) character that changed was inside one.
     /// </summary>
-    private static bool IsInComment(string text, int index)
-    {
-        var open = text.LastIndexOf("@*", index, StringComparison.Ordinal);
-        if (open >= 0)
-        {
-            var close = text.IndexOf("*@", open, StringComparison.Ordinal);
-            if (close < 0 || close > index)
-            {
-                return true;
-            }
-        }
-
-        var line = LineContaining(text, index);
-        return line.TrimStart().StartsWith("//", StringComparison.Ordinal)
-            || line.TrimStart().StartsWith("///", StringComparison.Ordinal);
-    }
+    private static bool IsInComment(string text, int index) =>
+        SourceLint.StripComments(text)[index] != text[index];
 
     private static string LineContaining(string text, int index)
     {

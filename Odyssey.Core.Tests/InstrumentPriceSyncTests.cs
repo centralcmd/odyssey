@@ -9,6 +9,7 @@ using Odyssey.Core.Finance.Instruments.Sources;
 using Odyssey.Core.Finance.Instruments.Sync;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Odyssey.TestShared.InstrumentPrices;
 using Xunit;
 
@@ -477,8 +478,12 @@ public class InstrumentPriceSyncTests
 
         await harness.Sync.RunScheduledIfDueAsync();
 
-        Assert.NotEmpty(harness.Logs.Lines);
-        Assert.All(harness.Logs.Lines, line =>
+        // Every rendered line, its exception and every scope's state: what a sink could have written.
+        var lines = harness.Logs.Entries.Select(entry => entry.Message + " " + entry.Exception)
+            .Concat(harness.Logs.Scopes.Select(scope => scope.ToString() ?? string.Empty))
+            .ToList();
+        Assert.NotEmpty(lines);
+        Assert.All(lines, line =>
         {
             Assert.DoesNotContain(SyncHarness.Secret, line, StringComparison.Ordinal);
             Assert.DoesNotContain("SENTINELSYMBOL", line, StringComparison.Ordinal);
@@ -619,33 +624,6 @@ public class InstrumentPriceSyncTests
         }
     }
 
-    /// <summary>Captures every formatted log line, scopes and exception text included.</summary>
-    internal sealed class CapturingLoggerProvider : Microsoft.Extensions.Logging.ILoggerProvider
-    {
-        public System.Collections.Concurrent.ConcurrentQueue<string> Lines { get; } = new();
-
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new Logger(this);
-
-        public void Dispose()
-        {
-        }
-
-        private sealed class Logger(CapturingLoggerProvider owner) : Microsoft.Extensions.Logging.ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-            {
-                owner.Lines.Enqueue(state.ToString() ?? string.Empty);
-                return null;
-            }
-
-            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
-
-            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state,
-                Exception? exception, Func<TState, Exception?, string> formatter) =>
-                owner.Lines.Enqueue(formatter(state, exception) + " " + exception);
-        }
-    }
-
     internal sealed class SettableSecrets : ISecretSettingsReader
     {
         public SecretResult Result { get; set; } = SecretResult.Found(SyncHarness.Secret);
@@ -701,7 +679,7 @@ public class InstrumentPriceSyncTests
 
         public SettableSecrets Secrets { get; } = new();
 
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         public ScriptedPriceHandler Handler { get; } = new();
 

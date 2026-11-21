@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -17,30 +18,16 @@ public class PropertyFilesApiClientTests
     private static readonly Guid FileId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid ContactId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
-    private sealed class RecordingHandler(Func<HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return respond();
-        }
-    }
-
-    private static (IPropertiesApiClient Client, RecordingHandler Handler) Create(
+    private static (IPropertiesApiClient Client, RecordingHttpHandler Handler) Create(
         string body, HttpStatusCode status = HttpStatusCode.OK, string mediaType = "application/json") =>
         Create(() => new HttpResponseMessage(status)
         {
             Content = new StringContent(body, Encoding.UTF8, mediaType),
         });
 
-    private static (IPropertiesApiClient Client, RecordingHandler Handler) Create(Func<HttpResponseMessage> respond)
+    private static (IPropertiesApiClient Client, RecordingHttpHandler Handler) Create(Func<HttpResponseMessage> respond)
     {
-        var handler = new RecordingHandler(respond);
+        var handler = new RecordingHttpHandler(_ => respond());
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new PropertiesApiClient(api), handler);
     }

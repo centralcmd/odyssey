@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -108,7 +109,7 @@ public class OdysseyDarkBasemapTests
     [Fact]
     public void It_is_the_shipped_dark_default()
     {
-        var appsettings = File.ReadAllText(ClientSource.Sibling(Path.Combine("Odyssey.Api", "appsettings.json")));
+        var appsettings = File.ReadAllText(SourceTree.File(Path.Combine("Odyssey.Api", "appsettings.json")));
 
         Assert.Contains("\"StyleUrlDark\": \"/maps/odyssey-dark.json\"", appsettings, StringComparison.Ordinal);
     }

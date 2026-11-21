@@ -13,6 +13,7 @@ using Odyssey.Context.Authorization;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using static Odyssey.Api.Tests.PropertyApiTestSupport;
 using PropertyFileType = Odyssey.Dtos.Finance.PropertyFileType;
@@ -574,7 +575,7 @@ public class PropertyFilesApiTests(PropertyFilesApiTests.Host host) : SharedApiH
     [Fact]
     public void TheDocumentAllowList_IsDeclaredExactlyOnce()
     {
-        var root = RepositoryRoot();
+        var root = SourceTree.Root;
         var declaration = File.ReadAllText(Path.Combine(root, "Odyssey.Dtos", "Finance", "DocumentContentTypes.cs"));
         Assert.Contains("\"application/pdf\"", declaration, StringComparison.Ordinal);
 
@@ -703,17 +704,6 @@ public class PropertyFilesApiTests(PropertyFilesApiTests.Host host) : SharedApiH
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         return await db.PropertyFiles.CountAsync(f => f.PropertyId == propertyId);
-    }
-
-    private static string RepositoryRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Odyssey.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName ?? throw new InvalidOperationException("Odyssey.sln not found above the test binaries.");
     }
 
     /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>

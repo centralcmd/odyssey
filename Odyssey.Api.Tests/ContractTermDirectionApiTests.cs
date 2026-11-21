@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -448,15 +449,10 @@ public class ContractTermDirectionApiTests(ContractTermDirectionApiTests.Host ho
             : base(permissions, ActorUserId, configuration: null, configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
             }, sharingStoreWith: sharingStoreWith)
         {
         }
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>

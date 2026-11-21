@@ -31,12 +31,12 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/photos", PermissionClaims.PhotosRead),
         ("/api/albums", PermissionClaims.PhotoAlbumsRead),
         ("/api/photo-tags", PermissionClaims.PhotoTagsRead),
-        // Admin-only via the dedicated file-analysis.audit claim, seeded onto the Admin role by a
-        // hand-written role-claim migration. Exercises that seeding over real login (the injected-claim
+        // Admin-only via the dedicated file-analysis.audit claim, granted to the Admin role by
+        // RoleClaimSeeder's reconciliation. Exercises that seeding over real login (the injected-claim
         // API tier can't) — Admin → 200, Owner/User/Guest → 403. (#264)
         ("/api/file-analysis/audit", PermissionClaims.FileAnalysisAudit),
-        // System settings (issue #349) — Admin-only, seeded by the same hand-written-migration
-        // pattern at fresh ids 264-266. GET never writes, so it's safe in the strict-200 matrix.
+        // System settings (issue #349) — Admin-only, reconciled onto the role by RoleClaimSeeder the
+        // same way. GET never writes, so it's safe in the strict-200 matrix.
         ("/api/system-settings", PermissionClaims.SystemSettingsRead),
         // Encrypted secret settings (issue #444) — the STATUS endpoint, gated by the same read claim as
         // its plaintext sibling and for the same reason: a write-only caller must not be able to probe

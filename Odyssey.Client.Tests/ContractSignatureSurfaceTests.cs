@@ -12,6 +12,7 @@ using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -301,8 +302,7 @@ public class ContractSignatureSurfaceTests
     {
         var client = File.ReadAllText(
             Path.Combine(ClientSource.Root, "Pages", "Finance", "CreateContractDialog.razor.cs"));
-        var server = File.ReadAllText(Path.Combine(
-            ClientSource.Root, "..", "Odyssey.Core", "Finance", "ContractService.cs"));
+        var server = SourceTree.ReadAllText("Odyssey.Core", "Finance", "ContractService.cs");
 
         foreach (var message in new[]
                  {
@@ -565,12 +565,8 @@ public class ContractSignatureSurfaceTests
     /// </summary>
     private static string Source(string fileName)
     {
-        var source = fileName.EndsWith(".razor.cs", StringComparison.Ordinal)
+        return SourceLint.StripComments(fileName.EndsWith(".razor.cs", StringComparison.Ordinal)
             ? ClientSource.CodeBehind($"Pages/Finance/{fileName}")
-            : File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName));
-        source = Regex.Replace(source, @"@\*[\s\S]*?\*@", string.Empty);
-        source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-        source = Regex.Replace(source, @"^\s*(///?).*$", string.Empty, RegexOptions.Multiline);
-        return source;
+            : File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName)));
     }
 }

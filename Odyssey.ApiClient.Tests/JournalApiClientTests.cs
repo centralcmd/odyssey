@@ -1,5 +1,6 @@
 using System.Net;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -13,29 +14,14 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class JournalApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (JournalApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""{"items":[],"offset":0,"limit":50,"totalCount":0}""",
-                                            System.Text.Encoding.UTF8, "application/json"),
-            });
-        }
-    }
-
-    private static (JournalApiClient Client, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new JournalApiClient(api), handler);
     }
 
-    private static string QueryOf(RecordingHandler handler) => handler.LastRequest!.RequestUri!.Query;
+    private static string QueryOf(RecordingHttpHandler handler) => handler.LastRequest!.RequestUri!.Query;
 
     [Fact]
     public async Task List_WithAttachmentFilters_SendsBothFlags()

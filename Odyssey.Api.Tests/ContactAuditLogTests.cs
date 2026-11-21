@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -11,7 +12,7 @@ public class ContactAuditLogTests
     [Fact]
     public void APrincipalWithoutAUserId_IsLoggedAsNoActor_NeverAsAnEmptySlot()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         using var factory = LoggerFactory.Create(builder => builder.AddProvider(logs));
         var audit = new ContactAuditLog(factory.CreateLogger<ContactAuditLog>());
         var anonymous = new ClaimsPrincipal(new ClaimsIdentity());

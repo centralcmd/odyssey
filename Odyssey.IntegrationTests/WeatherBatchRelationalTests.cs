@@ -8,6 +8,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
@@ -444,15 +445,15 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
         }, AdminId, true, CancellationToken.None));
     }
 
-    private static WeatherBatchReadService Batch(OdysseyContext context) => new(context, new Settings(), new FixedTime());
+    private static WeatherBatchReadService Batch(OdysseyContext context) => new(context, new Settings(), new FakeTimeProvider(Noon));
 
-    private static WeatherReadService Read(OdysseyContext context) => new(context, Fetch(context), new Settings(), new FixedTime());
+    private static WeatherReadService Read(OdysseyContext context) => new(context, Fetch(context), new Settings(), new FakeTimeProvider(Noon));
 
     private static WeatherFetchService Fetch(OdysseyContext context) =>
-        new(context, new NoForecasts(), new NoObservations(), new Settings(), new NoSecrets(), new FixedTime());
+        new(context, new NoForecasts(), new NoObservations(), new Settings(), new NoSecrets(), new FakeTimeProvider(Noon));
 
     private static WeatherPointService Admin(OdysseyContext context) =>
-        new(context, Fetch(context), new Settings(), new RelationalWeatherHistoryPurger(context), new FixedTime());
+        new(context, Fetch(context), new Settings(), new RelationalWeatherHistoryPurger(context), new FakeTimeProvider(Noon));
 
     private static string Describe(CommandCapture capture) =>
         $"{capture.Commands.Count} commands:\n" + string.Join("\n---\n", capture.Commands.Select(c => c.Length > 200 ? c[..200] : c));
@@ -594,11 +595,6 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
 
             base.Dispose(disposing);
         }
-    }
-
-    private sealed class FixedTime : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(Noon);
     }
 
     private sealed class Settings : IWeatherSettingsLookup

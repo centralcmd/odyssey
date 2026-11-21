@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -14,7 +15,7 @@ public class LargeFileProxyRouteTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "nginx", "templates", "default.conf.template"));
 
     private static readonly string Caddy =
-        File.ReadAllText(Path.Combine(ClientSource.Root, "..", "Caddyfile"));
+        File.ReadAllText(SourceTree.File("Caddyfile"));
 
     public static TheoryData<string> CalendarIcsRoutes()
     {

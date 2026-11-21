@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -14,26 +15,9 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class ContactAliasApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (ContactsApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        public HttpResponseMessage Response { get; set; } =
-            new(HttpStatusCode.NoContent);
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return Response;
-        }
-    }
-
-    private static (ContactsApiClient Client, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler(HttpStatusCode.NoContent);
         return (new ContactsApiClient(new OdysseyApi(
             new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") })), handler);
     }

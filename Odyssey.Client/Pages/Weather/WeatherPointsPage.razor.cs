@@ -31,8 +31,7 @@ public partial class WeatherPointsPage
     /// <summary><c>?open=&lt;weatherPointId&gt;</c>: expand, scroll to and focus that record (issue #388 §3).</summary>
     [SupplyParameterFromQuery(Name = "open")] public Guid? OpenId { get; set; }
 
-    /// <summary>The interactivity check, as a seam for bUnit.</summary>
-    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     internal const string PageStateKey = "weather-points-page";
 
@@ -103,7 +102,7 @@ public partial class WeatherPointsPage
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
         {
             return;
         }

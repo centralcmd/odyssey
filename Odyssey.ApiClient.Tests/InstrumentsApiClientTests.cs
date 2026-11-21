@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -16,36 +17,15 @@ public class InstrumentsApiClientTests
 {
     private static readonly Guid Id = Guid.Parse("7c9e6679-7425-40de-944b-e07fc1f90ae7");
 
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (OdysseyApi Api, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        public string ResponseJson { get; set; } = """{"items":[],"offset":0,"limit":25,"totalCount":0}""";
-
-        public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return new HttpResponseMessage(Status)
-            {
-                Content = new StringContent(ResponseJson, System.Text.Encoding.UTF8, "application/json"),
-            };
-        }
-    }
-
-    private static (OdysseyApi Api, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
         return (new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }), handler);
     }
 
-    private static string Path(RecordingHandler handler) => handler.LastRequest!.RequestUri!.AbsolutePath;
+    private static string Path(RecordingHttpHandler handler) => handler.LastRequest!.RequestUri!.AbsolutePath;
 
-    private static string Query(RecordingHandler handler) => Uri.UnescapeDataString(handler.LastRequest!.RequestUri!.Query);
+    private static string Query(RecordingHttpHandler handler) => Uri.UnescapeDataString(handler.LastRequest!.RequestUri!.Query);
 
     [Fact]
     public async Task Instruments_list_sends_the_window_filters_and_sort()
@@ -107,17 +87,17 @@ public class InstrumentsApiClientTests
         var (api, handler) = Create();
         var client = new InstrumentsApiClient(api);
 
-        handler.ResponseJson = """{"instrumentId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","symbol":"EQNR","name":"Equinor","type":1,"currencyCode":"NOK"}""";
+        handler.Body = """{"instrumentId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","symbol":"EQNR","name":"Equinor","type":1,"currencyCode":"NOK"}""";
         var one = await client.GetAsync(Id);
         Assert.Equal($"/api/instruments/{Id}", Path(handler));
         Assert.Equal(InstrumentType.Stock, one.Value!.Type);
 
-        handler.ResponseJson = """{"totalCount":3,"byType":[{"type":3,"count":1}]}""";
+        handler.Body = """{"totalCount":3,"byType":[{"type":3,"count":1}]}""";
         var summary = await client.GetSummaryAsync();
         Assert.Equal("/api/instruments/summary", Path(handler));
         Assert.Equal(3, summary.Value!.TotalCount);
 
-        handler.ResponseJson = """{"currencyCode":"NOK","points":[]}""";
+        handler.Body = """{"currencyCode":"NOK","points":[]}""";
         await client.GetSeriesAsync(Id, new DateOnly(2026, 1, 2), new DateOnly(2026, 3, 4));
         Assert.Equal($"/api/instruments/{Id}/prices/series", Path(handler));
         Assert.Equal("?from=2026-01-02&to=2026-03-04", handler.LastRequest!.RequestUri!.Query);
@@ -131,7 +111,7 @@ public class InstrumentsApiClientTests
     {
         var (api, handler) = Create();
         var client = new InstrumentsApiClient(api);
-        handler.ResponseJson = """{"displayCurrencyCode":"EUR","staleAfterDays":5,"truncated":true,"items":[]}""";
+        handler.Body = """{"displayCurrencyCode":"EUR","staleAfterDays":5,"truncated":true,"items":[]}""";
 
         var result = await client.GetWatchlistAsync("EUR", 30);
 
@@ -150,7 +130,7 @@ public class InstrumentsApiClientTests
         var (api, handler) = Create();
         var client = new InstrumentsApiClient(api);
         var body = new NewInstrument { Symbol = "EQNR", MicCode = "XOSL", Name = "Equinor", Type = InstrumentType.Stock, CurrencyCode = "NOK" };
-        handler.ResponseJson = """{"instrumentId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","symbol":"EQNR","name":"Equinor","type":1,"currencyCode":"NOK"}""";
+        handler.Body = """{"instrumentId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","symbol":"EQNR","name":"Equinor","type":1,"currencyCode":"NOK"}""";
 
         handler.Status = HttpStatusCode.Created;
         var created = await client.CreateAsync(body);
@@ -169,7 +149,7 @@ public class InstrumentsApiClientTests
         Assert.Equal($"/api/instruments/{Id}", Path(handler));
 
         handler.Status = HttpStatusCode.NoContent;
-        handler.ResponseJson = string.Empty;
+        handler.Body = string.Empty;
         await client.ArchiveAsync(Id);
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.Equal($"/api/instruments/{Id}/archive", Path(handler));
@@ -188,7 +168,7 @@ public class InstrumentsApiClientTests
     public async Task Purge_deletes_the_scope_with_the_confirmed_count()
     {
         var (api, handler) = Create();
-        handler.ResponseJson = """{"deleted":251}""";
+        handler.Body = """{"deleted":251}""";
 
         var result = await new InstrumentsApiClient(api).PurgePricesAsync(Id, InstrumentPricePurgeScope.Fetched, 251);
 
@@ -235,7 +215,7 @@ public class InstrumentsApiClientTests
     {
         var (api, handler) = Create();
         var client = new InstrumentPricesApiClient(api);
-        handler.ResponseJson = """{"instrumentPriceId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","instrumentId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","symbol":"EQNR","instrumentName":"Equinor","currencyCode":"NOK","tradingDate":"2026-11-06","close":274.12345678}""";
+        handler.Body = """{"instrumentPriceId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","instrumentId":"7c9e6679-7425-40de-944b-e07fc1f90ae7","symbol":"EQNR","instrumentName":"Equinor","currencyCode":"NOK","tradingDate":"2026-11-06","close":274.12345678}""";
 
         var one = await client.GetAsync(Id);
         Assert.Equal(HttpMethod.Get, handler.LastRequest!.Method);
@@ -258,7 +238,7 @@ public class InstrumentsApiClientTests
         Assert.Equal($"/api/instrument-prices/{Id}", Path(handler));
 
         handler.Status = HttpStatusCode.NoContent;
-        handler.ResponseJson = string.Empty;
+        handler.Body = string.Empty;
         await client.DeleteAsync(Id);
         Assert.Equal(HttpMethod.Delete, handler.LastRequest!.Method);
         Assert.Equal($"/api/instrument-prices/{Id}", Path(handler));
@@ -271,14 +251,14 @@ public class InstrumentsApiClientTests
         var client = new InstrumentPriceSourcesApiClient(api);
         const string Base = "/api/system-settings/instrument-price-sources";
 
-        handler.ResponseJson = """{"sources":[{"key":"demo","displayName":"Demo","attribution":"Demo data","requestsToday":3,"maxRequestsPerDay":3}],"maxBindingsPerInstrument":9}""";
+        handler.Body = """{"sources":[{"key":"demo","displayName":"Demo","attribution":"Demo data","requestsToday":3,"maxRequestsPerDay":3}],"maxBindingsPerInstrument":9}""";
         var status = await client.GetStatusAsync();
         Assert.Equal(HttpMethod.Get, handler.LastRequest!.Method);
         Assert.Equal(Base, Path(handler));
         Assert.Equal(9, status.Value!.MaxBindingsPerInstrument);
         Assert.Equal(3, status.Value.Sources[0].MaxRequestsPerDay);
 
-        handler.ResponseJson = """[{"sourceKey":"demo","sourceSymbol":"EQNR.OL","priority":1,"enabled":true}]""";
+        handler.Body = """[{"sourceKey":"demo","sourceSymbol":"EQNR.OL","priority":1,"enabled":true}]""";
         var bindings = await client.GetBindingsAsync(Id);
         Assert.Equal(HttpMethod.Get, handler.LastRequest!.Method);
         Assert.Equal($"{Base}/bindings/{Id}", Path(handler));

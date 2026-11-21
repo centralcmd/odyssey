@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -510,7 +511,7 @@ public class ListPageContractTests
 
         foreach (Match call in calls)
         {
-            var line = ClientSource.LineAt(source, call.Index);
+            var line = SourceLint.LineAt(source, call.Index);
             var argsStart = call.Index + call.Length;
             var argsEnd = MatchingClose(source, argsStart - 1);
             var args = argsEnd < 0 ? string.Empty : source[argsStart..argsEnd];

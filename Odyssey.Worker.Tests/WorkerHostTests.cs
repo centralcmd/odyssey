@@ -9,6 +9,7 @@ using Odyssey.Core.SystemSettings;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Weather;
+using Odyssey.Testing;
 using Odyssey.Worker.Hosting;
 using Xunit;
 
@@ -146,7 +147,7 @@ public sealed class WorkerHostTests : IDisposable
         static Dictionary<string, string?> Section(string project)
         {
             var configuration = new ConfigurationBuilder()
-                .AddJsonFile(Path.Combine(RepositoryRoot(), project, "appsettings.json"), optional: false)
+                .AddJsonFile(SourceTree.File(project, "appsettings.json"), optional: false)
                 .Build();
             return configuration.GetSection("FileAnalysis").AsEnumerable(makePathsRelative: true)
                 .Where(pair => pair.Value is not null)
@@ -210,7 +211,7 @@ public sealed class WorkerHostTests : IDisposable
     [Fact]
     public void File_storage_is_verified_by_its_job_not_by_the_host()
     {
-        var program = File.ReadAllText(Path.Combine(RepositoryRoot(), "Odyssey.Worker", "Program.cs"));
+        var program = File.ReadAllText(SourceTree.File("Odyssey.Worker", "Program.cs"));
         Assert.DoesNotContain("VerifyFileStorage", program, StringComparison.Ordinal);
 
         using var provider = Build();
@@ -340,19 +341,8 @@ public sealed class WorkerHostTests : IDisposable
     {
         foreach (var host in new[] { Path.Combine("Odyssey.Api", "Program.cs"), Path.Combine("Odyssey.Worker", "WorkerHost.cs") })
         {
-            var source = File.ReadAllText(Path.Combine(RepositoryRoot(), host));
+            var source = File.ReadAllText(SourceTree.File(host));
             Assert.Contains($".SetApplicationName({nameof(DataProtectionKeyRing)}.{nameof(DataProtectionKeyRing.ApplicationName)})", source.Replace("Odyssey.Core.SystemSettings.", ""), StringComparison.Ordinal);
         }
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Odyssey.sln not found above the test output.");
     }
 }

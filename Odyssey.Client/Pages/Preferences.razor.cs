@@ -1,9 +1,11 @@
 using System.Net;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Weather;
+using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
@@ -42,8 +44,7 @@ public partial class Preferences
     private string _savedWeatherPoint = WeatherVisuals.FollowHouseholdDefault;
     private string? _weatherError;
 
-    /// <summary>The interactivity check, as a seam for bUnit (the <c>WeatherWidget.InteractiveCheck</c> pattern).</summary>
-    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     private bool DarkModeSwitchValue
     {
@@ -122,7 +123,7 @@ public partial class Preferences
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
         {
             return;
         }

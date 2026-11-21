@@ -28,6 +28,7 @@ public partial class JournalCard
     private List<ExistingJournalTag> _tags = [];
     private Dictionary<Guid, ExistingJournalTag> _tagById = new();
     private IReadOnlyList<OdsOption> _tagOptions = [];
+    private IReadOnlyCollection<string> _archivedTagNames = [];
 
     private Dictionary<Guid, ExistingContact> _contactById = new();
     private IReadOnlyList<OdsOption> _contactOptions = [];
@@ -206,6 +207,7 @@ public partial class JournalCard
     {
         _tags = (await JournalTags.ListAllAsync()).ItemsOrToast(Snackbar, "journal tags");
         _tagById = _tags.ToDictionary(t => t.JournalTagId);
+        _archivedTagNames = [.. _tags.Where(t => t.Archived is not null).Select(t => t.Name)];
         _tagOptions =
         [
             .. _tags.Where(t => t.Archived is null)

@@ -16,9 +16,9 @@ public readonly record struct TagNameEntry(string Name, bool Archived);
 /// </para>
 /// <para>
 /// Which names a field passes is decided by its vocabulary's server rule, so the sentence is never
-/// untrue. Transaction and photo tag names are unique across archived tags too (their unique index spans
-/// both); journal and task tag names are unique among ACTIVE tags only, so those fields pass active
-/// tags and an archived name stays creatable.
+/// untrue. Every vocabulary refuses an archived tag's name: transaction and photo tags through a unique
+/// index spanning both, journal and task tags through their services, which check a new or renamed
+/// tag against archived tags too. So every field passes its archived names as well as its options.
 /// </para>
 /// </remarks>
 public static class TagNameRule

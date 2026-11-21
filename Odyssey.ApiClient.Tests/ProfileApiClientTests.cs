@@ -1,5 +1,6 @@
 using System.Net;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -25,30 +26,9 @@ namespace Odyssey.ApiClient.Tests;
 /// </remarks>
 public class ProfileApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (IProfileApiClient Client, RecordingHttpHandler Handler) Create(string baseAddress = "http://localhost/")
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public HttpStatusCode Status { get; set; } = HttpStatusCode.NoContent;
-
-        public string? Body { get; set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            var response = new HttpResponseMessage(Status);
-            if (Body is not null)
-            {
-                response.Content = new StringContent(Body, System.Text.Encoding.UTF8, "application/json");
-            }
-
-            return Task.FromResult(response);
-        }
-    }
-
-    private static (IProfileApiClient Client, RecordingHandler Handler) Create(string baseAddress = "http://localhost/")
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler(HttpStatusCode.NoContent);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri(baseAddress) });
         return (new ProfileApiClient(api), handler);
     }

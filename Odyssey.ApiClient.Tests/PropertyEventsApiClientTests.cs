@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -22,28 +23,9 @@ public class PropertyEventsApiClientTests
          "occurredAt":"2026-10-28T09:00:00Z","createdBy":"Kari Nordmann","createdAtUtc":"2026-10-28T09:12:44Z"}
         """;
 
-    private sealed class RecordingHandler(HttpStatusCode status, string? body) : HttpMessageHandler
+    private static (IPropertiesApiClient Client, RecordingHttpHandler Handler) Create(HttpStatusCode status, string? body)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            var response = new HttpResponseMessage(status);
-            if (body is not null)
-            {
-                response.Content = new StringContent(body, Encoding.UTF8, "application/json");
-            }
-
-            return response;
-        }
-    }
-
-    private static (IPropertiesApiClient Client, RecordingHandler Handler) Create(HttpStatusCode status, string? body)
-    {
-        var handler = new RecordingHandler(status, body);
+        var handler = new RecordingHttpHandler(status, body);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new PropertiesApiClient(api), handler);
     }

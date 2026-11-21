@@ -371,25 +371,11 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
         /// <summary><c>window.odysseyNativeTransfer</c>, lifted verbatim out of the client's <c>index.html</c>.</summary>
         private static string TransferScript()
         {
-            var html = File.ReadAllText(IndexHtml());
+            var html = SourceTree.ReadAllText("Odyssey.Client", "wwwroot", "index.html");
             var start = html.IndexOf("window.odysseyNativeTransfer = {", StringComparison.Ordinal);
             var end = html.IndexOf("window.revokeBlobUrl", start, StringComparison.Ordinal);
             Assert.True(start >= 0 && end > start, "window.odysseyNativeTransfer was not found in index.html.");
             return html[start..end];
-        }
-
-        private static string IndexHtml()
-        {
-            for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-            {
-                var candidate = Path.Combine(dir.FullName, "Odyssey.Client", "wwwroot", "index.html");
-                if (File.Exists(candidate))
-                {
-                    return candidate;
-                }
-            }
-
-            throw new FileNotFoundException("Odyssey.Client/wwwroot/index.html was not found above the test's directory.");
         }
 
         public void Dispose()

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Xml.Linq;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.E2ETests;
@@ -16,7 +17,7 @@ public sealed class PlaywrightPinLockstepTests
     [Fact]
     public void The_run_odyssey_driver_pins_the_same_playwright_as_the_dotnet_suites()
     {
-        var root = RepoRoot();
+        var root = SourceTree.Root;
 
         var dotnet = XDocument.Load(Path.Combine(root, "Directory.Packages.props"))
             .Descendants("PackageVersion")
@@ -35,18 +36,5 @@ public sealed class PlaywrightPinLockstepTests
         var packages = lockfile.RootElement.GetProperty("packages");
         Assert.Equal(dotnet, packages.GetProperty("node_modules/playwright").GetProperty("version").GetString());
         Assert.Equal(dotnet, packages.GetProperty("node_modules/playwright-core").GetProperty("version").GetString());
-    }
-
-    private static string RepoRoot()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "Directory.Packages.props")))
-            {
-                return dir.FullName;
-            }
-        }
-
-        throw new DirectoryNotFoundException("Directory.Packages.props not found above " + AppContext.BaseDirectory);
     }
 }

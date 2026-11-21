@@ -3,6 +3,7 @@ using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -366,10 +367,10 @@ public class WeatherHistoryWindowServiceTests
         Assert.True(edited);
 
         // Not vacuous: both loggers spoke, and in counts.
-        Assert.Contains(pointLog.Lines, l => l.Text.Contains("2 history window(s)", StringComparison.Ordinal));
-        Assert.Contains(pointLog.Lines, l => l.Text.Contains("history windows 2 -> 3", StringComparison.Ordinal));
-        Assert.Contains(pointLog.Lines, l => l.Text.Contains("history windows 3 -> 2", StringComparison.Ordinal));
-        Assert.Contains(fetchLog.Lines, l => l.Text.Contains("fenced off", StringComparison.Ordinal) && l.Text.Contains(id.ToString(), StringComparison.Ordinal));
+        Assert.Contains(pointLog.Entries, l => l.Message.Contains("2 history window(s)", StringComparison.Ordinal));
+        Assert.Contains(pointLog.Entries, l => l.Message.Contains("history windows 2 -> 3", StringComparison.Ordinal));
+        Assert.Contains(pointLog.Entries, l => l.Message.Contains("history windows 3 -> 2", StringComparison.Ordinal));
+        Assert.Contains(fetchLog.Entries, l => l.Message.Contains("fenced off", StringComparison.Ordinal) && l.Message.Contains(id.ToString(), StringComparison.Ordinal));
 
         string[] formats = ["yyyy-MM-dd", "dd.MM.yyyy", "d.M.yyyy", "dd/MM/yyyy", "MM/dd/yyyy", "M/d/yyyy", "d/M/yyyy", "yyyyMMdd", "d MMM yyyy", "MMM d, yyyy"];
         var days = sets.SelectMany(set => set).SelectMany(w =>
@@ -379,36 +380,15 @@ public class WeatherHistoryWindowServiceTests
                 .Append(d.ToDateTime(TimeOnly.MinValue).ToString("O", System.Globalization.CultureInfo.InvariantCulture)[..13]))
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var line in pointLog.Lines.Concat(fetchLog.Lines))
+        foreach (var line in pointLog.Entries.Concat(fetchLog.Entries))
         {
-            foreach (var text in line.Values.Prepend(line.Text))
+            foreach (var text in line.ArgumentText.Prepend(line.Message))
             {
                 var hit = forbidden.FirstOrDefault(f => text.Contains(f, StringComparison.Ordinal));
-                Assert.True(hit is null, $"A log line carries the window date '{hit}': {line.Text}");
+                Assert.True(hit is null, $"A log line carries the window date '{hit}': {line.Message}");
             }
 
             Assert.DoesNotContain(line.Arguments, a => a is DateOnly or WeatherHistoryWindowDto or IEnumerable<WeatherHistoryWindowDto>);
-        }
-    }
-
-    private sealed record LogLine(string Text, IReadOnlyList<string> Values, IReadOnlyList<object?> Arguments);
-
-    private sealed class RecordingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
-    {
-        public List<LogLine> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter)
-        {
-            var arguments = state is IReadOnlyList<KeyValuePair<string, object?>> pairs
-                ? pairs.Where(p => p.Key != "{OriginalFormat}").Select(p => p.Value).ToList()
-                : [];
-            Lines.Add(new LogLine(formatter(state, exception), [.. arguments.Select(a => a?.ToString() ?? string.Empty)], arguments));
         }
     }
 }

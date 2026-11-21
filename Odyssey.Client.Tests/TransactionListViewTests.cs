@@ -26,7 +26,6 @@ namespace Odyssey.Client.Tests;
 /// or "always everything" without failing.
 /// </para>
 /// </remarks>
-[Collection(TransactionLedgerCollection.Name)]
 public class TransactionListViewTests : IAsyncLifetime
 {
     private readonly BunitContext ctx = new();
@@ -34,8 +33,8 @@ public class TransactionListViewTests : IAsyncLifetime
     public TransactionListViewTests()
     {
         // A bUnit host is not a browser, so the component's off-browser early return would skip the
-        // claim load these tests are about. Restored on teardown — the seam is process-wide.
-        TransactionListView.InteractiveCheck = static () => true;
+        // claim load these tests are about.
+        ctx.UseInteractivity();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<ITransactionsApiClient>());
@@ -46,7 +45,6 @@ public class TransactionListViewTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        TransactionListView.InteractiveCheck = static () => OperatingSystem.IsBrowser();
         await ctx.DisposeAsync();
     }
 

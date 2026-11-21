@@ -1,4 +1,5 @@
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -23,7 +24,7 @@ public class PublicDefaultsInfrastructureTests
     [Fact]
     public void TheDevComposeStack_PublishesEveryPortOnLoopbackOnly()
     {
-        var compose = RepositoryRoot.ReadAllText("docker-compose.yml");
+        var compose = SourceTree.ReadAllText("docker-compose.yml");
 
         Assert.Contains("- \"127.0.0.1:3307:3306\"", compose, StringComparison.Ordinal);
         Assert.Contains("- \"127.0.0.1:5188:8080\"", compose, StringComparison.Ordinal);
@@ -43,7 +44,7 @@ public class PublicDefaultsInfrastructureTests
     [Fact]
     public void TheProductionOverlay_DisablesSwaggerWithTheKeyTheAppReads()
     {
-        var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
+        var overlay = SourceTree.ReadAllText("docker-compose.prod.yml");
 
         Assert.Contains("Swagger__Enabled: \"false\"", overlay, StringComparison.Ordinal);
 
@@ -63,7 +64,7 @@ public class PublicDefaultsInfrastructureTests
     [Fact]
     public void TheProductionOverlay_RequiresBothDatabasePasswords()
     {
-        var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
+        var overlay = SourceTree.ReadAllText("docker-compose.prod.yml");
 
         Assert.Contains("MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?", overlay, StringComparison.Ordinal);
         Assert.Contains("MARIADB_PASSWORD: ${MARIADB_PASSWORD:?", overlay, StringComparison.Ordinal);
@@ -85,8 +86,8 @@ public class PublicDefaultsInfrastructureTests
     [Fact]
     public void TheMigrationsJob_SetsTheEnvironmentNameItsHostActuallyReads()
     {
-        var compose = RepositoryRoot.ReadAllText("docker-compose.yml");
-        var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
+        var compose = SourceTree.ReadAllText("docker-compose.yml");
+        var overlay = SourceTree.ReadAllText("docker-compose.prod.yml");
 
         Assert.Contains(
             "DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}", compose, StringComparison.Ordinal);
@@ -112,7 +113,7 @@ public class PublicDefaultsInfrastructureTests
     [Fact]
     public void TheProductionOverlay_BindsCaddyThroughTheVariableThatMakesADeploymentPrivate()
     {
-        var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
+        var overlay = SourceTree.ReadAllText("docker-compose.prod.yml");
 
         Assert.Contains("- \"${CADDY_BIND:-}80:80\"", overlay, StringComparison.Ordinal);
         Assert.Contains("- \"${CADDY_BIND:-}443:443\"", overlay, StringComparison.Ordinal);
@@ -122,8 +123,8 @@ public class PublicDefaultsInfrastructureTests
 
         // The private template supplies the host IP *and* the separator; the public one supplies
         // neither, which is what leaves Caddy on 0.0.0.0.
-        var privateEnv = RepositoryRoot.ReadAllText(".env.localhost.example");
-        var publicEnv = RepositoryRoot.ReadAllText(".env.prod.example");
+        var privateEnv = SourceTree.ReadAllText(".env.localhost.example");
+        var publicEnv = SourceTree.ReadAllText(".env.prod.example");
 
         Assert.Contains("CADDY_BIND=127.0.0.1:", privateEnv, StringComparison.Ordinal);
         Assert.DoesNotContain(
@@ -142,10 +143,10 @@ public class PublicDefaultsInfrastructureTests
     public void TheLocalhostEnvTemplate_IsReadmittedAfterTheBlanketDotenvRule()
     {
         Assert.True(
-            File.Exists(Path.Combine(RepositoryRoot.Path, ".env.localhost.example")),
+            File.Exists(Path.Combine(SourceTree.Root, ".env.localhost.example")),
             "The .env.localhost.example template is missing, so the .gitignore negation admits nothing.");
 
-        var lines = RepositoryRoot.ReadAllText(".gitignore")
+        var lines = SourceTree.ReadAllText(".gitignore")
             .Split('\n')
             .Select(line => line.Trim())
             .ToList();
@@ -170,7 +171,7 @@ public class PublicDefaultsInfrastructureTests
     [Fact]
     public void TheMariaDbInitScript_GrantsNothing()
     {
-        var initScript = RepositoryRoot.ReadAllText("docker/mariadb/init/01-init.sql");
+        var initScript = SourceTree.ReadAllText("docker/mariadb/init/01-init.sql");
 
         var statements = initScript
             .Split('\n')

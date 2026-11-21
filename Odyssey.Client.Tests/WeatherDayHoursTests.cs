@@ -11,6 +11,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Weather;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -38,7 +39,6 @@ public class WeatherDayHoursTests : IDisposable
     {
         WeatherDayHours.ViewerOffset = static utc => TimeZoneInfo.Local.GetUtcOffset(utc);
         WeatherRetry.CoolDown = TimeSpan.FromSeconds(10);
-        WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
         WeatherWidget.LocalNow = static () => DateTime.Now;
     }
 
@@ -588,9 +588,9 @@ public class WeatherDayHoursTests : IDisposable
     [Fact]
     public void On_the_dashboard_card_the_panel_heading_sits_one_level_below_the_cards_h2()
     {
-        WeatherWidget.InteractiveCheck = static () => true;
         WeatherWidget.LocalNow = static () => new DateTime(2026, 10, 23, 10, 0, 0);
         var (ctx, weather) = Context();
+        ctx.UseInteractivity();
         using var _ = ctx;
         weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(Current()));
         weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), null, It.IsAny<CancellationToken>()))
@@ -797,8 +797,7 @@ public class WeatherDayHoursTests : IDisposable
         Assert.All(files, f => Assert.True(File.Exists(f), f));
 
         var hits = files
-            .SelectMany(file => File.ReadAllLines(file).Select((line, i) => (file, line, i)))
-            .Where(x => !x.line.TrimStart().StartsWith("//", StringComparison.Ordinal))
+            .SelectMany(file => SourceLint.StripComments(File.ReadAllText(file)).Split('\n').Select((line, i) => (file, line, i)))
             .SelectMany(x => Forbidden.Where(f => x.line.Contains(f, StringComparison.Ordinal)).Select(f => $"{Path.GetFileName(x.file)}:{x.i + 1} uses {f}"))
             .ToList();
         Assert.True(hits.Count == 0, string.Join(Environment.NewLine, hits));

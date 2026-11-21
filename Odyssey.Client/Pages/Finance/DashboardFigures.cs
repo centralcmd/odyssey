@@ -9,7 +9,7 @@ namespace Odyssey.Client.Pages.Finance;
 /// reason <see cref="AllocationLegend"/> was split out of <c>AccountsOverview</c>: a branch that
 /// lives as a private method on a component is checkable only by rendering the page, and
 /// <c>Home</c> cannot be rendered in a test — its <c>OnInitializedAsync</c> early-returns on
-/// <c>!OperatingSystem.IsBrowser()</c> and it exposes no <c>InteractiveCheck</c> seam.
+/// <c>!OperatingSystem.IsBrowser()</c> rather than reading <c>IRenderInteractivity</c>.
 /// </summary>
 /// <remarks>
 /// These are the branches a source-lint cannot reach. A lint proves the page asks the server for its

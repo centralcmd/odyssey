@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
@@ -16,16 +17,11 @@ public class PropertyListEnrichmentTests
 {
     private static readonly DateTimeOffset Now = new(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
 
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
-    }
-
     private static DateTime Utc(int year, int month, int day) => new(year, month, day, 0, 0, 0, DateTimeKind.Utc);
 
     private static async Task<(PropertyService Service, Guid PropertyId)> SeedAsync(OdysseyContext context)
     {
-        var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
+        var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(Now));
         var propertyId = (await service.Create(PropertyTestData.House(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
         context.PropertyEstimates.AddRange(
@@ -115,7 +111,7 @@ public class PropertyListEnrichmentTests
     public async Task A_PropertyWithOnlyAScheduledEstimate_HasACountButNoValue()
     {
         await using var context = TestContextFactory.Create();
-        var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
+        var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(Now));
         var propertyId = (await service.Create(PropertyTestData.Car(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         context.PropertyEstimates.Add(new PropertyEstimate
         {

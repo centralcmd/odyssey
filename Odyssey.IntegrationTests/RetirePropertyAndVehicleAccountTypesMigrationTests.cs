@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Odyssey.Context;
 using Odyssey.MigrationService;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.IntegrationTests;
@@ -122,7 +123,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
         }
     }
 
-    private async Task<List<string>> RunMigrationServiceAsync()
+    private async Task<IReadOnlyList<string>> RunMigrationServiceAsync()
     {
         var services = new ServiceCollection();
         services.AddDbContext<OdysseyContext>(options => options.UseMySql(
@@ -130,26 +131,12 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
         services.AddScoped<Odyssey.Core.Locations.Conversion.ILocationConversion, Odyssey.Core.Locations.Conversion.LocationConversion>();
         await using var provider = services.BuildServiceProvider();
 
-        var logger = new CapturingLogger<OdysseyMigrationService>();
+        var logger = new RecordingLogger<OdysseyMigrationService>();
         await new OdysseyMigrationService(provider, logger).ExecuteAsync(CancellationToken.None);
-        return logger.Lines;
+        return logger.Messages;
     }
 
     // ── Infrastructure ────────────────────────────────────────────────────────
-
-    private sealed class CapturingLogger<T> : CapturingLogger, ILogger<T>;
-
-    private class CapturingLogger : ILogger
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
-    }
 
     private OdysseyContext NewContext() =>
         new(new DbContextOptionsBuilder<OdysseyContext>()

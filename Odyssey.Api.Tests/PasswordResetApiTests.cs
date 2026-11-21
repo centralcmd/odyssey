@@ -16,6 +16,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 
@@ -408,7 +409,7 @@ public class PasswordResetApiTests(PasswordResetApiTests.SharedHost sharedHost, 
     }
 
 
-    private static IEnumerable<CapturingLoggerProvider.Entry> CompletionLines(ApiFactory factory) =>
+    private static IEnumerable<LogEntry> CompletionLines(ApiFactory factory) =>
         factory.Logs.ForCategory(typeof(PasswordResetLogging).FullName!)
             .Where(entry => entry.Message.Contains("Password reset completed", StringComparison.Ordinal));
 
@@ -578,7 +579,7 @@ public class PasswordResetApiTests(PasswordResetApiTests.SharedHost sharedHost, 
     {
         private readonly string databaseName = $"PasswordResetApiTests-{Guid.NewGuid()}";
 
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected IEmailSender<ApplicationUser>? EmailSender => emailSender;
 

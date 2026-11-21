@@ -67,8 +67,7 @@ public partial class FileAnalysisDialog : IDisposable
     /// </summary>
     public enum StartMode { Consent, ReanalyzeConfirm, Resume, Progress, Result }
 
-    /// <summary>The interactivity check, as a seam for bUnit (the <c>Preferences.InteractiveCheck</c> pattern).</summary>
-    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     // The phase machine, candidate rows and match/merchant-create rules (issue #373). The dialog owns
     // only the I/O around it.
@@ -345,7 +344,7 @@ public partial class FileAnalysisDialog : IDisposable
             _session.SetPhase(FileAnalysisPhase.Analyzing);
         }
 
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
         {
             return;
         }

@@ -512,7 +512,7 @@ public partial class Home
     // It is presented as signed: the direction is the point of the row, and a bare positive would
     // read as an ordinary total.
     // The rule itself lives in DashboardFigures, where it is testable without a renderer: this page
-    // early-returns off the browser and exposes no InteractiveCheck seam, so anything left inline here
+    // early-returns off the browser without reading IRenderInteractivity, so anything left inline here
     // is reachable only by reading it.
     private string FormatSignedMoney(decimal value, string? currencyCode) =>
         DashboardFigures.TransactionAmount(value, currencyCode, _minorUnitsByCode);

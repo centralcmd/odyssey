@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Odyssey.Core.Locations;
 using Odyssey.Core.Locations.Conversion;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -31,14 +32,14 @@ public partial class LocationUnificationRulesTests
     [Fact]
     public void Exactly_one_location_text_cleaning_implementation_exists()
     {
-        var root = SolutionRoot();
-        var implementations = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !IsBuildOutput(path) && !path.Contains(".Tests", StringComparison.Ordinal))
+        var root = SourceTree.Root;
+        var implementations = SourceTree.Files(root)
+            .Where(path => !path.Contains(".Tests", StringComparison.Ordinal))
             // NewsText is the news reader's feed-text sanitiser (issue #470 §8.7): a different, wider rule set (tabs
             // become spaces, zero-width and tag characters go, lines are kept) applied to publisher text, never to
             // location data, so it is not a copy of this one.
             .Where(path => !path.Replace('\\', '/').EndsWith("Odyssey.Core/Internet/News/Content/NewsText.cs", StringComparison.Ordinal))
-            .Select(path => (Path: path, Code: StripComments(File.ReadAllText(path))))
+            .Select(path => (Path: path, Code: SourceLint.StripComments(File.ReadAllText(path))))
             // A cleaner composes to NFC and strips controls and bidi overrides. TermTextValue rejects the same
             // characters rather than removing them and normalizes nothing, so it is not a copy.
             .Where(file => BidiRangeCheck().IsMatch(file.Code)
@@ -50,7 +51,7 @@ public partial class LocationUnificationRulesTests
         Assert.NotEmpty(implementations);
         Assert.Equal(["Odyssey.Dtos/Journal/LocationTextCleaner.cs"], implementations);
 
-        var coreDelegate = StripComments(File.ReadAllText(Path.Combine(root, "Odyssey.Core", "Journal", "LocationText.cs")));
+        var coreDelegate = SourceLint.StripComments(File.ReadAllText(Path.Combine(root, "Odyssey.Core", "Journal", "LocationText.cs")));
         Assert.Contains("LocationTextCleaner.Clean(", coreDelegate, StringComparison.Ordinal);
         Assert.DoesNotContain("NormalizationForm", coreDelegate, StringComparison.Ordinal);
     }
@@ -328,24 +329,4 @@ public partial class LocationUnificationRulesTests
 
     [GeneratedRegex(@"'(\\u202[Aa]|\u202A)'")]
     private static partial Regex BidiRangeCheck();
-
-    private static string StripComments(string code) =>
-        Regex.Replace(Regex.Replace(code, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline),
-            @"//.*?$", string.Empty, RegexOptions.Multiline);
-
-    private static bool IsBuildOutput(string path) =>
-        path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-        || path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution root from the test binary.");
-    }
 }

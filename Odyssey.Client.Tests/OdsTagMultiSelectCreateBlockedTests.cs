@@ -129,13 +129,11 @@ public sealed class OdsTagMultiSelectCreateBlockedTests : IAsyncLifetime
     [Theory]
     [InlineData(TagNameRule.Pages.Journal)]
     [InlineData(TagNameRule.Pages.Task)]
-    public void Active_only_vocabularies_leave_an_archived_name_creatable(string page)
+    public void Journal_and_task_vocabularies_refuse_an_archived_name_too(string page)
     {
-        // Journal and task tag names are unique among ACTIVE tags only, so their fields pass active tags.
-        var activeOnly = Tags.Where(t => !t.Archived);
-
-        Assert.Null(TagNameRule.Blocked(activeOnly, "Old album", page));
-        Assert.Equal("A tag called “Groceries” already exists.", TagNameRule.Blocked(activeOnly, "groceries", page));
+        // Journal and task tag names are unique archived tags included, like every other vocabulary.
+        Assert.Equal($"“Old album” is an archived tag. Restore it on the {page} page to use it.", TagNameRule.Blocked(Tags, "old album", page));
+        Assert.Equal("A tag called “Groceries” already exists.", TagNameRule.Blocked(Tags, "groceries", page));
     }
 
     [Fact]

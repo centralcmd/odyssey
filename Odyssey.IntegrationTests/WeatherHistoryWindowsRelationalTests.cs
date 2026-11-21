@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
@@ -325,7 +326,7 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
 
     private static WeatherPointService Admin(OdysseyContext context) =>
         new(context, Fetch(context, new WindowObservations()), new WindowFetching.Settings(), new RelationalWeatherHistoryPurger(context),
-            new WindowFetching.FixedTime(Morning));
+            new FakeTimeProvider(Morning));
 
     private async Task MigratedAsync()
     {
@@ -343,7 +344,7 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
 internal static class WindowFetching
 {
     public static WeatherFetchService Fetch(OdysseyContext context, IWeatherObservationSource source, DateTime now) =>
-        new(context, new NoForecasts(), source, new Settings(), new FrostSecret(), new FixedTime(now));
+        new(context, new NoForecasts(), source, new Settings(), new FrostSecret(), new FakeTimeProvider(now));
 
     /// <summary>Every measure group already has its station, so a fetch's one request is a daily one.</summary>
     public static async Task ResolveStationsAsync(OdysseyContext context, Guid id, DateTime now)
@@ -358,11 +359,6 @@ internal static class WindowFetching
 
             await context.SaveChangesAsync();
         }
-    }
-
-    internal sealed class FixedTime(DateTime now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(now);
     }
 
     internal sealed class Settings : IWeatherSettingsLookup

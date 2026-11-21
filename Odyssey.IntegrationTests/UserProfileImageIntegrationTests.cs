@@ -43,9 +43,9 @@ public class UserProfileImageIntegrationTests(MariaDbFixture fixture)
     /// AC 15. Deleting the account removes <b>both</b> rows by cascade alone — no purge code anywhere.
     ///
     /// <para>
-    /// This is what the inverted FK buys. In the shipped <c>FileMetadata</c>/<c>FileBlob</c> pair the
-    /// <i>blob</i> is the principal, so the cascade runs blob → metadata and never the reverse — which
-    /// is why <c>ContactAvatarRelease</c> has to remove both rows explicitly. Copying that shape here
+    /// This is what the inverted FK buys. In the former <c>FileMetadata</c>/<c>FileBlob</c> pair (removed
+    /// with the legacy file storage) the <i>blob</i> was the principal, so the cascade ran blob → metadata
+    /// and never the reverse. Copying that shape here
     /// would have left every deleted user's facial image bytes as a permanent orphan with no row
     /// pointing at them, and nothing would have said so.
     /// </para>
@@ -366,12 +366,13 @@ public class UserProfileImageIntegrationTests(MariaDbFixture fixture)
 
     /// <summary>
     /// AC 20. <b>Zero</b> foreign keys between the two identity-image tables and
-    /// <c>FileMetadata</c>/<c>FileBlob</c>, in either direction.
+    /// the domain file store — <c>FileMetadata</c> and the <c>StoredObjects</c> object store that holds
+    /// every file's bytes — in either direction.
     ///
     /// <para>
     /// The whole security boundary is that a <c>files.read</c> holder cannot read a person's face and
     /// <c>files.delete</c> cannot destroy it, and that <c>AdminFileExportService</c> — which enumerates
-    /// <c>FileMetadata</c> and pulls matching blobs wholesale — cannot sweep one into an admin export.
+    /// <c>FileMetadata</c> and pulls the matching files wholesale — cannot sweep one into an admin export.
     /// A single convenience FK added later would quietly undo that, and nothing else would notice.
     /// </para>
     /// </summary>
@@ -384,12 +385,34 @@ public class UserProfileImageIntegrationTests(MariaDbFixture fixture)
         await using var context = new OdysseyContext(options);
 
         var identityTables = new[] { "UserProfileImages", "UserProfileImageBlobs" };
-        var fileTables = new[] { "FileMetadata", "FileBlob" };
+
+        // The domain file store is the Files-store metadata plus the object store that holds every
+        // file's bytes since the legacy FileBlob table was dropped. Both names are checked against
+        // the live schema below, so a rename cannot turn this guard into a vacuous pass.
+        var fileTables = new[] { "FileMetadata", "StoredObjects" };
+
+        await context.Database.OpenConnectionAsync();
+
+        var existing = new HashSet<string>(StringComparer.Ordinal);
+        await using (var tablesCommand = context.Database.GetDbConnection().CreateCommand())
+        {
+            tablesCommand.CommandText =
+                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()";
+            await using var tables = await tablesCommand.ExecuteReaderAsync();
+            while (await tables.ReadAsync())
+            {
+                existing.Add(tables.GetString(0));
+            }
+        }
+
+        var missing = identityTables.Concat(fileTables).Where(t => !existing.Contains(t)).ToList();
+        Assert.True(missing.Count == 0,
+            "The boundary check names tables the schema no longer has, so it would pass vacuously: "
+            + string.Join(", ", missing));
 
         var crossings = new List<string>();
         await using (var command = context.Database.GetDbConnection().CreateCommand())
         {
-            await context.Database.OpenConnectionAsync();
             command.CommandText = """
                 SELECT TABLE_NAME, REFERENCED_TABLE_NAME, CONSTRAINT_NAME
                 FROM information_schema.KEY_COLUMN_USAGE

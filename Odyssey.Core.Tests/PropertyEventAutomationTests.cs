@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -19,12 +20,7 @@ public class PropertyEventAutomationTests
     private static readonly DateTime Now = new(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
     private const string Actor = "property-automation-actor";
 
-    private sealed class FixedTimeProvider(DateTime now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(now);
-    }
-
-    private static PropertyService Service(OdysseyContext context) => new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
+    private static PropertyService Service(OdysseyContext context) => new(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(Now));
 
     private static List<PropertyEvent> Events(OdysseyContext context, Guid propertyId) =>
         [.. context.PropertyEvents.AsNoTracking().Where(e => e.PropertyId == propertyId).OrderBy(e => e.Type)];
@@ -239,6 +235,9 @@ public class PropertyEventAutomationTests
         var created = await Service(context).Create(PropertyTestData.House(), Actor, claims: LocationClaims.Trusted);
         Assert.Single(Events(context, created.PropertyId));
 
+        // Untrack what Create left behind, so the cascade is the delete's own Include of the events — the
+        // only thing that removes them on a provider that enforces no keys — and not leftover tracking.
+        context.ChangeTracker.Clear();
         Assert.True(await Service(context).Delete(created.PropertyId, Actor));
 
         Assert.Empty(context.PropertyEvents);

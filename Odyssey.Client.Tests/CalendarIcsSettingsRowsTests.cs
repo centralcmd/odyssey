@@ -13,13 +13,10 @@ namespace Odyssey.Client.Tests;
 /// <see cref="SystemSettingsBounds"/> pair, which stops at 10240 MB, the spec's descriptions, and the server's advisory
 /// above 1024 MB in the row's Advisory slot.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class CalendarIcsSettingsRowsTests : IDisposable
+public class CalendarIcsSettingsRowsTests
 {
     private const string ExportKey = "calendarIcsMaxExportMegabytes";
     private const string ImportKey = "calendarIcsMaxImportMegabytes";
-
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
 
     private static Settings.SettingItem Row(string key) => Settings.AllItems.Single(i => i.Key == key);
 
