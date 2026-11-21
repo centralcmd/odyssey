@@ -186,7 +186,7 @@ public class TaskIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Export_OverTheByteCap_IsRefusedBeforeAnyByte()
     {
-        Limits.Value = Limits.Value with { TaskIcsMaxExportBytes = 1024L * 1024 };
+        Limits.TaskIcsMaxExportBytes = 1024L * 1024;
         var big = new byte[1024 * 1024]; // 1 MB of content is ~1.4 MB once base64-encoded and folded
         var fileId = await SeedFileWithContentAsync("big.pdf", "application/pdf", big);
         await CreateAsync(new NewJournalTask { Title = "Big", AttachmentFileIds = [fileId] });
@@ -207,7 +207,7 @@ public class TaskIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Export_ThatGrowsPastTheByteCapWhileStreaming_Throws_AfterTheHeadersAreNamed()
     {
-        Limits.Value = Limits.Value with { TaskIcsMaxExportBytes = 1024L * 1024 };
+        Limits.TaskIcsMaxExportBytes = 1024L * 1024;
         await WithContextAsync(async context =>
         {
             context.JournalTasks.AddRange(Enumerable.Range(0, 400).Select(i => new JournalTask
@@ -524,7 +524,7 @@ public class TaskIcsServiceTests : IcsServiceTestBase
     {
         // The shipped default is unlimited (the task surface moves whole boards), so an administrator's cap is pinned.
         const int cap = 5;
-        Limits.Value = Limits.Value with { TaskIcsMaxImportTasks = cap };
+        Limits.TaskIcsMaxImportTasks = cap;
 
         var refused = await Assert.ThrowsAsync<DomainValidationException>(() =>
             ImportAsync(Vcalendar([.. Enumerable.Range(0, cap + 1).Select(i => Vtodo($"u{i}", $"SUMMARY:T{i}"))])));
@@ -796,7 +796,7 @@ public class TaskIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Import_LargerThanTheImportCap_IsRefusedWhole()
     {
-        Limits.Value = Limits.Value with { TaskIcsMaxImportBytes = 1024L * 1024 };
+        Limits.TaskIcsMaxImportBytes = 1024L * 1024;
 
         var refused = await Assert.ThrowsAsync<DomainValidationException>(() => ImportAsync(
             Vcalendar(Vtodo("b1", "SUMMARY:Big", InlineAttach(new byte[1024 * 1024], "big.txt", "text/plain"))), WithUploads));

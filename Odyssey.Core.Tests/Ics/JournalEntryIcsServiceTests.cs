@@ -196,7 +196,7 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Export_OverTheEntryCap_IsRefusedWithTheMachineReadableCode()
     {
-        Limits.Value = Limits.Value with { JournalIcsMaxExportRows = AdminCountCap };
+        Limits.JournalIcsMaxExportRows = AdminCountCap;
         await WithContextAsync(async context =>
         {
             var now = DateTime.UtcNow;
@@ -287,7 +287,7 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Export_OverTheByteCap_IsRefusedBeforeAnyByte()
     {
-        Limits.Value = Limits.Value with { JournalIcsMaxExportBytes = 1024L * 1024 };
+        Limits.JournalIcsMaxExportBytes = 1024L * 1024;
         var big = new byte[1024 * 1024]; // 1 MB of content is ~1.4 MB once base64-encoded and folded
         var fileId = await SeedFileWithContentAsync("big.pdf", "application/pdf", big);
         await CreateAsync(NewEntry("Big", attachmentFileIds: [fileId]));
@@ -309,7 +309,7 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Export_ThatGrowsPastTheByteCapWhileStreaming_Throws_AfterTheHeadersAreNamed()
     {
-        Limits.Value = Limits.Value with { JournalIcsMaxExportBytes = 1024L * 1024 };
+        Limits.JournalIcsMaxExportBytes = 1024L * 1024;
         await WithContextAsync(async context =>
         {
             var now = DateTime.UtcNow;
@@ -678,7 +678,7 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Import_TooManyVJournals_IsRefusedWhole_NothingImported()
     {
-        Limits.Value = Limits.Value with { JournalIcsMaxImportEntries = AdminCountCap };
+        Limits.JournalIcsMaxImportEntries = AdminCountCap;
         var blocks = Enumerable.Range(0, AdminCountCap + 1)
             .Select(i => Vjournal($"u{i}", $"SUMMARY:T{i}", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
 
@@ -1013,7 +1013,7 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Import_LargerThanTheImportCap_IsRefusedWhole()
     {
-        Limits.Value = Limits.Value with { JournalIcsMaxImportBytes = 1024L * 1024 };
+        Limits.JournalIcsMaxImportBytes = 1024L * 1024;
         var ics = Vcalendar(Vjournal("b1", "SUMMARY:Big", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             InlineAttach(new byte[1024 * 1024], "big.txt", "text/plain")));
 

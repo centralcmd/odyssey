@@ -25,7 +25,7 @@ public abstract class IcsServiceTestBase : FileStorageTestBase
 
     private FileStorageTestHost? host;
 
-    protected SettableImportExportLimits Limits { get; } = new();
+    protected FakeImportExportLimitsLookup Limits { get; } = new();
 
     protected SettableJournalLimits JournalLimits { get; } = new();
 
@@ -192,39 +192,6 @@ public abstract class IcsServiceTestBase : FileStorageTestBase
             + (caption is null ? "" : $";X-ODYSSEY-CAPTION=\"{caption}\""));
 
     // ------------------------------------------------------------------ settable lookups
-
-    /// <summary>The import/export caps, the shipped defaults unless a test replaces <see cref="Value"/>.</summary>
-    public sealed class SettableImportExportLimits : IImportExportLimitsLookup
-    {
-        private const long Megabyte = 1024L * 1024;
-
-        public ImportExportLimits Value { get; set; } = new(
-            ContactVCardMaxExportRows: null,
-            ContactVCardMaxImportEntries: null,
-            ContactVCardMaxImportBytes: SystemSettingsDefaults.ContactVCardMaxImportMegabytes * Megabyte,
-            ContactVCardMaxExportBytes: SystemSettingsDefaults.ContactVCardMaxExportMegabytes * Megabyte,
-            CalendarIcsMaxExportEvents: null,
-            CalendarIcsMaxImportEvents: null,
-            CalendarIcsMaxImportBytes: SystemSettingsDefaults.CalendarIcsMaxImportMegabytes * Megabyte,
-            CalendarIcsMaxExportBytes: SystemSettingsDefaults.CalendarIcsMaxExportMegabytes * Megabyte,
-            TaskIcsMaxExportTasks: null,
-            TaskIcsMaxImportTasks: null,
-            TaskIcsMaxImportBytes: SystemSettingsDefaults.TaskIcsMaxImportMegabytes * Megabyte,
-            TaskIcsMaxExportBytes: SystemSettingsDefaults.TaskIcsMaxExportMegabytes * Megabyte,
-            JournalIcsMaxExportRows: null,
-            JournalIcsMaxImportEntries: null,
-            JournalIcsMaxImportBytes: SystemSettingsDefaults.JournalIcsMaxImportMegabytes * Megabyte,
-            JournalIcsMaxExportBytes: SystemSettingsDefaults.JournalIcsMaxExportMegabytes * Megabyte,
-            CalendarIcsMaxAggregateExportRows: SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows,
-            CalendarIcsMaxAggregateOccurrences: SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences,
-            CalendarIcsMaxAggregateExportWindowDays: SystemSettingsDefaults.CalendarIcsMaxAggregateExportWindowDays,
-            ContactVCardMaxRepeatablePropertiesPerEntry: SystemSettingsDefaults.ContactVCardMaxRepeatablePropertiesPerEntry,
-            ImportMaxSamplesPerSkipReason: SystemSettingsDefaults.ImportMaxSamplesPerSkipReason,
-            NewsOpmlMaxImportBytes: SystemSettingsDefaults.NewsOpmlMaxImportMegabytes * Megabyte,
-            IsDegraded: false);
-
-        public Task<ImportExportLimits> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult(Value);
-    }
 
     /// <summary>The journal caps, the shipped defaults unless a test replaces <see cref="Value"/>; counts its reads.</summary>
     public sealed class SettableJournalLimits : IJournalLimitsLookup

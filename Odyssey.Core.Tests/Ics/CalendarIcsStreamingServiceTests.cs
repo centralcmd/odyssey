@@ -167,7 +167,7 @@ public class CalendarIcsStreamingServiceTests : IcsServiceTestBase
             CalendarIcsExportScope.ForCalendar(calendar), CalendarIcsExportScope.ForPattern(series), CalendarIcsExportScope.ForAggregate(new()),
         };
 
-        Limits.Value = Limits.Value with { CalendarIcsMaxExportEvents = 1 };
+        Limits.CalendarIcsMaxExportEvents = 1;
         foreach (var scope in capped)
         {
             var summary = await Assert.ThrowsAsync<ExportLimitExceededException>(() =>
@@ -180,7 +180,7 @@ public class CalendarIcsStreamingServiceTests : IcsServiceTestBase
         // The single-event export plans exactly one VEVENT, and the cap's floor is 1, so no cap refuses it.
         Assert.Equal(1, Count(await ExportAsync(CalendarIcsExportScope.ForEvent(single)), "BEGIN:VEVENT"));
 
-        Limits.Value = Limits.Value with { CalendarIcsMaxExportEvents = null };
+        Limits.CalendarIcsMaxExportEvents = null;
         foreach (var scope in capped)
         {
             Assert.Contains("BEGIN:VEVENT", await ExportAsync(scope));
@@ -501,7 +501,7 @@ public class CalendarIcsStreamingServiceTests : IcsServiceTestBase
     [Fact]
     public async Task Generated_series_occurrences_still_count_against_the_budget_across_the_whole_import()
     {
-        Limits.Value = Limits.Value with { CalendarIcsMaxAggregateOccurrences = 15 };
+        Limits.CalendarIcsMaxAggregateOccurrences = 15;
         var calendar = await CreateCalendarAsync("Budgeted");
         var series = Enumerable.Range(0, 2).Select(i => Vevent(
             $"series-{i}@example.com", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", $"SUMMARY:Series {i}",

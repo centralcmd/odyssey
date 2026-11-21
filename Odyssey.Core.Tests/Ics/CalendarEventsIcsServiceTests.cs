@@ -368,7 +368,7 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task ExportAggregate_FilteredMatchExceedsMaxVEvents_IsRefusedWithTheCalendarCode()
     {
-        Limits.Value = Limits.Value with { CalendarIcsMaxExportEvents = TestMaxExportEvents };
+        Limits.CalendarIcsMaxExportEvents = TestMaxExportEvents;
         var calendar = await CreateCalendarAsync("TooManyFiltered");
         await SeedStandaloneRowsAsync(calendar, TestMaxExportEvents + 1, "Match");
 
@@ -382,7 +382,7 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task ExportAggregate_FilteredMatchExactlyMaxVEvents_IsExported()
     {
-        Limits.Value = Limits.Value with { CalendarIcsMaxExportEvents = TestMaxExportEvents };
+        Limits.CalendarIcsMaxExportEvents = TestMaxExportEvents;
         var calendar = await CreateCalendarAsync("ExactlyMaxFiltered");
         await SeedStandaloneRowsAsync(calendar, TestMaxExportEvents, "Match");
 
@@ -419,7 +419,7 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
     [Fact]
     public async Task ExportAggregate_NoFilterPostCollapseCountExceedsOutputCap_IsRefusedWithTheCalendarCode()
     {
-        Limits.Value = Limits.Value with { CalendarIcsMaxExportEvents = TestMaxExportEvents };
+        Limits.CalendarIcsMaxExportEvents = TestMaxExportEvents;
         var calendar = await CreateCalendarAsync("TooManyOutput");
         // Under the fetch cap but over the output cap — all standalone, so nothing collapses and the raw count IS the
         // eventual VEVENT count.
