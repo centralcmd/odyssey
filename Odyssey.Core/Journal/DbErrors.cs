@@ -12,6 +12,19 @@ internal static class DbErrors
     public static bool IsDuplicateKey(DbUpdateException exception) =>
         exception.InnerException is MySqlException { Number: 1062 };
 
+    /// <summary>1451: a delete or update refused by a RESTRICT foreign key that still references the row.</summary>
+    public static bool IsReferencedRow(DbUpdateException exception) =>
+        exception.GetBaseException() is MySqlException { Number: 1451 };
+
+    /// <summary>1452: an insert or update naming a parent row that does not exist (it was deleted meanwhile).</summary>
+    public static bool IsMissingReference(DbUpdateException exception) =>
+        exception.GetBaseException() is MySqlException { Number: 1452 };
+
+    /// <summary>Whether a <c>1452</c>'s message names the referenced table <paramref name="table"/> (backtick-quoted).</summary>
+    public static bool MissingReferenceNames(DbUpdateException exception, string table) =>
+        exception.GetBaseException() is MySqlException { Number: 1452 } mysql
+        && mysql.Message.Contains($"REFERENCES `{table}`", StringComparison.Ordinal);
+
     /// <summary>
     /// A 1062 raised by the unique index <paramref name="indexName"/> specifically. MariaDB names the index only
     /// in the message text (<c>Duplicate entry '…' for key 'IX_…'</c>), so this is the one place that reads it:

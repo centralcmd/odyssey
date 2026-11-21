@@ -144,6 +144,17 @@ public static class PermissionClaims
     public const string PhotoTagsUpdate = "photos.tags.update";
     public const string PhotoTagsDelete = "photos.tags.delete";
 
+    // Books (issue #527), a Library-module feature. Guest reads books and book tags only.
+    public const string BooksCreate = "books.create";
+    public const string BooksRead = "books.read";
+    public const string BooksUpdate = "books.update";
+    public const string BooksDelete = "books.delete";
+
+    public const string BookTagsCreate = "books.tags.create";
+    public const string BookTagsRead = "books.tags.read";
+    public const string BookTagsUpdate = "books.tags.update";
+    public const string BookTagsDelete = "books.tags.delete";
+
     public const string PhotoAlbumsCreate = "photos.albums.create";
     public const string PhotoAlbumsRead = "photos.albums.read";
     public const string PhotoAlbumsUpdate = "photos.albums.update";

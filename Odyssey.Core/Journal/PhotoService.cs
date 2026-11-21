@@ -381,7 +381,7 @@ public class PhotoService
 
         await using (var header = upload.OpenReadStream())
         {
-            var bytes = new byte[16];
+            var bytes = new byte[Imaging.FileHeaderSignatures.HeaderLength];
             var read = await header.ReadAtLeastAsync(bytes, bytes.Length, throwOnEndOfStream: false, cancellationToken);
             if (!FileValidationService.HeaderMatchesContentType(upload.ContentType, bytes.AsSpan(0, read)))
             {

@@ -41,6 +41,23 @@ public static class RolePermissions
         PhotoAlbumsDelete,
     ];
 
+    /// <summary>
+    /// Books (issue #527). Every role holding <c>books.read</c>, <c>.create</c> or <c>.update</c> also holds
+    /// <c>contacts.read</c> (the main author is a required contact) and <c>books.tags.read</c> (tag icons);
+    /// <c>AuthorizationPolicyTests</c> pins both.
+    /// </summary>
+    public static readonly string[] BooksModuleClaims =
+    [
+        BooksCreate,
+        BooksRead,
+        BooksUpdate,
+        BooksDelete,
+        BookTagsCreate,
+        BookTagsRead,
+        BookTagsUpdate,
+        BookTagsDelete,
+    ];
+
     public static readonly string[] JournalModuleClaims =
     [
         JournalCreate,
@@ -171,6 +188,7 @@ public static class RolePermissions
         FileAnalysisAudit,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..BooksModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         WeatherPointsRead,
@@ -256,6 +274,7 @@ public static class RolePermissions
         ContractsDelete,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..BooksModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
@@ -294,6 +313,7 @@ public static class RolePermissions
         ContractsRead,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..BooksModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
@@ -333,6 +353,9 @@ public static class RolePermissions
         ProfileImagesRead,
         // News (issue #470 §7.2): the household's shared feeds, read only.
         NewsRead,
+        // Books (issue #527 §7.2): the household's catalogue and its tags, read only.
+        BooksRead,
+        BookTagsRead,
     ];
 
     /// <summary>

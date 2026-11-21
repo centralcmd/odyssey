@@ -181,6 +181,7 @@ services:
       FileStorage__Bindings__PhotoOriginals: primary
       FileStorage__Bindings__FinanceFiles: primary
       FileStorage__Bindings__JournalFiles: primary
+      FileStorage__Bindings__LibraryFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
       # The location map's basemap (issue #370) — deploy-time, because the client's CSP below is rendered
@@ -241,6 +242,7 @@ services:
       FileStorage__Bindings__PhotoOriginals: primary
       FileStorage__Bindings__FinanceFiles: primary
       FileStorage__Bindings__JournalFiles: primary
+      FileStorage__Bindings__LibraryFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
     volumes:

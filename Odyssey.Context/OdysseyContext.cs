@@ -357,6 +357,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<JournalTask>(modelBuilder, nameof(JournalTask.CreatedByUserId), nameof(JournalTask.UpdatedByUserId));
         DeclareUserAttribution<Photo>(modelBuilder, nameof(Photo.CreatedByUserId), nameof(Photo.UpdatedByUserId));
         DeclareUserAttribution<PhotoAlbum>(modelBuilder, nameof(PhotoAlbum.CreatedByUserId), nameof(PhotoAlbum.UpdatedByUserId));
+        DeclareUserAttribution<Book>(modelBuilder, nameof(Book.CreatedByUserId), nameof(Book.UpdatedByUserId));
         DeclareUserAttribution<RecurrencePattern>(modelBuilder, nameof(RecurrencePattern.CreatedByUserId), nameof(RecurrencePattern.UpdatedByUserId));
         DeclareUserAttribution<RecurrenceExclusion>(modelBuilder, nameof(RecurrenceExclusion.CreatedByUserId));
 
@@ -483,6 +484,14 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PhotoPerson> PhotoPeople { get; set; }
     public DbSet<PhotoAlbum> PhotoAlbums { get; set; }
     public DbSet<PhotoAlbumItem> PhotoAlbumItems { get; set; }
+
+    // Books (issue #527), a Library-module feature.
+    public DbSet<Book> Books { get; set; }
+    public DbSet<BookContributor> BookContributors { get; set; }
+    public DbSet<BookImage> BookImages { get; set; }
+    public DbSet<BookAttachment> BookAttachments { get; set; }
+    public DbSet<BookTag> BookTags { get; set; }
+    public DbSet<BookTagLink> BookTagLinks { get; set; }
 
     // Calendar (issue #330), merged in.
     public DbSet<Calendar> Calendars { get; set; }

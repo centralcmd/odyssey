@@ -297,6 +297,7 @@ public static class ContentTypeExtensions
         "image/gif" => ".gif",
         "image/webp" => ".webp",
         "application/zip" or "application/x-zip-compressed" => ".zip",
+        "application/epub+zip" => ".epub",
         "application/x-rar-compressed" => ".rar",
         "application/x-7z-compressed" => ".7z",
         "application/vnd.ms-powerpoint" => ".ppt",

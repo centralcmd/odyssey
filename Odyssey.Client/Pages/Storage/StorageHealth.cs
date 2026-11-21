@@ -36,6 +36,7 @@ public static class StorageHealth
         // Issue #449: the three file areas. Placement labels, not access boundaries — reads ignore the area.
         ["FinanceFiles"] = "Finance files",
         ["JournalFiles"] = "Journal files",
+        ["LibraryFiles"] = "Library files",
         ["ContactAvatars"] = "Contact avatars",
     };
 

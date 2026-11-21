@@ -23,16 +23,21 @@ internal sealed class FileMetadataStorageConfiguration : IEntityTypeConfiguratio
             .WithMany()
             .HasForeignKey(f => f.ContactAvatarStoredObjectId)
             .OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne<StoredObject>()
+            .WithMany()
+            .HasForeignKey(f => f.LibraryStoredObjectId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         entity.HasIndex(f => f.FinanceStoredObjectId).IsUnique();
         entity.HasIndex(f => f.JournalStoredObjectId).IsUnique();
         entity.HasIndex(f => f.ContactAvatarStoredObjectId).IsUnique();
+        entity.HasIndex(f => f.LibraryStoredObjectId).IsUnique();
 
         // Exactly one feature's stored object is set: a file always has its bytes on the store.
         entity.ToTable(tb => tb.HasCheckConstraint(
             "CK_FileMetadata_ExactlyOneSource",
             "(`FinanceStoredObjectId` IS NOT NULL) + (`JournalStoredObjectId` IS NOT NULL)"
-            + " + (`ContactAvatarStoredObjectId` IS NOT NULL) = 1"));
+            + " + (`ContactAvatarStoredObjectId` IS NOT NULL) + (`LibraryStoredObjectId` IS NOT NULL) = 1"));
     }
 }
 
