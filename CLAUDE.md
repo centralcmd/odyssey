@@ -369,7 +369,7 @@ Field naming:
 ## Git & Versioning
 
 **Conventional Commits** — `<type>(<scope>): <description>`:
-- Description lowercase, no trailing period, subject under 72 chars; the body explains *why*.
+- Description lowercase, no trailing period, subject under 80 chars preferred, 120 at most; the body explains *why*.
 - **PR titles are checked** by `.github/workflows/pr-title.yml` (they become the squash-merge subject). Its type and
   scope lists mirror the ones here: change both together. Dependabot and release-please PRs are exempt.
 - Issue numbers go in the **body**, not the subject.
