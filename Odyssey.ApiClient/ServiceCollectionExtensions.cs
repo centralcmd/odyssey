@@ -4,6 +4,7 @@ using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Internet;
 using Odyssey.Dtos.Journal;
+using Odyssey.Dtos.Recipes;
 
 namespace Odyssey.ApiClient;
 
@@ -32,7 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUsersApiClient, UsersApiClient>();
         services.AddScoped<IUserPreferencesApiClient, UserPreferencesApiClient>();
 
-        // The five tag resources share one contract; each closed client is bound to its own route.
+        // The six tag resources share one contract; each closed client is bound to its own route.
         services.AddScoped<ITagsApiClient<ExistingTransactionTag>>(sp =>
             new TagsApiClient<ExistingTransactionTag>(sp.GetRequiredService<IOdysseyApi>(), "api/transaction-tags"));
         services.AddScoped<ITagsApiClient<ExistingJournalTag>>(sp =>
@@ -43,6 +44,8 @@ public static class ServiceCollectionExtensions
             new TagsApiClient<ExistingPhotoTag>(sp.GetRequiredService<IOdysseyApi>(), "api/photo-tags"));
         services.AddScoped<ITagsApiClient<ExistingNewsTag>>(sp =>
             new TagsApiClient<ExistingNewsTag>(sp.GetRequiredService<IOdysseyApi>(), "api/news-tags"));
+        services.AddScoped<ITagsApiClient<ExistingRecipeTag>>(sp =>
+            new TagsApiClient<ExistingRecipeTag>(sp.GetRequiredService<IOdysseyApi>(), "api/recipe-tags"));
         services.AddScoped<IFileAnalysisApiClient, FileAnalysisApiClient>();
         services.AddScoped<ICurrenciesApiClient, CurrenciesApiClient>();
         services.AddScoped<IExchangeRatesApiClient, ExchangeRatesApiClient>();
@@ -68,6 +71,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPhotosApiClient, PhotosApiClient>();
         services.AddScoped<IPhotoTagsApiClient, PhotoTagsApiClient>();
         services.AddScoped<IAlbumsApiClient, AlbumsApiClient>();
+        services.AddScoped<IRecipesApiClient, RecipesApiClient>();
         services.AddScoped<IFileExportApiClient, FileExportApiClient>();
         services.AddScoped<IProfileApiClient, ProfileApiClient>();
         services.AddScoped<ISystemSettingsApiClient, SystemSettingsApiClient>();
