@@ -293,12 +293,14 @@ public class SecretSettingsInfrastructureTests
     /// <summary>
     /// AC 18. The gap between deploying and entering each credential is a designed state, not an edge
     /// case — and for the relay password it means transactional mail stops. An operator has to be able
-    /// to read that before they upgrade, not deduce it from a support ticket.
+    /// to read that before they upgrade, not deduce it from a support ticket. Release notes live in
+    /// docs/upgrade-notes.md, which docs/deployment.md tells an operator to read before every upgrade.
     /// </summary>
     [Fact]
-    public void TheDeploymentGuide_CarriesTheCredentialEntryReleaseNote()
+    public void TheUpgradeNotes_CarryTheCredentialEntryReleaseNote()
     {
-        var guide = SourceTree.ReadAllText(System.IO.Path.Combine("docs", "deployment.md"));
+        Assert.Contains("upgrade-notes.md", SourceTree.ReadAllText(System.IO.Path.Combine("docs", "deployment.md")), StringComparison.Ordinal);
+        var guide = SourceTree.ReadAllText(System.IO.Path.Combine("docs", "upgrade-notes.md"));
 
         Assert.Contains("Credentials", guide, StringComparison.Ordinal);
         Assert.Contains("not adopted from configuration", guide, StringComparison.OrdinalIgnoreCase);
