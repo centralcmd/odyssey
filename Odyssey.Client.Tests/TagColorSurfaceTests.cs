@@ -368,10 +368,10 @@ public class TagColorSurfaceTests : IAsyncLifetime
             for (var g = 0; g < 256; g += 15)
             {
                 for (var b = 0; b < 256; b += 15)
-        {
-            var hex = $"#{r:X2}{g:X2}{b:X2}";
-            worst = Math.Min(worst, HexColor.ContrastRatio(hex, HexColor.TextOn(hex)));
-        }
+                {
+                    var hex = $"#{r:X2}{g:X2}{b:X2}";
+                    worst = Math.Min(worst, HexColor.ContrastRatio(hex, HexColor.TextOn(hex)));
+                }
             }
         }
 

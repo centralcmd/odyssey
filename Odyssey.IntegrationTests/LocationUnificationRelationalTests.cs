@@ -331,7 +331,10 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
         {
             created = await Properties(context).Create(PropertyBody(new RealEstateDetailsDto
             {
-                Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO",
+                Kind = RealEstateKind.House,
+                AddressLine = "Storgata 1",
+                City = "Oslo",
+                CountryCode = "NO",
             }), Actor, claims: LocationClaims.Trusted);
         }
 
@@ -339,9 +342,14 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
         {
             await Properties(context).Update(created.PropertyId, PropertyBody(new RealEstateDetailsDto
             {
-                Kind = RealEstateKind.House, AddressLine = "Storgata 3", City = "Oslo", CountryCode = "NO",
-                ApplyTo = AddressApplyTo.AllUses, ExpectedOtherUses = 0,
-            }) with { Name = "Renamed" }, Actor, claims: LocationClaims.Trusted);
+                Kind = RealEstateKind.House,
+                AddressLine = "Storgata 3",
+                City = "Oslo",
+                CountryCode = "NO",
+                ApplyTo = AddressApplyTo.AllUses,
+                ExpectedOtherUses = 0,
+            }) with
+            { Name = "Renamed" }, Actor, claims: LocationClaims.Trusted);
         }
 
         await using var check = NewContext();
@@ -369,7 +377,10 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
         {
             property = await Properties(context).Create(PropertyBody(new RealEstateDetailsDto
             {
-                Kind = RealEstateKind.House, AddressLine = "Kirkegata 2", City = "Oslo", CountryCode = "NO",
+                Kind = RealEstateKind.House,
+                AddressLine = "Kirkegata 2",
+                City = "Oslo",
+                CountryCode = "NO",
             }), Actor, claims: LocationClaims.Trusted);
         }
 
@@ -385,15 +396,24 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
             var calendarEvent = NewEvent(calendar, eventPlace);
             var series = new RecurrencePattern
             {
-                CalendarId = calendar, Title = "Series", LocationId = seriesPlace, Frequency = Odyssey.Context.RecurrenceFrequency.Weekly,
+                CalendarId = calendar,
+                Title = "Series",
+                LocationId = seriesPlace,
+                Frequency = Odyssey.Context.RecurrenceFrequency.Weekly,
                 StartDateTime = new DateTime(2026, 1, 10, 9, 0, 0, DateTimeKind.Utc),
                 EndDateTime = new DateTime(2026, 1, 10, 10, 0, 0, DateTimeKind.Utc),
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
             };
             var entry = new JournalEntry
             {
-                ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "Entry", Content = "Body", LocationId = entryPlace,
-                EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+                Title = "Entry",
+                Content = "Body",
+                LocationId = entryPlace,
+                EntryDate = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
             };
             context.CalendarEvents.Add(calendarEvent);
             context.CalendarEvents.Add(NewEvent(calendar, mergeSource));
@@ -453,7 +473,10 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
 
     private static NewAddress Address(string line1, string city) => new()
     {
-        Label = AddressLabel.Visiting, Line1 = line1, City = city, CountryCode = "NO",
+        Label = AddressLabel.Visiting,
+        Line1 = line1,
+        City = city,
+        CountryCode = "NO",
     };
 
     private static NewAddress Geocoded(NewAddress body, decimal latitude, decimal longitude) => body with

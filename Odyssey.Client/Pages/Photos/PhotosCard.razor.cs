@@ -323,7 +323,9 @@ public partial class PhotosCard
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 
     // ── Selection ──
-    private void ToggleSelect(Guid id) { if (!_selected.Add(id))
+    private void ToggleSelect(Guid id)
+    {
+        if (!_selected.Add(id))
         {
             _selected.Remove(id);
         }
@@ -337,7 +339,9 @@ public partial class PhotosCard
             _selected.Clear();
         }
         else
-        { _selected.Clear(); foreach (var p in _photos)
+        {
+            _selected.Clear();
+            foreach (var p in _photos)
             {
                 _selected.Add(p.PhotoId);
             }

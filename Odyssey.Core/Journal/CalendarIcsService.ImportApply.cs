@@ -753,11 +753,20 @@ public partial class CalendarIcsService
         RecurrenceFrequency frequency;
         switch (rule.Frequency)
         {
-            case FrequencyType.Daily: frequency = RecurrenceFrequency.Daily; break;
-            case FrequencyType.Weekly: frequency = RecurrenceFrequency.Weekly; break;
-            case FrequencyType.Monthly: frequency = RecurrenceFrequency.Monthly; break;
-            case FrequencyType.Yearly: frequency = RecurrenceFrequency.Yearly; break;
-            default: return (null, "Unsupported recurrence frequency.");
+            case FrequencyType.Daily:
+                frequency = RecurrenceFrequency.Daily;
+                break;
+            case FrequencyType.Weekly:
+                frequency = RecurrenceFrequency.Weekly;
+                break;
+            case FrequencyType.Monthly:
+                frequency = RecurrenceFrequency.Monthly;
+                break;
+            case FrequencyType.Yearly:
+                frequency = RecurrenceFrequency.Yearly;
+                break;
+            default:
+                return (null, "Unsupported recurrence frequency.");
         }
 
         // WKST (rule.FirstDayOfWeek) is recognized and ignored — Odyssey's generator always uses

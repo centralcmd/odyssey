@@ -202,9 +202,13 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
             var now = DateTime.UtcNow;
             context.JournalEntries.AddRange(Enumerable.Range(0, AdminCountCap + 1).Select(i => new JournalEntry
             {
-                ExternalUid = $"urn:uuid:bulk-{i}", Title = $"Entry {i}", Content = "seeded",
-                EntryDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), CreatedByUserId = ActorUserId,
-                CreatedAt = now, UpdatedAt = now,
+                ExternalUid = $"urn:uuid:bulk-{i}",
+                Title = $"Entry {i}",
+                Content = "seeded",
+                EntryDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedByUserId = ActorUserId,
+                CreatedAt = now,
+                UpdatedAt = now,
             }));
             await context.SaveChangesAsync();
         });
@@ -315,9 +319,13 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
             var now = DateTime.UtcNow;
             context.JournalEntries.AddRange(Enumerable.Range(0, 400).Select(i => new JournalEntry
             {
-                ExternalUid = $"urn:uuid:bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000),
-                EntryDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), CreatedByUserId = ActorUserId,
-                CreatedAt = now, UpdatedAt = now,
+                ExternalUid = $"urn:uuid:bulk-{i}",
+                Title = $"Bulk {i}",
+                Content = new string('x', 4000),
+                EntryDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedByUserId = ActorUserId,
+                CreatedAt = now,
+                UpdatedAt = now,
             }));
             await context.SaveChangesAsync();
         });
@@ -1082,16 +1090,16 @@ public class JournalEntryIcsServiceTests : IcsServiceTestBase
     private static NewJournalEntry NewEntry(
         string title, string? content = null, string? location = null, DateTime? entryDate = null, Guid[]? tagIds = null,
         Guid[]? contactIds = null, Guid[]? photoIds = null, Guid[]? attachmentFileIds = null) => new()
-    {
-        Title = title,
-        Content = content ?? "Dear journal, today was a day.",
-        EntryDate = entryDate ?? new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-        Location = location,
-        TagIds = tagIds ?? [],
-        ContactIds = contactIds ?? [],
-        PhotoIds = photoIds ?? [],
-        AttachmentFileIds = attachmentFileIds ?? [],
-    };
+        {
+            Title = title,
+            Content = content ?? "Dear journal, today was a day.",
+            EntryDate = entryDate ?? new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            Location = location,
+            TagIds = tagIds ?? [],
+            ContactIds = contactIds ?? [],
+            PhotoIds = photoIds ?? [],
+            AttachmentFileIds = attachmentFileIds ?? [],
+        };
 
     private Task<ExistingJournalEntry> CreateAsync(NewJournalEntry request, string userId = ActorUserId) =>
         InScopeAsync(sp => sp.GetRequiredService<JournalEntryService>().Create(request, userId, canReadPhotos: true));

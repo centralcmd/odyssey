@@ -406,8 +406,10 @@ public class CalendarAttachmentsRelationalTests(MariaDbFixture fixture)
 
     private static NewCalendarEvent Event(Guid calendarId) => new()
     {
-        CalendarId = calendarId, Title = "Meeting",
-        StartDateTime = new DateTime(2030, 3, 2, 10, 0, 0), EndDateTime = new DateTime(2030, 3, 2, 11, 0, 0),
+        CalendarId = calendarId,
+        Title = "Meeting",
+        StartDateTime = new DateTime(2030, 3, 2, 10, 0, 0),
+        EndDateTime = new DateTime(2030, 3, 2, 11, 0, 0),
     };
 
     private static CalendarEventService Events(AsyncServiceScope scope) =>

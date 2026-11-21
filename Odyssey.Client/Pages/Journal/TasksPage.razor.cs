@@ -626,7 +626,9 @@ public partial class TasksPage
     {
         if (_boardJs is not null)
         {
-            try { await _boardJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _boardJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

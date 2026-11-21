@@ -580,8 +580,12 @@ public class WeatherHistorySectionTests : IDisposable
         Date = date,
         Observed = new WeatherDayObserved
         {
-            MinTempC = mean - 3, MaxTempC = mean + 3, MeanTempC = mean,
-            PrecipitationMm = mean / 2, MeanWindSpeedMps = 3, MaxWindGustMps = 8,
+            MinTempC = mean - 3,
+            MaxTempC = mean + 3,
+            MeanTempC = mean,
+            PrecipitationMm = mean / 2,
+            MeanWindSpeedMps = 3,
+            MaxWindGustMps = 8,
         },
     };
 

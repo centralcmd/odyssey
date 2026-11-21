@@ -86,23 +86,23 @@ public static class LocationGenerator
         string key, string name, string? description, string? addressText, decimal latitude, decimal longitude,
         int? altitude, string timeZoneId, LocationSource source, string? reference, string createdBy, DateTime createdAt,
         DateTime? archived) => new()
-    {
-        LocationId = LocationIdFor(key),
-        Name = name,
-        Description = description,
-        AddressText = addressText,
-        Latitude = latitude,
-        Longitude = longitude,
-        AltitudeMeters = altitude,
-        TimeZoneId = timeZoneId,
-        Source = source,
-        SourceReference = reference,
-        Archived = archived,
-        CreatedByUserId = createdBy,
-        UpdatedByUserId = createdBy,
-        CreatedAt = createdAt,
-        UpdatedAt = archived ?? createdAt,
-    };
+        {
+            LocationId = LocationIdFor(key),
+            Name = name,
+            Description = description,
+            AddressText = addressText,
+            Latitude = latitude,
+            Longitude = longitude,
+            AltitudeMeters = altitude,
+            TimeZoneId = timeZoneId,
+            Source = source,
+            SourceReference = reference,
+            Archived = archived,
+            CreatedByUserId = createdBy,
+            UpdatedByUserId = createdBy,
+            CreatedAt = createdAt,
+            UpdatedAt = archived ?? createdAt,
+        };
 
     private static string UserId(string role) => DemoUsers.All.First(user => user.Role == role).Id;
 }

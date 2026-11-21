@@ -333,7 +333,10 @@ public class AttachPhotosDialogTests
     private static ApiResult<ExistingPhoto> Created(string name) =>
         ApiResult<ExistingPhoto>.Success(new ExistingPhoto
         {
-            PhotoId = Guid.NewGuid(), FileName = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            PhotoId = Guid.NewGuid(),
+            FileName = name,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         }, HttpStatusCode.Created);
 
     /// <summary>

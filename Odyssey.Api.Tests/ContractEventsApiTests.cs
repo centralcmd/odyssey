@@ -950,14 +950,14 @@ public class ContractEventsApiTests(ContractEventsApiTests.Host host) : SharedAp
 
     private static UpdateContract ContractWrite(
         DateTime? ready = null, DateTime? signed = null, bool isPaused = false) => new()
-    {
-        Name = "Maple St lease",
-        Type = Odyssey.Dtos.Finance.ContractType.Rental,
-        StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        IsPaused = isPaused,
-        Ready = ready,
-        Signed = signed,
-    };
+        {
+            Name = "Maple St lease",
+            Type = Odyssey.Dtos.Finance.ContractType.Rental,
+            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            IsPaused = isPaused,
+            Ready = ready,
+            Signed = signed,
+        };
 
     private static NewTerm NewTermBody(decimal value) => new()
     {
@@ -996,13 +996,13 @@ public class ContractEventsApiTests(ContractEventsApiTests.Host host) : SharedAp
         string? description = "Asked for the CPI basis in writing.",
         string? notes = "Chase on the 21st if no reply.",
         DateTime? occurredAt = null) => new()
-    {
-        Type = type,
-        Title = title,
-        Description = description,
-        Notes = notes,
-        OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
-    };
+        {
+            Type = type,
+            Title = title,
+            Description = description,
+            Notes = notes,
+            OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+        };
 
     private static UpdateContractEvent Update(string title = "Edited title") => new()
     {

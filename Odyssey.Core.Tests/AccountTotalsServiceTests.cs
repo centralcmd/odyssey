@@ -18,16 +18,16 @@ public class AccountTotalsServiceTests
         DateTime? archived = null,
         DateTime? closed = null,
         DateTime? opened = null) => new()
-    {
-        AccountId = id,
-        Name = name,
-        Description = name,
-        Opened = opened ?? new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        AccountType = type,
-        CurrencyCode = currency,
-        Archived = archived,
-        Closed = closed,
-    };
+        {
+            AccountId = id,
+            Name = name,
+            Description = name,
+            Opened = opened ?? new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            AccountType = type,
+            CurrencyCode = currency,
+            Archived = archived,
+            Closed = closed,
+        };
 
     private static Transaction NewTransaction(Guid accountId, decimal amount) => new()
     {

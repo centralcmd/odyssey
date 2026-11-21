@@ -136,8 +136,11 @@ public abstract partial class PhotoThumbnailJobScenarios
         var now = Clock.GetUtcNow().UtcDateTime;
         var run = new PhotoThumbnailJobRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Manual, Status = JobRunStatus.Running,
-            StartedAtUtc = now, LastActivityAtUtc = now,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Manual,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = now,
+            LastActivityAtUtc = now,
         };
         context.JobRuns.Add(run);
         await context.SaveChangesAsync();

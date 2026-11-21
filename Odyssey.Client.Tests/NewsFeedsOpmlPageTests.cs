@@ -471,7 +471,10 @@ public class NewsFeedsOpmlPageTests
         await using var page = new Page(Feeds(2)).Start();
         page.Context.News.Setup(n => n.ImportOpmlAsync(It.IsAny<ApiUpload>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new NewsOpmlImportResult
         {
-            Feeds = 2, Created = 1, Invalid = 1, TagsCreated = ["SecretTag"],
+            Feeds = 2,
+            Created = 1,
+            Invalid = 1,
+            TagsCreated = ["SecretTag"],
             Items =
             [
                 new() { Position = 1, Url = "https://private-host.example/rss", Title = "SecretTitle", Outcome = NewsOpmlImportOutcome.Created },

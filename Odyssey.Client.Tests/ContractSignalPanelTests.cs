@@ -149,12 +149,12 @@ public class ContractSignalPanelTests
 
     private static ContractSummary Summary(
         IEnumerable<ContractUpcomingCharge> charges, IEnumerable<ContractUpcomingCharge> receipts) => new()
-    {
-        CountsByStatus = new ContractStatusCounts(),
-        RunRate = new ContractRunRate { BaseCurrency = "USD" },
-        UpcomingCharges = [.. charges],
-        UpcomingReceipts = [.. receipts],
-    };
+        {
+            CountsByStatus = new ContractStatusCounts(),
+            RunRate = new ContractRunRate { BaseCurrency = "USD" },
+            UpcomingCharges = [.. charges],
+            UpcomingReceipts = [.. receipts],
+        };
 
     /// <summary>
     /// Charges and receipts read as ONE list ordered by date, with each row's direction taken from

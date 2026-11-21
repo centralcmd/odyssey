@@ -363,8 +363,14 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
         var id = Guid.NewGuid();
         context.JournalEntries.Add(new JournalEntry
         {
-            JournalEntryId = id, ExternalUid = $"urn:uuid:{id}", Title = "Entry", Content = "Text",
-            EntryDate = entryDate, LocationId = placeId, CreatedAt = Noon, UpdatedAt = Noon,
+            JournalEntryId = id,
+            ExternalUid = $"urn:uuid:{id}",
+            Title = "Entry",
+            Content = "Text",
+            EntryDate = entryDate,
+            LocationId = placeId,
+            CreatedAt = Noon,
+            UpdatedAt = Noon,
         });
         await context.SaveChangesAsync();
         return id;
@@ -378,8 +384,12 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
         context.Calendars.Add(new Calendar { CalendarId = calendarId, Name = $"Calendar {id:N}", CreatedAt = Noon, UpdatedAt = Noon });
         context.CalendarEvents.Add(new CalendarEvent
         {
-            CalendarEventId = id, CalendarId = calendarId, Title = "Event", LocationId = placeId,
-            StartDateTime = start, EndDateTime = end,
+            CalendarEventId = id,
+            CalendarId = calendarId,
+            Title = "Event",
+            LocationId = placeId,
+            StartDateTime = start,
+            EndDateTime = end,
         });
         await context.SaveChangesAsync();
         return id;

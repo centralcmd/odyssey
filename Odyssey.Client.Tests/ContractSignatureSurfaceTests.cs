@@ -548,8 +548,14 @@ public class ContractSignatureSurfaceTests
         TotalContracts = 6 + paused + draft + ready,
         CountsByStatus = new ContractStatusCounts
         {
-            Active = 3, Upcoming = 1, Expired = 1, Archived = 1, Paused = paused,
-            Draft = draft, Ready = ready, EndingSoon = 1,
+            Active = 3,
+            Upcoming = 1,
+            Expired = 1,
+            Archived = 1,
+            Paused = paused,
+            Draft = draft,
+            Ready = ready,
+            EndingSoon = 1,
         },
         CountsByType = [new ContractTypeCount { Type = ContractType.Rental, Count = 2 }],
         RunRate = new ContractRunRate { BaseCurrency = "USD", Monthly = 1000m, Yearly = 12000m },

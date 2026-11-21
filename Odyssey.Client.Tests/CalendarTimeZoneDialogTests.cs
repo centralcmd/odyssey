@@ -38,10 +38,15 @@ public class CalendarTimeZoneDialogTests
     {
         var e = new ExistingCalendarEvent
         {
-            CalendarEventId = EventId, CalendarId = CalendarId, Title = "Standup",
+            CalendarEventId = EventId,
+            CalendarId = CalendarId,
+            Title = "Standup",
             StartDateTime = DateTime.SpecifyKind(wall, DateTimeKind.Unspecified),
             EndDateTime = DateTime.SpecifyKind(wall.AddHours(1), DateTimeKind.Unspecified),
-            TimeZoneId = zone, StartUtc = Utc(wall, zone), EndUtc = Utc(wall.AddHours(1), zone), IsKeyed = true,
+            TimeZoneId = zone,
+            StartUtc = Utc(wall, zone),
+            EndUtc = Utc(wall.AddHours(1), zone),
+            IsKeyed = true,
         };
         configure?.Invoke(e);
         return e;
@@ -52,8 +57,11 @@ public class CalendarTimeZoneDialogTests
     {
         var e = new ExistingCalendarEvent
         {
-            CalendarEventId = EventId, CalendarId = CalendarId, Title = "Standup",
-            StartDateTime = DateTime.SpecifyKind(wall, DateTimeKind.Utc), EndDateTime = DateTime.SpecifyKind(wall.AddHours(1), DateTimeKind.Utc),
+            CalendarEventId = EventId,
+            CalendarId = CalendarId,
+            Title = "Standup",
+            StartDateTime = DateTime.SpecifyKind(wall, DateTimeKind.Utc),
+            EndDateTime = DateTime.SpecifyKind(wall.AddHours(1), DateTimeKind.Utc),
             IsFloating = true,
         };
         configure?.Invoke(e);
@@ -64,10 +72,18 @@ public class CalendarTimeZoneDialogTests
     {
         var p = new ExistingRecurrencePattern
         {
-            RecurrencePatternId = PatternId, CalendarId = CalendarId, Title = "Choir",
-            StartDateTime = wall, EndDateTime = wall.AddHours(2), TimeZoneId = zone,
-            Frequency = RecurrenceFrequency.Weekly, Interval = 1, DaysOfWeek = DaysOfWeekFlags.Monday, OccurrenceCount = 10,
-            Version = LoadedVersion, IsKeyed = true,
+            RecurrencePatternId = PatternId,
+            CalendarId = CalendarId,
+            Title = "Choir",
+            StartDateTime = wall,
+            EndDateTime = wall.AddHours(2),
+            TimeZoneId = zone,
+            Frequency = RecurrenceFrequency.Weekly,
+            Interval = 1,
+            DaysOfWeek = DaysOfWeekFlags.Monday,
+            OccurrenceCount = 10,
+            Version = LoadedVersion,
+            IsKeyed = true,
         };
         configure?.Invoke(p);
         return p;
@@ -158,7 +174,9 @@ public class CalendarTimeZoneDialogTests
                 .Callback((Guid _, NewRecurrencePattern body, CancellationToken _) => Previews.Add(body))
                 .ReturnsAsync(Ok(new RecurrencePatternPreview
                 {
-                    DroppedOverrideCount = overrides, DroppedExclusionCount = exclusions, DetachedCount = detached,
+                    DroppedOverrideCount = overrides,
+                    DroppedExclusionCount = exclusions,
+                    DetachedCount = detached,
                     Version = version ?? LoadedVersion,
                 }));
 
@@ -175,8 +193,12 @@ public class CalendarTimeZoneDialogTests
 
     internal static ExistingCalendarEvent Echo(NewCalendarEvent body) => new()
     {
-        CalendarEventId = EventId, CalendarId = body.CalendarId, Title = body.Title,
-        StartDateTime = body.StartDateTime, EndDateTime = body.EndDateTime, TimeZoneId = body.TimeZoneId,
+        CalendarEventId = EventId,
+        CalendarId = body.CalendarId,
+        Title = body.Title,
+        StartDateTime = body.StartDateTime,
+        EndDateTime = body.EndDateTime,
+        TimeZoneId = body.TimeZoneId,
     };
 
     /// <summary>A hint or zone line's words, without its decorative icon ligature.</summary>
@@ -186,7 +208,10 @@ public class CalendarTimeZoneDialogTests
         Ok(new RecurrencePatternUpdateResult
         {
             Pattern = Series(start ?? new DateTime(2026, 6, 1, 18, 0, 0), "Europe/Oslo"),
-            DroppedOverrideCount = overrides, DroppedExclusionCount = exclusions, DetachedCount = detached, AdjustedCount = adjusted,
+            DroppedOverrideCount = overrides,
+            DroppedExclusionCount = exclusions,
+            DetachedCount = detached,
+            AdjustedCount = adjusted,
         });
 
     private static Harness OpenSeries(ExistingRecurrencePattern? pattern = null, string viewer = "Europe/Oslo", bool canUpdate = true)
@@ -553,7 +578,9 @@ public class CalendarTimeZoneDialogTests
         h.Calendar.Setup(c => c.CreateEventWithResultAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingCalendarEvent>.Failure(HttpStatusCode.BadRequest, new ApiProblem
             {
-                Status = 400, Title = "Invalid", Errors = new Dictionary<string, string[]> { ["timeZoneId"] = [CalendarEventCopy.ZoneError] },
+                Status = 400,
+                Title = "Invalid",
+                Errors = new Dictionary<string, string[]> { ["timeZoneId"] = [CalendarEventCopy.ZoneError] },
             }));
         h.Open(CalendarEventDialogMode.Create, new DateOnly(2026, 6, 4));
         await h.SetTitle("Standup");

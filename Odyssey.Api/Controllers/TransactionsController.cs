@@ -34,7 +34,7 @@ public sealed class TransactionsController : ControllerBase
         this.fileService = fileService;
         this.displayNames = displayNames;
     }
-    
+
     [HttpGet(Name = "GetTransactions")]
     [Authorize(Policy = PermissionClaims.TransactionsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingTransaction>))]
@@ -72,7 +72,7 @@ public sealed class TransactionsController : ControllerBase
         Summary = "Get a transaction based on the transaction ID.",
         Description = @"Get a transaction based on the transaction ID.")]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
+        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the transaction to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var transaction = await transactionService.Get(id, cancellationToken);
@@ -84,7 +84,7 @@ public sealed class TransactionsController : ControllerBase
         await displayNames.EnrichFileAttributionAsync(User, [transaction], cancellationToken);
         return Ok(transaction);
     }
-    
+
     [HttpPost(Name = "PostTransaction")]
     [Authorize(Policy = PermissionClaims.TransactionsCreate)]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -96,7 +96,7 @@ public sealed class TransactionsController : ControllerBase
         Description = @"Create a new transaction. If a new transaction is created, the url for the new transaction is 
                         returned in the location header.")]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewTransaction", Required = true, 
+        [FromBody] [SwaggerParameter("NewTransaction", Required = true,
             Description = "The new transaction to create.")] NewTransaction newTransaction, CancellationToken cancellationToken = default)
     {
         var transaction = await transactionService.Create(newTransaction, cancellationToken);
@@ -115,9 +115,9 @@ public sealed class TransactionsController : ControllerBase
         Description = @"Update the details for a transaction. Not an upsert: an unknown ID is a 404 and
                         nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
-            Description = @"The ID for the transaction to update.")] Guid id, 
-        [FromBody] [SwaggerParameter("NewTransaction", Required = true, 
+        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
+            Description = @"The ID for the transaction to update.")] Guid id,
+        [FromBody] [SwaggerParameter("NewTransaction", Required = true,
             Description = @"The transaction with the updated values.")] NewTransaction newTransaction, CancellationToken cancellationToken = default)
     {
         var transaction = await transactionService.Update(id, newTransaction, cancellationToken);
@@ -134,7 +134,7 @@ public sealed class TransactionsController : ControllerBase
         Summary = "Delete a transaction based on the transaction ID.",
         Description = @"Delete a transaction based on the transaction ID.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
+        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the transaction to delete.")] Guid id, CancellationToken cancellationToken = default)
     {
         await transactionService.Delete(id, cancellationToken);
@@ -151,7 +151,7 @@ public sealed class TransactionsController : ControllerBase
         Summary = "Get files attached to a transaction.",
         Description = @"Get files attached to a transaction.")]
     public async Task<IActionResult> GetTransactionFiles(
-        [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true, 
+        [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true,
             Description = @"The ID for the transaction.")] Guid transactionId, CancellationToken cancellationToken = default)
     {
         var files = await transactionService.GetFiles(transactionId, cancellationToken);
@@ -177,7 +177,7 @@ public sealed class TransactionsController : ControllerBase
         Summary = "Attach an uploaded file to a transaction (requires transactions.update + files.read).",
         Description = @"Attach an already-uploaded file to a transaction.")]
     public async Task<IActionResult> AttachTransactionFile(
-        [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true, 
+        [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true,
             Description = @"The ID for the transaction.")] Guid transactionId,
         [FromBody] [SwaggerParameter("Request", Required = true,
             Description = @"The file to attach.")] AttachTransactionFileRequest request, CancellationToken cancellationToken = default)
@@ -192,7 +192,7 @@ public sealed class TransactionsController : ControllerBase
         {
             return this.NotFoundProblem($"File ID {request.FileId} not found.");
         }
-        
+
         if (User.ActingUserId() is not { } userId)
         {
             return this.MissingUserProblem();
@@ -222,9 +222,9 @@ public sealed class TransactionsController : ControllerBase
         Summary = "Detach a file from a transaction.",
         Description = @"Detach a file from a transaction.")]
     public async Task<IActionResult> DetachTransactionFile(
-        [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true, 
+        [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true,
             Description = @"The ID for the transaction.")] Guid transactionId,
-        [FromRoute(Name = "fileId")] [SwaggerParameter("FileId", Required = true, 
+        [FromRoute(Name = "fileId")] [SwaggerParameter("FileId", Required = true,
             Description = @"The ID for the file to detach.")] Guid fileId, CancellationToken cancellationToken = default)
     {
         return await transactionService.DetachFileFromTransaction(transactionId, fileId, cancellationToken)

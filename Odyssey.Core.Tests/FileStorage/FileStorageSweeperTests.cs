@@ -395,9 +395,15 @@ public class FileStorageSweeperTests : FileStorageTestBase
         var volumeId = host.Registry.Find("primary")!.Id;
         var forged = new[] { StoredObjectState.PendingDelete, StoredObjectState.Pending }.Select(state => new StoredObject
         {
-            Id = Guid.NewGuid(), VolumeId = volumeId, FeatureKey = "GoneFeature", RelativePath = tampered + (state == StoredObjectState.Pending ? ".x.jpg" : string.Empty),
-            State = state, Sha256Hash = state == StoredObjectState.Pending ? null : new string('0', 64), CreatedAtUtc = Clock.GetUtcNow().UtcDateTime,
-            DeleteRequestedAtUtc = state == StoredObjectState.PendingDelete ? Clock.GetUtcNow().UtcDateTime : null, DeleteImmediately = true,
+            Id = Guid.NewGuid(),
+            VolumeId = volumeId,
+            FeatureKey = "GoneFeature",
+            RelativePath = tampered + (state == StoredObjectState.Pending ? ".x.jpg" : string.Empty),
+            State = state,
+            Sha256Hash = state == StoredObjectState.Pending ? null : new string('0', 64),
+            CreatedAtUtc = Clock.GetUtcNow().UtcDateTime,
+            DeleteRequestedAtUtc = state == StoredObjectState.PendingDelete ? Clock.GetUtcNow().UtcDateTime : null,
+            DeleteImmediately = true,
         }).ToList();
         await InScopeAsync(host, async sp =>
         {

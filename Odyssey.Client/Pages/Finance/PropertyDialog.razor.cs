@@ -160,8 +160,12 @@ public partial class PropertyDialog
             LocationId = locationId,
             Fields = new AddressFields
             {
-                Line1 = re.AddressLine, PostalCode = re.PostalCode, City = re.City, CountryCode = re.CountryCode,
-                Line2 = place?.Line2, Region = place?.Region,
+                Line1 = re.AddressLine,
+                PostalCode = re.PostalCode,
+                City = re.City,
+                CountryCode = re.CountryCode,
+                Line2 = place?.Line2,
+                Region = place?.Region,
             },
             OtherUses = re.OtherUses ?? 0,
             OthersBreakdown = OthersOf(place),
@@ -300,7 +304,8 @@ public partial class PropertyDialog
         }
 
         _focusSummary = false;
-        try { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
         catch (Exception) { /* best-effort: no JS runtime under bUnit */ }
     }
 

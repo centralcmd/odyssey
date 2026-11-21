@@ -196,8 +196,13 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var entry = new JournalEntry
         {
-            JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "t", Content = "c",
-            EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            JournalEntryId = Guid.NewGuid(),
+            ExternalUid = Guid.NewGuid().ToString(),
+            Title = "t",
+            Content = "c",
+            EntryDate = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         };
         context.JournalEntries.Add(entry);
         await context.SaveChangesAsync();

@@ -471,20 +471,40 @@ public partial class LocationDialog
             ApiResult<ExistingLocation> result = IsEdit
                 ? await Locations.UpdateAsync(Location!.LocationId, new UpdateLocation
                 {
-                    Name = name, Description = Blank(_description), AddressText = Blank(_address),
-                    Line1 = Blank(_line1), Line2 = Blank(_line2), PostalCode = Blank(_postalCode),
-                    City = Blank(_city), Region = Blank(_region), CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
-                    Latitude = LatRounded, Longitude = LngRounded, AltitudeMeters = altitude,
-                    TimeZoneId = Blank(_timeZone), Source = Source, SourceReference = reference,
+                    Name = name,
+                    Description = Blank(_description),
+                    AddressText = Blank(_address),
+                    Line1 = Blank(_line1),
+                    Line2 = Blank(_line2),
+                    PostalCode = Blank(_postalCode),
+                    City = Blank(_city),
+                    Region = Blank(_region),
+                    CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
+                    Latitude = LatRounded,
+                    Longitude = LngRounded,
+                    AltitudeMeters = altitude,
+                    TimeZoneId = Blank(_timeZone),
+                    Source = Source,
+                    SourceReference = reference,
                     Archived = Location.Archived is not null,
                 })
                 : await Locations.CreateAsync(new NewLocation
                 {
-                    Name = name, Description = Blank(_description), AddressText = Blank(_address),
-                    Line1 = Blank(_line1), Line2 = Blank(_line2), PostalCode = Blank(_postalCode),
-                    City = Blank(_city), Region = Blank(_region), CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
-                    Latitude = LatRounded, Longitude = LngRounded, AltitudeMeters = altitude,
-                    TimeZoneId = Blank(_timeZone), Source = Source, SourceReference = reference,
+                    Name = name,
+                    Description = Blank(_description),
+                    AddressText = Blank(_address),
+                    Line1 = Blank(_line1),
+                    Line2 = Blank(_line2),
+                    PostalCode = Blank(_postalCode),
+                    City = Blank(_city),
+                    Region = Blank(_region),
+                    CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
+                    Latitude = LatRounded,
+                    Longitude = LngRounded,
+                    AltitudeMeters = altitude,
+                    TimeZoneId = Blank(_timeZone),
+                    Source = Source,
+                    SourceReference = reference,
                 });
 
             var outcome = result.IsSuccess ? ApiResult.Success(result.Status) : ApiResult.Failure(result.Status, result.Problem!);

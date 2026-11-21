@@ -212,8 +212,15 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         };
         var photo = new Photo
         {
-            PhotoId = Guid.NewGuid(), StoredObjectId = original.Id, FileName = "p.jpg", ContentType = "image/jpeg",
-            SizeBytes = 3, Sha256Hash = hash, CreatedByUserId = "user", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            PhotoId = Guid.NewGuid(),
+            StoredObjectId = original.Id,
+            FileName = "p.jpg",
+            ContentType = "image/jpeg",
+            SizeBytes = 3,
+            Sha256Hash = hash,
+            CreatedByUserId = "user",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         };
         context.FileStorageVolumes.Add(volume);
         context.StoredObjects.Add(original);

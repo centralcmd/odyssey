@@ -174,7 +174,10 @@ public class ContactMethodLabelTests
         using var harness = new Harness();
         var stored = new ExistingPhoneNumber
         {
-            Id = PhoneId, ContactId = ContactId, Label = PhoneLabel.Claims, Value = "+47 22 00 00 00",
+            Id = PhoneId,
+            ContactId = ContactId,
+            Label = PhoneLabel.Claims,
+            Value = "+47 22 00 00 00",
         };
 
         var cut = harness.RenderDialog(

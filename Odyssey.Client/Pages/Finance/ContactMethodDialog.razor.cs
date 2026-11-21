@@ -125,7 +125,12 @@ public partial class ContactMethodDialog
 
     private static AddressFields FieldsOf(ExistingAddress a) => new()
     {
-        Line1 = a.Line1, Line2 = a.Line2, PostalCode = a.PostalCode, City = a.City, Region = a.Region, CountryCode = a.CountryCode,
+        Line1 = a.Line1,
+        Line2 = a.Line2,
+        PostalCode = a.PostalCode,
+        City = a.City,
+        Region = a.Region,
+        CountryCode = a.CountryCode,
     };
 
     /// <summary>The place's per-kind usage less this contact — the breakdown of its OTHER uses.</summary>
@@ -161,7 +166,8 @@ public partial class ContactMethodDialog
         }
 
         _focusSummary = false;
-        try { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
         catch (Exception) { /* best-effort: no JS runtime under bUnit */ }
     }
 
@@ -349,7 +355,8 @@ public partial class ContactMethodDialog
             return;
         }
 
-        try { await Js.InvokeVoidAsync("odsFocusById", LabelFieldId); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", LabelFieldId); }
         catch (Exception) { /* best-effort: no JS runtime under bUnit, and focus is not load-bearing */ }
     }
 }

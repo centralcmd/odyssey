@@ -54,7 +54,8 @@ public sealed class CalendarAttachmentsException : DomainException
 
     public static CalendarAttachmentsException LinkRace() =>
         new((int)HttpStatusCode.Conflict, LinksBusyCode,
-            "This event's attachments are being changed by another request. Try again in a moment.") { IsLinkRace = true };
+            "This event's attachments are being changed by another request. Try again in a moment.")
+        { IsLinkRace = true };
 
     public static CalendarAttachmentsException LinksBusy() =>
         new((int)HttpStatusCode.Conflict, LinksBusyCode,

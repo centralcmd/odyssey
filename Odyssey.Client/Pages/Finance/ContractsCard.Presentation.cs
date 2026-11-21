@@ -290,24 +290,24 @@ public partial class ContractsCard
         switch (c.Status)
         {
             case ContractStatus.Upcoming when c.StartDate is { } start:
-            {
-                var days = (start.Date - Today).Days;
-                var word = days <= 0 ? "starts today" : $"starts in {days} day{(days == 1 ? "" : "s")}";
-                return (true, OdsDates.Long(start), word, "");
-            }
+                {
+                    var days = (start.Date - Today).Days;
+                    var word = days <= 0 ? "starts today" : $"starts in {days} day{(days == 1 ? "" : "s")}";
+                    return (true, OdsDates.Long(start), word, "");
+                }
             case ContractStatus.Expired when c.EndDate is { } end:
-            {
-                var days = (Today - end.Date).Days;
-                var word = days <= 0 ? "expired today" : $"expired {days} day{(days == 1 ? "" : "s")} ago";
-                return (true, OdsDates.Long(end), word, "expired");
-            }
+                {
+                    var days = (Today - end.Date).Days;
+                    var word = days <= 0 ? "expired today" : $"expired {days} day{(days == 1 ? "" : "s")} ago";
+                    return (true, OdsDates.Long(end), word, "expired");
+                }
             case ContractStatus.Archived:
-            {
-                var anchor = c.EndDate ?? c.StartDate;
-                return anchor is { } a
-                    ? (true, OdsDates.Long(a), "archived", "archived")
-                    : (false, "Archived", "archived", "archived");
-            }
+                {
+                    var anchor = c.EndDate ?? c.StartDate;
+                    return anchor is { } a
+                        ? (true, OdsDates.Long(a), "archived", "archived")
+                        : (false, "Archived", "archived", "archived");
+                }
             default: // Active
                 if (c.EndDate is { } activeEnd)
                 {

@@ -58,8 +58,12 @@ public class CalendarAttachmentPermissionTests(ApiStackFixture fixture)
             var start = new DateTime(2031, 3, 2, 10, 0, 0, DateTimeKind.Utc);
             var created = await fixture.PostWithAntiforgeryAsync(client, "/api/calendar-events", new NewCalendarEvent
             {
-                CalendarId = calendar.CalendarId, Title = "Lease signing", StartDateTime = start, EndDateTime = start.AddHours(1),
-                AttachmentFileIds = [file!.Id], PhotoIds = [photo!.PhotoId],
+                CalendarId = calendar.CalendarId,
+                Title = "Lease signing",
+                StartDateTime = start,
+                EndDateTime = start.AddHours(1),
+                AttachmentFileIds = [file!.Id],
+                PhotoIds = [photo!.PhotoId],
             });
             Assert.True(created.IsSuccessStatusCode, await created.Content.ReadAsStringAsync());
             eventId = (await created.Content.ReadFromJsonAsync<ExistingCalendarEvent>())!.CalendarEventId;
@@ -74,7 +78,10 @@ public class CalendarAttachmentPermissionTests(ApiStackFixture fixture)
             // A rename with null arrays keeps both kinds (#521 §5.1).
             var renamed = await client.PutAsJsonAsync($"/api/calendar-events/{eventId}", new NewCalendarEvent
             {
-                CalendarId = calendar.CalendarId, Title = "Lease signing (moved)", StartDateTime = start, EndDateTime = start.AddHours(1),
+                CalendarId = calendar.CalendarId,
+                Title = "Lease signing (moved)",
+                StartDateTime = start,
+                EndDateTime = start.AddHours(1),
             });
             Assert.True(renamed.IsSuccessStatusCode, await renamed.Content.ReadAsStringAsync());
             var kept = (await client.GetFromJsonAsync<ExistingCalendarEvent>($"/api/calendar-events/{eventId}"))!;
@@ -125,7 +132,11 @@ public class CalendarAttachmentPermissionTests(ApiStackFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/calendars")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await fixture.PostWithAntiforgeryAsync(client, "/api/calendar-events", new NewCalendarEvent
         {
-            CalendarId = anyId, Title = "Nope", StartDateTime = start, EndDateTime = start.AddHours(1), AttachmentFileIds = [anyId],
+            CalendarId = anyId,
+            Title = "Nope",
+            StartDateTime = start,
+            EndDateTime = start.AddHours(1),
+            AttachmentFileIds = [anyId],
         })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/calendar-events/{anyId}")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/calendar-events/{anyId}/ics/summary")).StatusCode);

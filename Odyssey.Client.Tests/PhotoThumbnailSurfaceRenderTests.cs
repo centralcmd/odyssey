@@ -35,7 +35,11 @@ public class PhotoThumbnailSurfaceRenderTests
 
     private static PhotoSummary Summary(string title, bool ready) => new()
     {
-        PhotoId = Guid.NewGuid(), Title = title, PersonCount = 0, AlbumCount = 0, ThumbnailsReady = ready,
+        PhotoId = Guid.NewGuid(),
+        Title = title,
+        PersonCount = 0,
+        AlbumCount = 0,
+        ThumbnailsReady = ready,
     };
 
     private static string Thumb(Guid photoId, ThumbnailSize size) => $"/thumb/{photoId}/{size}";
@@ -110,8 +114,11 @@ public class PhotoThumbnailSurfaceRenderTests
 
     private static PhotoAlbumSummary Album(string name, PhotoSummary cover) => new()
     {
-        PhotoAlbumId = Guid.NewGuid(), Name = name, PhotoCount = 1,
-        CoverPhotoId = cover.PhotoId, CoverThumbnailsReady = cover.ThumbnailsReady,
+        PhotoAlbumId = Guid.NewGuid(),
+        Name = name,
+        PhotoCount = 1,
+        CoverPhotoId = cover.PhotoId,
+        CoverThumbnailsReady = cover.ThumbnailsReady,
     };
 
     [Fact]
@@ -180,8 +187,11 @@ public class PhotoThumbnailSurfaceRenderTests
         var albumId = Guid.NewGuid();
         client.Setup(a => a.GetAsync(albumId, It.IsAny<CancellationToken>())).ReturnsAsync(new ExistingPhotoAlbum
         {
-            PhotoAlbumId = albumId, Name = "Trip", PhotoIds = [Ready.PhotoId, NotReady.PhotoId],
-            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            PhotoAlbumId = albumId,
+            Name = "Trip",
+            PhotoIds = [Ready.PhotoId, NotReady.PhotoId],
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         });
 
         var cut = InDialogHost<AlbumFormDialog>(ctx, b =>
@@ -224,8 +234,12 @@ public class PhotoThumbnailSurfaceRenderTests
 
     private static JournalEntryPhotoDto Link(PhotoSummary p, int position) => new()
     {
-        JournalEntryPhotoId = Guid.NewGuid(), PhotoId = p.PhotoId, Title = p.Title, Position = position,
-        CreatedAt = DateTime.UtcNow, ThumbnailsReady = p.ThumbnailsReady,
+        JournalEntryPhotoId = Guid.NewGuid(),
+        PhotoId = p.PhotoId,
+        Title = p.Title,
+        Position = position,
+        CreatedAt = DateTime.UtcNow,
+        ThumbnailsReady = p.ThumbnailsReady,
     };
 
     [Fact]

@@ -290,13 +290,22 @@ public sealed class InstrumentDialogsTests
 
     private static InstrumentPriceSourceInfo Source(string key, string name, int max = 0, int today = 0) => new()
     {
-        Key = key, DisplayName = name, Attribution = name, SupportedTypes = [InstrumentType.Stock, InstrumentType.Etf, InstrumentType.Fund],
-        Configured = true, MaxRequestsPerDay = max, RequestsToday = today,
+        Key = key,
+        DisplayName = name,
+        Attribution = name,
+        SupportedTypes = [InstrumentType.Stock, InstrumentType.Etf, InstrumentType.Fund],
+        Configured = true,
+        MaxRequestsPerDay = max,
+        RequestsToday = today,
     };
 
     private static ExistingInstrumentPriceBinding Binding(string key, int priority, bool enabled = false) => new()
     {
-        SourceKey = key, SourceSymbol = "EQNR.OL", Priority = priority, Enabled = enabled, SourceRegistered = true,
+        SourceKey = key,
+        SourceSymbol = "EQNR.OL",
+        Priority = priority,
+        Enabled = enabled,
+        SourceRegistered = true,
     };
 
     private static IRenderedComponent<ProvidersHost> RenderPanel(

@@ -28,10 +28,15 @@ public class CalendarAttachmentPageTests
 
     private static ExistingCalendarEvent Listed(Guid id, string title, int files, int photos, bool recurring = false) => new()
     {
-        CalendarEventId = id, CalendarId = CalendarId, Title = title,
+        CalendarEventId = id,
+        CalendarId = CalendarId,
+        Title = title,
         StartDateTime = new DateTime(2026, 6, 4, 9, 0, 0, DateTimeKind.Unspecified),
         EndDateTime = new DateTime(2026, 6, 4, 10, 0, 0, DateTimeKind.Unspecified),
-        TimeZoneId = "UTC", IsKeyed = true, AttachmentCount = files, PhotoCount = photos,
+        TimeZoneId = "UTC",
+        IsKeyed = true,
+        AttachmentCount = files,
+        PhotoCount = photos,
         RecurrencePatternId = recurring ? Guid.NewGuid() : null,
     };
 

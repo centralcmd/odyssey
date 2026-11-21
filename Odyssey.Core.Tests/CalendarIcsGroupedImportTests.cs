@@ -243,9 +243,14 @@ public class CalendarIcsGroupedImportTests
         var removedId = Guid.NewGuid();
         context.CalendarEvents.Add(new Odyssey.Context.CalendarEvent
         {
-            CalendarEventId = removedId, CalendarId = calendar, Title = "To remove", ExternalUid = "remove@example.com",
-            StartDateTime = new DateTime(2030, 1, 1, 9, 0, 0), EndDateTime = new DateTime(2030, 1, 1, 10, 0, 0),
-            CreatedAt = Now, UpdatedAt = Now,
+            CalendarEventId = removedId,
+            CalendarId = calendar,
+            Title = "To remove",
+            ExternalUid = "remove@example.com",
+            StartDateTime = new DateTime(2030, 1, 1, 9, 0, 0),
+            EndDateTime = new DateTime(2030, 1, 1, 10, 0, 0),
+            CreatedAt = Now,
+            UpdatedAt = Now,
         });
         await context.SaveChangesAsync();
 
@@ -262,7 +267,8 @@ public class CalendarIcsGroupedImportTests
         var logs = new ListLogger();
         var service = new CalendarIcsService(
             context, logs, new FakeImportExportLimitsLookup { CalendarIcsMaxImportEvents = null, CalendarIcsMaxAggregateOccurrences = 550 },
-            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now)) { GroupingKey = key };
+            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now))
+        { GroupingKey = key };
 
         var ex = await Assert.ThrowsAsync<CalendarIcsImportPartiallyAppliedException>(() =>
             service.ImportAsync(calendar, new MemoryStream(Encoding.UTF8.GetBytes(file)), Encoding.UTF8.GetByteCount(file),
@@ -367,17 +373,31 @@ public class CalendarIcsGroupedImportTests
         var start = new DateTime(2026, 2, 2, 9, 0, 0);
         var pattern = new RecurrencePattern
         {
-            RecurrencePatternId = Guid.NewGuid(), CalendarId = calendarId, Title = "Legacy",
-            StartDateTime = start, EndDateTime = start.AddHours(1), Frequency = RecurrenceFrequency.Daily, Interval = 1,
-            OccurrenceCount = count, RecurrenceEndDate = until, Version = Guid.NewGuid(), CreatedAt = Now, UpdatedAt = Now,
+            RecurrencePatternId = Guid.NewGuid(),
+            CalendarId = calendarId,
+            Title = "Legacy",
+            StartDateTime = start,
+            EndDateTime = start.AddHours(1),
+            Frequency = RecurrenceFrequency.Daily,
+            Interval = 1,
+            OccurrenceCount = count,
+            RecurrenceEndDate = until,
+            Version = Guid.NewGuid(),
+            CreatedAt = Now,
+            UpdatedAt = Now,
         };
         context.RecurrencePatterns.Add(pattern);
         for (var i = 0; i < 3; i++)
         {
             context.CalendarEvents.Add(new Odyssey.Context.CalendarEvent
             {
-                CalendarId = calendarId, Title = "Legacy", StartDateTime = start.AddDays(i), EndDateTime = start.AddDays(i).AddHours(1),
-                RecurrencePatternId = pattern.RecurrencePatternId, CreatedAt = Now, UpdatedAt = Now,
+                CalendarId = calendarId,
+                Title = "Legacy",
+                StartDateTime = start.AddDays(i),
+                EndDateTime = start.AddDays(i).AddHours(1),
+                RecurrencePatternId = pattern.RecurrencePatternId,
+                CreatedAt = Now,
+                UpdatedAt = Now,
             });
         }
 

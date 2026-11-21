@@ -31,7 +31,11 @@ public class PropertySummaryServiceTests
         {
             context.PropertyEstimates.Add(new PropertyEstimate
             {
-                PropertyId = id, Value = value, CurrencyCode = body.CurrencyCode, EffectiveFrom = Utc(2026, 1, 1), CreatedAtUtc = Utc(2026, 1, 1),
+                PropertyId = id,
+                Value = value,
+                CurrencyCode = body.CurrencyCode,
+                EffectiveFrom = Utc(2026, 1, 1),
+                CreatedAtUtc = Utc(2026, 1, 1),
             });
             await context.SaveChangesAsync();
         }
@@ -71,7 +75,11 @@ public class PropertySummaryServiceTests
         await PropertyAsync(context, PropertyTestData.House("D", "SEK"), estimate: 9_000_000m, disposed: Utc(2025, 1, 1));
         context.ExchangeRates.Add(new ExchangeRate
         {
-            FromCurrencyCode = "EUR", ToCurrencyCode = "SEK", Rate = 11.5m, AsOf = Utc(2026, 1, 1), CreatedAt = Utc(2026, 1, 1),
+            FromCurrencyCode = "EUR",
+            ToCurrencyCode = "SEK",
+            Rate = 11.5m,
+            AsOf = Utc(2026, 1, 1),
+            CreatedAt = Utc(2026, 1, 1),
         });
         await context.SaveChangesAsync();
 

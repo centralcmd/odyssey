@@ -689,7 +689,7 @@ public partial class PropertiesCard
                 builder.CloseElement();
                 builder.CloseElement();
             }
-            : OdsInfoTile.Caption(kind);
+    : OdsInfoTile.Caption(kind);
 
     /// <summary>The shared line for a property address, or null (no place, no other uses, or no <c>locations.read</c>).</summary>
     internal static string? SharedLineFor(RealEstateDetailsDto re, AddressBlockPermissions permissions) =>

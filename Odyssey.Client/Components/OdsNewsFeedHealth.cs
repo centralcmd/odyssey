@@ -21,13 +21,13 @@ public static class OdsNewsFeedHealth
     private static readonly IReadOnlyDictionary<NewsFeedHealth, OdsNewsFeedHealthMeta> Registry =
         new Dictionary<NewsFeedHealth, OdsNewsFeedHealthMeta>
         {
-            [NewsFeedHealth.Pending]      = new("Pending first fetch",   "info",    "schedule"),
-            [NewsFeedHealth.Healthy]      = new("Healthy",               "income",  "check_circle"),
-            [NewsFeedHealth.Failing]      = new("Failing",               "warning", "sync_problem"),
-            [NewsFeedHealth.Gone]         = new("Gone",                  "error",   "link_off"),
-            [NewsFeedHealth.Paused]       = new("Paused",                "outline", "pause_circle"),
-            [NewsFeedHealth.Archived]     = new("Archived",              "outline", "inventory_2"),
-            [NewsFeedHealth.Quarantined]  = new("Quarantined",           "error",   "gpp_maybe"),
+            [NewsFeedHealth.Pending] = new("Pending first fetch", "info", "schedule"),
+            [NewsFeedHealth.Healthy] = new("Healthy", "income", "check_circle"),
+            [NewsFeedHealth.Failing] = new("Failing", "warning", "sync_problem"),
+            [NewsFeedHealth.Gone] = new("Gone", "error", "link_off"),
+            [NewsFeedHealth.Paused] = new("Paused", "outline", "pause_circle"),
+            [NewsFeedHealth.Archived] = new("Archived", "outline", "inventory_2"),
+            [NewsFeedHealth.Quarantined] = new("Quarantined", "error", "gpp_maybe"),
             [NewsFeedHealth.QuotaReached] = new("Storage limit reached", "warning", "hourglass_top"),
         };
 

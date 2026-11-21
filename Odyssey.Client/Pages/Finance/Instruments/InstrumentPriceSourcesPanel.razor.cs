@@ -75,7 +75,11 @@ public partial class InstrumentPriceSourcesPanel
 
         public static SourceDraft From(ExistingInstrumentPriceBinding b) => new()
         {
-            SourceKey = b.SourceKey, SourceSymbol = b.SourceSymbol, Enabled = b.Enabled, HistoryStartDate = b.HistoryStartDate, Saved = b,
+            SourceKey = b.SourceKey,
+            SourceSymbol = b.SourceSymbol,
+            Enabled = b.Enabled,
+            HistoryStartDate = b.HistoryStartDate,
+            Saved = b,
         };
     }
 
@@ -525,7 +529,8 @@ public partial class InstrumentPriceSourcesPanel
             return;
         }
 
-        try { await Js.InvokeVoidAsync("odsFocusById", target); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", target); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime under bUnit */ }
     }

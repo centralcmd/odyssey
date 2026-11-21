@@ -65,7 +65,8 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var photo = await SeedPhotoAsync(factory);
         var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 3) with
         {
-            AttachmentFileIds = [first, second], PhotoIds = [photo],
+            AttachmentFileIds = [first, second],
+            PhotoIds = [photo],
         });
         var standalone = await CreateEventAsync(client, Event(calendar.CalendarId) with { AttachmentFileIds = [first] });
 
@@ -101,7 +102,8 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         // A drag/resize PUT carries no arrays.
         var moved = await PutEventAsync(client, created.CalendarEventId, Event(calendar.CalendarId) with
         {
-            StartDateTime = Wall(2026, 3, 2, 11), EndDateTime = Wall(2026, 3, 2, 12),
+            StartDateTime = Wall(2026, 3, 2, 11),
+            EndDateTime = Wall(2026, 3, 2, 12),
         });
         Assert.Equal((1, 1), (moved.AttachmentCount, moved.PhotoCount));
 
@@ -127,7 +129,8 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var otherPhoto = await SeedPhotoAsync(owner);
         var created = await CreateEventAsync(ownerClient, Event(calendar.CalendarId) with
         {
-            AttachmentFileIds = [kept, other], PhotoIds = [photo],
+            AttachmentFileIds = [kept, other],
+            PhotoIds = [photo],
         });
 
         var editor = Factory;
@@ -136,11 +139,13 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
 
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{EventsPath}/{id}", Event(calendar.CalendarId) with
         {
-            AttachmentFileIds = [kept, other], PhotoIds = [photo],
+            AttachmentFileIds = [kept, other],
+            PhotoIds = [photo],
         })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{EventsPath}/{id}", Event(calendar.CalendarId) with
         {
-            AttachmentFileIds = [kept], PhotoIds = [],
+            AttachmentFileIds = [kept],
+            PhotoIds = [],
         })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync($"{EventsPath}/{id}", Event(calendar.CalendarId) with
         {
@@ -231,7 +236,10 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         // Mondays from 1 December 2025: five past rows and one after the fixed clock.
         var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 6) with
         {
-            StartDateTime = Wall(2025, 12, 1, 9), EndDateTime = Wall(2025, 12, 1, 10), AttachmentFileIds = [file], PhotoIds = [photo],
+            StartDateTime = Wall(2025, 12, 1, 9),
+            EndDateTime = Wall(2025, 12, 1, 10),
+            AttachmentFileIds = [file],
+            PhotoIds = [photo],
         });
         var source = await SeriesLinkAsync(factory, series.RecurrencePatternId);
 
@@ -823,7 +831,8 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var photo = await SeedPhotoAsync(owner, title: "Fjord");
         var series = await CreatePatternAsync(ownerClient, Weekly(calendar.CalendarId, 2) with
         {
-            AttachmentFileIds = [kept, other, kept], PhotoIds = [photo],
+            AttachmentFileIds = [kept, other, kept],
+            PhotoIds = [photo],
         });
         Assert.Equal((2, 1), (series.AttachmentCount, series.PhotoCount)); // the duplicate collapsed
         var path = $"{PatternsPath}/{series.RecurrencePatternId}";
@@ -931,12 +940,16 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
         var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 6) with
         {
-            StartDateTime = Wall(2025, 12, 1, 9), EndDateTime = Wall(2025, 12, 1, 10), AttachmentFileIds = [file],
+            StartDateTime = Wall(2025, 12, 1, 9),
+            EndDateTime = Wall(2025, 12, 1, 10),
+            AttachmentFileIds = [file],
         });
         var past = (await SeriesRowsAsync(client, series.RecurrencePatternId))[0];
         var edited = await PutEventAsync(client, past.CalendarEventId, Event(calendar.CalendarId) with
         {
-            Title = "Moved", StartDateTime = past.StartDateTime, EndDateTime = past.EndDateTime,
+            Title = "Moved",
+            StartDateTime = past.StartDateTime,
+            EndDateTime = past.EndDateTime,
         });
         Assert.True(edited.IsOverride);
 
@@ -963,13 +976,21 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
 
     private static NewCalendarEvent Event(Guid calendarId) => new()
     {
-        CalendarId = calendarId, Title = "Meeting", StartDateTime = Wall(2026, 3, 2, 10), EndDateTime = Wall(2026, 3, 2, 11),
+        CalendarId = calendarId,
+        Title = "Meeting",
+        StartDateTime = Wall(2026, 3, 2, 10),
+        EndDateTime = Wall(2026, 3, 2, 11),
     };
 
     private static NewRecurrencePattern Weekly(Guid calendarId, int count) => new()
     {
-        CalendarId = calendarId, Title = "Standup", StartDateTime = Wall(2026, 2, 2, 9), EndDateTime = Wall(2026, 2, 2, 10),
-        Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = count,
+        CalendarId = calendarId,
+        Title = "Standup",
+        StartDateTime = Wall(2026, 2, 2, 9),
+        EndDateTime = Wall(2026, 2, 2, 10),
+        Frequency = DtoFrequency.Weekly,
+        DaysOfWeek = DtoDays.Monday,
+        OccurrenceCount = count,
     };
 
     private static async Task<ExistingCalendar> CreateCalendarAsync(HttpClient client)
@@ -1046,7 +1067,9 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         db.RecurrencePatternAttachments.Add(new RecurrencePatternAttachment
         {
-            RecurrencePatternId = patternId, FileId = fileId, CreatedAt = Now.UtcDateTime,
+            RecurrencePatternId = patternId,
+            FileId = fileId,
+            CreatedAt = Now.UtcDateTime,
         });
         await db.SaveChangesAsync();
     }
@@ -1058,10 +1081,17 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var pattern = new ContextRecurrencePattern
         {
-            RecurrencePatternId = Guid.NewGuid(), CalendarId = calendarId, Title = "Legacy",
-            StartDateTime = Wall(2026, 2, 2, 9), EndDateTime = Wall(2026, 2, 2, 10),
-            Frequency = Odyssey.Context.RecurrenceFrequency.Weekly, DaysOfWeek = Odyssey.Context.DaysOfWeekFlags.Monday,
-            OccurrenceCount = rows, CreatedAt = Now.UtcDateTime, UpdatedAt = Now.UtcDateTime, Version = Guid.NewGuid(),
+            RecurrencePatternId = Guid.NewGuid(),
+            CalendarId = calendarId,
+            Title = "Legacy",
+            StartDateTime = Wall(2026, 2, 2, 9),
+            EndDateTime = Wall(2026, 2, 2, 10),
+            Frequency = Odyssey.Context.RecurrenceFrequency.Weekly,
+            DaysOfWeek = Odyssey.Context.DaysOfWeekFlags.Monday,
+            OccurrenceCount = rows,
+            CreatedAt = Now.UtcDateTime,
+            UpdatedAt = Now.UtcDateTime,
+            Version = Guid.NewGuid(),
         };
         db.RecurrencePatterns.Add(pattern);
         for (var i = 0; i < rows; i++)
@@ -1069,8 +1099,13 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
             var start = Wall(2026, 2, 2, 9).AddDays(7 * i);
             db.CalendarEvents.Add(new ContextCalendarEvent
             {
-                CalendarId = calendarId, Title = "Legacy", StartDateTime = start, EndDateTime = start.AddHours(1),
-                RecurrencePatternId = pattern.RecurrencePatternId, CreatedAt = Now.UtcDateTime, UpdatedAt = Now.UtcDateTime,
+                CalendarId = calendarId,
+                Title = "Legacy",
+                StartDateTime = start,
+                EndDateTime = start.AddHours(1),
+                RecurrencePatternId = pattern.RecurrencePatternId,
+                CreatedAt = Now.UtcDateTime,
+                UpdatedAt = Now.UtcDateTime,
             });
         }
 

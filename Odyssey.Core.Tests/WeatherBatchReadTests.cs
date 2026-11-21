@@ -308,8 +308,12 @@ public class WeatherBatchReadTests
         var id = Guid.NewGuid();
         h.Context.JournalEntries.Add(new JournalEntry
         {
-            JournalEntryId = id, ExternalUid = $"urn:uuid:{id}", Title = "Entry", Content = "Text",
-            EntryDate = entryDate, LocationId = locationId,
+            JournalEntryId = id,
+            ExternalUid = $"urn:uuid:{id}",
+            Title = "Entry",
+            Content = "Text",
+            EntryDate = entryDate,
+            LocationId = locationId,
         });
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();
@@ -324,8 +328,13 @@ public class WeatherBatchReadTests
         h.Context.Calendars.Add(new Calendar { CalendarId = calendarId, Name = $"Calendar {id:N}" });
         h.Context.CalendarEvents.Add(new CalendarEvent
         {
-            CalendarEventId = id, CalendarId = calendarId, Title = "Event", LocationId = locationId,
-            StartDateTime = start, EndDateTime = end, IsAllDay = allDay,
+            CalendarEventId = id,
+            CalendarId = calendarId,
+            Title = "Event",
+            LocationId = locationId,
+            StartDateTime = start,
+            EndDateTime = end,
+            IsAllDay = allDay,
         });
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();
@@ -338,14 +347,27 @@ public class WeatherBatchReadTests
     {
         var run = new WeatherForecastRun
         {
-            WeatherForecastRunId = Guid.NewGuid(), WeatherPointId = pointId, SiteVersion = 1,
-            Provider = WeatherProvider.MetNorway, ProviderUpdatedAt = issued, FetchedAtUtc = issued,
+            WeatherForecastRunId = Guid.NewGuid(),
+            WeatherPointId = pointId,
+            SiteVersion = 1,
+            Provider = WeatherProvider.MetNorway,
+            ProviderUpdatedAt = issued,
+            FetchedAtUtc = issued,
         };
         run.Steps.Add(new WeatherForecastStep
         {
-            WeatherForecastRunId = run.WeatherForecastRunId, WeatherPointId = pointId, SiteVersion = 1,
-            RunProviderUpdatedAt = issued, RunFetchedAtUtc = issued, TimeUtc = timeUtc, PeriodHours = period,
-            AirTemperatureC = temperature, PrecipitationMm = precipitation, SymbolCode = symbol, TempMinC = tempMin, TempMaxC = tempMax,
+            WeatherForecastRunId = run.WeatherForecastRunId,
+            WeatherPointId = pointId,
+            SiteVersion = 1,
+            RunProviderUpdatedAt = issued,
+            RunFetchedAtUtc = issued,
+            TimeUtc = timeUtc,
+            PeriodHours = period,
+            AirTemperatureC = temperature,
+            PrecipitationMm = precipitation,
+            SymbolCode = symbol,
+            TempMinC = tempMin,
+            TempMaxC = tempMax,
         });
         h.Context.WeatherForecastRuns.Add(run);
         await h.Context.SaveChangesAsync();

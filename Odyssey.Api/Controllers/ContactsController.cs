@@ -255,7 +255,7 @@ response is then 200 with a summary of what was destroyed.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the contact to delete.")] Guid id,
-        [FromQuery] [SwaggerParameter(Description = @"Remove the contact's blocking link rows —
+        [FromQuery][SwaggerParameter(Description = @"Remove the contact's blocking link rows —
 Beneficiary contract parties — and delete it in one transaction, instead of refusing with a 409.
 Requires contracts.update when that class is actually present.")] bool detachBlockingLinks = false,
         CancellationToken cancellationToken = default)

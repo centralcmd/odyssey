@@ -96,7 +96,12 @@ public class LocationsApiClientTests
 
         await CreateClient(handler).UpdateAsync(id, new UpdateLocation
         {
-            Name = "Cabin", Latitude = 1, Longitude = 2, TimeZoneId = "Europe/Oslo", Source = LocationSource.Manual, Archived = true,
+            Name = "Cabin",
+            Latitude = 1,
+            Longitude = 2,
+            TimeZoneId = "Europe/Oslo",
+            Source = LocationSource.Manual,
+            Archived = true,
         });
 
         Assert.Equal(HttpMethod.Put, handler.LastRequest!.Method);
@@ -112,7 +117,11 @@ public class LocationsApiClientTests
 
         var result = await CreateClient(handler).CreateAsync(new NewLocation
         {
-            Name = "Cabin", Latitude = 1, Longitude = 2, TimeZoneId = "Europe/Oslo", Source = LocationSource.Manual,
+            Name = "Cabin",
+            Latitude = 1,
+            Longitude = 2,
+            TimeZoneId = "Europe/Oslo",
+            Source = LocationSource.Manual,
         });
 
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);

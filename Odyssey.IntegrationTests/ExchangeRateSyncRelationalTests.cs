@@ -112,12 +112,19 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         {
             seed.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency
             {
-                CurrencyCode = "USD", Enabled = false, BackfilledFrom = new DateOnly(2026, 1, 1), UpdatedAtUtc = DateTime.UtcNow,
+                CurrencyCode = "USD",
+                Enabled = false,
+                BackfilledFrom = new DateOnly(2026, 1, 1),
+                UpdatedAtUtc = DateTime.UtcNow,
             });
             seed.ExchangeRates.AddRange(Rate(ExchangeRateProvider.NorgesBank), Rate(null));
             seed.ExchangeRates.Add(new ExchangeRate
             {
-                FromCurrencyCode = "NOK", ToCurrencyCode = "USD", Rate = 0.1m, AsOf = AsOf, CreatedAt = DateTime.UtcNow,
+                FromCurrencyCode = "NOK",
+                ToCurrencyCode = "USD",
+                Rate = 0.1m,
+                AsOf = AsOf,
+                CreatedAt = DateTime.UtcNow,
                 Provider = ExchangeRateProvider.NorgesBank,
             });
             await seed.SaveChangesAsync();
@@ -145,7 +152,10 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         {
             seed.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency
             {
-                CurrencyCode = "USD", Enabled = false, BackfilledFrom = new DateOnly(2026, 1, 1), UpdatedAtUtc = DateTime.UtcNow,
+                CurrencyCode = "USD",
+                Enabled = false,
+                BackfilledFrom = new DateOnly(2026, 1, 1),
+                UpdatedAtUtc = DateTime.UtcNow,
             });
             seed.ExchangeRates.Add(Rate(ExchangeRateProvider.NorgesBank));
             await seed.SaveChangesAsync();
@@ -249,8 +259,11 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
             seed.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency { CurrencyCode = "USD", Enabled = true, UpdatedAtUtc = now });
             seed.Set<ExchangeRateSyncJobRun>().Add(new ExchangeRateSyncJobRun
             {
-                Trigger = JobRunTrigger.Scheduled, Provider = ExchangeRateProvider.NorgesBank,
-                Status = JobRunStatus.Succeeded, StartedAtUtc = now.AddHours(-1), FinishedAtUtc = now.AddHours(-1),
+                Trigger = JobRunTrigger.Scheduled,
+                Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Succeeded,
+                StartedAtUtc = now.AddHours(-1),
+                FinishedAtUtc = now.AddHours(-1),
                 CurrencyCodes = "USD",
             });
             await seed.SaveChangesAsync();
@@ -272,7 +285,8 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         Assert.Equal(0.1m, Assert.Single(upcoming.Items).Rate);
         var current = await rates.ListAsync(new ExchangeRatesQueryParams
         {
-            Status = [ExchangeRateStatus.Current], SortBy = ExchangeRateSortBy.Status,
+            Status = [ExchangeRateStatus.Current],
+            SortBy = ExchangeRateSortBy.Status,
         });
         Assert.Equal(3, current.TotalCount);
         var bySource = await rates.ListAsync(new ExchangeRatesQueryParams { Source = [ExchangeRateSource.Fetched] });

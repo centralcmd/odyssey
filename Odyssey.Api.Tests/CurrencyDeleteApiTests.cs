@@ -27,23 +27,35 @@ public class CurrencyDeleteApiTests
         {
             var account = new Account
             {
-                Name = "Fjord Savings", Description = "Savings", Opened = DateTime.UtcNow, CurrencyCode = "NOK",
+                Name = "Fjord Savings",
+                Description = "Savings",
+                Opened = DateTime.UtcNow,
+                CurrencyCode = "NOK",
             };
             context.Accounts.Add(account);
             context.Transactions.Add(new Transaction
             {
-                AccountId = account.AccountId, Description = "Deposit", Amount = 100m,
-                TimeStamp = DateTime.UtcNow, CurrencyCode = "NOK",
+                AccountId = account.AccountId,
+                Description = "Deposit",
+                Amount = 100m,
+                TimeStamp = DateTime.UtcNow,
+                CurrencyCode = "NOK",
             });
             context.Budgets.Add(new Budget
             {
-                Name = "Household", StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 12, 31),
+                Name = "Household",
+                StartDate = new DateTime(2026, 1, 1),
+                EndDate = new DateTime(2026, 12, 31),
                 BaseCurrencyCode = "NOK",
             });
             context.TaxStatements.Add(new TaxStatement
             {
-                Name = "Return 2025", FiscalYear = 2025, StartDate = new DateTime(2025, 1, 1),
-                EndDate = new DateTime(2025, 12, 31), BaseCurrencyCode = "NOK", CreatedAtUtc = DateTime.UtcNow,
+                Name = "Return 2025",
+                FiscalYear = 2025,
+                StartDate = new DateTime(2025, 1, 1),
+                EndDate = new DateTime(2025, 12, 31),
+                BaseCurrencyCode = "NOK",
+                CreatedAtUtc = DateTime.UtcNow,
             });
         });
         using var client = factory.CreateClient();

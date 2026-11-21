@@ -19,126 +19,126 @@ public static class OdysseyTheme
     {
         PaletteDark = new PaletteDark
         {
-            Black                    = "#080C18",
-            White                    = "#FFFFFF",
+            Black = "#080C18",
+            White = "#FFFFFF",
 
             // Brand — Tide (phosphor teal)
-            Primary                  = "#4FD7CB", // --tide-400
-            PrimaryDarken            = "#14B8A6", // --tide-600 — hover/pressed
-            PrimaryLighten           = "#5EEAD4", // --tide-300
-            PrimaryContrastText      = "#080C18", // --ink-950
+            Primary = "#4FD7CB", // --tide-400
+            PrimaryDarken = "#14B8A6", // --tide-600 — hover/pressed
+            PrimaryLighten = "#5EEAD4", // --tide-300
+            PrimaryContrastText = "#080C18", // --ink-950
 
-            Secondary                = "#38BDF8", // --sea-400
-            SecondaryDarken          = "#0284C7",
-            SecondaryLighten         = "#7DD3FC",
-            SecondaryContrastText    = "#080C18",
+            Secondary = "#38BDF8", // --sea-400
+            SecondaryDarken = "#0284C7",
+            SecondaryLighten = "#7DD3FC",
+            SecondaryContrastText = "#080C18",
 
-            Tertiary                 = "#8B5CF6", // --violet-500
+            Tertiary = "#8B5CF6", // --violet-500
             // Every *ContrastText is set explicitly: MudBlazor's default is white, which is
             // 1.7-2.8:1 on these bright fills. ink-950 clears 4.5:1 on each (issue #254).
-            TertiaryContrastText     = "#080C18", // 4.61:1 (white 4.23:1)
+            TertiaryContrastText = "#080C18", // 4.61:1 (white 4.23:1)
 
-            Info                     = "#38BDF8", // sea-400
-            InfoContrastText         = "#080C18", // 9.11:1
-            Success                  = "#4ADE80", // mint-500 — Approved + income
-            SuccessContrastText      = "#080C18", // 11.20:1
-            Warning                  = "#F59E0B", // amber-500
-            WarningContrastText      = "#080C18", // 9.09:1
-            Error                    = "#FF6B6B", // coral-500 — Flagged + expense
-            ErrorContrastText        = "#080C18", // 7.03:1 (white 2.78:1)
+            Info = "#38BDF8", // sea-400
+            InfoContrastText = "#080C18", // 9.11:1
+            Success = "#4ADE80", // mint-500 — Approved + income
+            SuccessContrastText = "#080C18", // 11.20:1
+            Warning = "#F59E0B", // amber-500
+            WarningContrastText = "#080C18", // 9.09:1
+            Error = "#FF6B6B", // coral-500 — Flagged + expense
+            ErrorContrastText = "#080C18", // 7.03:1 (white 2.78:1)
 
             // Surfaces
-            Background               = "#0E1525", // --ink-900
-            BackgroundGray           = "#080C18", // --ink-950
-            Surface                  = "#141A2C", // --ink-800
-            DrawerBackground         = "#0E1525",
-            DrawerText               = "#E6EBF4",
-            DrawerIcon               = "#98A4BC",
-            AppbarBackground         = "#141A2C",
-            AppbarText               = "#F5F7FB",
+            Background = "#0E1525", // --ink-900
+            BackgroundGray = "#080C18", // --ink-950
+            Surface = "#141A2C", // --ink-800
+            DrawerBackground = "#0E1525",
+            DrawerText = "#E6EBF4",
+            DrawerIcon = "#98A4BC",
+            AppbarBackground = "#141A2C",
+            AppbarText = "#F5F7FB",
 
             // Text
-            TextPrimary              = "#F5F7FB",
-            TextSecondary            = "#98A4BC", // --ink-300
-            TextDisabled             = "rgba(245,247,251,0.38)",
+            TextPrimary = "#F5F7FB",
+            TextSecondary = "#98A4BC", // --ink-300
+            TextDisabled = "rgba(245,247,251,0.38)",
 
             // Actions
-            ActionDefault            = "rgba(255,255,255,0.70)",
-            ActionDisabled           = "rgba(255,255,255,0.26)",
+            ActionDefault = "rgba(255,255,255,0.70)",
+            ActionDisabled = "rgba(255,255,255,0.26)",
             ActionDisabledBackground = "rgba(255,255,255,0.12)",
-            HoverOpacity             = 0.06,
+            HoverOpacity = 0.06,
 
             // Lines
-            Divider                  = "rgba(199,208,224,0.12)",
-            DividerLight             = "rgba(199,208,224,0.06)",
-            TableLines               = "rgba(199,208,224,0.10)",
-            LinesDefault             = "rgba(199,208,224,0.18)",
-            LinesInputs              = "rgba(199,208,224,0.28)",
+            Divider = "rgba(199,208,224,0.12)",
+            DividerLight = "rgba(199,208,224,0.06)",
+            TableLines = "rgba(199,208,224,0.10)",
+            LinesDefault = "rgba(199,208,224,0.18)",
+            LinesInputs = "rgba(199,208,224,0.28)",
 
             // Scrim under dialogs
-            OverlayDark              = "rgba(8,12,24,0.62)",
+            OverlayDark = "rgba(8,12,24,0.62)",
         },
 
         PaletteLight = new PaletteLight
         {
-            Black                    = "#080C18",
-            White                    = "#FFFFFF",
+            Black = "#080C18",
+            White = "#FFFFFF",
 
-            Primary                  = "#14B8A6", // --tide-600 — darker on light for contrast
-            PrimaryDarken            = "#0E8A7C", // --tide-700
-            PrimaryLighten           = "#2DD4BF", // --tide-500
+            Primary = "#14B8A6", // --tide-600 — darker on light for contrast
+            PrimaryDarken = "#0E8A7C", // --tide-700
+            PrimaryLighten = "#2DD4BF", // --tide-500
             // --ink-950, mirroring dark: white on tide-600 is 2.49:1, ink-950 is 7.84:1 (issue #254).
-            PrimaryContrastText      = "#080C18",
+            PrimaryContrastText = "#080C18",
 
-            Secondary                = "#0284C7",
-            SecondaryDarken          = "#0369A1",
-            SecondaryLighten         = "#38BDF8",
+            Secondary = "#0284C7",
+            SecondaryDarken = "#0369A1",
+            SecondaryLighten = "#38BDF8",
             // Contrast texts are chosen per fill for ≥4.5:1, not defaulted to white (issue #254).
-            SecondaryContrastText    = "#080C18", // 4.77:1 (white 4.10:1)
+            SecondaryContrastText = "#080C18", // 4.77:1 (white 4.10:1)
 
-            Tertiary                 = "#8B5CF6",
-            TertiaryContrastText     = "#080C18", // 4.61:1 (white 4.23:1)
+            Tertiary = "#8B5CF6",
+            TertiaryContrastText = "#080C18", // 4.61:1 (white 4.23:1)
 
-            Info                     = "#0EA5E9",
-            InfoContrastText         = "#080C18", // 7.04:1 (white 2.77:1)
-            Success                  = "#15803D", // mint-700
-            SuccessContrastText      = "#FFFFFF", // 5.02:1
+            Info = "#0EA5E9",
+            InfoContrastText = "#080C18", // 7.04:1 (white 2.77:1)
+            Success = "#15803D", // mint-700
+            SuccessContrastText = "#FFFFFF", // 5.02:1
             // DS light --mud-palette-warning is amber-600 (#D97706, ~3.2:1 on white — the
             // ≥3:1 graphics floor). This darker amber is ~3.7:1 on white: it clears the 3:1
             // graphics floor but NOT 4.5:1 text. Anything that renders the warning colour as
             // small text must use --warning-text instead (see app.css and PageHeader's
             // signal button, issue #216). The value is left alone deliberately: changing it
             // is a design-system decision with churn across every Color.Warning surface.
-            Warning                  = "#B57820",
-            WarningContrastText      = "#080C18", // 5.27:1 (white 3.70:1)
-            Error                    = "#B23B3B", // coral-700
-            ErrorContrastText        = "#FFFFFF", // 5.86:1
+            Warning = "#B57820",
+            WarningContrastText = "#080C18", // 5.27:1 (white 3.70:1)
+            Error = "#B23B3B", // coral-700
+            ErrorContrastText = "#FFFFFF", // 5.86:1
 
-            Background               = "#FAFBFD",
-            BackgroundGray           = "#F5F7FB",
-            Surface                  = "#FFFFFF",
-            DrawerBackground         = "#FFFFFF",
-            DrawerText               = "#141A2C",
-            DrawerIcon               = "#4A5670",
-            AppbarBackground         = "#FFFFFF",
-            AppbarText               = "#141A2C",
+            Background = "#FAFBFD",
+            BackgroundGray = "#F5F7FB",
+            Surface = "#FFFFFF",
+            DrawerBackground = "#FFFFFF",
+            DrawerText = "#141A2C",
+            DrawerIcon = "#4A5670",
+            AppbarBackground = "#FFFFFF",
+            AppbarText = "#141A2C",
 
-            TextPrimary              = "#0E1525",
-            TextSecondary            = "#4A5670",
-            TextDisabled             = "rgba(14,21,37,0.38)",
+            TextPrimary = "#0E1525",
+            TextSecondary = "#4A5670",
+            TextDisabled = "rgba(14,21,37,0.38)",
 
-            ActionDefault            = "rgba(14,21,37,0.70)",
-            ActionDisabled           = "rgba(14,21,37,0.26)",
+            ActionDefault = "rgba(14,21,37,0.70)",
+            ActionDisabled = "rgba(14,21,37,0.26)",
             ActionDisabledBackground = "rgba(14,21,37,0.08)",
-            HoverOpacity             = 0.04,
+            HoverOpacity = 0.04,
 
-            Divider                  = "rgba(14,21,37,0.10)",
-            DividerLight             = "rgba(14,21,37,0.05)",
-            TableLines               = "rgba(14,21,37,0.08)",
-            LinesDefault             = "rgba(14,21,37,0.14)",
-            LinesInputs              = "rgba(14,21,37,0.28)",
+            Divider = "rgba(14,21,37,0.10)",
+            DividerLight = "rgba(14,21,37,0.05)",
+            TableLines = "rgba(14,21,37,0.08)",
+            LinesDefault = "rgba(14,21,37,0.14)",
+            LinesInputs = "rgba(14,21,37,0.28)",
 
-            OverlayDark              = "rgba(14,21,37,0.50)",
+            OverlayDark = "rgba(14,21,37,0.50)",
         },
 
         Typography = new Typography
@@ -146,32 +146,32 @@ public static class OdysseyTheme
             Default = new DefaultTypography
             {
                 FontFamily = new[] { "Roboto", "Helvetica Neue", "Helvetica", "Arial", "sans-serif" },
-                FontSize   = "0.875rem",
+                FontSize = "0.875rem",
                 FontWeight = "400",
                 LineHeight = "1.5",
                 LetterSpacing = "normal",
             },
-            H1 = new H1Typography { FontWeight = "300", FontSize = "2.5rem",   LineHeight = "1.15", LetterSpacing = "-0.02em" },
-            H2 = new H2Typography { FontWeight = "300", FontSize = "2rem",     LineHeight = "1.3",  LetterSpacing = "-0.02em" },
-            H3 = new H3Typography { FontWeight = "400", FontSize = "1.5rem",   LineHeight = "1.3" },
-            H4 = new H4Typography { FontWeight = "400", FontSize = "1.25rem",  LineHeight = "1.3" },
+            H1 = new H1Typography { FontWeight = "300", FontSize = "2.5rem", LineHeight = "1.15", LetterSpacing = "-0.02em" },
+            H2 = new H2Typography { FontWeight = "300", FontSize = "2rem", LineHeight = "1.3", LetterSpacing = "-0.02em" },
+            H3 = new H3Typography { FontWeight = "400", FontSize = "1.5rem", LineHeight = "1.3" },
+            H4 = new H4Typography { FontWeight = "400", FontSize = "1.25rem", LineHeight = "1.3" },
             H5 = new H5Typography { FontWeight = "500", FontSize = "1.125rem", LineHeight = "1.5" },
-            H6 = new H6Typography { FontWeight = "500", FontSize = "1rem",     LineHeight = "1.5" },
-            Body1    = new Body1Typography    { FontWeight = "400", FontSize = "1rem",      LineHeight = "1.5" },
-            Body2    = new Body2Typography    { FontWeight = "400", FontSize = "0.875rem",  LineHeight = "1.5" },
-            Button   = new ButtonTypography   { FontWeight = "500", FontSize = "0.875rem",  LineHeight = "1",   LetterSpacing = "0.04em", TextTransform = "uppercase" },
-            Caption  = new CaptionTypography  { FontWeight = "400", FontSize = "0.75rem",   LineHeight = "1.5" },
+            H6 = new H6Typography { FontWeight = "500", FontSize = "1rem", LineHeight = "1.5" },
+            Body1 = new Body1Typography { FontWeight = "400", FontSize = "1rem", LineHeight = "1.5" },
+            Body2 = new Body2Typography { FontWeight = "400", FontSize = "0.875rem", LineHeight = "1.5" },
+            Button = new ButtonTypography { FontWeight = "500", FontSize = "0.875rem", LineHeight = "1", LetterSpacing = "0.04em", TextTransform = "uppercase" },
+            Caption = new CaptionTypography { FontWeight = "400", FontSize = "0.75rem", LineHeight = "1.5" },
             Overline = new OverlineTypography { FontWeight = "500", FontSize = "0.6875rem", LineHeight = "1.4", LetterSpacing = "0.08em", TextTransform = "uppercase" },
-            Subtitle1 = new Subtitle1Typography { FontWeight = "400", FontSize = "1rem",     LineHeight = "1.5" },
+            Subtitle1 = new Subtitle1Typography { FontWeight = "400", FontSize = "1rem", LineHeight = "1.5" },
             Subtitle2 = new Subtitle2Typography { FontWeight = "500", FontSize = "0.875rem", LineHeight = "1.5" },
         },
 
         LayoutProperties = new LayoutProperties
         {
             DefaultBorderRadius = "4px",
-            DrawerWidthLeft     = "240px",
-            DrawerWidthRight    = "240px",
-            AppbarHeight        = "56px",
+            DrawerWidthLeft = "240px",
+            DrawerWidthRight = "240px",
+            AppbarHeight = "56px",
         },
 
         // MudBlazor's Shadows.Elevation is a single array shared by both light and dark mode —

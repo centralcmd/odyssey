@@ -397,19 +397,19 @@ public class SummaryEndpointsApiTests(SummaryEndpointsApiTests.Host host) : Shar
     private static TaxStatement TaxStatement(
         int year, decimal netWorth, decimal assessedTax, bool archived = false,
         TaxStatementStatus status = TaxStatementStatus.New) => new()
-    {
-        TaxStatementId = Guid.NewGuid(),
-        Name = $"Tax year {year}",
-        FiscalYear = year,
-        StartDate = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        EndDate = new DateTime(year, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-        BaseCurrencyCode = "USD",
-        DeclaredNetWorth = netWorth,
-        AssessedTax = assessedTax,
-        CreatedAtUtc = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        Archived = archived ? new DateTime(year, 6, 1, 0, 0, 0, DateTimeKind.Utc) : null,
-        Status = status,
-    };
+        {
+            TaxStatementId = Guid.NewGuid(),
+            Name = $"Tax year {year}",
+            FiscalYear = year,
+            StartDate = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(year, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+            BaseCurrencyCode = "USD",
+            DeclaredNetWorth = netWorth,
+            AssessedTax = assessedTax,
+            CreatedAtUtc = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Archived = archived ? new DateTime(year, 6, 1, 0, 0, 0, DateTimeKind.Utc) : null,
+            Status = status,
+        };
 
     private static async Task<Guid> SeedAccountAsync(
         WebApplicationFactory<Program> factory,

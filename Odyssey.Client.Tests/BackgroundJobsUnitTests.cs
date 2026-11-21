@@ -176,7 +176,10 @@ public class BackgroundJobsUnitTests
 
     private static JobRunDetail Detail(JobRunStatus status) => new()
     {
-        Id = Guid.NewGuid(), JobType = JobType.Weather, Status = status, StartedAtUtc = Now.UtcDateTime,
+        Id = Guid.NewGuid(),
+        JobType = JobType.Weather,
+        Status = status,
+        StartedAtUtc = Now.UtcDateTime,
     };
 
     private static ApiResult<JobRunDetail> Read(HttpStatusCode status) =>
@@ -363,7 +366,10 @@ public class BackgroundJobsUnitTests
 
     private static BackgroundJobSummary Held(JobType job, JobHeldReason? reason, bool canRead) => new()
     {
-        JobType = job, Health = JobHealth.Held, HeldReason = reason, CanReadDetail = canRead,
+        JobType = job,
+        Health = JobHealth.Held,
+        HeldReason = reason,
+        CanReadDetail = canRead,
     };
 
     [Fact]

@@ -445,7 +445,8 @@ public partial class OdsCombobox : IDisposable, IHandleEvent
             return;
         }
 
-        try { await Js.InvokeVoidAsync("odsFocusById", InputId); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", InputId); }
         catch { /* JS unavailable (e.g. teardown) */ }
     }
 
@@ -798,7 +799,8 @@ public partial class OdsCombobox : IDisposable, IHandleEvent
         }
 
         _restoring = true;
-        try { await _auto.SelectOptionAsync(Selected!); }
+        try
+        { await _auto.SelectOptionAsync(Selected!); }
         catch (Exception) { /* best-effort: teardown, or no JS runtime under bUnit */ }
         finally { _restoring = false; }
     }

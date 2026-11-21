@@ -46,8 +46,8 @@ public sealed class InstrumentsController(
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "The dashboard watchlist: followed instruments' latest prices and change in the display currency.")]
     public async Task<IActionResult> GetWatchlist(
-        [FromQuery(Name = "mainCurrency")] [StringLength(3)] [RegularExpression("^[A-Za-z]{3}$")] string? mainCurrency,
-        [FromQuery(Name = "sparklineDays")] [Range(0, InstrumentWatchlistService.MaxSparklineDays)] int sparklineDays = 0,
+        [FromQuery(Name = "mainCurrency")][StringLength(3)][RegularExpression("^[A-Za-z]{3}$")] string? mainCurrency,
+        [FromQuery(Name = "sparklineDays")][Range(0, InstrumentWatchlistService.MaxSparklineDays)] int sparklineDays = 0,
         CancellationToken cancellationToken = default) =>
         Ok(await watchlist.GetAsync(string.IsNullOrWhiteSpace(mainCurrency) ? "NOK" : mainCurrency, sparklineDays, cancellationToken));
 
@@ -143,8 +143,8 @@ public sealed class InstrumentsController(
         Description = "source and expectedCount are required; a stale count is a 409 that deletes nothing. Fetched rows also need system-settings.update.")]
     public async Task<IActionResult> Purge(
         Guid id,
-        [FromQuery(Name = "source")] [Required] InstrumentPricePurgeScope? source,
-        [FromQuery(Name = "expectedCount")] [Required] [Range(0, int.MaxValue)] int? expectedCount,
+        [FromQuery(Name = "source")][Required] InstrumentPricePurgeScope? source,
+        [FromQuery(Name = "expectedCount")][Required][Range(0, int.MaxValue)] int? expectedCount,
         CancellationToken cancellationToken = default)
     {
         if (source is InstrumentPricePurgeScope.Fetched or InstrumentPricePurgeScope.All

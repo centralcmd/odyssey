@@ -242,7 +242,8 @@ public class ContactVCardServiceTests
         var created = await service.Create(Org("Acme"));
         await service.Update(created.ContactId, new NewContact
         {
-            Type = ContactType.Organization, Archived = true,
+            Type = ContactType.Organization,
+            Archived = true,
             OrganizationDetails = new OrganizationDetailsDto { LegalName = "Acme" },
         });
         var externalUid = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.ExternalUid;

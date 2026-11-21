@@ -384,7 +384,10 @@ public sealed class NewsFeedJob(
             {
                 context.NewsFeedCrashEvents.Add(new NewsFeedCrashEvent
                 {
-                    NewsFeedCrashEventId = Guid.NewGuid(), LeaseOwner = leaseOwner, DetectedAtUtc = now, FeedsInFlight = inFlight[leaseOwner],
+                    NewsFeedCrashEventId = Guid.NewGuid(),
+                    LeaseOwner = leaseOwner,
+                    DetectedAtUtc = now,
+                    FeedsInFlight = inFlight[leaseOwner],
                 });
                 if (state.CrashSuspectCount >= NewsJobTiming.QuarantineAt && state.QuarantinedAtUtc is null)
                 {

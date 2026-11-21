@@ -117,7 +117,13 @@ public class ImportNewsFeedsDialogTests
 
     private static NewsOpmlImportResult Mixed() => new()
     {
-        Feeds = 14, MergedOutlines = 3, Created = 6, AlreadySubscribed = 2, PendingDeletion = 1, Invalid = 3, FeedLimit = 2,
+        Feeds = 14,
+        MergedOutlines = 3,
+        Created = 6,
+        AlreadySubscribed = 2,
+        PendingDeletion = 1,
+        Invalid = 3,
+        FeedLimit = 2,
         TagsCreated = ["Local", "Tech", "Økonomi"],
         TagsSkipped =
         [
@@ -633,7 +639,10 @@ public class ImportNewsFeedsDialogTests
     {
         var result = new NewsOpmlImportResult
         {
-            Feeds = 5_001, Created = 1, Invalid = 5_000, ItemsTruncated = true,
+            Feeds = 5_001,
+            Created = 1,
+            Invalid = 5_000,
+            ItemsTruncated = true,
             Items = [Item(1, "https://new.example/rss", "New feed", NewsOpmlImportOutcome.Created),
                 .. Enumerable.Range(0, 4).Select(i => Item(2 + i, $"http://192.168.1.{20 + i}/feed", $"Home feed {i + 1}", NewsOpmlImportOutcome.Invalid, "This address cannot be fetched."))],
         };
@@ -671,7 +680,9 @@ public class ImportNewsFeedsDialogTests
     {
         var result = new NewsOpmlImportResult
         {
-            Feeds = 2, Created = 0, Invalid = 1,
+            Feeds = 2,
+            Created = 0,
+            Invalid = 1,
             Items = [Item(1, "https://x.example/rss", "Future", (NewsOpmlImportOutcome)42), Item(2, "https://y.example/rss", "Old", NewsOpmlImportOutcome.Unknown)],
             TagsSkipped = [new() { Name = "Mystery", Reason = (NewsOpmlTagSkipReason)99 }, new() { Name = "Long", Reason = NewsOpmlTagSkipReason.NameTooLong }],
             TagsSkippedTotal = 2,
@@ -715,7 +726,9 @@ public class ImportNewsFeedsDialogTests
     {
         var result = new NewsOpmlImportResult
         {
-            Feeds = 1, AlreadySubscribed = 1, Items = [Item(1, "https://a.example/rss", "A", NewsOpmlImportOutcome.AlreadySubscribed)],
+            Feeds = 1,
+            AlreadySubscribed = 1,
+            Items = [Item(1, "https://a.example/rss", "A", NewsOpmlImportOutcome.AlreadySubscribed)],
         };
         var h = await ImportedAsync(result);
         await using var _ = h;
@@ -733,7 +746,9 @@ public class ImportNewsFeedsDialogTests
     {
         var result = new NewsOpmlImportResult
         {
-            Feeds = 3, Created = 2, Invalid = 1,
+            Feeds = 3,
+            Created = 2,
+            Invalid = 1,
             TagsCreated = ["<b>x</b>", "‮evil"],
             Items =
             [
@@ -799,7 +814,9 @@ public class ImportNewsFeedsDialogTests
     {
         var result = new NewsOpmlImportResult
         {
-            Feeds = 1, Invalid = 1, Items = [Item(1, "::not a url::", null, NewsOpmlImportOutcome.Invalid, "Not a web address.")],
+            Feeds = 1,
+            Invalid = 1,
+            Items = [Item(1, "::not a url::", null, NewsOpmlImportOutcome.Invalid, "Not a web address.")],
         };
         var h = await ImportedAsync(result);
         await using var _ = h;
@@ -827,7 +844,8 @@ public class ImportNewsFeedsDialogTests
     {
         var result = new NewsOpmlImportResult
         {
-            Feeds = 2, Created = 2,
+            Feeds = 2,
+            Created = 2,
             Items = [Item(1, "https://a.example/rss", "A", NewsOpmlImportOutcome.Created), Item(2, "https://b.example/rss", "B", NewsOpmlImportOutcome.Created)],
         };
         var h = await ImportedAsync(result);
@@ -843,7 +861,9 @@ public class ImportNewsFeedsDialogTests
     {
         var result = new NewsOpmlImportResult
         {
-            Feeds = 3, AlreadySubscribed = 2, FeedLimit = 1,
+            Feeds = 3,
+            AlreadySubscribed = 2,
+            FeedLimit = 1,
             Items = [Item(1, "https://a.example/rss", "A", NewsOpmlImportOutcome.AlreadySubscribed), Item(2, "https://b.example/rss", "B", NewsOpmlImportOutcome.AlreadySubscribed),
                 Item(3, "https://c.example/rss", "C", NewsOpmlImportOutcome.FeedLimit)],
         };

@@ -286,11 +286,21 @@ public partial class ContactVCardService
         {
             switch (ch)
             {
-                case '\\': sb.Append("\\\\"); break;
-                case ',': sb.Append("\\,"); break;
-                case ';': sb.Append("\\;"); break;
-                case '\n': sb.Append("\\n"); break;
-                default: sb.Append(ch); break;
+                case '\\':
+                    sb.Append("\\\\");
+                    break;
+                case ',':
+                    sb.Append("\\,");
+                    break;
+                case ';':
+                    sb.Append("\\;");
+                    break;
+                case '\n':
+                    sb.Append("\\n");
+                    break;
+                default:
+                    sb.Append(ch);
+                    break;
             }
         }
 
@@ -306,10 +316,22 @@ public partial class ContactVCardService
             {
                 switch (value[i + 1])
                 {
-                    case 'n' or 'N': sb.Append('\n'); i++; continue;
-                    case ',': sb.Append(','); i++; continue;
-                    case ';': sb.Append(';'); i++; continue;
-                    case '\\': sb.Append('\\'); i++; continue;
+                    case 'n' or 'N':
+                        sb.Append('\n');
+                        i++;
+                        continue;
+                    case ',':
+                        sb.Append(',');
+                        i++;
+                        continue;
+                    case ';':
+                        sb.Append(';');
+                        i++;
+                        continue;
+                    case '\\':
+                        sb.Append('\\');
+                        i++;
+                        continue;
                 }
             }
 
