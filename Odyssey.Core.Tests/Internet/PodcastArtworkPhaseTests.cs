@@ -196,6 +196,68 @@ public sealed class PodcastArtworkPhaseTests : IAsyncLifetime
         Assert.Empty(PodcastChaptersPhase.ParseChapters(Encoding.UTF8.GetBytes("""{"version":"2.0","chapters":[{"startTime":1}]}""")));
     }
 
+    [Fact]
+    public async Task AC26_An_svg_is_rejected_and_never_rendered()
+    {
+        news.Server.Feed(FeedUrl, Show());
+        news.Server.Bytes(Cover, Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><script>x</script></svg>"), "image/svg+xml");
+        await PodcastAsync();
+
+        await TickAsync();
+
+        Assert.Equal(PodcastArtworkState.Rejected, await news.WithContextAsync(async c => (await c.PodcastArtwork.SingleAsync()).State));
+        Assert.Equal(0, renderer.Calls);
+    }
+
+    [Fact]
+    public async Task AC26_A_feed_at_its_artwork_cap_inserts_no_further_artwork_row()
+    {
+        news.Server.Feed(FeedUrl, Show());
+        var feedId = await PodcastAsync();
+        var now = news.Clock.GetUtcNow().UtcDateTime;
+        await news.WithContextAsync(async c =>
+        {
+            for (var i = 0; i < Dtos.PodcastLimits.MaxArtworkPerFeed; i++)
+            {
+                var key = new byte[32];
+                BitConverter.GetBytes(i).CopyTo(key, 0);
+                c.PodcastArtwork.Add(new PodcastArtwork
+                {
+                    PodcastArtworkId = Guid.NewGuid(), NewsFeedId = feedId, SourceUrl = $"https://show.example.org/{i}.jpg",
+                    SourceUrlKeyHash = key, State = PodcastArtworkState.Rejected, CreatedAtUtc = now,
+                });
+            }
+
+            await c.SaveChangesAsync();
+        });
+
+        await TickAsync();
+
+        await news.WithContextAsync(async c =>
+        {
+            Assert.Equal(Dtos.PodcastLimits.MaxArtworkPerFeed, await c.PodcastArtwork.CountAsync());
+            Assert.False(await c.PodcastArtwork.AnyAsync(a => a.SourceUrl == Cover));
+            Assert.Null((await c.PodcastEpisodes.AsNoTracking().SingleAsync()).ArtworkId);
+        });
+    }
+
+    [Fact]
+    public async Task AC28_A_chapter_file_over_its_size_limit_yields_no_chapters()
+    {
+        const string ChaptersUrl = "https://show.example.org/big.json";
+        news.Server.Feed(FeedUrl, Show(ChaptersUrl));
+        news.Server.Bytes(ChaptersUrl, Encoding.UTF8.GetBytes("{\"version\":\"1.2.0\",\"chapters\":[" + new string(' ', 2 * 1024 * 1024) + "]}"), "application/json+chapters");
+        await PodcastAsync();
+
+        await TickAsync();
+
+        await news.WithContextAsync(async c =>
+        {
+            Assert.Equal(PodcastChaptersFetchState.Failed, (await c.PodcastEpisodes.AsNoTracking().SingleAsync()).ChaptersFetchState);
+            Assert.False(await c.PodcastChapters.AnyAsync(ch => ch.Source == PodcastChapterSource.Json));
+        });
+    }
+
     private sealed class FakeRenderer : IPhotoThumbnailRenderer
     {
         private readonly ManualResetEventSlim gate = new(true);

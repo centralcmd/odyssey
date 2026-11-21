@@ -144,13 +144,41 @@ public sealed class PodcastAudioInspectionTests
                 }
 
                 using var deadline = new CancellationTokenSource(PodcastAudioChapters.Deadline);
+                var one = Stopwatch.StartNew();
                 var chapters = await PodcastAudioChapters.ReadAsync(new MemoryStream(file), type, deadline.Token);
-                Assert.True(chapters.Count <= 10_000);
-                _ = PodcastFields.NormalizeChapters(chapters);
+                Assert.True(one.Elapsed < PodcastAudioChapters.Deadline, $"Round {round} took {one.Elapsed}.");
+                Assert.True(PodcastFields.NormalizeChapters(chapters).Count <= Dtos.PodcastLimits.MaxChapters);
             }
         }
 
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(30), $"The corpus took {clock.Elapsed}.");
+    }
+
+    [Fact]
+    public async Task AC29_A_truncated_tag_or_an_oversized_frame_length_yields_no_chapters()
+    {
+        var file = Mp3([new(0, null, "Intro"), new(1_000, null, "Main")]);
+        Assert.Empty(await ReadAsync(file[..20], "audio/mpeg"));
+
+        // The first frame claims to run past the end of the tag.
+        var oversized = (byte[])file.Clone();
+        oversized[14] = 0x7F;
+        oversized[15] = 0x7F;
+        oversized[16] = 0x7F;
+        oversized[17] = 0x7F;
+        Assert.Empty(await ReadAsync(oversized, "audio/mpeg"));
+
+        var m4a = M4a([(TimeSpan.Zero, "a")], moovAtHead: false);
+        Assert.Empty(await ReadAsync(m4a[..(m4a.Length / 2)], "audio/mp4"));
+    }
+
+    [Fact]
+    public async Task AC29_A_reader_past_its_deadline_stops()
+    {
+        using var expired = new CancellationTokenSource();
+        await expired.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            PodcastAudioChapters.ReadAsync(new MemoryStream(Mp3([new(0, null, "x")])), "audio/mpeg", expired.Token));
     }
 
     private static Task<IReadOnlyList<PodcastRawChapter>> ReadAsync(byte[] file, string type) =>

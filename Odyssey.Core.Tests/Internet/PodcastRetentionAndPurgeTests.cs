@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Context;
+using Odyssey.Core.Internet.News;
 using Odyssey.Core.Internet.News.Jobs;
 using Odyssey.Core.Internet.News.Podcasts;
 using Odyssey.Core.Journal.Thumbnails;
@@ -181,7 +182,9 @@ public sealed class PodcastRetentionAndPurgeTests : IAsyncLifetime
         var size = (await AudioAsync()).SizeBytes!.Value;
         await news.WithContextAsync(async c =>
         {
-            (await c.NewsFeeds.SingleAsync()).Kind = NewsFeedKind.Article;
+            var feed = await c.NewsFeeds.SingleAsync();
+            feed.Kind = NewsFeedKind.Article;
+            feed.KindChangedAtUtc = Now;
             await c.SaveChangesAsync();
         });
 
@@ -199,13 +202,22 @@ public sealed class PodcastRetentionAndPurgeTests : IAsyncLifetime
         feedId = await news.AddFeedAsync(FeedUrl);
         await news.Job.RunOnceAsync(CancellationToken.None);
         Assert.Equal(1, await news.WithContextAsync(c => c.NewsFeedCounters.Select(x => x.UnreadCount).SingleAsync()));
+        var changedAt = Now;
         await news.WithContextAsync(async c =>
         {
-            (await c.NewsFeeds.SingleAsync()).Kind = NewsFeedKind.Podcast;
+            var feed = await c.NewsFeeds.SingleAsync();
+            feed.Kind = NewsFeedKind.Podcast;
+            feed.KindChangedAtUtc = changedAt;
             await c.SaveChangesAsync();
         });
+        Assert.Equal([feedId], await news.WithContextAsync(c => NewsFeedKindRewrite.PendingFeeds(c).ToListAsync()));
 
         await Get<NewsFeedPurger>().RewriteFeedKindAsync(CancellationToken.None);
+        // The pass that finds nothing left to rewrite records the change it caught up with; the feed is then exact.
+        await Get<NewsFeedPurger>().RewriteFeedKindAsync(CancellationToken.None);
+
+        Assert.Empty(await news.WithContextAsync(c => NewsFeedKindRewrite.PendingFeeds(c).ToListAsync()));
+        Assert.Equal(changedAt, await news.WithContextAsync(c => c.NewsFeedFetchStates.Select(x => x.FeedKindRewrittenAtUtc).SingleAsync()));
 
         await news.WithContextAsync(async c =>
         {
@@ -237,8 +249,9 @@ public sealed class PodcastRetentionAndPurgeTests : IAsyncLifetime
             Assert.False(await c.PodcastArtwork.AnyAsync());
             Assert.False(await c.PodcastArtworkFiles.AnyAsync());
             Assert.False(await c.PodcastFeedDetails.AnyAsync());
-            Assert.All(await c.StoredObjects.Where(o => o.FeatureKey.StartsWith("Podcast")).ToListAsync(),
-                o => Assert.Equal(StoredObjectState.PendingDelete, o.State));
+            var released = await c.StoredObjects.Where(o => o.FeatureKey.StartsWith("Podcast")).ToListAsync();
+            Assert.NotEmpty(released);
+            Assert.All(released, o => Assert.Equal(StoredObjectState.PendingDelete, o.State));
         });
         var totals = await TotalsAsync();
         Assert.Equal((0L, 0L), (totals.AudioBytes, totals.ArtworkBytes));

@@ -141,6 +141,14 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
             [PermissionClaims.SystemSettingsUpdate, PermissionClaims.ExchangeRatesDelete]),
     ];
 
+    // Write endpoints that take a POST and no body, probed against a random id so the call is non-mutating: a role
+    // holding the claim gets past authorization to a 404, one lacking it a 403 before the handler runs.
+    private static readonly (string Endpoint, string RequiredClaim)[] PostGatedEndpoints =
+    [
+        // Podcasts (issue #556 §7.2): a server download is podcast-audio.create — Admin, Owner and User, not Guest.
+        ($"/api/podcast-episodes/{Guid.NewGuid()}/audio", PermissionClaims.PodcastAudioCreate),
+    ];
+
     private static IEnumerable<(string Endpoint, string[] RequiredClaims)> AllWriteGatedEndpoints =>
         WriteGatedEndpoints.Select(e => (e.Endpoint, new[] { e.RequiredClaim })).Concat(MultiClaimWriteEndpoints);
 
@@ -269,6 +277,33 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
                         response.StatusCode == HttpStatusCode.Forbidden,
                         $"{user.Role} DELETE {endpoint} (lacks '{requiredClaim}'): expected 403 Forbidden, " +
                         $"got {(int)response.StatusCode} {response.StatusCode}.");
+                }
+            }
+        }
+    }
+
+    [SkippableFact]
+    public async Task Each_role_is_allowed_or_forbidden_on_post_writes_per_its_real_claims()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        foreach (var user in DemoUsers.All)
+        {
+            var client = await fixture.CreateAuthenticatedClientAsync(user.Email, user.Password);
+            var claims = ClaimsForRole(user.Role);
+            foreach (var (endpoint, requiredClaim) in PostGatedEndpoints)
+            {
+                var response = await fixture.PostWithAntiforgeryAsync(client, endpoint, new { });
+                if (claims.Contains(requiredClaim))
+                {
+                    Assert.True(
+                        response.StatusCode is not (HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden),
+                        $"{user.Role} POST {endpoint} (has '{requiredClaim}'): expected to pass authorization, got {(int)response.StatusCode}.");
+                }
+                else
+                {
+                    Assert.True(
+                        response.StatusCode == HttpStatusCode.Forbidden,
+                        $"{user.Role} POST {endpoint} (lacks '{requiredClaim}'): expected 403 Forbidden, got {(int)response.StatusCode}.");
                 }
             }
         }

@@ -217,6 +217,30 @@ public class PodcastFeedsApiTests(PodcastFeedsApiTests.Host host) : SharedApiHos
     }
 
     [Fact]
+    public async Task AC25_A_feed_switched_back_to_articles_shows_its_articles_before_the_purge_loop_rewrites_them()
+    {
+        var factory = Factory.ForCaller(AllNewsClaims);
+        var feed = await factory.SeedFeedAsync(url: "https://switched-back.example.org/podcast.xml");
+        var ids = await factory.SeedArticlesAsync(feed, 2, "Episode");
+        // The articles still carry the podcast copy of the kind; the feed changed type a moment ago.
+        await factory.WithContextAsync(async context =>
+        {
+            foreach (var article in await context.NewsArticles.Where(a => a.NewsFeedId == feed).ToListAsync())
+            {
+                article.FeedKind = NewsFeedKind.Podcast;
+            }
+
+            (await context.NewsFeeds.SingleAsync(f => f.NewsFeedId == feed)).KindChangedAtUtc = Base;
+            await context.SaveChangesAsync();
+        });
+        using var client = factory.CreateClient();
+
+        var list = await (await client.GetAsync("/api/news-articles?limit=200")).ReadAsync<NewsArticlePage>();
+
+        Assert.Equal(ids.Order(), list.Items.Where(a => a.FeedId == feed).Select(a => a.Id).Order());
+    }
+
+    [Fact]
     public async Task AC33_Mark_all_read_leaves_podcast_feeds_alone()
     {
         var factory = Factory.ForCaller(AllNewsClaims);

@@ -1861,6 +1861,9 @@ publisher.
 - **The client nginx gains one location**, `/api/api/podcast-episodes/<id>/audio/content`, unbuffered with an hour's
   send timeout. Keep it in your own proxy config: a buffering proxy makes a slow or aborted download look complete to
   the API, which then stamps the episode as downloaded and starts its auto-delete countdown.
+- **`PUT /api/news-feeds/{id}` now requires `kind`, `autoDownload`, `autoDeleteEnabled` and `autoDeleteAfterDays`**
+  (a full replacement, like `downloadImages`); a body without them is a `400`. The shipped client sends them. A script
+  or a browser still running a cached client from before this release must be refreshed.
 - **Rolling back** past this release drops every podcast table; the podcast `StoredObjects` rows remain and log the B4
   Critical. Switch every podcast feed back to an article feed (or delete it) and wait out the deletion grace first.
 
@@ -1876,7 +1879,8 @@ returned by the API or logged — logs name hosts and episode ids only.
 unique guard columns on MariaDB). A download must send its headers within 30 s, may not stall for 60 s, must average
 32 KiB/s over each two-minute window after its first minute, and gets `min(60 min, 2 min + size ÷ 32 KiB/s)` in all.
 The chapter-marker reader reads at most 16 MiB of an ID3 head tag or 4 MiB of an MP4 `moov`, with a two-second
-deadline. Memory: two 80 KiB download buffers plus the chapter window, on top of the news job's peak.
+deadline. Memory: two 80 KiB download buffers plus the chapter window, on top of the news job's peak. A process's two downloads run inside one run of the job, so a long download holds that
+process's next run (and its next claim) until it ends — up to the hour's total deadline; other replicas keep claiming.
 
 **Storage.** Podcast files share the news headroom threshold (upload threshold plus 1 GiB), and a download also
 reserves its expected size against both the audio quota and the free space, under a lock on the storage totals, so two

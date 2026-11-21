@@ -155,7 +155,8 @@ server {
 
     # Podcast audio downloads (issue #556 §5.3 #8): the API stamps an episode as downloaded only after it has written
     # the whole file, so nginx must not buffer the response — buffered, a slow or aborted client would look complete to
-    # the API, and a 1 GB episode would park on nginx's temp disk. A transfer gets an hour. No request body is taken.
+    # the API, and a 1 GB episode would park on nginx's temp disk. A transfer gets an hour. The route is a GET, so the
+    # body limit is the smallest nginx default worth stating, not a size any request needs.
     location ~ ^/api/api/podcast-episodes/[^/]+/audio/content$ {
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass http://api:8080;

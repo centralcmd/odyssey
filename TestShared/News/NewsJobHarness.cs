@@ -43,7 +43,8 @@ public sealed class NewsJobHarness : IAsyncDisposable
         FakeNewsServer? server = null,
         int? bucketCapacity = null,
         Action<IServiceCollection>? configureServices = null,
-        TimeSpan? throttleSpacing = null)
+        TimeSpan? throttleSpacing = null,
+        long maxFileSizeBytes = 64L * 1024 * 1024)
     {
         server ??= new FakeNewsServer();
         var host = FileStorageTestHost.Create(
@@ -57,6 +58,7 @@ public sealed class NewsJobHarness : IAsyncDisposable
             },
             features: [],
             clock: clock,
+            maxFileSizeBytes: maxFileSizeBytes,
             configureServices: services =>
             {
                 services.AddNewsReader();

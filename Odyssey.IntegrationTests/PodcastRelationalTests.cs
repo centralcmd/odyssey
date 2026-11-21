@@ -37,6 +37,7 @@ public sealed class PodcastRelationalTests(MariaDbFixture fixture) : IAsyncDispo
 
     private readonly DirectoryInfo volume = Directory.CreateTempSubdirectory("odyssey-it-podcast-");
     private readonly TestClock clock = new();
+    private readonly List<NewsJobHarness> extra = [];
     private NewsJobHarness? news;
     private string connection = string.Empty;
 
@@ -45,6 +46,11 @@ public sealed class PodcastRelationalTests(MariaDbFixture fixture) : IAsyncDispo
         if (news is not null)
         {
             await news.DisposeAsync();
+        }
+
+        foreach (var harness in extra)
+        {
+            await harness.DisposeAsync();
         }
 
         volume.Delete(recursive: true);
@@ -63,6 +69,16 @@ public sealed class PodcastRelationalTests(MariaDbFixture fixture) : IAsyncDispo
                 services.AddSingleton(new PhotoThumbnailProcessHooks { Exit = _ => { } });
             });
         return news;
+    }
+
+    /// <summary>A second worker replica over the same database and the same fake publishers.</summary>
+    private async Task<NewsJobHarness> ReplicaAsync(NewsJobHarness first)
+    {
+        var replica = await NewsJobHarness.CreateAsync(
+            options => options.UseMySql(connection, ServerVersion.AutoDetect(connection), OdysseyDatabaseRetry.Configure),
+            volume.FullName, clock, first.Server, configureServices: services => services.AddSingleton<PodcastAudioDownloadJob>());
+        extra.Add(replica);
+        return replica;
     }
 
     private sealed class Renderer : IPhotoThumbnailRenderer
@@ -169,8 +185,9 @@ public sealed class PodcastRelationalTests(MariaDbFixture fixture) : IAsyncDispo
             Assert.False(await c.NewsFeeds.AnyAsync());
             Assert.False(await c.PodcastEpisodeAudio.AnyAsync());
             Assert.False(await c.PodcastArtworkFiles.AnyAsync());
-            Assert.All(await c.StoredObjects.Where(o => o.FeatureKey.StartsWith("Podcast")).ToListAsync(),
-                o => Assert.Equal(StoredObjectState.PendingDelete, o.State));
+            var released = await c.StoredObjects.Where(o => o.FeatureKey.StartsWith("Podcast")).ToListAsync();
+            Assert.NotEmpty(released);
+            Assert.All(released, o => Assert.Equal(StoredObjectState.PendingDelete, o.State));
             var totals = await c.NewsStorageTotals.AsNoTracking().SingleAsync();
             Assert.Equal((0L, 0L), (totals.AudioBytes, totals.ArtworkBytes));
             Assert.True(totals.AudioPendingReleaseBytes > 0);
@@ -224,5 +241,65 @@ public sealed class PodcastRelationalTests(MariaDbFixture fixture) : IAsyncDispo
         Assert.Equal(3, first.Items.Concat(second.Items).Select(i => i.Id).Distinct().Count());
         Assert.True(first.Items[0].SortAtUtc >= first.Items[1].SortAtUtc);
         Assert.Empty(none.Items);
+    }
+
+    /// <summary>AC 17 on MariaDB: two replicas running at once never download two episodes of one feed together.</summary>
+    [SkippableFact]
+    public async Task Two_replicas_running_at_once_download_one_episode_of_a_feed_at_a_time()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var first = await HarnessAsync();
+        var second = await ReplicaAsync(first);
+        first.Server.Bytes(Audio, PodcastAudioFixtures.Mp3(), "audio/mpeg");
+        first.Server.Bytes("https://cdn.example.org/2.mp3", PodcastAudioFixtures.Mp3(), "audio/mpeg");
+        await PodcastAsync(first, Audio, "https://cdn.example.org/2.mp3");
+        await QueueAllAsync(first);
+
+        await Task.WhenAll(
+            first.Host.Services.GetRequiredService<PodcastAudioDownloadJob>().RunOnceAsync(CancellationToken.None),
+            second.Host.Services.GetRequiredService<PodcastAudioDownloadJob>().RunOnceAsync(CancellationToken.None));
+
+        var states = await first.WithContextAsync(c => c.PodcastEpisodeAudio.Select(a => a.State).ToListAsync());
+        Assert.Equal(1, states.Count(s => s == PodcastAudioState.Stored));
+        Assert.Equal(1, states.Count(s => s == PodcastAudioState.Queued));
+    }
+
+    /// <summary>AC 19 on MariaDB: two replicas whose downloads would together cross the quota — the lock admits one.</summary>
+    [SkippableFact]
+    public async Task The_reservation_lock_admits_one_of_two_downloads_that_together_cross_the_quota()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var first = await HarnessAsync();
+        var file = PodcastAudioFixtures.Mp3(frames: 64);
+        const string Other = "https://other.example.net/podcast.xml";
+        const string OtherAudio = "https://media.example.net/1.mp3";
+        first.Server.Bytes(Audio, file, "audio/mpeg");
+        first.Server.Bytes(OtherAudio, file, "audio/mpeg");
+        await first.WithContextAsync(c =>
+            c.Database.ExecuteSqlRawAsync("UPDATE `SystemSettings` SET `Value` = '1' WHERE `Key` = 'PodcastAudioStoreMaxGiB'"));
+        var second = await ReplicaAsync(first);
+        await PodcastAsync(first, Audio);
+        first.Server.Feed(Other, Show(OtherAudio));
+        var otherFeed = await first.AddFeedAsync(Other);
+        await first.WithContextAsync(c => c.Database.ExecuteSqlRawAsync($"UPDATE `NewsFeeds` SET `Kind` = 1 WHERE `NewsFeedId` = '{otherFeed}'"));
+        await first.Job.RunOnceAsync(CancellationToken.None);
+        await QueueAllAsync(first);
+        // After the news ticks, whose maintenance recounts the totals: room for one file and a half, so both downloads
+        // pass every check alone, not together.
+        await first.WithContextAsync(c =>
+            c.Database.ExecuteSqlRawAsync($"UPDATE `NewsStorageTotals` SET `AudioBytes` = {(1L << 30) - (file.Length * 3 / 2)}"));
+
+        await Task.WhenAll(
+            first.Host.Services.GetRequiredService<PodcastAudioDownloadJob>().RunOnceAsync(CancellationToken.None),
+            second.Host.Services.GetRequiredService<PodcastAudioDownloadJob>().RunOnceAsync(CancellationToken.None));
+
+        await first.WithContextAsync(async c =>
+        {
+            var rows = await c.PodcastEpisodeAudio.AsNoTracking().ToListAsync();
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(1, rows.Count(r => r.State == PodcastAudioState.Stored));
+            Assert.Equal(1, rows.Count(r => r.State == PodcastAudioState.Deferred && r.DeferredReason == PodcastAudioDeferredReason.AudioQuota));
+            Assert.Equal(0L, (await c.NewsStorageTotals.AsNoTracking().SingleAsync()).AudioReservedBytes);
+        });
     }
 }

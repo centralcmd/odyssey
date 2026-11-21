@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Context;
 using Odyssey.Core.Internet.News.Fetching;
 using Odyssey.Core.Internet.News.Podcasts;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 using Odyssey.Testing.News;
 using Xunit;
@@ -98,7 +99,7 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
         });
 
     [Fact]
-    public async Task AC16_A_queued_episode_is_stored_with_its_file_chapters_and_its_bytes_counted()
+    public async Task AC11_AC29_A_queued_episode_is_stored_with_its_file_chapters_and_its_bytes_counted()
     {
         var file = Mp3([new(0, null, "Intro"), new(30_000, null, "Main")]);
         Serve(Audio1, file);
@@ -143,22 +144,37 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
         Assert.Equal(["New"], titles);
     }
 
-    [Fact]
-    public async Task AC17_A_body_that_is_not_audio_fails_at_once_and_returns_its_reservation()
+    public static TheoryData<string, byte[]> NotAudio => new()
     {
-        Serve(Audio1, "<!doctype html><html>a landing page</html>"u8.ToArray(), r => r.Content.Headers.ContentType = new("audio/mpeg"));
+        { "html", "<!doctype html><html>a landing page</html>"u8.ToArray() },
+        { "png", [0x89, .. "PNG"u8, 0x0D, 0x0A, 0x1A, 0x0A, .. new byte[256]] },
+        { "zip", [.. "PK"u8, 3, 4, .. new byte[256]] },
+    };
+
+    [Theory]
+    [MemberData(nameof(NotAudio))]
+    public async Task AC13_A_body_that_is_not_audio_fails_at_once_with_no_committed_object(string name, byte[] body)
+    {
+        Serve(Audio1, body, r => r.Content.Headers.ContentType = new("audio/mpeg"));
         await QueuedAsync(Audio1);
 
         await Job.RunOnceAsync(CancellationToken.None);
 
         var audio = Assert.Single(await AudioAsync());
-        Assert.Equal((PodcastAudioState.Failed, PodcastAudioFailureKind.NotAudio), (audio.State, audio.FailureKind));
+        Assert.True((PodcastAudioState.Failed, PodcastAudioFailureKind.NotAudio) == (audio.State, audio.FailureKind), name);
         Assert.Equal((0L, 0L), ((await TotalsAsync()).AudioReservedBytes, (await TotalsAsync()).AudioBytes));
-        Assert.DoesNotContain(volume.EnumerateFiles("*", SearchOption.AllDirectories), f => f.FullName.Contains("/podcast-audio/", StringComparison.Ordinal));
+        await AssertNothingStoredAsync();
+    }
+
+    private async Task AssertNothingStoredAsync()
+    {
+        Assert.False(await news.WithContextAsync(c => c.StoredObjects.AnyAsync(o => o.FeatureKey == "PodcastAudio" && o.State == StoredObjectState.Committed)));
+        var folder = $"{Path.DirectorySeparatorChar}podcast-audio{Path.DirectorySeparatorChar}";
+        Assert.DoesNotContain(volume.EnumerateFiles("*", SearchOption.AllDirectories), f => f.FullName.Contains(folder, StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task AC17_A_declared_length_above_the_episode_cap_is_refused_before_the_body()
+    public async Task AC14_A_declared_length_above_the_episode_cap_is_refused_before_the_body()
     {
         Serve(Audio1, Mp3(), r => r.Content.Headers.ContentLength = 10L * 1024 * 1024 * 1024);
         await QueuedAsync(Audio1);
@@ -170,7 +186,49 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_compressed_response_is_refused()
+    public async Task AC14_A_chunked_body_past_the_episode_cap_fails_too_large_with_its_reservation_returned()
+    {
+        // Its own host with a 1 MiB transport ceiling, so the effective episode cap is 1 MiB.
+        var root = Directory.CreateTempSubdirectory("odyssey-podcast-cap-");
+        var database = $"podcast-cap-{Guid.NewGuid():N}";
+        await using var small = await NewsJobHarness.CreateAsync(
+            o => o.UseInMemoryDatabase(database, DatabaseRoot).ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)),
+            root.FullName, configureServices: services => services.AddSingleton<PodcastAudioDownloadJob>(), maxFileSizeBytes: 1024 * 1024);
+        try
+        {
+            small.Server.Feed(FeedUrl, Show(Audio1));
+            small.Server.Map(Audio1, _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new ScriptedStream(small.Clock, [Mp3Frames(2 * 1024 * 1024 / Mp3FrameLength)])),
+            });
+            var feedId = await small.AddFeedAsync(FeedUrl);
+            await small.WithContextAsync(async c =>
+            {
+                (await c.NewsFeeds.SingleAsync(f => f.NewsFeedId == feedId)).Kind = NewsFeedKind.Podcast;
+                await c.SaveChangesAsync();
+            });
+            await small.Job.RunOnceAsync(CancellationToken.None);
+            await small.WithContextAsync(async c =>
+                await new PodcastAudioRequests().RequestAsync(c, (await c.PodcastEpisodeAudio.SingleAsync()).NewsArticleId, small.Clock.GetUtcNow().UtcDateTime, CancellationToken.None));
+
+            await small.Host.Services.GetRequiredService<PodcastAudioDownloadJob>().RunOnceAsync(CancellationToken.None);
+
+            await small.WithContextAsync(async c =>
+            {
+                var audio = await c.PodcastEpisodeAudio.AsNoTracking().SingleAsync();
+                Assert.Equal((PodcastAudioState.Failed, PodcastAudioFailureKind.TooLarge, 0L), (audio.State, audio.FailureKind, audio.ReservedBytes));
+                Assert.Equal(0L, (await c.NewsStorageTotals.AsNoTracking().SingleAsync()).AudioReservedBytes);
+                Assert.False(await c.StoredObjects.AnyAsync(o => o.FeatureKey == "PodcastAudio" && o.State == StoredObjectState.Committed));
+            });
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AC16_A_compressed_response_is_refused_and_nothing_is_stored()
     {
         Serve(Audio1, Mp3(), r => r.Content.Headers.ContentEncoding.Add("gzip"));
         await QueuedAsync(Audio1);
@@ -179,6 +237,7 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
 
         var audio = Assert.Single(await AudioAsync());
         Assert.Equal((PodcastAudioState.Failed, PodcastAudioFailureKind.Refused), (audio.State, audio.FailureKind));
+        await AssertNothingStoredAsync();
     }
 
     [Fact]
@@ -215,7 +274,7 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_transient_failure_backs_off_and_the_fourth_attempt_fails_for_good()
+    public async Task AC17_A_transient_failure_backs_off_and_the_fourth_attempt_fails_for_good()
     {
         news.Server.Status(Audio1, HttpStatusCode.ServiceUnavailable);
         await QueuedAsync(Audio1);
@@ -248,14 +307,17 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AC19_An_expired_lease_returns_to_the_queue_with_its_reservation_and_no_attempt_spent()
+    public async Task AC17a_An_expired_lease_returns_to_the_queue_with_its_reservation_and_the_feed_is_claimable_again()
     {
-        news.Server.Status(Audio1, HttpStatusCode.ServiceUnavailable);
-        await QueuedAsync(Audio1);
+        Serve(Audio1, Mp3());
+        Serve(Audio2, Mp3());
+        await QueuedAsync(Audio1, Audio2);
         var now = news.Clock.GetUtcNow().UtcDateTime;
+        Guid dead = Guid.Empty;
         await news.WithContextAsync(async c =>
         {
-            var row = await c.PodcastEpisodeAudio.SingleAsync();
+            var row = await c.PodcastEpisodeAudio.OrderBy(a => a.RequestedAtUtc).FirstAsync();
+            dead = row.NewsArticleId;
             row.State = PodcastAudioState.Downloading;
             row.LeaseOwner = Guid.NewGuid();
             row.LeaseExpiresAtUtc = now.AddSeconds(-1);
@@ -266,13 +328,17 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
 
         Assert.Equal(1, await Job.RecoverExpiredAsync(CancellationToken.None));
 
-        var audio = Assert.Single(await AudioAsync());
-        Assert.Equal((PodcastAudioState.Queued, (byte)0, 0L, (Guid?)null), (audio.State, audio.Attempts, audio.ReservedBytes, audio.LeaseOwner));
+        var recovered = (await AudioAsync()).Single(a => a.NewsArticleId == dead);
+        Assert.Equal((PodcastAudioState.Queued, (byte)0, 0L, (Guid?)null), (recovered.State, recovered.Attempts, recovered.ReservedBytes, recovered.LeaseOwner));
         Assert.Equal(0L, (await TotalsAsync()).AudioReservedBytes);
+
+        // The dead download no longer blocks its feed or host: the next run claims an episode of the same feed.
+        await Job.RunOnceAsync(CancellationToken.None);
+        Assert.Equal(1, (await AudioAsync()).Count(a => a.State == PodcastAudioState.Stored));
     }
 
     [Fact]
-    public async Task One_feed_downloads_one_episode_at_a_time()
+    public async Task AC17_One_feed_downloads_one_episode_at_a_time()
     {
         Serve(Audio1, Mp3());
         Serve(Audio2, Mp3());
@@ -286,7 +352,7 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_download_on_an_archived_feed_waits()
+    public async Task AC37_A_download_on_an_archived_feed_waits()
     {
         Serve(Audio1, Mp3());
         var feedId = await QueuedAsync(Audio1);
@@ -302,16 +368,9 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
         Assert.False(await Job.HasWorkAsync(CancellationToken.None));
     }
 
-    [Fact]
-    public async Task A_tracking_chain_of_seven_redirects_is_followed_for_audio()
+    private async Task RequestOneAsync(string enclosure)
     {
-        for (var hop = 0; hop < 7; hop++)
-        {
-            news.Server.Redirect($"https://track{hop}.example.net/x", HttpStatusCode.Found, hop == 6 ? Audio1 : $"https://track{hop + 1}.example.net/x");
-        }
-
-        Serve(Audio1, Mp3());
-        news.Server.Feed(FeedUrl, Show("https://track0.example.net/x"));
+        news.Server.Feed(FeedUrl, Show(enclosure));
         var feedId = await news.AddFeedAsync(FeedUrl);
         await news.WithContextAsync(async c =>
         {
@@ -321,18 +380,164 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
         await news.Job.RunOnceAsync(CancellationToken.None);
         await news.WithContextAsync(async c =>
             await new PodcastAudioRequests().RequestAsync(c, (await c.PodcastEpisodeAudio.SingleAsync()).NewsArticleId, news.Clock.GetUtcNow().UtcDateTime, CancellationToken.None));
+    }
+
+    private void Chain(int hops, string target)
+    {
+        for (var hop = 0; hop < hops; hop++)
+        {
+            news.Server.Redirect($"https://track{hop}.example.net/x", HttpStatusCode.Found, hop == hops - 1 ? target : $"https://track{hop + 1}.example.net/x");
+        }
+    }
+
+    [Theory]
+    [InlineData(10, PodcastAudioState.Stored)]
+    [InlineData(11, PodcastAudioState.Failed)]
+    public async Task AC15_AC16_Ten_audio_hops_are_followed_with_no_credential_on_any_hop_and_an_eleventh_fails(int hops, PodcastAudioState expected)
+    {
+        Chain(hops, Audio1);
+        Serve(Audio1, Mp3());
+        await RequestOneAsync("https://track0.example.net/x");
+
+        await Job.RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(expected, Assert.Single(await AudioAsync()).State);
+        var audioHops = news.Server.Requests.Where(r => r.RequestUri!.Host.StartsWith("track", StringComparison.Ordinal) || r.RequestUri.AbsoluteUri == Audio1).ToList();
+        Assert.Equal(Math.Min(hops, PodcastLimits.AudioMaxRedirects + 1) + (expected == PodcastAudioState.Stored ? 1 : 0), audioHops.Count);
+        Assert.All(audioHops, r =>
+        {
+            Assert.Equal(["identity"], r.Headers.AcceptEncoding.Select(e => e.Value));
+            Assert.False(r.Headers.Contains("Referer"));
+            Assert.False(r.Headers.Contains("Authorization"));
+            Assert.False(r.Headers.Contains("Cookie"));
+        });
+    }
+
+    [Theory]
+    [InlineData("https://127.0.0.1/a.mp3")]
+    [InlineData("https://169.254.169.254/latest/meta-data")]
+    [InlineData("https://10.0.0.5/a.mp3")]
+    public async Task AC15_A_redirect_to_a_private_or_metadata_address_ends_refused(string target)
+    {
+        Chain(2, target);
+        await RequestOneAsync("https://track0.example.net/x");
+
+        await Job.RunOnceAsync(CancellationToken.None);
+
+        var audio = Assert.Single(await AudioAsync());
+        Assert.Equal((PodcastAudioState.Failed, PodcastAudioFailureKind.Refused), (audio.State, audio.FailureKind));
+        Assert.DoesNotContain(news.Server.Requests, r => r.RequestUri!.AbsoluteUri == target);
+    }
+
+    [Fact]
+    public async Task AC32_No_log_line_names_the_enclosure_url_or_a_file_path()
+    {
+        const string Private = "https://cdn.example.org/1.mp3?token=s3cret";
+        Serve(Private, Mp3([new(0, null, "Intro")]));
+        await RequestOneAsync(Private);
 
         await Job.RunOnceAsync(CancellationToken.None);
 
         Assert.Equal(PodcastAudioState.Stored, Assert.Single(await AudioAsync()).State);
+        var path = await news.WithContextAsync(c => c.StoredObjects.Where(o => o.FeatureKey == "PodcastAudio").Select(o => o.RelativePath).SingleAsync());
+        Assert.StartsWith("podcast-audio/", path, StringComparison.Ordinal);
+        Assert.DoesNotContain(news.Host.Logs.Entries, e => e.Message.Contains("s3cret", StringComparison.Ordinal)
+            || e.Message.Contains("/1.mp3", StringComparison.Ordinal) || e.Message.Contains(path, StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task The_stream_stops_after_a_minute_without_a_byte()
+    public async Task AC17_A_download_that_stalls_is_cut_off_and_requeued_with_back_off()
     {
-        var paced = new NewsStreamFetch.PacedStream(new BlockingStream(), news.Clock, CancellationToken.None, CancellationToken.None);
+        var body = new ScriptedStream(news.Clock, [Mp3Frames(200)], stallAfter: true);
+        ServeStream(Audio1, body);
+        await QueuedAsync(Audio1);
+
+        var run = Job.RunOnceAsync(CancellationToken.None);
+        Assert.True(await body.Stalled.WaitAsync(TimeSpan.FromSeconds(30)));
+        news.Advance(NewsStreamFetch.StallTimeout + TimeSpan.FromSeconds(1));
+        await run;
+
+        var audio = Assert.Single(await AudioAsync());
+        Assert.Equal((PodcastAudioState.Queued, PodcastAudioFailureKind.Timeout, (byte)1, 0L), (audio.State, audio.FailureKind, audio.Attempts, audio.ReservedBytes));
+        Assert.Equal(0L, (await TotalsAsync()).AudioReservedBytes);
+        await AssertNothingStoredAsync();
+        // A publisher's stall is not the volume's fault: no hold, no error about the volume.
+        Assert.DoesNotContain(news.Host.Logs.Entries, e => e.Message.Contains("held in this worker", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_download_that_lost_its_row_returns_no_reservation_a_second_time()
+    {
+        Guid id = Guid.Empty;
+        // The recovery a peer ran while this download was in flight: the row is requeued with a new fence and its bytes
+        // returned; the 500 left are another download's.
+        var body = new ScriptedStream(news.Clock, [Mp3Frames(200), Mp3Frames(10)], beforeChunk: async index =>
+        {
+            if (index != 1)
+            {
+                return;
+            }
+
+            news.Advance(PodcastTiming.AudioLeaseRenewal + TimeSpan.FromSeconds(1));
+            await news.WithContextAsync(async c =>
+            {
+                var row = await c.PodcastEpisodeAudio.SingleAsync(a => a.NewsArticleId == id);
+                row.State = PodcastAudioState.Queued;
+                row.LeaseOwner = null;
+                row.LeaseExpiresAtUtc = null;
+                row.ReservedBytes = 0;
+                row.AudioFence = Guid.NewGuid();
+                (await c.NewsStorageTotals.SingleAsync()).AudioReservedBytes = 500;
+                await c.SaveChangesAsync();
+            });
+        });
+        ServeStream(Audio1, body);
+        await QueuedAsync(Audio1);
+        id = (await AudioAsync()).Single().NewsArticleId;
+
+        await Job.RunOnceAsync(CancellationToken.None);
+
+        var audio = Assert.Single(await AudioAsync());
+        Assert.Equal((PodcastAudioState.Queued, (byte)0), (audio.State, audio.Attempts));
+        Assert.Equal(500L, (await TotalsAsync()).AudioReservedBytes);
+        await AssertNothingStoredAsync();
+    }
+
+    [Fact]
+    public async Task AC36_A_long_download_renews_its_lease_and_heartbeats_as_it_goes()
+    {
+        var started = news.Clock.GetUtcNow().UtcDateTime;
+        var chunk = Mp3Frames(3 * 1024 * 1024 / Mp3FrameLength);
+        var body = new ScriptedStream(news.Clock, [chunk, chunk, chunk, chunk], beforeChunk: index =>
+        {
+            if (index > 0)
+            {
+                news.Advance(PodcastTiming.AudioLeaseRenewal + TimeSpan.FromSeconds(1));
+            }
+
+            return Task.CompletedTask;
+        });
+        ServeStream(Audio1, body);
+        await QueuedAsync(Audio1);
+
+        await Job.RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(PodcastAudioState.Stored, Assert.Single(await AudioAsync()).State);
+        var beat = await news.WithContextAsync(c => c.JobHeartbeats.AsNoTracking()
+            .Where(h => h.JobType == Dtos.Application.JobType.PodcastAudioDownload).MaxAsync(h => h.LastTickAtUtc));
+        Assert.True(beat >= started + TimeSpan.FromMinutes(2), $"Last heartbeat {beat:O}, started {started:O}.");
+    }
+
+    private void ServeStream(string url, Stream body) =>
+        news.Server.Map(url, _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) });
+
+    [Fact]
+    public async Task AC17_The_stream_stops_after_a_minute_without_a_byte()
+    {
+        var blocking = new BlockingStream();
+        var paced = new NewsStreamFetch.PacedStream(blocking, news.Clock, CancellationToken.None, CancellationToken.None);
         var read = paced.ReadAsync(new byte[16]).AsTask();
-        await Task.Delay(50);
+        Assert.True(await blocking.Entered.WaitAsync(TimeSpan.FromSeconds(30)));
         news.Advance(NewsStreamFetch.StallTimeout + TimeSpan.FromSeconds(1));
 
         var stopped = await Assert.ThrowsAsync<NewsStreamAbortedException>(() => read);
@@ -340,7 +545,7 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task The_stream_stops_below_the_throughput_floor_after_the_first_minute()
+    public async Task AC17_The_stream_stops_below_the_throughput_floor_after_the_first_minute()
     {
         var trickle = new TrickleStream(news.Clock, bytesPerRead: 1024, every: TimeSpan.FromSeconds(1));
         var paced = new NewsStreamFetch.PacedStream(trickle, news.Clock, CancellationToken.None, CancellationToken.None);
@@ -367,6 +572,8 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
 
     private sealed class BlockingStream : Stream
     {
+        public SemaphoreSlim Entered { get; } = new(0);
+
         public override bool CanRead => true;
 
         public override bool CanSeek => false;
@@ -379,6 +586,7 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
+            Entered.Release();
             await Task.Delay(Timeout.Infinite, cancellationToken);
             return 0;
         }
@@ -416,6 +624,80 @@ public sealed class PodcastAudioDownloadTests : IAsyncLifetime
             clock.Advance(every);
             Elapsed += every;
             return ValueTask.FromResult(Math.Min(bytesPerRead, buffer.Length));
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// A non-seekable body with no length (so the response is chunked): the chunks in order, a hook before each, and —
+    /// with <c>stallAfter</c> — a read after the last that blocks until cancelled, signalling <see cref="Stalled"/>.
+    /// </summary>
+    private sealed class ScriptedStream(
+        Odyssey.Testing.FileStorage.TestClock clock, IReadOnlyList<byte[]> chunks, bool stallAfter = false, Func<int, Task>? beforeChunk = null) : Stream
+    {
+        private int chunk;
+        private int offset;
+        private bool entered;
+
+        public SemaphoreSlim Stalled { get; } = new(0);
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            _ = clock;
+            if (chunk >= chunks.Count)
+            {
+                if (!stallAfter)
+                {
+                    return 0;
+                }
+
+                Stalled.Release();
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return 0;
+            }
+
+            if (!entered)
+            {
+                entered = true;
+                if (beforeChunk is not null)
+                {
+                    await beforeChunk(chunk);
+                }
+            }
+
+            var current = chunks[chunk];
+            var count = Math.Min(buffer.Length, current.Length - offset);
+            current.AsMemory(offset, count).CopyTo(buffer);
+            offset += count;
+            if (offset == current.Length)
+            {
+                chunk++;
+                offset = 0;
+                entered = false;
+            }
+
+            return count;
         }
 
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();

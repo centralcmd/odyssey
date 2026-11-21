@@ -170,9 +170,11 @@ public partial class NewsFeedDialog
         ApiResult<ExistingNewsFeed> result;
         if (Feed is { } feed)
         {
+            // The feed as the server last returned it: the type and the podcast automation are sent back unchanged.
+            var current = _base ?? feed;
             result = await News.UpdateFeedAsync(feed.Id, new UpdateNewsFeed
             {
-                Version = (_base ?? feed).Version,
+                Version = current.Version,
                 Url = url,
                 CustomTitle = title,
                 FetchIntervalMinutes = interval,
@@ -181,10 +183,10 @@ public partial class NewsFeedDialog
                 TagIds = [.. _tagIds.Select(Guid.Parse)],
                 // A PUT is a full replacement (issue #556 §5.1 #2). Until the dialog edits the type and the podcast
                 // automation (#559), it sends the feed's current values back unchanged.
-                Kind = (_base ?? feed).Kind,
-                AutoDownload = (_base ?? feed).Podcast?.AutoDownload ?? false,
-                AutoDeleteEnabled = (_base ?? feed).Podcast?.AutoDeleteEnabled ?? false,
-                AutoDeleteAfterDays = (_base ?? feed).Podcast?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays,
+                Kind = current.Kind,
+                AutoDownload = current.Podcast?.AutoDownload ?? false,
+                AutoDeleteEnabled = current.Podcast?.AutoDeleteEnabled ?? false,
+                AutoDeleteAfterDays = current.Podcast?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays,
             });
         }
         else
