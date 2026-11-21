@@ -28,14 +28,17 @@ does — a split pair silently drops half a feature out of the release.
 
 ## Discovering the open milestones
 
-`gh` where it exists (the `claude-code-action` runner):
+With `gh` — the `claude-code-action` runner and a Claude Code on the web session both have it:
 
 ```bash
 gh api repos/<owner>/<repo>/milestones --jq '.[] | "\(.number)\t\(.title)\t\(.open_issues) open"'
 ```
 
-In a Claude Code on the web session there is **no `gh` and no milestone-listing MCP tool**. Read them
-off sibling issues instead — `search_issues` is the only call that returns the field:
+In a web session only the **REST** half of `gh` works: `gh api repos/...` goes through, while every
+GraphQL-backed subcommand (`gh issue list/create/edit`, `gh pr view`, `gh api graphql`) is refused with
+`HTTP 403: GitHub GraphQL is not available from Claude Code sessions`. Use `gh api` for REST calls
+there, or the `mcp__github__*` tools. No MCP tool lists milestones directly; if `gh` is unavailable,
+read them off sibling issues — `search_issues` returns the field:
 
 ```
 mcp__github__search_issues(owner, repo, query: "<area> issues", fields: ["number","title","milestone"])
@@ -48,15 +51,9 @@ ask the user rather than assuming none exists.
 
 | Tool | How |
 |---|---|
-| `gh issue create` | `--milestone "<exact title>"` — the title must match exactly |
-| `gh issue edit <n>` | `--milestone "<exact title>"` to add one after the fact |
+| `gh issue create` | `--milestone "<exact title>"` — the title must match exactly (GraphQL-backed: not in a web session) |
+| `gh issue edit <n>` | `--milestone "<exact title>"` to add one after the fact (same caveat) |
+| `gh api` (REST) | `gh api repos/<owner>/<repo>/issues -f title=… -f body=… -F milestone=<number>` to create, or `gh api -X PATCH repos/<owner>/<repo>/issues/<n> -F milestone=<number>` to add one — works in a web session |
 | `mcp__github__issue_write` | `milestone: <number>` — the **number**, not the title (e.g. `1`) |
 
-## Milestones as of 2026-09-19
-
-| # | Title | Scope |
-|---|---|---|
-| 1 | `Quality of Life Update: Contracts` | contracts work — issues #121, #122, #135 |
-
-This table is a snapshot and goes stale; it is here to show the shape (a themed, area-scoped
-milestone), not to be trusted as current. Look them up at filing time.
+There is deliberately no list of current milestones here: look them up at filing time.
