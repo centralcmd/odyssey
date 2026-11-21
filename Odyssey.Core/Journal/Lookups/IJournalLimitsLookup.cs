@@ -16,7 +16,7 @@ namespace Odyssey.Core.Journal;
 /// </param>
 /// <param name="JournalTaskMaxLinksPerKind">Max links of one kind on a task. Same, both paths.</param>
 /// <param name="PhotoMetadataReadBytes">
-/// Upper bound on the blob prefix read for metadata extraction, pre-converted to bytes here at the
+/// Upper bound on the upload-stream prefix read for metadata extraction, pre-converted to bytes here at the
 /// lookup boundary so no consumer repeats the megabyte arithmetic. Extraction materialises a full
 /// array of this size per photo, so it is a per-upload memory multiplier.
 /// </param>

@@ -88,11 +88,12 @@ licensing.
 | MessagePack | MIT |
 | Bogus | MIT |
 | Microsoft.Playwright | MIT |
-| Aspire (AppHost SDK, Hosting) | MIT |
+| Aspire (`Aspire.Hosting`, `Aspire.Hosting.AppHost`, the AppHost SDK) | MIT |
 | bunit | MIT |
 | Testcontainers | MIT |
 | coverlet.collector | MIT |
 | MetadataExtractor | Apache License 2.0 |
+| Magick.NET (`Magick.NET-Q8-AnyCPU`, worker only) | Apache License 2.0 |
 | xunit | Apache License 2.0 |
 | Moq | BSD 3-Clause |
 | Xunit.SkippableFact | Microsoft Public License (MS-PL) |
@@ -108,6 +109,20 @@ Two notes worth knowing before changing this list:
 
 MetadataExtractor was chosen over ImageSharp specifically to avoid the latter's
 Split license.
+
+---
+
+## Native image library: ImageMagick (worker image only)
+
+Photo thumbnails (issue #362) are rendered by **Magick.NET** (Apache License 2.0; the version is
+pinned in `Directory.Packages.props`), which is referenced by `Odyssey.Worker` alone and so ships only
+in the worker container image — never in the API, client or migrations images. The package carries a
+prebuilt native **ImageMagick** library, distributed under the
+[ImageMagick License](https://imagemagick.org/script/license.php) (an Apache-2.0-style permissive
+licence). That native build bundles ImageMagick's delegate libraries — the codecs
+it decodes and encodes with, such as libjpeg-turbo, libpng, libwebp and zlib — each under its own
+permissive licence. The [Magick.NET repository](https://github.com/dlemstra/Magick.NET) lists the
+delegates and their licences for each release; check it for the pinned version when bumping.
 
 ---
 

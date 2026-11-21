@@ -13,7 +13,9 @@ description: >
 Regenerates the database from scratch: it **drops and recreates** the database, then runs
 `Odyssey.MigrationService`, which re-applies every migration and re-runs the gated, idempotent,
 **deterministic** demo seeder. You end up with the exact same known dataset every time
-(4 demo users, 19 accounts, per-year budgets, ~2.7k transactions, exchange rates).
+(4 demo users, the demo account portfolio, per-year budgets, a few thousand transactions, exchange
+rates). Demo **files and photos** are not part of this run: the worker's `DemoFileSeeder` writes them
+when it starts, which is one reason the worker restart below matters.
 
 A plain stack restart does **not** reseed — the seeder skips when its data is already present —
 so the reset has to wipe first. That's what the driver does.
@@ -39,36 +41,46 @@ Paths below are relative to the repo root (`<repo>/`). The driver lives at
 That's it. The script:
 
 1. Finds MariaDB on `127.0.0.1:3307` and resolves credentials automatically — it tries, in
-   order: explicit `DB_USER`/`DB_PASSWORD`, then the repo `.env` (Compose), then AppHost
-   user-secrets `Aspire:MariaDb:*` (Aspire) — using the first that authenticates. So it works
+   order: explicit `DB_USER`/`DB_PASSWORD`, then the repo `.env` (Compose, if one exists), then
+   AppHost user-secrets `Aspire:MariaDb:*` (Aspire), then the Compose defaults
+   (`odyssey`/`odyssey_password`, what a stack with no `.env` uses) — using the first that authenticates. So it works
    against whichever stack is up without being told which.
 2. Drops and recreates the database (as the app user; no root needed).
 3. Empties every file volume (issue #346), keeping the roots: each Aspire root under `.aspire/files/`, and
-   each of this checkout's Compose volumes named `<project>_files_*` (through a throwaway container). Markers go too, so the API
+   each of this checkout's Compose volumes named `<project>_files_*` (through a throwaway container;
+   `<project>` is `COMPOSE_PROJECT_NAME`, else the checkout directory's name). Markers go too, so the API
    initialises each volume afresh on its next start.
 4. Runs `Odyssey.MigrationService` (migrate + seed).
 5. Prints a verification summary.
 
-Verified output (against the Compose stack):
+Output shape (against a Compose stack with no `.env`; the counts are whatever the current
+`Odyssey.TestData` generators produce, so read them rather than comparing to fixed numbers —
+`users` is always 4):
 
 ```
 ==> Locating a running MariaDB on 127.0.0.1:3307 and resolving credentials
-    using credentials from: .env (Compose) (user 'admin', database 'odyssey')
+    using credentials from: Compose defaults (user 'odyssey', database 'odyssey')
 ==> Wiping database 'odyssey'
+==> Emptying the file volumes
+    emptied Compose volume odyssey_files_primary
 ==> Re-applying migrations and reseeding demo data
 ...
 ==> Verifying seeded data
-  accounts       = 21
+  accounts       = <n>
   users          = 4
-  exchange_rates = 60
-  transactions   = 2743
-==> Reset complete. (Running API/client need no restart — data is read live from the DB.)
+  exchange_rates = <n>
+  transactions   = <n>
+==> Reset complete. Restart the api and worker so they re-initialise the emptied file volumes;
+    the client needs no restart — data is read live from the DB.
 ```
 
 Restart the **api and worker** afterwards (`docker compose restart api worker`, or restart the Aspire
 stack). Data is read live from the DB, but the file volumes were emptied under them: their startup
 verifier is what re-initialises an empty volume, and a running API keeps writing to a volume whose
-marker is gone. The client needs no restart. Re-running the script is safe and produces identical counts.
+marker is gone. Restarting the worker also re-runs its one-shot `DemoFileSeeder`, which writes the
+demo files, photos and contact images back once the API has re-initialised the volumes — so they
+reappear shortly after the restart, not immediately. The client needs no restart. Re-running the
+script is safe and produces identical counts.
 
 ### Overrides
 
@@ -77,9 +89,11 @@ Set any of these before invoking for a non-standard setup:
 | Variable | Default | Purpose |
 |---|---|---|
 | `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3307` | Where MariaDB is published |
-| `DB_USER` / `DB_PASSWORD` | resolved from `.env` / user-secrets | Force specific credentials |
+| `DB_USER` / `DB_PASSWORD` | resolved from `.env` / user-secrets / Compose defaults | Force specific credentials |
 | `DB_NAME` | `odyssey` (or `.env`'s `ODYSSEY_DATABASE`) | Database name |
 | `SEED_DEMO_DATA` | `true` | Set `false` to reset to an empty (migrated) DB with no demo data |
+| `MARIADB_IMAGE` | `mariadb:11.4` | Image for the throwaway SQL client and volume-emptying containers |
+| `COMPOSE_PROJECT_NAME` | the checkout directory's name | Which `<project>_files_*` Compose volumes get emptied |
 
 ## Alternative: full Compose volume wipe
 
@@ -99,8 +113,8 @@ above is the fast path. Never run it against a stack a teammate is using — see
 - **Both stacks use host port 3307.** They can't run at once. The driver targets 3307 and works
   for whichever is up.
 - **Credentials live in different places.** Compose reads them from `.env`
-  (`MARIADB_USER`/`MARIADB_PASSWORD`); Aspire reads them from AppHost user-secrets
-  (`Aspire:MariaDb:User`/`Password`). The driver checks both — don't hardcode.
+  (`MARIADB_USER`/`MARIADB_PASSWORD`) when one exists, else its built-in defaults; Aspire reads them
+  from AppHost user-secrets (`Aspire:MariaDb:User`/`Password`). The driver checks all of them — don't hardcode.
 - **Don't connect as `root` over the published port.** A client reaching 3307 from another
   container/host appears to MariaDB as the Docker bridge gateway, and `root` isn't allowed from
   there. The driver uses the app user (whose db-scoped `ALL` privilege can drop/recreate its own

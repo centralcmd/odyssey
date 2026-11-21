@@ -118,7 +118,7 @@ surface in this spec for them to read. They run on the frontend issue.
 - [ ] Every new entity's FK relationships and on-delete behaviour are stated
 - [ ] Data annotations named for every DTO constraint that mirrors an entity limit
 - [ ] Security checklist walked; each applicable item has an explicit decision in §7
-- [ ] New permission claims note the role-claim mapping and the sign-out/in requirement
+- [ ] New permission claims note the role-claim mapping and the up-to-one-minute lag (security-stamp revalidation) before live sessions see the change
 - [ ] No `appsettings.json` feature toggle proposed (see the template's §11 note)
 - [ ] Migration approach names `OdysseyContext` and a descriptive migration name
 - [ ] Acceptance criteria are independently verifiable

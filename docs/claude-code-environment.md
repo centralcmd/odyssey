@@ -48,6 +48,23 @@ Every step is idempotent and non-interactive, the hook is gated on `CLAUDE_CODE_
 touches a developer's own machine, and the steps after the SDK are **non-fatal**: a transient NuGet
 failure must not abort the hook before the Docker daemon has been started.
 
+`dotnet-ef` is installed as `--version "<major>.*"`, the major read from the SDK that won above, with
+an unpinned install as the fallback — the same band the environment-configuration script below pins.
+
+## What the hook persists for the session
+
+Variables exported inside the hook die with it; what the session sees is what the hook appends to
+`CLAUDE_ENV_FILE`. The hook is the source of truth for this list.
+
+| Variable | When | Why |
+|---|---|---|
+| `DOTNET_ROOT`, `PATH` (SDK + `~/.dotnet/tools`) | always | derived from the SDK that won; see above |
+| `DOTNET_CLI_TELEMETRY_OPTOUT`, `DOTNET_NOLOGO` | always | quiet, non-interactive CLI |
+| `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true` | always | the AppHost's `http` launch profile (the one that avoids the Linux dev-cert banner) refuses to start without it |
+| `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` | only if `/opt/pw-browsers` exists | pointing Playwright at a missing directory would stop it downloading Chromium |
+| `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` | same condition | gates npm's postinstall only; the hook's explicit browser install is not blocked by it |
+| `ODYSSEY_PROXY_CA` | only when outbound TLS is intercepted (`HTTPS_PROXY` set and `SSL_CERT_FILE` not the system bundle) | the CA bundle `docker-compose.ca.yml` passes to image builds as a BuildKit secret, so `docker compose -f docker-compose.yml -f docker-compose.ca.yml up --build` can restore; a plain `--build` fails with `NU1301 UntrustedRoot` |
+
 ## What the image bakes in can go stale, and the hook re-derives it
 
 `Microsoft.Playwright` pins one exact Chromium revision and will use no other, so a browser baked
@@ -80,8 +97,8 @@ is the only correct answer, and a package **downgrade** would make "newest" the 
 executable is searched for rather than assumed, because the two layouts are both real — `r1194`
 unpacks to `chrome-linux/`, `r1234` to `chrome-linux64/`.
 
-The same staleness reaches Node consumers, differently. The hook exports
-`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, which redirects the `playwright` npm package away from
+The same staleness reaches Node consumers, differently. Where the image bakes browsers into
+`/opt/pw-browsers`, the hook exports `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, which redirects the `playwright` npm package away from
 `~/.cache/ms-playwright` — so the `run-odyssey` driver's pin has to equal the `Microsoft.Playwright`
 version in `Directory.Packages.props`, or it looks for a build that directory will never hold. Both
 are `1.65.1`; keep them in lockstep.
@@ -343,8 +360,7 @@ if [ -n "$REPO_DIR" ]; then
   if dotnet build "${REPO_DIR}/Odyssey.sln" -c Release --no-restore -warnaserror -v q --nologo >>"$SETUP_LOG" 2>&1; then
     ok "Solution builds clean at zero warnings (Release, as CI builds it)"
 
-    # A clean compile does not prove the test host launches. This tier is 205 tests in well under a
-    # second and needs neither Docker nor a running stack, so it is the cheapest possible proof that
+    # A clean compile does not prove the test host launches. This tier runs in seconds and needs neither Docker nor a running stack, so it is the cheapest possible proof that
     # VSTest, the xunit runner and the net10.0 test host actually work in this image.
     if dotnet test "${REPO_DIR}/Odyssey.ApiClient.Tests" -c Release --no-build --nologo >>"$SETUP_LOG" 2>&1; then
       ok "Test host runs (Odyssey.ApiClient.Tests green)"
@@ -374,7 +390,7 @@ does not start it — see the table above. And the verify build writes to a log 
 console, because the alternative — "run it directly to see why" — costs a full rebuild from inside a
 session that has no image-build console left to read.
 
-The verify step ends by running one test tier (`Odyssey.ApiClient.Tests`: 205 tests, under a second,
-no Docker and no running stack). A clean compile does not prove the test host launches, and that is a
+The verify step ends by running one test tier (`Odyssey.ApiClient.Tests`: fast, no Docker and no
+running stack). A clean compile does not prove the test host launches, and that is a
 distinct failure with a distinct cause — the cheapest available proof that VSTest, the xunit runner
 and the net10.0 test host all work in this image is to run them once.

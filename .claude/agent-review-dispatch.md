@@ -14,10 +14,14 @@ copy is how the model pin below came to be stated in one skill and silently omit
 
 ## Model
 
-**Pass `model: "sonnet"` on every `Agent` call.** The review fleet runs on the latest Sonnet, not on
-the orchestrator's model. Omitting it makes the agents inherit the orchestrator (Opus), so the same
-`senior-architect-reviewer` would behave differently depending on which skill dispatched it. This is a
-fleet-wide standard, not a per-skill choice — change it in this file or not at all.
+**Pass `model: "sonnet"` on every `Agent` call.** The review fleet runs on the latest Sonnet. Every
+agent file under `.claude/agents/` pins `model: opus` in its frontmatter, and a `model` passed on the
+`Agent` call overrides that pin — so the call parameter is what moves a review onto Sonnet. Omitting it
+does not inherit the orchestrator's model; it falls back to the frontmatter pin and runs that agent on
+Opus. A skill that forgot the parameter would therefore run the same `senior-architect-reviewer` on a
+different model from one that passed it. This is a fleet-wide standard, not a per-skill choice — change
+it in this file or not at all (the frontmatter pin is what an agent runs on when invoked directly, outside
+these skills).
 
 ## Dispatch
 

@@ -11,7 +11,7 @@ drifted apart in the first place.
 
 ## Version reality
 
-**MudBlazor 9.9.0**, pinned in `Directory.Packages.props`. Some prose in the design-system artifact
+**MudBlazor 9.x**; the exact version is pinned in `Directory.Packages.props`. Some prose in the design-system artifact
 (`project/README.md`) still says "MudBlazor v8"; that text is stale and the pin is authoritative. The
 fix belongs in the artifact (see `.claude/design-system-artifact.md`), not in a client-side note.
 Until then, treat **v9** as the truth.
@@ -40,14 +40,14 @@ Until then, treat **v9** as the truth.
 | A page-state **record with a derived member of its own type** (`public MyState Normalized => …`) | `QueueSave` silently writes nothing — System.Text.Json serializes every public getter, recurses into the derived member and throws `JsonException` (object cycle), which the service swallows | `[JsonIgnore]` every derived member, and pin the round trip in a test (`NetWorthRangeTests`) |
 | An Esc handler on an input inside an `OdsModal` ("first Esc clears the field") | The dialog closes anyway — MudDialog's own Esc listener closes it before any Blazor `@onkeydown` runs, and `OdsModal` has already set `Open = false` by the time `OnClose` fires, so neither can veto it | Stop the key at the input in JS: `odsComboboxKeys(id)` (`wwwroot/index.html`) clears a filled input, hands the value back through an `input` event and swallows that Esc; the next one closes the dialog (`LocationSearch`) |
 | A key-dependent `preventDefault` (stop ArrowUp/ArrowDown moving the caret only while a list is open) | Either every key is prevented, typing included, or none is — `@onkeydown:preventDefault` is fixed at render time and cannot look at which key was pressed | Do it in a JS `keydown` listener that reads the key and the control's state (`odsComboboxKeys` checks `aria-expanded`), and leave the Blazor handler to update state |
-| `MudDatePicker` (so `OdsDatePicker`) whose `Value` the host sets from code | `ValueChanged` fires with that same date, so a host that treats every change as the user's pick acts on its own update — the Temperature history window flipped to *Custom* whenever a preset moved it | Ignore a value equal to the one the host already holds (`LocationWeatherHistorySection.PickFrom` / `PickTo`) |
-| `.odc-sr-only` on a **`<table>`** | The caption and cells still take up width and the page scrolls sideways at phone size: a table box is not clipped by its own `overflow`, so the 1px/`overflow: hidden` rule does not hide it | Put the class on a wrapping `<div>` (`WeatherTemperatureChart`) |
+| `MudDatePicker` (so `OdsDatePicker`) whose `Value` the host sets from code | `ValueChanged` fires with that same date, so a host that treats every change as the user's pick acts on its own update — the Temperature history window flipped to *Custom* whenever a preset moved it | Ignore a value equal to the one the host already holds (`WeatherHistorySection.PickFrom` / `PickTo`, `Odyssey.Client/Pages/Weather/WeatherHistorySection.razor.cs`) |
+| `.odc-sr-only` on a **`<table>`** | The caption and cells still take up width and the page scrolls sideways at phone size: a table box is not clipped by its own `overflow`, so the 1px/`overflow: hidden` rule does not hide it | Put the class on a wrapping `<div>` (`WeatherHistoryChart.razor`) |
 | A `<caption>` on `MudTable` | MudTable 9 has no caption slot; `ColGroup` lands inside `<colgroup>`, and splatted attributes land on the outer `<div>`, not the `<table>`. Inserting a `<caption>` from JS puts a node Blazor does not own at the front of a `<table>` whose children Blazor patches by position | Don't. `OdsTable` and `OdsRecordTable` are native `<table>` markup and render `Caption` / `RowHeader` themselves (issue #451, PR #457 review). A row header is `RowHeader`, never a hand-built `<th>` in a cell renderer |
 | A clickable row drawn as `<div role="button" tabindex="0">` | Space scrolls the page before the handler runs — `@onkeydown:preventDefault` is resolved *before* the handler, so it can only reflect the previous keystroke | Use a real `<button type="button">` and reset its styles in CSS; Enter, Space, focus and the role all come free |
 
 ## Project conventions
 
-- **Component library:** `Odyssey.Client/Components/` — 147 `Ods*.razor` atoms today. Shared model
+- **Component library:** `Odyssey.Client/Components/` — the `Ods*.razor` atoms. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
 - **A registry `Icon` may be one typographic glyph, not a ligature** — `ContractEventTypes`'
@@ -214,5 +214,5 @@ the `blazor.boot.json` hashes and the app fails to start. Stop the dev server fi
 through the running server instead of rebuilding.
 
 Drive the live app on **`localhost:5199`**, not `127.0.0.1` — the auth cookie is host-scoped, so the
-IP form silently fails to authenticate. Seeded credentials are in `.env`; see the `run-odyssey`
+IP form silently fails to authenticate. Seeded credentials are in `Odyssey.TestData/DemoDataDefaults.cs`; see the `run-odyssey`
 skill for bringing a stack up.

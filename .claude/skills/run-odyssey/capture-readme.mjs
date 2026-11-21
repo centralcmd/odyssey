@@ -126,9 +126,9 @@ const shots = {
   async contracts() {
     await page.goto('/contracts', { waitUntil: 'networkidle' });
     await settle();
-    // The header signal is labelled "Upcoming": it carries the ending/starting terms and the
+    // The header signal is labelled "Attention": it carries the ending/starting terms and the
     // charges falling due under one toggle.
-    await ensureRegion('Upcoming', true);
+    await ensureRegion('Attention', true);
     await ensureRegion('Overview', true);
     await ensureRegion('Search', false);
     await settle(1500);

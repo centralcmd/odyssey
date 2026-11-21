@@ -39,14 +39,24 @@ PR (they report "no frontend changes detected" rather than inventing findings) �
 
 ## Step 1 — Resolve the PR
 
-Accept a PR number/URL as the argument. With no argument, resolve the current branch's open PR:
+Accept a PR number/URL as the argument. The commands are the portable `gh api` (REST) form: in a
+Claude Code on the web session `gh pr view` is refused (GraphQL-backed), while `gh api` and
+`gh pr diff` work everywhere — see
+[`.claude/issue-milestones.md`](../../issue-milestones.md#gh-in-a-web-session-use-the-rest-form).
+In a local terminal, `gh pr view [<N>] --json number,title,url,headRefName` does the same.
 
 ```bash
-gh pr view --json number,title,url,headRefName -q '{number,title,url,head:.headRefName}'
+repo=$(gh api 'repos/{owner}/{repo}' --jq .full_name)
+
+# An explicit target:
+gh api "repos/$repo/pulls/<N>" --jq '{number,title,url:.html_url,head:.head.ref}'
+
+# No argument — the current branch's open PR:
+gh api "repos/$repo/pulls?head=${repo%%/*}:$(git branch --show-current)&state=open" \
+  --jq '.[] | {number,title,url:.html_url,head:.head.ref}'
 ```
 
-For an explicit target, `gh pr view <N> --json number,title,url,headRefName`. If neither resolves
-(no PR for the branch, bad number), stop and tell the user — do not guess.
+If neither resolves (no PR for the branch, bad number), stop and tell the user — do not guess.
 
 Capture what the PR touches, so each agent gets concrete context (and so you can sanity-check which
 agents will have something to review):
@@ -78,7 +88,8 @@ After each round, for every finding, do exactly one of:
   commit** (Conventional Commits, naming the finding it addresses in the body). Never amend, rebase or
   force-push. This is the default for valid findings.
 - **Rebut it** — where a finding is wrong, inapplicable, or conflicts with an explicit user decision,
-  reply on the PR with the reasoning rather than silently ignoring it.
+  reply on the PR with the reasoning (`gh api "repos/$repo/issues/<N>/comments" -F body=@<file>`)
+  rather than silently ignoring it.
 
 Only push to a branch this session may push to (the session's development branch, or a branch the user
 named). If the PR's head branch is someone else's, do not push: report the findings and stop after

@@ -1,6 +1,6 @@
 # News reader (RSS, Atom, JSON Feed) — backend specification
 
-**Status:** approved.
+**Status:** implemented (#507); amended since — see the *Superseded* notes inline.
 **Source:** GitHub issue [#470](https://github.com/centralcmd/odyssey/issues/470), merged from the issue
 body and its specification comments into one document.
 **Frontend counterpart:** [`docs/specs/news-reader-frontend.md`](news-reader-frontend.md), issue
@@ -147,7 +147,7 @@ Shared Core helpers named in this spec, each the single definition of its rule: 
     keeps every folder at ≤ 10,000 entries, the store's §3.3 rule.
   - `NewsArticles.Bucket` records the chosen bucket, so all of an article's later files (revisions, late
     images) land in the **same** folder.
-- **Store rules inherited unchanged (`CLAUDE.md` → *Files on disk*):**
+- **Store rules inherited unchanged ([`docs/architecture/file-storage.md`](../architecture/file-storage.md)):**
   - A `Committed` row always has its file.
   - Writes go through `PutAsync`, saved with the referencing row in one `SaveChangesAsync`.
   - Releases go through `StageRelease` in the same save that removes the reference.
@@ -1064,7 +1064,7 @@ parsing (§7.10). An image is at most `NewsImageMaxSizeKb`.
   `DailyQuotaDate == todayUtc && ArticlesToday >= cap`, so yesterday's `ArticlesToday` cannot keep the
   cap set. It serves both the ingest skip and the quota-reason recompute.
 - Each host resolves `NewsTextStoreMaxGiB` through its own settings cache, so the worker and the status
-  endpoint may disagree for up to the 30 s TTL after a settings save. This is expected (`CLAUDE.md`,
+  endpoint may disagree for up to the 30 s TTL after a settings save. This is expected ([`docs/architecture/background-jobs.md`](../architecture/background-jobs.md),
   "Settings reach the worker within the cache TTL").
 
 **When `QuotaReason` is set and cleared.**
@@ -1554,7 +1554,7 @@ The migration contains:
 2. **The `FULLTEXT` index** on `NewsArticles (Title, Author, Excerpt)`, declared with Pomelo's
    `HasIndex(...).IsFullText()`, so it is part of the model and visible to `CreatedBy`. **No change to
    `MigrationRunner`** is needed.
-3. **Nine `SystemSettings` rows** with `HasData`. Each follows the full `CLAUDE.md` recipe, with its
+3. **Nine `SystemSettings` rows** with `HasData`. Each follows the full recipe in [`docs/architecture/settings.md`](../architecture/settings.md), with its
    pair in `SystemSettingsBounds`:
 
    | Setting | Default | Bounds | Claim | Degraded read |

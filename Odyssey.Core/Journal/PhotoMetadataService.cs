@@ -4,7 +4,7 @@ using Odyssey.Core.Finance;
 namespace Odyssey.Core.Journal;
 
 /// <summary>
-/// Runs metadata extraction for a Files-store image: reads a bounded blob prefix (§5.5), then runs the
+/// Runs metadata extraction for an uploaded image: reads a bounded prefix of the upload stream (§5.5), then runs the
 /// pure extractor under a wall-clock timeout. Best-effort and never fatal — any failure (unreadable
 /// stream, timeout, corrupt data) is logged at Warning and yields <see cref="PhotoMetadata.Empty"/>.
 /// </summary>
@@ -13,7 +13,7 @@ namespace Odyssey.Core.Journal;
 /// <c>appsettings.json</c> entry and no environment plumbing at all — nobody could change them without
 /// a code edit. They are database-backed since issue #434 (keys 4 and 5), so this service gains the
 /// journal limits lookup it did not hold before: one cached read per extraction, on a path that
-/// already reads a blob.
+/// already reads the upload.
 ///
 /// <para>
 /// <c>PhotoLibraryOptions</c> is <strong>deleted</strong> rather than kept as a compiled fallback,

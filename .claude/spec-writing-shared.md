@@ -62,44 +62,63 @@ accurate, and whether anything is missing or wrong. Iterate until approved.
 
 ## Creating the issue
 
+The commands are the portable `gh api` (REST) form. In a Claude Code on the web session `gh issue …`,
+`gh label …` and `gh repo view` are refused (they are GraphQL-backed); `gh api` works everywhere. Why,
+the `-f`/`-F` rules and the local-terminal equivalents (`gh issue create`, `gh issue edit`, …):
+[`.claude/issue-milestones.md`](issue-milestones.md#gh-in-a-web-session-use-the-rest-form).
+
 1. Resolve the repo from the git remote — never hardcode:
 
 ```bash
-gh repo view --json nameWithOwner -q .nameWithOwner
+repo=$(gh api 'repos/{owner}/{repo}' --jq .full_name)
 ```
 
-2. Verify the labels exist (`gh label list`) and create any that are missing:
+2. Verify the labels exist (`gh api "repos/$repo/labels" --paginate --jq '.[].name'`) and create any
+   that are missing:
 
 ```bash
-gh label create claude --color 0075ca --description "AI-generated"
-gh label create feature --color a2eeef --description "New feature"
-gh label create specification --color c5def5 --description "Feature specification"
-gh label create accessibility --color d4c5f9 --description "Accessibility review"
-gh label create security --color d93f0b --description "Security review"
-gh label create review --color fbca04 --description "Needs review"
-gh label create backend --color 1d76db --description "Backend / API / data"
-gh label create frontend --color 5319e7 --description "Blazor client"
+gh api "repos/$repo/labels" -f name=claude -f color=0075ca -f description="AI-generated"
+gh api "repos/$repo/labels" -f name=feature -f color=a2eeef -f description="New feature"
+gh api "repos/$repo/labels" -f name=specification -f color=c5def5 -f description="Feature specification"
+gh api "repos/$repo/labels" -f name=accessibility -f color=d4c5f9 -f description="Accessibility review"
+gh api "repos/$repo/labels" -f name=security -f color=d93f0b -f description="Security review"
+gh api "repos/$repo/labels" -f name=review -f color=fbca04 -f description="Needs review"
+gh api "repos/$repo/labels" -f name=backend -f color=1d76db -f description="Backend / API / data"
+gh api "repos/$repo/labels" -f name=frontend -f color=5319e7 -f description="Blazor client"
 ```
 
-3. Create it with a heredoc, to avoid shell escaping problems. Each skill states its own label set:
+3. **Pick the milestone** — check the open milestones and pick one if the feature belongs to it, per
+   [`.claude/issue-milestones.md`](issue-milestones.md)
+   (`gh api "repos/$repo/milestones" --jq '.[] | "\(.number)\t\(.title)"'`). If none fits, file it
+   unset and say so when you report the issue number. **Both halves of a pair take the same milestone,
+   or neither does.**
+
+4. Create it, with the body from a heredoc (`-F body=@-`) to avoid shell escaping problems. Each skill
+   states its own comma-separated label set; the REST API takes one `labels[]` field per label. Drop
+   the `-F milestone=` line when none fits:
 
 ```bash
-gh issue create \
-  --title "{{ FEATURE_TITLE }} — {{ HALF }}" \
-  --body-file - \
-  --label "{{ LABELS }}" \
-  --assignee "centralcmd" <<'BODY'
+label_args=(); IFS=, read -ra names <<<"{{ LABELS }}"
+for l in "${names[@]}"; do label_args+=(-f "labels[]=$l"); done
+
+gh api "repos/$repo/issues" \
+  -f title="{{ FEATURE_TITLE }} — {{ HALF }}" \
+  -F body=@- \
+  "${label_args[@]}" \
+  -f 'assignees[]=centralcmd' \
+  -F milestone={{ MILESTONE_NUMBER }} \
+  --jq .html_url <<'BODY'
 {{ SPEC_CONTENT }}
 BODY
 ```
 
-4. **Set the milestone** — check the open milestones and set one if the feature belongs to it, per
-   [`.claude/issue-milestones.md`](issue-milestones.md). `gh issue create --milestone "<exact title>"`,
-   or `mcp__github__issue_write` with `milestone: <number>`. If none fits, file it unset and say so
-   when you report the issue number. **Both halves of a pair take the same milestone, or neither does.**
+   `mcp__github__issue_write` with `milestone: <number>` is the alternative where the MCP tools are
+   loaded.
 
 The labels are **taxonomy, not triggers** — no workflow fires on a label (`claude.yml` runs on
-comments and issue open/assign; `claude-code-review.yml` only on an `@claude review` comment). They
+an `@claude` mention in an issue or PR comment, a PR review comment, a submitted PR review, or an
+issue that is opened or assigned — see its `on:` block; `claude-code-review.yml` only on an
+`@claude review` comment). They
 mark what the issue is in scope for; the review loop below does the actual dispatching.
 
 ## Cross-linking the pair
@@ -111,7 +130,7 @@ backend issue is created first, and the link is completed in two steps:
 2. **Frontend issue** — created second, opening with the counterpart line under the title:
    `> **Backend counterpart:** #<backend-issue-number>`
 3. **Edit the backend issue** to add the matching line
-   (`gh issue edit <n> --body-file <updated>`):
+   (`gh api -X PATCH "repos/$repo/issues/<n>" -F body=@<updated>`):
    `> **Frontend counterpart:** #<frontend-issue-number>`
 
 Do not skip step 3 — a one-way link means the backend implementer never learns the UI exists.
@@ -135,11 +154,13 @@ specification-review verdict as a comment.
 
 **Triage — update the spec *or* rebut.** After every round, for every finding, do exactly one of:
 
-- **Update the spec** — edit the issue body (`gh issue edit <n> --body-file <updated-spec>`), bump the
+- **Update the spec** — edit the issue body and title in one call
+  (`gh api -X PATCH "repos/$repo/issues/<n>" -F body=@<updated-spec> -f title="<title>"`), bump the
   `Draft vN` in the title, and note which finding each change addresses ("addresses architect finding
   #3"). This is the default for valid findings.
 - **Rebut in a comment** — where a finding is wrong, inapplicable, or conflicts with an explicit user
-  decision, post a reasoned reply rather than silently ignoring it. When a finding's *suggestion*
+  decision, post a reasoned reply (`gh api "repos/$repo/issues/<n>/comments" -F body=@<file>`) rather
+  than silently ignoring it. When a finding's *suggestion*
   conflicts with a user decision but its underlying *risk* is real, keep the user's decision, mitigate
   the risk another way, and document the trade-off.
 
