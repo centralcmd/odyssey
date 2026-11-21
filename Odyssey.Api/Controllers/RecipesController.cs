@@ -95,7 +95,8 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [Authorize(Policy = PermissionClaims.RecipesDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a recipe with its ingredients, steps and links; library photos and tags stay.")]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Delete a recipe with its ingredients, steps and links; library photos and tags stay. A delete that loses a race to an edit is 409.")]
     public async Task<IActionResult> Delete([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

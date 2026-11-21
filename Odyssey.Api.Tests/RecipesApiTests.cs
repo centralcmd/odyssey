@@ -189,9 +189,7 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
             return Strip(await response.Content.ReadAsStringAsync());
         }
 
-        // The trace id differs per request; nothing else may.
-        static string Strip(string body) =>
-            System.Text.RegularExpressions.Regex.Replace(body, "\"traceId\":\"[^\"]*\"", string.Empty);
+        static string Strip(string body) => WithoutTraceId(body);
     }
 
     // ── Scaling (§8.3) ──────────────────────────────────────────────────────
@@ -249,14 +247,85 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"egg","unit":0,"amount":1000000}]}""")]
     [InlineData("""{"title":"x","servings":4,"ingredients":[{"unit":0}]}""")]                     // no name
     [InlineData("""{"title":"x","servings":4,"steps":[{"section":"a"}]}""")]                     // no text
+    [InlineData("""{"title":"   ","servings":4}""")]                                             // blank title
+    [InlineData("""{"title":"x","servings":4,"cookMinutes":10081}""")]
+    [InlineData("""{"title":"x","servings":4,"prepMinutes":-1}""")]
+    [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"egg","unit":0,"amount":1,"amountMax":1000000}]}""")]
+    [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"egg","unit":0,"section":"#S65#"}]}""")]
+    [InlineData("""{"title":"x","servings":4,"servingsLabel":"#S33#"}""")]
+    [InlineData("""{"title":"#S201#","servings":4}""")]
+    [InlineData("""{"title":"x","servings":4,"description":"#S1001#"}""")]
+    [InlineData("""{"title":"x","servings":4,"source":"#S501#"}""")]
+    [InlineData("""{"title":"x","servings":4,"notes":"#S8001#"}""")]
+    [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"#S201#","unit":0}]}""")]
+    [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"egg","unit":0,"preparation":"#S201#"}]}""")]
+    [InlineData("""{"title":"x","servings":4,"steps":[{"text":"#S4001#"}]}""")]
+    [InlineData("""{"title":"x","servings":4,"photoIds":#G21#}""")]
+    [InlineData("""{"title":"x","servings":4,"tagIds":#G21#}""")]
     public async Task Create_WithAnInvalidField_IsBadRequest(string body)
     {
-        using var client = Factory.ClientWith(Editor);
+        using var client = Factory.ClientWith(EditorWithPhotos);
 
-        var response = await client.PostAsync(Path, new StringContent(body, Encoding.UTF8, "application/json"));
+        var response = await client.PostAsync(Path, new StringContent(Expand(body), Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.NotEmpty(await ErrorKeys(response));
     }
+
+    [Fact]
+    public async Task Create_WithTooManySteps_IsBadRequest()
+    {
+        using var client = Factory.ClientWith(Editor);
+        var request = Pancakes();
+        request.Steps = Enumerable.Range(0, RecipeLimits.MaxSteps + 1).Select(i => new RecipeStepRequest { Text = $"s{i}" }).ToArray();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, request)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_AtEveryCap_IsAccepted()
+    {
+        using var client = Factory.ClientWith(Editor);
+        var request = new NewRecipe
+        {
+            Title = new string('t', RecipeLimits.MaxTitleLength),
+            Description = new string('d', RecipeLimits.MaxDescriptionLength),
+            Notes = new string('n', RecipeLimits.MaxNotesLength),
+            Source = new string('s', RecipeLimits.MaxSourceLength),
+            Servings = RecipeLimits.MaxServings,
+            ServingsLabel = new string('l', RecipeLimits.MaxServingsLabelLength),
+            PrepMinutes = RecipeLimits.MaxMinutes,
+            CookMinutes = RecipeLimits.MaxMinutes,
+            Ingredients = Enumerable.Range(0, RecipeLimits.MaxIngredients).Select(_ => new RecipeIngredientRequest
+            {
+                Section = new string('x', RecipeLimits.MaxSectionLength),
+                Amount = 999998.999m,
+                AmountMax = 999999m,
+                Unit = IngredientUnit.Gram,
+                Name = new string('i', RecipeLimits.MaxIngredientNameLength),
+                Preparation = new string('p', RecipeLimits.MaxPreparationLength),
+            }).ToArray(),
+            Steps = Enumerable.Range(0, RecipeLimits.MaxSteps)
+                .Select(_ => new RecipeStepRequest { Section = new string('x', RecipeLimits.MaxSectionLength), Text = new string('w', RecipeLimits.MaxStepTextLength) })
+                .ToArray(),
+        };
+
+        var created = await CreateAsync(client, request);
+
+        Assert.Equal(RecipeLimits.MaxIngredients, created.Ingredients.Count);
+        Assert.Equal(RecipeLimits.MaxSteps, created.Steps.Count);
+        Assert.Equal(2 * RecipeLimits.MaxMinutes, created.TotalMinutes);
+    }
+
+    // "#S<n>#" is a string of n characters; "#G<n>#" an array of n fresh GUIDs.
+    private static string Expand(string body) =>
+        System.Text.RegularExpressions.Regex.Replace(body, "#([SG])(\\d+)#", m =>
+        {
+            var n = int.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture);
+            return m.Groups[1].Value == "S"
+                ? new string('a', n)
+                : JsonSerializer.Serialize(Enumerable.Range(0, n).Select(_ => Guid.NewGuid()));
+        });
 
     [Fact]
     public async Task Create_OverTheIngredientCap_IsBadRequest()
@@ -287,6 +356,7 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         { new() { Name = "egg", Unit = IngredientUnit.None, Amount = 3, AmountMax = 2 }, "ingredients[0].amountMax" },
         { new() { Name = "egg", Unit = IngredientUnit.None, Amount = 3, AmountMax = 3 }, "ingredients[0].amountMax" },
         { new() { Name = "salt", Unit = IngredientUnit.ToTaste, Amount = 1 }, "ingredients[0].amount" },
+        { new() { Name = "salt", Unit = IngredientUnit.ToTaste, AmountMax = 2 }, "ingredients[0].amount" },
     };
 
     [Theory]
@@ -578,6 +648,163 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         }
     }
 
+    // ── Coverage added for the round-1 test review ───────────────────────────
+
+    [Fact]
+    public async Task WithoutPhotosRead_ThePostAndPutResponsesCarryNoPhotos()
+    {
+        using var client = Factory.ClientWith(Editor);
+
+        var created = await CreateAsync(client, Pancakes());
+        Assert.Null(created.Photos);
+
+        var put = await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", Update(created));
+        var updated = (await put.Content.ReadFromJsonAsync<ExistingRecipe>())!;
+        Assert.Null(updated.Photos);
+    }
+
+    [Fact]
+    public async Task WithPhotosRead_TheCoverIsTheFirstPhoto_AndThumbnailReadinessComesFromTheStore()
+    {
+        var plain = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "plain.jpg");
+        var ready = await SeedPhotoWithThumbnailsAsync();
+        using var client = Factory.ClientWith(EditorWithPhotos);
+        var request = Pancakes();
+        request.PhotoIds = [ready, plain];
+        var created = await CreateAsync(client, request);
+
+        Assert.Equal([true, false], created.Photos!.Select(p => p.ThumbnailsReady));
+        var row = (await client.GetFromJsonAsync<PagedResultDto>(Path))!.Items.Single();
+        Assert.Equal(ready, row.CoverPhotoId);
+        Assert.True(row.CoverThumbnailsReady);
+    }
+
+    [Fact]
+    public async Task Reads_CarryTheTagIconContract_TagsInNameOrder_WithTheWinningIconAndColour()
+    {
+        var zebra = await SeedTagAsync("Zebra", icon: "restaurant", color: "#AA0000");
+        var apple = await SeedTagAsync("Apple");
+        using var client = Factory.ClientWith(Editor);
+        var request = Pancakes();
+        request.TagIds = [zebra, apple];
+        var created = await CreateAsync(client, request);
+
+        var read = (await client.GetFromJsonAsync<ExistingRecipe>($"{Path}/{created.RecipeId}"))!;
+        var row = (await client.GetFromJsonAsync<PagedResultDto>(Path))!.Items.Single();
+
+        foreach (var (tagIds, icon, color) in new[] { (read.TagIds, read.DisplayIcon, read.DisplayColor), (row.TagIds, row.DisplayIcon, row.DisplayColor) })
+        {
+            Assert.Equal([apple, zebra], tagIds);
+            Assert.Equal("restaurant", icon);
+            Assert.Equal("#AA0000", color);
+        }
+    }
+
+    [Fact]
+    public async Task WithoutTheClaim_APutAddingAnExistingOrAMissingId_GivesTheSameForbidden()
+    {
+        var photo = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId);
+        var tag = await SeedTagAsync("Supper");
+        using var editor = Factory.ClientWith(Editor);
+        var created = await CreateAsync(editor, Pancakes());
+        using var client = Factory.ClientWith(PermissionClaims.RecipesRead, PermissionClaims.RecipesUpdate);
+
+        Assert.Equal(await BodyOf(r => r.PhotoIds = [photo]), await BodyOf(r => r.PhotoIds = [Guid.NewGuid()]));
+        Assert.Equal(await BodyOf(r => r.TagIds = [tag]), await BodyOf(r => r.TagIds = [Guid.NewGuid()]));
+
+        async Task<string> BodyOf(Action<UpdateRecipe> mutate)
+        {
+            var request = Update(created);
+            mutate(request);
+            var response = await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", request);
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            return WithoutTraceId(await response.Content.ReadAsStringAsync());
+        }
+    }
+
+    [Fact]
+    public async Task Update_UnknownId_GivesTheSameNotFoundBody_WithOrWithoutTheLinkClaims()
+    {
+        var id = Guid.NewGuid();
+        var request = new UpdateRecipe { Title = "x", Servings = 1, Version = 1, PhotoIds = [Guid.NewGuid()], TagIds = [Guid.NewGuid()] };
+        using var bare = Factory.ClientWith(PermissionClaims.RecipesUpdate);
+        using var full = Factory.ClientWith(EditorWithPhotos);
+
+        var withoutClaims = WithoutTraceId(await (await bare.PutAsJsonAsync($"{Path}/{id}", request)).Content.ReadAsStringAsync());
+        var withClaims = WithoutTraceId(await (await full.PutAsJsonAsync($"{Path}/{id}", request)).Content.ReadAsStringAsync());
+
+        Assert.Equal(withClaims, withoutClaims);
+    }
+
+    [Fact]
+    public async Task Reads_CarryTheAuthorsName_AndNoReadOrWriteCarriesARawUserId()
+    {
+        await Factory.SeedActorUserAsync("chef@example.com", "Chef");
+        using var client = Factory.ClientWith(Editor);
+
+        var post = await client.PostAsJsonAsync(Path, Pancakes());
+        var postJson = await post.Content.ReadAsStringAsync();
+        var created = JsonSerializer.Deserialize<ExistingRecipe>(postJson, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        var listJson = await client.GetStringAsync(Path);
+        var read = (await client.GetFromJsonAsync<ExistingRecipe>($"{Path}/{created.RecipeId}"))!;
+
+        Assert.Equal("Chef", created.CreatedByName);
+        Assert.Equal("Chef", read.UpdatedByName);
+        Assert.DoesNotContain(ActorUserId, postJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(ActorUserId, listJson, StringComparison.Ordinal);
+    }
+
+    public static TheoryData<string, string> EndpointClaims => new()
+    {
+        { PermissionClaims.RecipesRead, "GET" },
+        { PermissionClaims.RecipesCreate, "POST" },
+        { PermissionClaims.RecipesUpdate, "PUT" },
+        { PermissionClaims.RecipesDelete, "DELETE" },
+    };
+
+    /// <summary>Each endpoint needs its own claim: every other recipe claim together does not substitute for it.</summary>
+    [Theory]
+    [MemberData(nameof(EndpointClaims))]
+    public async Task EachEndpoint_RequiresItsOwnClaim(string claim, string method)
+    {
+        using var editor = Factory.ClientWith(Editor);
+        var created = await CreateAsync(editor, Pancakes());
+        using var without = Factory.ClientWith(Editor.Where(c => c != claim).ToArray());
+        using var with = Factory.ClientWith(claim, PermissionClaims.RecipeTagsRead);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(without)).StatusCode);
+        Assert.NotEqual(HttpStatusCode.Forbidden, (await Send(with)).StatusCode);
+
+        Task<HttpResponseMessage> Send(HttpClient client) => method switch
+        {
+            "GET" => client.GetAsync(Path),
+            "POST" => client.PostAsJsonAsync(Path, Pancakes()),
+            "PUT" => client.PutAsJsonAsync($"{Path}/{created.RecipeId}", Update(created)),
+            _ => client.DeleteAsync($"{Path}/{Guid.NewGuid()}"),
+        };
+    }
+
+    /// <summary>§7.2's role table on the fast tier (the E2E matrix self-skips without a stack).</summary>
+    [Fact]
+    public void TheRoleTable_GivesEditorsEveryRecipeClaim_AndGuestTheTwoReads()
+    {
+        string[] all =
+        [
+            PermissionClaims.RecipesCreate, PermissionClaims.RecipesRead, PermissionClaims.RecipesUpdate, PermissionClaims.RecipesDelete,
+            PermissionClaims.RecipeTagsCreate, PermissionClaims.RecipeTagsRead, PermissionClaims.RecipeTagsUpdate, PermissionClaims.RecipeTagsDelete,
+        ];
+        var roles = Odyssey.Context.Authorization.RolePermissions.RoleClaimMap.ToDictionary(r => r.RoleName, r => r.Claims);
+
+        foreach (var role in new[] { "Admin", "Owner", "User" })
+        {
+            Assert.All(all, claim => Assert.Contains(claim, roles[role]));
+        }
+
+        Assert.Equal(
+            [PermissionClaims.RecipesRead, PermissionClaims.RecipeTagsRead],
+            roles["Guest"].Where(all.Contains).Order(StringComparer.Ordinal));
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     private static NewRecipe Pancakes() => new()
@@ -626,12 +853,12 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
             : [];
     }
 
-    private async Task<Guid> SeedTagAsync(string name, bool archived = false, string? icon = null)
+    private async Task<Guid> SeedTagAsync(string name, bool archived = false, string? icon = null, string? color = null)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
-        var tag = new RecipeTag { RecipeTagId = Guid.NewGuid(), Name = name, Icon = icon, Archived = archived ? DateTime.UtcNow : null };
+        var tag = new RecipeTag { RecipeTagId = Guid.NewGuid(), Name = name, Icon = icon, Color = color, Archived = archived ? DateTime.UtcNow : null };
         context.RecipeTags.Add(tag);
         await context.SaveChangesAsync();
         return tag.RecipeTagId;
@@ -643,6 +870,42 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         (await context.RecipeTags.SingleAsync(t => t.RecipeTagId == id)).Archived = DateTime.UtcNow;
         await context.SaveChangesAsync();
+    }
+
+    // The trace id differs per request; nothing else may.
+    private static string WithoutTraceId(string body) =>
+        System.Text.RegularExpressions.Regex.Replace(body, "\"traceId\":\"[^\"]*\"", string.Empty);
+
+    /// <summary>A library photo with both renditions stored, the <c>PhotoThumbnailApiTests</c> seeding.</summary>
+    private async Task<Guid> SeedPhotoWithThumbnailsAsync()
+    {
+        byte[] webP = [.. "RIFF\0\0\0\0WEBPVP8 "u8, 1, 2, 3, 4];
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "ready.jpg");
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var store = scope.ServiceProvider.GetRequiredService<Odyssey.Core.FileStorage.IObjectStore>();
+        foreach (var (size, bytes) in new[] { (Odyssey.Dtos.Journal.ThumbnailSize.Small, webP), (Odyssey.Dtos.Journal.ThumbnailSize.Medium, [.. webP, 2]) })
+        {
+            using var stream = new MemoryStream(bytes);
+            var stored = await store.PutAsync(
+                Odyssey.Core.Journal.Thumbnails.PhotoThumbnailStorage.FeatureKey,
+                new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailLayout(size, 1), "ready.jpg", null, "image/webp",
+                stream, Odyssey.Core.Journal.Thumbnails.PhotoThumbnailRecipe.MaxOutputBytes, CancellationToken.None);
+            context.PhotoThumbnails.Add(new PhotoThumbnail
+            {
+                PhotoThumbnailId = Guid.NewGuid(),
+                PhotoId = photoId,
+                Size = size,
+                StoredObjectId = stored.Id,
+                PixelWidth = 200,
+                PixelHeight = 150,
+                RecipeVersion = Odyssey.Core.Journal.Thumbnails.PhotoThumbnailRecipe.Version,
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
+        await context.SaveChangesAsync();
+        return photoId;
     }
 
     private sealed record PagedResultDto(List<RecipeSummary> Items, int TotalCount);

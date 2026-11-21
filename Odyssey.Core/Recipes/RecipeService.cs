@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Recipes;
@@ -140,7 +141,7 @@ public sealed class RecipeService(
             var covers = page.Items.Where(i => i.CoverPhotoId is not null).Select(i => i.CoverPhotoId!.Value).Distinct().ToList();
             if (covers.Count > 0)
             {
-                var ready = await Journal.Thumbnails.PhotoThumbnailService.ReadyAsync(context, covers, cancellationToken);
+                var ready = await PhotoThumbnailService.ReadyAsync(context, covers, cancellationToken);
                 foreach (var item in page.Items)
                 {
                     item.CoverThumbnailsReady = item.CoverPhotoId is { } cover && ready.Contains(cover);
@@ -307,7 +308,23 @@ public sealed class RecipeService(
         }
 
         context.Recipes.Remove(recipe);
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Version is a concurrency token, so a delete racing a PUT or another delete affects no row. A recipe a
+            // concurrent delete removed is a 404; one a concurrent PUT changed is a revision the caller never saw,
+            // which is the version conflict, not a silent delete.
+            context.ChangeTracker.Clear();
+            if (await context.Recipes.AsNoTracking().AnyAsync(r => r.RecipeId == id, cancellationToken))
+            {
+                throw new RecipeVersionConflictException();
+            }
+
+            return false;
+        }
 
         // The only irreversible action gets a traceable line (§7.7): ids only, never a title.
         logger.LogInformation("Recipe {RecipeId} deleted by user {UserId}.", id, userId);
@@ -316,7 +333,11 @@ public sealed class RecipeService(
 
     // ── Validation ───────────────────────────────────────────────────────────
 
-    /// <summary>Trims and cross-checks the request (§8.1), throwing a <c>422</c> keyed on the offending field.</summary>
+    /// <summary>
+    /// Trims and cross-checks the request (§8.1), throwing a <c>422</c> keyed on the offending field. Over HTTP the
+    /// annotations reject a blank title, name or step text first (<c>400</c>); these checks are the defence for a
+    /// direct, non-HTTP caller.
+    /// </summary>
     private static RecipeFields Normalize(RecipeRequest request)
     {
         var title = Required(request.Title, "title", "Enter a title.");
@@ -690,7 +711,7 @@ public sealed class RecipeService(
             var links = recipe.Photos.OrderBy(p => p.Position).ThenBy(p => p.RecipePhotoId).ToList();
             var linkedIds = links.Select(p => p.PhotoId).ToList();
             var info = await photos.ResolveAsync(linkedIds, cancellationToken);
-            var ready = await Journal.Thumbnails.PhotoThumbnailService.ReadyAsync(context, linkedIds, cancellationToken);
+            var ready = await PhotoThumbnailService.ReadyAsync(context, linkedIds, cancellationToken);
             dto.Photos = links
                 .Where(p => info.ContainsKey(p.PhotoId))
                 .Select(p => new RecipePhotoDto

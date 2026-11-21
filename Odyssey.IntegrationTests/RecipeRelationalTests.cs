@@ -3,6 +3,7 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core;
@@ -171,6 +172,168 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
         Assert.Equal(["Bread 50% rye"], page.Items.Select(i => i.Title));
     }
 
+    // ── §9 race and failure paths (the InMemory tier enforces no key, no unique index and no token) ──
+
+    [SkippableFact]
+    public async Task A_save_that_loses_the_version_race_maps_to_the_version_conflict()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var recipeId = await CreateAsync(photo: null, tag: null);
+
+        // The interceptor bumps the stored version between the service's check and its save: exactly a concurrent PUT.
+        await using var context = NewContext(new BeforeSave(() => BumpVersionAsync(recipeId)));
+        await Assert.ThrowsAsync<RecipeVersionConflictException>(() =>
+            Service(context).UpdateAsync(recipeId, Update("Late"), userId: null!, canReadPhotos: true, canReadTags: true));
+    }
+
+    [SkippableFact]
+    public async Task A_delete_that_loses_to_an_edit_is_a_conflict_and_one_that_loses_to_a_delete_is_not_found()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var edited = await CreateAsync(photo: null, tag: null);
+        var deleted = await CreateAsync(photo: null, tag: null);
+
+        await using (var context = NewContext(new BeforeSave(() => BumpVersionAsync(edited))))
+        {
+            await Assert.ThrowsAsync<RecipeVersionConflictException>(() => Service(context).DeleteAsync(edited, "u"));
+        }
+
+        await using (var context = NewContext(new BeforeSave(() => DeleteRowAsync(deleted))))
+        {
+            Assert.False(await Service(context).DeleteAsync(deleted, "u"));
+        }
+
+        await using var verify = NewContext();
+        Assert.True(await verify.Recipes.AnyAsync(r => r.RecipeId == edited));
+    }
+
+    [SkippableFact]
+    public async Task A_photo_deleted_after_validation_is_unprocessable_on_photo_ids()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+
+        // A lookup that vouches for any id stands in for a photo deleted between the check and the save (1452).
+        await using var context = NewContext();
+        var service = new RecipeService(context, new EveryPhotoExists(), NullLogger<RecipeService>.Instance);
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() => service.CreateAsync(
+            new NewRecipe { Title = "Ghost", Servings = 1, PhotoIds = [Guid.NewGuid()] },
+            userId: null!, canReadPhotos: true, canReadTags: true));
+
+        Assert.Equal(["photoIds"], error.Errors!.Keys);
+    }
+
+    [SkippableFact]
+    public async Task A_tag_linked_between_the_check_and_the_delete_is_still_a_conflict()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var tag = await SeedTagAsync("Racing");
+        var recipeId = await CreateAsync(photo: null, tag: null);
+
+        // The link lands after the in-use check and before the DELETE, so only the RESTRICT key (1451) refuses it.
+        await using var context = NewContext(new BeforeSave(async () =>
+        {
+            await using var other = NewContext();
+            await other.Database.ExecuteSqlRawAsync(
+                $"INSERT INTO `RecipeTagLinks` (`RecipeTagLinkId`, `RecipeId`, `RecipeTagId`) VALUES ('{Guid.NewGuid()}', '{recipeId}', '{tag}')");
+        }));
+
+        await Assert.ThrowsAsync<DomainConflictException>(() => new RecipeTagService(context).DeleteAsync(tag));
+    }
+
+    [SkippableFact]
+    public async Task A_tag_name_taken_in_another_case_by_a_racing_create_is_a_conflict()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var name = $"Brunch{Guid.NewGuid():N}";
+
+        // The racing row differs only in case: the *_ci collation's unique index (1062) is what refuses it.
+        await using var context = NewContext(new BeforeSave(async () =>
+        {
+            await using var other = NewContext();
+            other.RecipeTags.Add(new RecipeTag { RecipeTagId = Guid.NewGuid(), Name = name.ToUpperInvariant() });
+            await other.SaveChangesAsync();
+        }));
+
+        await Assert.ThrowsAsync<DomainConflictException>(() => new RecipeTagService(context).CreateAsync(new NewRecipeTag { Name = name }));
+    }
+
+    [SkippableFact]
+    public async Task Deleting_the_author_nulls_the_attribution_and_keeps_the_recipe()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var userId = $"cook-{Guid.NewGuid():N}";
+        Guid recipeId;
+        await using (var context = NewContext())
+        {
+            await AttributionUsers.EnsureAsync(context, userId);
+            recipeId = (await Service(context).CreateAsync(
+                new NewRecipe { Title = "Kept", Servings = 1 }, userId, canReadPhotos: false, canReadTags: false)).Recipe.RecipeId;
+            await context.Database.ExecuteSqlRawAsync($"DELETE FROM `AspNetUsers` WHERE `Id` = '{userId}'");
+        }
+
+        await using var verify = NewContext();
+        var recipe = await verify.Recipes.AsNoTracking().SingleAsync(r => r.RecipeId == recipeId);
+        Assert.Null(recipe.CreatedByUserId);
+        Assert.Null(recipe.UpdatedByUserId);
+    }
+
+    private static UpdateRecipe Update(string title, int version = 1) => new()
+    {
+        Title = title,
+        Servings = 2,
+        Ingredients = [Line("flour")],
+        Steps = [new() { Text = "Mix." }],
+        Version = version,
+    };
+
+    private async Task BumpVersionAsync(Guid recipeId)
+    {
+        await using var other = NewContext();
+        await other.Database.ExecuteSqlRawAsync($"UPDATE `Recipes` SET `Version` = `Version` + 1 WHERE `RecipeId` = '{recipeId}'");
+    }
+
+    private async Task DeleteRowAsync(Guid recipeId)
+    {
+        await using var other = NewContext();
+        await other.Database.ExecuteSqlRawAsync($"DELETE FROM `Recipes` WHERE `RecipeId` = '{recipeId}'");
+    }
+
+    /// <summary>Runs <paramref name="race"/> once, just before the context's first save.</summary>
+    private sealed class BeforeSave(Func<Task> race) : SaveChangesInterceptor
+    {
+        private bool done;
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!done)
+            {
+                done = true;
+                await race();
+            }
+
+            return result;
+        }
+    }
+
+    private sealed class EveryPhotoExists : IPhotoLookup
+    {
+        public Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlySet<Guid>>(photoIds.ToHashSet());
+
+        public Task<IReadOnlyDictionary<Guid, PhotoLinkInfo>> ResolveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, PhotoLinkInfo>>(new Dictionary<Guid, PhotoLinkInfo>());
+
+        public Task<IReadOnlyDictionary<Guid, Guid>> ResolveReferencesAsync(IReadOnlyCollection<Guid> referenceIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+    }
+
     private async Task<Guid> CreateAsync(Guid? photo, Guid? tag)
     {
         await using var context = NewContext();
@@ -217,10 +380,17 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
         return tag.RecipeTagId;
     }
 
-    private OdysseyContext NewContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
+    private OdysseyContext NewContext(IInterceptor? interceptor = null)
+    {
+        var builder = new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
+        if (interceptor is not null)
+        {
+            builder.AddInterceptors(interceptor);
+        }
+
+        return new OdysseyContext(builder.Options);
+    }
 
     private sealed record ForeignKeyRule(string ColumnName, string DeleteRule);
 }
