@@ -287,9 +287,8 @@ public sealed record SystemSettingsUpdate
     public int? FileAnalysisMatchTimeoutSeconds { get; set; }
 
     /// <summary>
-    /// Blob prefix read for photo metadata extraction, in megabytes. The 16 MB maximum is a compiled
-    /// assumption about MariaDB's default <c>max_allowed_packet</c>, which this repository pins
-    /// nowhere — see <c>docs/deployment.md</c>.
+    /// Prefix of the upload stream read for photo metadata extraction, in megabytes. The 16 MB maximum
+    /// bounds the per-upload memory extraction materialises — see <c>docs/deployment.md</c>.
     /// </summary>
     [Range(1, 16, ErrorMessage =
         "Metadata read size must be between 1 and 16 MB. Extraction materialises a full byte array of "

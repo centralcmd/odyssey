@@ -204,10 +204,10 @@ public static class SystemSettingsDefaults
     public const int FileAnalysisMatchTimeoutSeconds = 60;
 
     /// <summary>
-    /// Blob prefix read for photo metadata extraction, in megabytes. <strong>16 is the ceiling</strong>
-    /// and it is a compiled assumption about MariaDB's default <c>max_allowed_packet</c> (16 MiB),
-    /// which this repository pins nowhere — see <c>docs/deployment.md</c>. Extraction reads a full
-    /// <c>byte[]</c> of this size per photo, so it is also a per-upload memory multiplier.
+    /// Prefix of the upload stream read for photo metadata extraction, in megabytes (issue #428 moved the
+    /// read from the database to the upload before it is stored). <strong>16 is the ceiling</strong>:
+    /// extraction reads a full <c>byte[]</c> of this size per photo, so it is a per-upload memory
+    /// multiplier — see <c>docs/deployment.md</c>.
     /// </summary>
     public const int PhotoMetadataReadMegabytes = 8;
 

@@ -10,16 +10,14 @@ namespace Odyssey.Api.Tests;
 /// The photo metadata read cap (issue #434 key 4) and its fail-soft path.
 ///
 /// <para>
-/// The 16 MB maximum is a <strong>compiled assumption</strong> about MariaDB's default
-/// <c>max_allowed_packet</c>, which this repository pins nowhere — not in <c>docker-compose.yml</c>, not
-/// in the MariaDB init script. That is what makes 16 the honest bound rather than a larger round number:
-/// beyond it the <c>SELECT SUBSTRING(...)</c> prefix read simply returns less, or fails.
+/// Since issue #428 the prefix is read from the upload stream before the photo is stored, not back out of
+/// the database. The 16 MB maximum bounds the full <c>byte[]</c> extraction materialises per upload.
 /// </para>
 ///
 /// <para>
-/// So the test that makes the bound <em>safe</em> is not the boundary check on the setting — it is this
-/// one: with the cap at its maximum and a server that cannot serve that much, extraction is skipped and
-/// the photo is still stored. No 500, no lost upload.
+/// The test that makes extraction <em>safe</em> is not the boundary check on the setting — it is the
+/// fail-soft one: when the prefix read fails, extraction is skipped and the photo is still stored. No
+/// 500, no lost upload.
 /// </para>
 /// </summary>
 public class PhotoMetadataReadCapTests
@@ -52,9 +50,8 @@ public class PhotoMetadataReadCapTests
     }
 
     /// <summary>
-    /// The fail-soft path, and the reason the 16 MB bound is safe rather than merely smaller than a
-    /// larger one: a server that cannot serve the requested prefix yields no metadata, not an error. The
-    /// photo itself is stored by the caller regardless.
+    /// The fail-soft path: a prefix read that fails yields no metadata, not an error. The photo itself is
+    /// stored by the caller regardless.
     /// </summary>
     [Fact]
     public async Task WhenTheServerCannotServeThePrefix_ExtractionIsSkippedRatherThanFailing()
