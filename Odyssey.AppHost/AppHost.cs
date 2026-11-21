@@ -139,7 +139,7 @@ var api = builder
 
 // Background jobs (issue #348 first). Same database and environment as the API, and the API's key ring,
 // which it reads but never writes. No endpoint: the worker serves nothing.
-builder
+var worker = builder
     .AddProject<Projects.Odyssey_Worker>("worker")
     .WithEnvironment("DataProtection__KeysPath", dataProtectionKeysPath)
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
@@ -170,6 +170,8 @@ builder
 // the multipart reader; nothing else reads it. The cap a user is validated against is a setting, is
 // bounded by this number, and is edited in the UI.
 ForwardOptionalSetting(api, "FileStorage__MaxFileSizeBytes", "Aspire:FileStorage:MaxFileSizeBytes");
+// The worker caps a podcast episode at the same ceiling (issue #556 §8.2), so it reads the same value.
+ForwardOptionalSetting(worker, "FileStorage__MaxFileSizeBytes", "Aspire:FileStorage:MaxFileSizeBytes");
 
 // Nothing is forwarded to MIGRATIONS. The sender identity (issue #421), the file-analysis tuning
 // values (#434) and the switch, model and destination (#439) are all settings edited in the UI, and

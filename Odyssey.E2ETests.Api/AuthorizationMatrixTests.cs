@@ -75,6 +75,8 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/news-status", PermissionClaims.FileStorageRead),
         // The OPML export (issue #508 §5.1): every fetch URL, so news-feeds.update (Admin and Owner). A read-only 200.
         ("/api/news-feeds/opml", PermissionClaims.NewsFeedsUpdate),
+        // Podcasts (issue #556 §7.2): the episode list is news.read, a database-only 200.
+        ("/api/podcast-episodes?limit=1", PermissionClaims.NewsRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503
@@ -91,6 +93,10 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // Issue #470: a random id is a 404 once authorized.
         ($"/api/news-feeds/{Guid.NewGuid()}", PermissionClaims.NewsRead),
         ($"/api/news-articles/{Guid.NewGuid()}", PermissionClaims.NewsRead),
+        // Issue #556: a random episode or artwork id is a 404 once authorized.
+        ($"/api/podcast-episodes/{Guid.NewGuid()}", PermissionClaims.NewsRead),
+        ($"/api/podcast-episodes/{Guid.NewGuid()}/audio/content", PermissionClaims.NewsRead),
+        ($"/api/podcast-artwork/{Guid.NewGuid()}/content", PermissionClaims.NewsRead),
     ];
 
     // Write-gated endpoints and the write claim each requires. Probed with DELETE against a random,
@@ -121,6 +127,8 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/news-feeds/{Guid.NewGuid()}", PermissionClaims.NewsFeedsDelete),
         ($"/api/news-tags/{Guid.NewGuid()}", PermissionClaims.NewsTagsDelete),
         ($"/api/news-articles/{Guid.NewGuid()}/tags/{Guid.NewGuid()}", PermissionClaims.NewsUpdate),
+        // Podcasts (issue #556 §7.2): removing stored audio is podcast-audio.delete — Admin, Owner and User, not Guest.
+        ($"/api/podcast-episodes/{Guid.NewGuid()}/audio", PermissionClaims.PodcastAudioDelete),
     ];
 
     // Write endpoints stacking two [Authorize] policies: a role must hold EVERY claim, so one holding

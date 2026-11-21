@@ -238,6 +238,9 @@ services:
       # sweeps the disk, and the thumbnail job writes photo thumbnails. Identical to the api service's FileStorage__*
       # block. The worker only verifies a volume — it waits for the API to initialise a new one — and a failing
       # verdict holds the jobs that use the store; weather and exchange-rate sync keep running.
+      # The same transport ceiling as the api: the worker's podcast download caps an episode at it (issue #556 §8.2),
+      # and the store refuses any write above it.
+      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-10737418240}
       FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
       FileStorage__Bindings__PhotoThumbnails: primary
       FileStorage__Bindings__PhotoOriginals: primary
