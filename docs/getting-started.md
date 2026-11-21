@@ -124,7 +124,8 @@ What the AppHost configures:
   section).
 - The API and client run over plain HTTP, so they need no local HTTPS development certificate. The
   API is fixed at `http://localhost:5188` (in `Odyssey.AppHost/AppHost.cs`, matching Compose and the
-  client's Debug fallback); the client gets a dynamic port, shown on the dashboard.
+  client's Debug fallback), and the client is served at `http://localhost:5199` from its launch profile —
+  the same ports as Compose. The dashboard lists both.
 - The **dashboard** is a separate matter: its default launch profile is HTTPS, so on Linux it shows
   a `No trusted development certificate was found` banner until the certificate is trusted in the
   .NET, OpenSSL and NSS stores — see
