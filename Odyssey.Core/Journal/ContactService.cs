@@ -92,12 +92,12 @@ public class ContactService
     }
 
     /// <summary>
-    /// Unpaginated read matching the same search/type/status filters as <see cref="ListAsync"/> (issue
-    /// #338 §5, §7) — backs vCard export's "all"/"filtered" collection endpoint, which ignores paging.
-    /// Throws <see cref="DomainValidationException"/> (→ 400) if the matched set exceeds
-    /// <paramref name="maxRows"/> before any row is materialized.
+    /// Unpaginated read matching the same search/type/status filters as <see cref="ListAsync"/>. Throws
+    /// <see cref="DomainValidationException"/> if the matched set exceeds <paramref name="maxRows"/> before any
+    /// row is materialized. It once backed the vCard collection export, which now streams
+    /// (<c>ContactVCardService.ExportManyStreamingAsync</c>); tests keep it as a lookup helper, hence internal.
     /// </summary>
-    public async Task<IReadOnlyList<ExistingContact>> ListAllMatching(
+    internal async Task<IReadOnlyList<ExistingContact>> ListAllMatching(
         ContactsQueryParams query, int maxRows, CancellationToken cancellationToken = default)
     {
         var q = ApplyFilters(ReadQuery(), query);

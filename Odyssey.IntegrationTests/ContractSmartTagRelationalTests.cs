@@ -413,9 +413,4 @@ public class ContractSmartTagRelationalTests(MariaDbFixture fixture)
         counter = new CommandCounter();
         return NewContext(counter);
     }
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 }

@@ -119,20 +119,16 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
     private async Task RecreateAsync(string database)
     {
         await DropAsync(database);
-        await using var server = ServerContext();
+        await using var server = fixture.CreateOdysseyContext();
         await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{database}`");
     }
 
     private async Task DropAsync(string database)
     {
-        await using var server = ServerContext();
+        await using var server = fixture.CreateOdysseyContext();
         await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{database}`");
     }
 
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 }
 
 #pragma warning restore EF1002

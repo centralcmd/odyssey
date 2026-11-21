@@ -358,9 +358,4 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
 
         return new OdysseyContext(builder.Options);
     }
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 }

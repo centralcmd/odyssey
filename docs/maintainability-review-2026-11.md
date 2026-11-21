@@ -130,7 +130,15 @@ Phase 2 is done, on the branch for this PR.
 | M4 | Enforce braces | Braces added to every `if`/`else`/`for`/`foreach`/`while` body: `dotnet format` in 324 `.cs` files, a script plus 4 hand edits in the `@code` blocks of 63 `.razor` files. `EnforceCodeStyleInBuild` is on, so an `.editorconfig` rule at warning severity now fails the build. A probe file with a brace-less `if` was confirmed to fail with IDE0011. EF migrations are marked `generated_code`. Analyzers do not see `.razor` C#, so those stay covered by review only. `using` order was left untouched to keep the diff to braces. |
 | M5 | Use `set`, not `init` | All 237 `{ get; init; }` properties in `Odyssey.Dtos` are now `{ get; set; }`. The one shared instance, `WeatherAttribution.MetNorway`, now returns a fresh copy each time so a settable object is never shared across responses. |
 
-Still open: U1, the six "keep or remove" items (D2, D4, D5, D7, P2, M7) and the file splits.
+| D2 | Delete | The six byte-returning `.ics` exports (`ICalendarApiClient.ExportAsync`/`ExportEventAsync`/`ExportPatternAsync`/`ExportAggregateAsync`, `IJournalIcsApiClient.ExportAsync`/`ExportOneAsync`) are gone. Their URL-format tests now run against `ExportAggregateUrl`/`ExportUrl`, the URLs the browser actually downloads. Tests of only the removed download path went with it; the shared completeness check stays covered by the OPML client tests. |
+| D4 | Delete | `NonPositiveExchangeRateException.ExchangeRateIds` removed; the ids are still in the message. |
+| D5 | Delete if only tested; keep if a test helper | `ComputeSha256HashAsync` was only exercised by its own two tests: deleted with them. `ListAllMatching` is a lookup helper in the vCard tests: kept, made `internal`, and its doc no longer claims it backs the export (that streams now). |
+| D7 | Remove | Removed `.odc-colorpick-label/-input/-help/-error`, `.odc-toast-action`, `.trm-dir-refused`, `.acc-picture-meta` and the two unused SVGs. **Kept** `.trm-delta` and `.trm-chart`: the contrast and chart-axis tests pin them against the design system, so they are not dead. |
+| P2 | Keep | No change. |
+| M7 | Remove if unused | `WeatherDayObserved.DayDefinition`/`PrecipitationDayDefinition` and the `WeatherDayDefinition` enum removed. They also leave the weather API's JSON; the client never read them. |
+| U1 | — | Smaller than reported: only one Core test file builds its own contract services. The real duplication was an identical `ServerContext()` in 22 integration test files; it is now `MariaDbFixture.CreateOdysseyContext()`. The unused `DropAsync` is gone. |
+
+Still open: the file splits.
 
 ## Implementation plan
 

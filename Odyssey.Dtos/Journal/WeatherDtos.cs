@@ -73,15 +73,6 @@ public enum WeatherTrackingSuspendedReason
     CapReached = 1,
 }
 
-/// <summary>Which day a measured value belongs to. Frost's daily values are UTC days.</summary>
-[JsonConverter(typeof(JsonStringEnumConverter<WeatherDayDefinition>))]
-public enum WeatherDayDefinition
-{
-    Utc = 1,
-    /// <summary>06:00–06:00 UTC, the convention for Frost's daily precipitation sum.</summary>
-    Utc06 = 2,
-}
-
 public enum WeatherPointSortBy
 {
     Name,
@@ -387,8 +378,6 @@ public sealed record WeatherDayObserved
     public decimal? PrecipitationMm { get; set; }
     public decimal? MeanWindSpeedMps { get; set; }
     public decimal? MaxWindGustMps { get; set; }
-    public WeatherDayDefinition DayDefinition { get; set; } = WeatherDayDefinition.Utc;
-    public WeatherDayDefinition PrecipitationDayDefinition { get; set; } = WeatherDayDefinition.Utc06;
     public DateTime? FetchedAtUtc { get; set; }
 }
 
