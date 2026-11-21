@@ -324,6 +324,38 @@ public class InstrumentPriceSyncAmendmentTests
         Assert.Equal(expected is { } e ? Today.AddDays(e) : null, mark);
     }
 
+    [Fact]
+    public async Task A_polled_binding_short_of_today_does_not_bring_the_next_run_forward()
+    {
+        // A Saturday: Friday's close is the newest there is, so the watermark stays short of today after the run.
+        await using var harness = new SyncHarness(historyDays: 5, intervalHours: 24);
+        harness.Clock.Now = new DateTime(2026, 10, 24, 10, 0, 0, DateTimeKind.Utc);
+        var instrument = await harness.AddInstrumentAsync("EQNR");
+        await harness.BindAsync(instrument, FakePrimarySource.DeclaredKey, 1);
+
+        var run = await harness.RunAsync((await harness.Sync.RunScheduledIfDueAsync())!.Value);
+
+        Assert.True(run.PricesInserted > 0);
+        var binding = await harness.BindingAsync(instrument, FakePrimarySource.DeclaredKey);
+        Assert.True(binding.NewestFetched < OsloDate.FromUtc(harness.Clock.Now));
+        // The run asked for the window and the history is complete: nothing is left for a catch-up to do.
+        Assert.Equal(harness.Clock.Now.AddHours(24), await harness.Sync.NextRunAtUtcAsync());
+    }
+
+    [Fact]
+    public async Task A_deferred_binding_short_of_today_still_resumes_at_the_next_quota_hour()
+    {
+        await using var harness = new SyncHarness(historyDays: 5, intervalHours: 24);
+        harness.Primary.Limits = new InstrumentPriceSourceLimits(30, TimeSpan.Zero, MaxRequestsPerRun: 1, MaxRequestsPerDay: 600, MaxRequestsPerHour: 1);
+        await harness.BindAsync(await harness.AddInstrumentAsync("EQNR"), FakePrimarySource.DeclaredKey, 1, symbol: "EQNR");
+        await harness.BindAsync(await harness.AddInstrumentAsync("NHY"), FakePrimarySource.DeclaredKey, 1, symbol: "NHY");
+
+        var run = await harness.RunAsync((await harness.Sync.RunScheduledIfDueAsync())!.Value);
+
+        Assert.Equal(1, run.InstrumentsDeferred);
+        Assert.Equal(new DateTime(2026, 10, 23, 11, 0, 0, DateTimeKind.Utc), await harness.Sync.NextRunAtUtcAsync());
+    }
+
     private static async Task SetWatermarkAsync(SyncHarness harness, DateOnly newest)
     {
         var binding = await harness.Store.InstrumentPriceSourceBindings.SingleAsync();

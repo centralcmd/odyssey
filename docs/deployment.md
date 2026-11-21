@@ -1363,7 +1363,8 @@ own household is permitted, or limit who holds the read claim. *The product deci
   fetched whether or not they came back.
 - **`MinRequestInterval` is now enforced** (#469), per source and per worker process.
 - **A binding whose last attempt failed as unsupported** (unknown symbol, unmapped venue, currency mismatch) is
-  not retried until the next Oslo day; editing it (symbol, enabled flag, start date) clears that at once.
+  not retried until the next Oslo day; editing it (symbol, enabled flag, start date or its place in the source
+  order) clears that at once.
 - **No new claims, no new setting, no feature switch.** The token is a new secret with no default.
 
 ## File storage (filesystem volumes)

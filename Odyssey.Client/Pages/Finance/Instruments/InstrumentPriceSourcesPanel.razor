@@ -84,7 +84,7 @@
                                     <OdsTextInputField Id="@SymbolId(item)" Label="@($"{name} source symbol")" Value="@item.SourceSymbol"
                                                        ValueChanged="@(v => OnSymbolChanged(item, v))" Required="true"
                                                        MaxLength="InstrumentIdentifierRules.SourceSymbolMaxLength" AutoComplete="off"
-                                                       Help="@SymbolHelp(item.SourceKey)"
+                                                       Help="@SymbolHelpFor(item.SourceKey)"
                                                        Error="@ItemError(item)" ErrorIsAlert="false" />
                                     @if (item.SymbolChanged)
                                     {
@@ -153,7 +153,7 @@
                                    Options="AddableOptions" Placeholder="Choose a source" Error="@adding.SourceError" />
                         <OdsTextInputField Id="@($"{_uid}-add-symbol")" Label="Source symbol" Required="true" Value="@adding.Symbol"
                                            ValueChanged="OnAddSymbolChanged" MaxLength="InstrumentIdentifierRules.SourceSymbolMaxLength"
-                                           AutoComplete="off" Help="@SymbolHelp(adding.SourceKey)"
+                                           AutoComplete="off" Help="@SymbolHelpFor(adding.SourceKey)"
                                            Error="@adding.SymbolError" ErrorIsAlert="false" />
                         <OdsDateField Label="History start" Value="adding.HistoryStart" ValueChanged="@(d => adding.HistoryStart = d)"
                                       Max="TodayMax" Placeholder="Source’s full history"

@@ -107,7 +107,7 @@ public sealed class InstrumentPriceSyncService(
             return finished + TimeSpan.FromHours(hours);
         }
 
-        if (last.InstrumentsDeferred > 0 && await AnyBindingBehindAsync(cancellationToken))
+        if (last.InstrumentsDeferred > 0 && await AnyBindingBehindAsync(last.StartedAtUtc, cancellationToken))
         {
             // A cap or the forward budget stopped the run: resume when the quota does. Hourly caps are UTC clock hours.
             return sources.All.Any(s => s.Limits.MaxRequestsPerHour is not null)
@@ -115,7 +115,7 @@ public sealed class InstrumentPriceSyncService(
                 : finished + TimeSpan.FromMinutes(InstrumentPriceSyncConstants.CatchUpDelayMinutes);
         }
 
-        if (last.PricesInserted > 0 && await AnyBindingBehindAsync(cancellationToken))
+        if (last.PricesInserted > 0 && await AnyBindingBehindAsync(last.StartedAtUtc, cancellationToken))
         {
             return finished + TimeSpan.FromMinutes(InstrumentPriceSyncConstants.CatchUpDelayMinutes);
         }
@@ -192,7 +192,18 @@ public sealed class InstrumentPriceSyncService(
         await recorder.FinishAsync<InstrumentPriceSyncJobRun>(JobType.InstrumentPriceSync, runId, counters.ApplyTo, outcome, CancellationToken.None);
     }
 
-    private async Task<bool> AnyBindingBehindAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Whether a binding still has work the next run can do, so a catch-up (or the next quota hour) is worth scheduling:
+    /// history not yet backfilled, or a forward gap the last run did not attempt (a deferred binding).
+    ///
+    /// <para>
+    /// A forward gap the last run <em>did</em> attempt is not "behind". Since issue #447 A6 the watermark is the newest
+    /// returned date, so a healthy binding is short of today most of the day and over every weekend and holiday; counting
+    /// that would re-ask the same empty window every catch-up. A binding skipped for today (A9) is not asked again until
+    /// the next Oslo day, so it is not behind either.
+    /// </para>
+    /// </summary>
+    private async Task<bool> AnyBindingBehindAsync(DateTime lastRunStartedUtc, CancellationToken cancellationToken)
     {
         var today = OsloDate.Today(timeProvider);
         var history = (await settings.GetAsync(cancellationToken)).SyncHistoryDays;
@@ -200,9 +211,13 @@ public sealed class InstrumentPriceSyncService(
         var bindings = await context.InstrumentPriceSourceBindings.AsNoTracking()
             .Where(b => b.Enabled && keys.Contains(b.SourceKey))
             .ToListAsync(cancellationToken);
-        return bindings.Any(b => b.NewestFetched is null || b.NewestFetched < today
-            || b.BackfilledFrom is null || b.BackfilledFrom > StartOf(b, today, history));
+        return bindings.Any(b => !IsSkippedToday(b, today)
+            && (b.BackfilledFrom is null || b.BackfilledFrom > StartOf(b, today, history)
+                || ((b.NewestFetched is null || b.NewestFetched < today) && !AttemptedSince(b, lastRunStartedUtc))));
     }
+
+    private static bool AttemptedSince(InstrumentPriceSourceBinding binding, DateTime sinceUtc) =>
+        binding.LastSuccessUtc >= sinceUtc || binding.LastFailureUtc >= sinceUtc;
 
     private static DateOnly StartOf(InstrumentPriceSourceBinding binding, DateOnly today, int historyDays) =>
         binding.HistoryStartDate ?? today.AddDays(-historyDays);

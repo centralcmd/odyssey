@@ -135,8 +135,8 @@ public sealed class TiingoPriceSource : IInstrumentPriceSource, IInstrumentPrice
 
     public void OnBatchRejected(SourceFetchRequest request, int rule)
     {
-        // Rule 5: the derived currency differs from the instrument's. Ask again rather than trust the cached venue.
-        if (rule == 5)
+        // The derived currency differs from the instrument's: ask again rather than trust the cached venue.
+        if (rule == FetchedBatchCheck.CurrencyMismatchRule)
         {
             Metadata.Evict(request.SourceSymbol);
         }

@@ -137,7 +137,7 @@ public partial class InstrumentPriceSourcesPanel
             ? $"The symbol as {(string.IsNullOrWhiteSpace(info.DisplayName) ? info.Key : info.DisplayName.Trim())} writes it, e.g. {example.Trim()}"
             : GenericSymbolHelp;
 
-    private string SymbolHelp(string? key) => SymbolHelp(InfoOf(key));
+    private string SymbolHelpFor(string? key) => SymbolHelp(InfoOf(key));
 
     /// <summary>"Not asked again until {date}…" — the server's date for a binding skipped after a definitive failure (A9).</summary>
     internal static string RetryText(DateOnly retryOn) =>
