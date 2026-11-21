@@ -339,17 +339,25 @@ public sealed class NewsFeedPurger(
         }
     }
 
-    /// <summary>The worker-owned completion mark, one column, never touching the fetch fence.</summary>
-    private static async Task MarkRewrittenAsync(OdysseyContext context, Guid feedId, DateTime changedAtUtc, CancellationToken cancellationToken)
+    /// <summary>
+    /// The worker-owned completion mark, one column, never touching the fetch fence — and only while the feed holds no
+    /// live fetch lease, tested in the same statement. A fetch claimed before the type change carries the old kind and
+    /// would insert old-kind articles after this pass looked; its live lease keeps the feed pending until it ends, and the
+    /// next pass rewrites what it inserted. A fetch claimed later reads the new kind.
+    /// </summary>
+    private async Task MarkRewrittenAsync(OdysseyContext context, Guid feedId, DateTime changedAtUtc, CancellationToken cancellationToken)
     {
+        var now = Now;
         if (context.Database.IsRelational())
         {
             await context.Database.ExecuteSqlInterpolatedAsync(
-                $"UPDATE `NewsFeedFetchStates` SET `FeedKindRewrittenAtUtc` = {changedAtUtc} WHERE `NewsFeedId` = {feedId}", cancellationToken);
+                $"UPDATE `NewsFeedFetchStates` SET `FeedKindRewrittenAtUtc` = {changedAtUtc} WHERE `NewsFeedId` = {feedId} AND (`LeaseOwner` IS NULL OR `LeaseExpiresAtUtc` < {now})",
+                cancellationToken);
             return;
         }
 
-        if (await context.NewsFeedFetchStates.FirstOrDefaultAsync(s => s.NewsFeedId == feedId, cancellationToken) is { } state)
+        if (await context.NewsFeedFetchStates.FirstOrDefaultAsync(
+                s => s.NewsFeedId == feedId && (s.LeaseOwner == null || s.LeaseExpiresAtUtc < now), cancellationToken) is { } state)
         {
             state.FeedKindRewrittenAtUtc = changedAtUtc;
             await context.SaveChangesAsync(cancellationToken);

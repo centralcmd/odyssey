@@ -228,6 +228,48 @@ public sealed class PodcastRetentionAndPurgeTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_fetch_claimed_before_a_type_change_keeps_the_feed_pending_until_its_lease_ends()
+    {
+        news.Server.Feed(FeedUrl, Show());
+        feedId = await news.AddFeedAsync(FeedUrl);
+        await news.Job.RunOnceAsync(CancellationToken.None);
+        var changedAt = Now;
+        await news.WithContextAsync(async c =>
+        {
+            var feed = await c.NewsFeeds.SingleAsync();
+            feed.Kind = NewsFeedKind.Podcast;
+            feed.KindChangedAtUtc = changedAt;
+            // A fetch claimed under the old kind is still running.
+            var state = await c.NewsFeedFetchStates.SingleAsync();
+            state.LeaseOwner = Guid.NewGuid();
+            state.LeaseExpiresAtUtc = changedAt.AddMinutes(2);
+            await c.SaveChangesAsync();
+        });
+        var purger = Get<NewsFeedPurger>();
+
+        await purger.RewriteFeedKindAsync(CancellationToken.None);
+        // That fetch inserts an article with the kind it claimed under, after the rewrite looked.
+        var late = Guid.NewGuid();
+        await news.WithContextAsync(async c =>
+        {
+            c.NewsArticles.Add(new NewsArticle
+            {
+                NewsArticleId = late, NewsFeedId = feedId, Bucket = 1, Title = "Late", Excerpt = "Late", ContentHash = new byte[32],
+                IdentityHash = new byte[32], FirstSeenAtUtc = changedAt, LastSeenAtUtc = changedAt, SortAtUtc = changedAt,
+                FeedVisible = true, FeedKind = NewsFeedKind.Article,
+            });
+            await c.SaveChangesAsync();
+        });
+        await purger.RewriteFeedKindAsync(CancellationToken.None);
+        Assert.Equal([feedId], await news.WithContextAsync(c => NewsFeedKindRewrite.PendingFeeds(c).ToListAsync()));
+
+        news.Advance(TimeSpan.FromMinutes(3));
+        await purger.RewriteFeedKindAsync(CancellationToken.None);
+        Assert.Empty(await news.WithContextAsync(c => NewsFeedKindRewrite.PendingFeeds(c).ToListAsync()));
+        Assert.Equal(NewsFeedKind.Podcast, await news.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == late).Select(a => a.FeedKind).SingleAsync()));
+    }
+
+    [Fact]
     public async Task AC34_Deleting_a_podcast_feed_releases_its_audio_and_artwork_and_returns_the_totals()
     {
         await StoredAsync();
