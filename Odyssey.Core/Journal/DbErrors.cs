@@ -16,6 +16,14 @@ internal static class DbErrors
     public static bool IsReferencedRow(DbUpdateException exception) =>
         exception.GetBaseException() is MySqlException { Number: 1451 };
 
+    /// <summary>
+    /// Whether a <c>1451</c>'s message names the referencing (child) table <paramref name="table"/>. MariaDB writes it as
+    /// <c>(`db`.`Table`, CONSTRAINT …)</c>, so a refusal from one key is never explained as another's.
+    /// </summary>
+    public static bool ReferencedRowFrom(DbUpdateException exception, string table) =>
+        exception.GetBaseException() is MySqlException { Number: 1451 } mysql
+        && mysql.Message.Contains($"`.`{table}`,", StringComparison.Ordinal);
+
     /// <summary>1452: an insert or update naming a parent row that does not exist (it was deleted meanwhile).</summary>
     public static bool IsMissingReference(DbUpdateException exception) =>
         exception.GetBaseException() is MySqlException { Number: 1452 };

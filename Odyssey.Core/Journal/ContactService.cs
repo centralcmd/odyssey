@@ -39,7 +39,7 @@ public partial class ContactService
 
     /// <param name="bookCredits">
     /// The book-credit check (issue #527 §7.10). Optional like the other trailing services so direct constructions keep
-    /// compiling; the API and worker resolve it through DI. Without it the two RESTRICT keys still refuse the delete
+    /// compiling; the API resolves it through DI. Without it the two RESTRICT keys still refuse the delete
     /// on a real database.
     /// </param>
     public ContactService(

@@ -33,7 +33,7 @@ public static class StorageHealth
     {
         ["PhotoOriginals"] = "Photo originals",
         ["PhotoThumbnails"] = "Photo thumbnails",
-        // Issue #449: the three file areas. Placement labels, not access boundaries — reads ignore the area.
+        // Issue #449: the file areas (issue #527 added Library). Placement labels, not access boundaries — reads ignore the area.
         ["FinanceFiles"] = "Finance files",
         ["JournalFiles"] = "Journal files",
         ["LibraryFiles"] = "Library files",

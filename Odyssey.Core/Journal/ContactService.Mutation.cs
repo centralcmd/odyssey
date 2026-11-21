@@ -198,7 +198,7 @@ public partial class ContactService
                 await DeleteInTransactionAsync();
             });
         }
-        catch (DbUpdateException exception) when (DbErrors.IsReferencedRow(exception))
+        catch (DbUpdateException exception) when (DbErrors.ReferencedRowFrom(exception, "Books") || DbErrors.ReferencedRowFrom(exception, "BookContributors"))
         {
             // A book credit added between the in-transaction check and the delete: a Books/BookContributors RESTRICT
             // key refused it (issue #527 §7.10). Caught OUTSIDE ExecuteAtomicallyAsync, so the transaction —

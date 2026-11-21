@@ -50,6 +50,11 @@ public sealed class BookService(
             throw new DomainForbiddenException(BookForbidden.CoverFilter);
         }
 
+        if (!caller.CanReadTags && query.TagIds is { Length: > 0 })
+        {
+            throw new DomainForbiddenException(BookForbidden.TagFilter);
+        }
+
         if (!caller.CanReadFiles && query.HasAttachments is not null)
         {
             throw new DomainForbiddenException(BookForbidden.FileFilter);

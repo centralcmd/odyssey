@@ -1706,7 +1706,7 @@ access boundary: who may read a file is still decided by the claim of the record
 | Library | `LibraryFiles` | `library-files/` | Book attachments: e-books, PDFs and papers (added with Books, #527) |
 
 Each file sits at `<root>/<upload year>/<bucket>/<sanitized original name>.<extension>`. The area is chosen once,
-at upload: the upload form sends `area` (`Finance` or `Journal`), the avatar path always writes `ContactAvatars`.
+at upload: the upload form sends `area` (`Finance`, `Journal` or `Library`), the avatar path always writes `ContactAvatars`.
 A file later attached somewhere else stays where it was put.
 
 - **All three features must be bound** (`FileStorage__Bindings__FinanceFiles`, `__JournalFiles`,
@@ -1741,7 +1741,7 @@ old volume must stay mounted. Plan the split before the upgrade, while the area 
 A deleted file waits for the deletion grace (default 24 h) before the hourly maintenance pass removes it from disk;
 for an erasure request that cannot wait, follow the procedure under [Erasure of a photo
 original](#erasure-of-a-photo-original). The file name on disk is the sanitized original name — personal data —
-so never log or share a volume listing. All three areas are **primary data**: every volume they are bound to
+so never log or share a volume listing. All four areas are **primary data**: every volume they are bound to
 must be in every backup, copied after the database dump and within the grace (see [Backup and
 restore](#backup-and-restore)).
 

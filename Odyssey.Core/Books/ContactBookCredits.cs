@@ -36,6 +36,12 @@ public sealed class ContactBookCredits(OdysseyContext context) : IContactBookCre
             .ThenBy(b => b.BookId)
             .ToList();
 
-        return new ContactBookCreditBlockers { TotalCredits = total, BookCount = books.Count, Books = books };
+        // The list is capped so a prolific author's 409 stays small; BookCount still says how many there are.
+        return new ContactBookCreditBlockers
+        {
+            TotalCredits = total,
+            BookCount = books.Count,
+            Books = [.. books.Take(BookLimits.MaxCreditBooksListed)],
+        };
     }
 }

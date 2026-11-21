@@ -17,6 +17,9 @@ public static class BookLimits
     public const int MaxYear = 9999;
 
     public const int MaxContributors = 50;
+
+    /// <summary>How many crediting books a contact-delete <c>409</c> names; the counts always carry the true totals.</summary>
+    public const int MaxCreditBooksListed = 20;
     public const int MaxImages = 20;
     public const int MaxAttachments = 20;
     public const int MaxTags = 20;

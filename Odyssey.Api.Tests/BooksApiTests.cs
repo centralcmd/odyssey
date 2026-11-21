@@ -469,7 +469,11 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         }));
 
         using var deleter = Factory.ClientFor([PermissionClaims.ContactsDelete, PermissionClaims.ContactsRead, PermissionClaims.BooksRead]);
-        foreach (var url in new[] { $"/api/contacts/{author}", $"/api/contacts/{contributor}", $"/api/contacts/{author}?detachBlockingLinks=true" })
+        foreach (var url in new[]
+        {
+            $"/api/contacts/{author}", $"/api/contacts/{contributor}",
+            $"/api/contacts/{author}?detachBlockingLinks=true", $"/api/contacts/{contributor}?detachBlockingLinks=true",
+        })
         {
             var response = await deleter.DeleteAsync(url);
             Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -486,8 +490,11 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         Assert.Equal(1, withheld.GetProperty("bookCredits").GetProperty("bookCount").GetInt32());
 
         using var scope = Factory.Services.CreateScope();
-        Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Contacts.CountAsync());
-        Assert.NotEqual(Guid.Empty, created.BookId);
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Equal(2, await context.Contacts.CountAsync());
+        // The detach valve never removes a credit (§7.10): both rows survive every refused delete.
+        Assert.True(await context.Books.AnyAsync(b => b.BookId == created.BookId && b.MainAuthorContactId == author));
+        Assert.True(await context.BookContributors.AnyAsync(c => c.BookId == created.BookId && c.ContactId == contributor));
     }
 
     /// <summary>
@@ -502,8 +509,7 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         var limit = typeof(Controllers.BooksController).GetMethod(action)!
             .GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute), inherit: false)
             .Cast<Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute>().Single();
-        Assert.Equal(BookLimits.MaxRequestBytes, (long?)typeof(Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute)
-            .GetField("_bytes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(limit));
+        Assert.Equal(BookLimits.MaxRequestBytes, ((Microsoft.AspNetCore.Http.Metadata.IRequestSizeLimitMetadata)limit).MaxRequestBodySize);
     }
 
     [Fact]
@@ -520,6 +526,151 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(full);
         Assert.True(json.Length < BookLimits.MaxRequestBytes);
         Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(Path, full)).StatusCode);
+    }
+
+    private async Task ArchiveAsync<T>(Guid id) where T : class
+    {
+        using var scope = Factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        switch (await context.Set<T>().FindAsync(id))
+        {
+            case Contact contact: contact.Archived = DateTime.UtcNow; break;
+            case BookTag tag: tag.Archived = DateTime.UtcNow; break;
+            default: throw new InvalidOperationException($"No {typeof(T).Name} {id}.");
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>§3 step 8: a NEW link to an archived contact or tag is a <c>422</c>; a KEPT one survives a <c>PUT</c>.</summary>
+    [Fact]
+    public async Task An_archived_contact_or_tag_cannot_be_newly_linked_but_a_kept_one_stays()
+    {
+        var author = await PhotoTestSupport.SeedPersonAsync(Factory);
+        var contributor = await PhotoTestSupport.SeedPersonAsync(Factory, "Helper");
+        var archivedAuthor = await PhotoTestSupport.SeedPersonAsync(Factory, "Retired Author");
+        var archivedContributor = await PhotoTestSupport.SeedPersonAsync(Factory, "Retired Helper");
+        var tag = await SeedTagAsync("Classics");
+        await ArchiveAsync<Contact>(archivedAuthor);
+        await ArchiveAsync<Contact>(archivedContributor);
+        using var client = Factory.ClientFor(Full);
+
+        var refusedAuthor = await client.PostAsJsonAsync(Path, NewBook(archivedAuthor));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refusedAuthor.StatusCode);
+        Assert.True((await ProblemAsync(refusedAuthor)).GetProperty("errors").TryGetProperty("mainAuthorContactId", out _));
+        var refusedContributor = await client.PostAsJsonAsync(Path, NewBook(author) with
+        {
+            Contributors = [new() { ContactId = archivedContributor }],
+        });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refusedContributor.StatusCode);
+        Assert.True((await ProblemAsync(refusedContributor)).GetProperty("errors").TryGetProperty("contributors[0].contactId", out _));
+
+        var created = await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(author) with
+        {
+            Contributors = [new() { ContactId = contributor }],
+            TagIds = [tag],
+        }));
+        await ArchiveAsync<Contact>(author);
+        await ArchiveAsync<Contact>(contributor);
+        await ArchiveAsync<BookTag>(tag);
+
+        var kept = await client.PutAsJsonAsync($"{Path}/{created.BookId}", ToUpdate(created) with
+        {
+            Title = "Dune Messiah",
+            Contributors = [new() { ContactId = contributor, Role = "Editor" }],
+            TagIds = [tag],
+        });
+        Assert.Equal(HttpStatusCode.OK, kept.StatusCode);
+        var updated = (await kept.Content.ReadFromJsonAsync<ExistingBook>())!;
+        Assert.Equal("Dune Messiah", updated.Title);
+        Assert.Equal([tag], updated.TagIds);
+        Assert.True(updated.MainAuthor.Archived);
+
+        var swapped = await client.PutAsJsonAsync($"{Path}/{updated.BookId}", ToUpdate(updated) with
+        {
+            Contributors = [new() { ContactId = archivedContributor }],
+        });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, swapped.StatusCode);
+    }
+
+    /// <summary>Every array cap and string cap is a <c>400</c> one past the limit, on <c>POST</c> and <c>PUT</c> alike.</summary>
+    [Fact]
+    public async Task One_past_any_cap_is_400_on_post_and_put()
+    {
+        var author = await PhotoTestSupport.SeedPersonAsync(Factory);
+        using var client = Factory.ClientFor(Full);
+        var created = await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(author)));
+
+        List<Guid> Ids(int count) => Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToList();
+        var overCap = new (string Field, Func<NewBook, NewBook> Post, Func<UpdateBook, UpdateBook> Put)[]
+        {
+            ("Title", b => b with { Title = new string('t', BookLimits.MaxTitleLength + 1) }, b => b with { Title = new string('t', BookLimits.MaxTitleLength + 1) }),
+            ("Publisher", b => b with { Publisher = new string('p', BookLimits.MaxPublisherLength + 1) }, b => b with { Publisher = new string('p', BookLimits.MaxPublisherLength + 1) }),
+            ("Isbn", b => b with { Isbn = new string('1', BookLimits.MaxIsbnInputLength + 1) }, b => b with { Isbn = new string('1', BookLimits.MaxIsbnInputLength + 1) }),
+            ("Description", b => b with { Description = new string('d', BookLimits.MaxDescriptionLength + 1) }, b => b with { Description = new string('d', BookLimits.MaxDescriptionLength + 1) }),
+            ("Notes", b => b with { Notes = new string('n', BookLimits.MaxNotesLength + 1) }, b => b with { Notes = new string('n', BookLimits.MaxNotesLength + 1) }),
+            ("Contributors", b => b with { Contributors = Ids(BookLimits.MaxContributors + 1).Select(id => new BookContributorRequest { ContactId = id }).ToList() },
+                b => b with { Contributors = Ids(BookLimits.MaxContributors + 1).Select(id => new BookContributorRequest { ContactId = id }).ToList() }),
+            ("Contributors[0].Role", b => b with { Contributors = [new() { ContactId = Guid.NewGuid(), Role = new string('r', BookLimits.MaxRoleLength + 1) }] },
+                b => b with { Contributors = [new() { ContactId = Guid.NewGuid(), Role = new string('r', BookLimits.MaxRoleLength + 1) }] }),
+            ("PhotoIds", b => b with { PhotoIds = Ids(BookLimits.MaxImages + 1) }, b => b with { PhotoIds = Ids(BookLimits.MaxImages + 1) }),
+            ("AttachmentFileIds", b => b with { AttachmentFileIds = Ids(BookLimits.MaxAttachments + 1) }, b => b with { AttachmentFileIds = Ids(BookLimits.MaxAttachments + 1) }),
+            ("TagIds", b => b with { TagIds = Ids(BookLimits.MaxTags + 1) }, b => b with { TagIds = Ids(BookLimits.MaxTags + 1) }),
+        };
+
+        foreach (var (field, post, put) in overCap)
+        {
+            var posted = await client.PostAsJsonAsync(Path, post(NewBook(author)));
+            Assert.True(posted.StatusCode == HttpStatusCode.BadRequest, $"POST {field}: {posted.StatusCode}");
+            var errors = (await ProblemAsync(posted)).GetProperty("errors");
+            Assert.True(errors.EnumerateObject().Any(e => e.Name.Equals(field, StringComparison.OrdinalIgnoreCase)), $"POST {field}: {errors}");
+
+            var putted = await client.PutAsJsonAsync($"{Path}/{created.BookId}", put(ToUpdate(created)));
+            Assert.True(putted.StatusCode == HttpStatusCode.BadRequest, $"PUT {field}: {putted.StatusCode}");
+        }
+
+        using var scope = Factory.Services.CreateScope();
+        Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Books.CountAsync());
+    }
+
+    /// <summary>Both ends of the year range are accepted as given (§8.2).</summary>
+    [Theory]
+    [InlineData(BookLimits.MinYear)]
+    [InlineData(BookLimits.MaxYear)]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public async Task The_year_range_ends_are_accepted(int year)
+    {
+        var author = await PhotoTestSupport.SeedPersonAsync(Factory);
+        using var client = Factory.ClientFor(Full);
+        Assert.Equal(year, (await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(author) with { Year = year }))).Year);
+    }
+
+    /// <summary>A prolific author's <c>409</c> names at most the listed cap of books; the counts stay true.</summary>
+    [Fact]
+    public async Task The_credit_conflict_lists_a_capped_number_of_books()
+    {
+        var author = await PhotoTestSupport.SeedPersonAsync(Factory);
+        using var client = Factory.ClientFor(Full);
+        for (var i = 0; i <= BookLimits.MaxCreditBooksListed; i++)
+        {
+            await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(author, $"Volume {i:D2}")));
+        }
+
+        using var deleter = Factory.ClientFor([PermissionClaims.ContactsDelete, PermissionClaims.ContactsRead, PermissionClaims.BooksRead]);
+        var credits = (await ProblemAsync(await deleter.DeleteAsync($"/api/contacts/{author}"))).GetProperty("bookCredits");
+        Assert.Equal(BookLimits.MaxCreditBooksListed + 1, credits.GetProperty("bookCount").GetInt32());
+        Assert.Equal(BookLimits.MaxCreditBooksListed + 1, credits.GetProperty("totalCredits").GetInt32());
+        Assert.Equal(BookLimits.MaxCreditBooksListed, credits.GetProperty("books").GetArrayLength());
+    }
+
+    /// <summary>Security review (PR #577): the tag filter is gated like every other link filter.</summary>
+    [Fact]
+    public async Task Filtering_by_tag_without_tags_read_is_403()
+    {
+        using var client = Factory.ClientFor(Without(PermissionClaims.BookTagsRead));
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Path}?tagIds={Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Path)).StatusCode);
     }
 
     /// <summary>The class's shared host: every caller's claims travel per request.</summary>

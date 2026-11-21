@@ -29,5 +29,6 @@ public static class BookForbidden
     public const string TagLink = "Linking tags requires the books.tags.read permission.";
     public const string ContactFilter = "Filtering or sorting books by author requires the contacts.read permission.";
     public const string CoverFilter = "Filtering books by cover requires the photos.read permission.";
+    public const string TagFilter = "Filtering books by tag requires the books.tags.read permission.";
     public const string FileFilter = "Filtering books by files requires the files.read permission.";
 }

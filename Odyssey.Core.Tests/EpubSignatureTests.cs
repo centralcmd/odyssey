@@ -31,6 +31,33 @@ public class EpubSignatureTests
         Assert.True(FileHeaderSignatures.Matches("application/zip", Zip("chapter1.html", "<html></html>.....")));
     }
 
+    /// <summary>
+    /// The EPUB OCF rule is a stored, uncompressed <c>mimetype</c> first: a deflated one carries no readable media type at
+    /// offset 38, and an extra field shifts it, so both are refused rather than read loosely.
+    /// </summary>
+    [Fact]
+    public void A_compressed_or_shifted_mimetype_does_not_match()
+    {
+        var compressed = Zip("mimetype", "\u004B\u004C\u00C9\u00CC\u004D\u00D5\u004D\u002C\u0028");
+        Assert.False(FileHeaderSignatures.Matches("application/epub+zip", compressed));
+
+        var withExtra = Zip("mimetype", "\0\0\0\0application/epub+zip");
+        withExtra[28] = 4;
+        Assert.False(FileHeaderSignatures.Matches("application/epub+zip", withExtra));
+    }
+
+    /// <summary>Widening the header from 16 to 64 bytes changed no existing signature: each still matches its own type.</summary>
+    [Theory]
+    [InlineData("application/pdf", "%PDF-1.7")]
+    [InlineData("image/png", "\u0089PNG\r\n\u001a\n")]
+    [InlineData("image/jpeg", "\u00FF\u00D8\u00FF\u00E0")]
+    public void The_wider_header_keeps_the_existing_signatures(string contentType, string prefix)
+    {
+        var bytes = prefix.Select(c => (byte)c).Concat(new byte[FileHeaderSignatures.HeaderLength]).ToArray();
+        Assert.True(FileHeaderSignatures.Matches(contentType, bytes));
+        Assert.True(FileHeaderSignatures.Matches(contentType, bytes[..16]));
+    }
+
     [Fact]
     public void A_short_header_never_matches_epub() =>
         Assert.False(FileHeaderSignatures.Matches("application/epub+zip", Zip("mimetype", "application/epub+zip")[..40]));
