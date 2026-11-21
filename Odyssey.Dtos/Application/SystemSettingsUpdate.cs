@@ -568,6 +568,23 @@ public sealed record SystemSettingsUpdate
     public int? NewsOpmlMaxImportEntries { get; set; }
 
     // ---------------------------------------------------------------------------------------------
+    // Podcasts (issue #556 §8.2). The ordinary claim for all four. PodcastAudioMaxEpisodeMb is also
+    // bounded by a derived ceiling (RequestCapCeilings), from startup configuration.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.PodcastAudioStoreMaxGiBMin, SystemSettingsBounds.PodcastAudioStoreMaxGiBMax)]
+    public int? PodcastAudioStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.PodcastAudioMaxEpisodeMbMin, SystemSettingsBounds.PodcastAudioMaxEpisodeMbMax)]
+    public int? PodcastAudioMaxEpisodeMb { get; set; }
+
+    [Range(SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMin, SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMax)]
+    public int? PodcastAutoDownloadsPerFeedPerDay { get; set; }
+
+    [Range(SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMin, SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMax)]
+    public int? PodcastAutoDownloadMaxUnfetchedPerFeed { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period
     // for deleted personal data, so every change is audited.
     // ---------------------------------------------------------------------------------------------

@@ -397,4 +397,18 @@ public static class SystemSettingsDefaults
 
     /// <summary>The most distinct feeds one OPML file may name. Its range's ceiling is this value: it can only be lowered.</summary>
     public const int NewsOpmlMaxImportEntries = 100_000;
+
+    // ── Podcasts (issue #556 §8.2) ────────────────────────────────────────────────────────────────
+
+    /// <summary>The audio quota, counting audio awaiting deletion; at it, downloads are deferred, never purged.</summary>
+    public const int PodcastAudioStoreMaxGiB = 50;
+
+    /// <summary>The largest episode downloaded, in MB; also bounded by <c>FileStorage:MaxFileSizeBytes</c>.</summary>
+    public const int PodcastAudioMaxEpisodeMb = 1024;
+
+    /// <summary>Episodes auto-download may queue per podcast per UTC day.</summary>
+    public const int PodcastAutoDownloadsPerFeedPerDay = 5;
+
+    /// <summary>Auto-downloaded episodes a podcast may hold that no device has fetched yet.</summary>
+    public const int PodcastAutoDownloadMaxUnfetchedPerFeed = 5;
 }

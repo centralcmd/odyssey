@@ -23,6 +23,10 @@ public sealed record NewsSettings(
     int FeedMaxArticlesPerDay,
     int FeedMaxImageMbPerDay,
     int OpmlMaxImportEntries,
+    int PodcastAudioStoreMaxGiB = SystemSettingsDefaults.PodcastAudioStoreMaxGiB,
+    int PodcastAudioMaxEpisodeMb = SystemSettingsDefaults.PodcastAudioMaxEpisodeMb,
+    int PodcastAutoDownloadsPerFeedPerDay = SystemSettingsDefaults.PodcastAutoDownloadsPerFeedPerDay,
+    int PodcastAutoDownloadMaxUnfetchedPerFeed = SystemSettingsDefaults.PodcastAutoDownloadMaxUnfetchedPerFeed,
     bool IsDegraded = false)
 {
     /// <summary>The shipped defaults: what an unseeded store resolves to.</summary>
@@ -45,6 +49,9 @@ public sealed record NewsSettings(
     public long TextQuotaBytes => NewsTextQuota.QuotaBytes(TextStoreMaxGiB);
 
     public long FeedMaxImageBytesPerDay => FeedMaxImageMbPerDay * 1024L * 1024L;
+
+    /// <summary>The resolved audio quota in bytes (issue #556 §6.4).</summary>
+    public long PodcastAudioQuotaBytes => PodcastAudioStoreMaxGiB * NewsTextQuota.BytesPerGiB;
 }
 
 /// <summary>
@@ -92,6 +99,10 @@ public sealed class NewsSettingsLookup(
         SystemSettingsKeys.NewsFeedMaxArticlesPerDay,
         SystemSettingsKeys.NewsFeedMaxImageMbPerDay,
         SystemSettingsKeys.NewsOpmlMaxImportEntries,
+        SystemSettingsKeys.PodcastAudioStoreMaxGiB,
+        SystemSettingsKeys.PodcastAudioMaxEpisodeMb,
+        SystemSettingsKeys.PodcastAutoDownloadsPerFeedPerDay,
+        SystemSettingsKeys.PodcastAutoDownloadMaxUnfetchedPerFeed,
     ];
 
     private static readonly IntSettingSpec DefaultInterval = new(
@@ -133,6 +144,22 @@ public sealed class NewsSettingsLookup(
         SystemSettingsKeys.NewsOpmlMaxImportEntries, SystemSettingsDefaults.NewsOpmlMaxImportEntries,
         SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, SystemSettingsBounds.NewsOpmlMaxImportEntriesMax);
 
+    private static readonly IntSettingSpec AudioStoreMaxGiB = new(
+        SystemSettingsKeys.PodcastAudioStoreMaxGiB, SystemSettingsDefaults.PodcastAudioStoreMaxGiB,
+        SystemSettingsBounds.PodcastAudioStoreMaxGiBMin, SystemSettingsBounds.PodcastAudioStoreMaxGiBMax);
+
+    private static readonly IntSettingSpec AudioMaxEpisodeMb = new(
+        SystemSettingsKeys.PodcastAudioMaxEpisodeMb, SystemSettingsDefaults.PodcastAudioMaxEpisodeMb,
+        SystemSettingsBounds.PodcastAudioMaxEpisodeMbMin, SystemSettingsBounds.PodcastAudioMaxEpisodeMbMax);
+
+    private static readonly IntSettingSpec AutoDownloadsPerDay = new(
+        SystemSettingsKeys.PodcastAutoDownloadsPerFeedPerDay, SystemSettingsDefaults.PodcastAutoDownloadsPerFeedPerDay,
+        SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMin, SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMax);
+
+    private static readonly IntSettingSpec AutoDownloadMaxUnfetched = new(
+        SystemSettingsKeys.PodcastAutoDownloadMaxUnfetchedPerFeed, SystemSettingsDefaults.PodcastAutoDownloadMaxUnfetchedPerFeed,
+        SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMin, SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMax);
+
     private readonly IntSettingResolver resolver = new(cache, logger, CacheKey);
 
     public async Task<NewsSettings> GetAsync(CancellationToken cancellationToken = default)
@@ -152,8 +179,16 @@ public sealed class NewsSettingsLookup(
         var articlesPerDay = resolver.Resolve(FeedMaxArticlesPerDay, values, readFailed);
         var imageMbPerDay = resolver.Resolve(FeedMaxImageMbPerDay, values, readFailed);
         var opmlEntries = resolver.Resolve(OpmlMaxImportEntries, values, readFailed);
+        var audioStore = resolver.Resolve(AudioStoreMaxGiB, values, readFailed);
+        var episodeMb = resolver.Resolve(AudioMaxEpisodeMb, values, readFailed);
+        var autoPerDay = resolver.Resolve(AutoDownloadsPerDay, values, readFailed);
+        var autoUnfetched = resolver.Resolve(AutoDownloadMaxUnfetched, values, readFailed);
 
-        var degraded = readFailed || new[] { interval, maxFeeds, perArticle, sizeKb, imageStore, textStore, articlesPerDay, imageMbPerDay, opmlEntries }
+        var degraded = readFailed || new[]
+            {
+                interval, maxFeeds, perArticle, sizeKb, imageStore, textStore, articlesPerDay, imageMbPerDay, opmlEntries,
+                audioStore, episodeMb, autoPerDay, autoUnfetched,
+            }
             .Any(setting => setting.IsDegraded);
 
         // The read-side backstop of the derived ceiling (§11.1): the same helper the settings PUT validates with.
@@ -168,6 +203,11 @@ public sealed class NewsSettingsLookup(
             articlesPerDay.Value,
             imageMbPerDay.Value,
             opmlEntries.Value,
+            audioStore.Value,
+            // The read-side backstop of the episode cap's derived ceiling (issue #556 §8.2).
+            Math.Min(episodeMb.Value, PodcastAudioSizeCeiling.Mb(fileStorageOptions.Value.MaxFileSizeBytes)),
+            autoPerDay.Value,
+            autoUnfetched.Value,
             degraded);
         if (!degraded)
         {

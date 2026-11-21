@@ -22,6 +22,9 @@ public static class NewsServiceCollectionExtensions
     public static IServiceCollection AddNewsReader(this IServiceCollection services)
     {
         services.AddSingleton(NewsArticleStorage.Feature);
+        // Podcasts (issue #556 §3.2): two more features every host with volumes must bind.
+        services.AddSingleton(Podcasts.Files.PodcastAudioStorage.Feature);
+        services.AddSingleton(Podcasts.Files.PodcastArtworkStorage.Feature);
         services.TryAddScoped<INewsSettingsLookup, NewsSettingsLookup>();
         services.TryAddSingleton<INewsCounterWriter, NewsCounterWriter>();
         services.TryAddSingleton<INewsFetchStateFlags, NewsFetchStateFlags>();
