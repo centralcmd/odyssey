@@ -830,8 +830,13 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         CookMinutes = recipe.CookMinutes,
         Ingredients = recipe.Ingredients.Select(i => new RecipeIngredientRequest
         {
-            Section = i.Section, Amount = i.Amount, AmountMax = i.AmountMax, Unit = i.Unit, Name = i.Name,
-            Preparation = i.Preparation, Optional = i.Optional,
+            Section = i.Section,
+            Amount = i.Amount,
+            AmountMax = i.AmountMax,
+            Unit = i.Unit,
+            Name = i.Name,
+            Preparation = i.Preparation,
+            Optional = i.Optional,
         }).ToArray(),
         Steps = recipe.Steps.Select(s => new RecipeStepRequest { Section = s.Section, Text = s.Text }).ToArray(),
         TagIds = [.. recipe.TagIds],

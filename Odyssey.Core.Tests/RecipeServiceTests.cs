@@ -74,7 +74,11 @@ public class RecipeServiceTests
         var created = (await service.CreateAsync(request, "cook-1", canReadPhotos: false, canReadTags: false)).Recipe;
         await service.UpdateAsync(created.RecipeId, new UpdateRecipe
         {
-            Title = Secret, Servings = 3, Notes = Secret, Source = Secret, Version = 1,
+            Title = Secret,
+            Servings = 3,
+            Notes = Secret,
+            Source = Secret,
+            Version = 1,
             Ingredients = [new() { Name = Secret, Unit = IngredientUnit.None }],
         }, "cook-1", canReadPhotos: false, canReadTags: false);
         Assert.True(await service.DeleteAsync(created.RecipeId, "cook-2"));
