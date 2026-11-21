@@ -1047,12 +1047,5 @@
   "project/ui_kits/web/weather-data.js": "8faf04bf71526da86fb7b2250464beda74762269fb64724f3c86b4dae5cb1458",
   "project/ui_kits/web/weather.css": "5509254b87fa124ef10c560feb15cf6ce44840e09a324aabf52139234f3ce7fe"
  },
- "pending": [
-  "project/components/DialogEnablePriceSource/preview.html",
-  "project/components/InstrumentPriceSourcesPanel/preview.html",
-  "project/docs/components-instruments.md",
-  "project/ui_kits/web/InstrumentPriceSources.jsx",
-  "project/ui_kits/web/instruments-data.js"
- ],
- "pendingReason": "Left by the 1795121522-cc6f sync and still open at 1795262817-2dbb. Instruments: the provider note, symbol example, hourly limit, next-try date and the Tiingo API token row need the #447 provider backend, which does not exist yet. (The settings and journal/task items left with it were closed by the 1795262817-2dbb sync: the settings kit data was corrected to the server's bounds and wording, and journal and task tags now refuse an archived tag's name like every other vocabulary.)"
+ "pending": []
 }

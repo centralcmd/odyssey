@@ -41,9 +41,9 @@ public static class WorkerHost
         services.AddPeriodicJob<WeatherScheduleJob>();
         services.AddExchangeRateSync();
         services.AddPeriodicJob<ExchangeRateSyncJob>();
-        // Instrument prices (issue #446): no production source is registered yet, so the job writes nothing but its
-        // heartbeat until one is.
-        Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(services);
+        // Instrument prices (issue #446) with the production sources (Tiingo, issue #447). The job sends nothing until an
+        // Admin pastes a source's token and enables a binding.
+        Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddProductionInstrumentPriceSources(services);
         services.AddPeriodicJob<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncJob>();
         // The file store (issue #346 A3): shared with the API, which serves and writes; here the maintenance job
         // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. The job verifies the volumes

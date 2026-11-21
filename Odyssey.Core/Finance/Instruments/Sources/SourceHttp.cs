@@ -46,8 +46,70 @@ public sealed class SourceCredentialException(SecretReadState state)
 /// <summary>A request would have left the source's declared https host. Nothing was sent.</summary>
 public sealed class SourceDestinationException() : Exception("A price source request targeted a host other than its declared https host.");
 
-/// <summary>The source's daily request cap is reached. Nothing was sent.</summary>
-public sealed class SourceQuotaExhaustedException() : Exception("The price source's daily request limit is reached.");
+/// <summary>Which request limit stopped a request (issue #447 A1, A8).</summary>
+public enum SourceQuotaLimit
+{
+    /// <summary>The run's own budget: <see cref="InstrumentPriceSourceLimits.MaxRequestsPerRun"/>, or its forward-fill half.</summary>
+    Run,
+
+    /// <summary><see cref="InstrumentPriceSourceLimits.MaxRequestsPerHour"/>, per UTC hour across replicas.</summary>
+    Hour,
+
+    /// <summary><see cref="InstrumentPriceSourceLimits.MaxRequestsPerDay"/>, per Oslo day across replicas.</summary>
+    Day,
+
+    /// <summary>The shared counter could not be updated; the request fails closed.</summary>
+    Contended,
+}
+
+/// <summary>A request limit is reached (<see cref="Limit"/> names which). Nothing was sent.</summary>
+public sealed class SourceQuotaExhaustedException(SourceQuotaLimit limit)
+    : Exception($"The price source's request limit ({limit}) is reached; the request was not sent.")
+{
+    public SourceQuotaLimit Limit { get; } = limit;
+}
+
+/// <summary>
+/// One source's request pacing for one run (issue #447 A7, A8): consecutive wire requests — across bindings, spans and
+/// retries — are at least <see cref="InstrumentPriceSourceLimits.MinRequestInterval"/> apart on the
+/// <see cref="TimeProvider"/>, and every wire request first asks <see cref="Budget"/>, so a source that sends several
+/// requests per span cannot overshoot the run's budget. Per process: replicas are bounded by the shared caps instead.
+/// </summary>
+public sealed class SourceRequestPacer(TimeSpan minInterval, TimeProvider timeProvider)
+{
+    private readonly object sync = new();
+    private DateTimeOffset? lastSentAt;
+
+    /// <summary>Asked before each wire request; <c>false</c> stops it with <see cref="SourceQuotaLimit.Run"/>.</summary>
+    public Func<bool> Budget { get; set; } = () => true;
+
+    /// <summary>Wire requests sent through this pacer in the run, retries included.</summary>
+    public int Sent { get; private set; }
+
+    /// <summary>Waits until <see cref="InstrumentPriceSourceLimits.MinRequestInterval"/> has passed since the last request.</summary>
+    public Task WaitTurnAsync(CancellationToken cancellationToken)
+    {
+        TimeSpan wait;
+        lock (sync)
+        {
+            wait = lastSentAt is { } last && minInterval > TimeSpan.Zero
+                ? last + minInterval - timeProvider.GetUtcNow()
+                : TimeSpan.Zero;
+        }
+
+        return wait > TimeSpan.Zero ? Task.Delay(wait, timeProvider, cancellationToken) : Task.CompletedTask;
+    }
+
+    /// <summary>Records that a request is being sent now; called once its quota is reserved.</summary>
+    public void MarkSent()
+    {
+        lock (sync)
+        {
+            lastSentAt = timeProvider.GetUtcNow();
+            Sent++;
+        }
+    }
+}
 
 /// <summary>The response exceeded the size cap after decompression, or could not be read.</summary>
 public sealed class SourceResponseMalformedException(string reason) : Exception(reason);
@@ -60,7 +122,8 @@ public readonly record struct SourceSecret(string Value)
 
 /// <summary>
 /// The framework-built transport for one source (issue #446 §3.2): host pin, credential (stripped then attached,
-/// never sent without), daily quota per wire attempt, a retry policy that retries only 5xx (except 501) and
+/// never sent without, with the placement's compiled prefix), the run budget, request spacing and the daily and
+/// hourly quota per wire attempt, a retry policy that retries only 5xx (except 501) and
 /// timeouts and never 429, per-attempt and total timeouts, and a decompressed-size cap. It logs one line per
 /// attempt — source key, status, duration — never the URI, query, symbol or a header.
 /// </summary>
@@ -70,7 +133,8 @@ public sealed class SourceHttp(
     ISecretSettingsReader secrets,
     ISourceRequestQuota quota,
     ILogger logger,
-    TimeProvider timeProvider) : ISourceHttp
+    TimeProvider timeProvider,
+    SourceRequestPacer? pacer = null) : ISourceHttp
 {
     private readonly Uri baseAddress = new($"https://{source.Host}/");
 
@@ -114,11 +178,29 @@ public sealed class SourceHttp(
 
         for (var attempt = 0; ; attempt++)
         {
-            if (!await quota.TryReserveAsync(source.Key, source.Limits.MaxRequestsPerDay, total.Token))
+            if (pacer is not null)
             {
-                throw new SourceQuotaExhaustedException();
+                if (!pacer.Budget())
+                {
+                    throw new SourceQuotaExhaustedException(SourceQuotaLimit.Run);
+                }
+
+                await pacer.WaitTurnAsync(total.Token);
             }
 
+            switch (await quota.TryReserveAsync(source.Key, source.Limits, total.Token))
+            {
+                case QuotaReservation.Reserved:
+                    break;
+                case QuotaReservation.HourCapReached:
+                    throw new SourceQuotaExhaustedException(SourceQuotaLimit.Hour);
+                case QuotaReservation.DayCapReached:
+                    throw new SourceQuotaExhaustedException(SourceQuotaLimit.Day);
+                default:
+                    throw new SourceQuotaExhaustedException(SourceQuotaLimit.Contended);
+            }
+
+            pacer?.MarkSent();
             RequestsMade++;
             var started = Stopwatch.GetTimestamp();
             SourceHttpResponse? response = null;
@@ -184,7 +266,7 @@ public sealed class SourceHttp(
             request.Headers.Remove(header.Name);
             if (secret is { } value)
             {
-                request.Headers.TryAddWithoutValidation(header.Name, value.Value);
+                request.Headers.TryAddWithoutValidation(header.Name, (header.ValuePrefix ?? string.Empty) + value.Value);
             }
         }
 
