@@ -42,9 +42,9 @@ request time rather than yielding precedence). The Codex spec review flagged thi
 ### Remember this device (opt-in, secure default)
 
 The built-in `/login` ties `rememberClient` to `isPersistent`, which is `true` for our
-`?useCookies=true` calls — so a TOTP sign-in **silently sets** Identity's `TwoFactorRememberMe`
-cookie and later password-only logins from that browser would skip the challenge. That is not
-acceptable as a default. The login page exposes a **"Remember this device" checkbox (default
+`?useCookies=true` calls — so a TOTP sign-in **silently sets** Identity's remember-me cookie
+(`IdentityConstants.TwoFactorRememberMeScheme`) and later password-only logins from that browser
+would skip the challenge. That is not acceptable as a default. The login page exposes a **"Remember this device" checkbox (default
 off)**; unless the user ticks it, the page calls `POST /manage/2fa { forgetMachine: true }`
 immediately after a successful TOTP sign-in to clear that cookie. So the challenge is required on
 every login by default, and only trusted when the user explicitly opts in. (We can't set

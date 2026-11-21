@@ -88,7 +88,7 @@ licensing.
 | MessagePack | MIT |
 | Bogus | MIT |
 | Microsoft.Playwright | MIT |
-| Aspire (AppHost SDK, Hosting) | MIT |
+| Aspire (`Aspire.Hosting`, `Aspire.Hosting.AppHost`, the AppHost SDK) | MIT |
 | bunit | MIT |
 | Testcontainers | MIT |
 | coverlet.collector | MIT |
