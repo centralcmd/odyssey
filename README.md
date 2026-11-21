@@ -66,9 +66,7 @@ your own infrastructure.
 The Finance module, running against the deterministic demo seed — the figures, names and
 addresses below are synthetic.
 
-![The Odyssey dashboard in dark theme: a greeting header with the net-worth total, a teal
-net-worth area chart over the years of seeded history, and a recent-transactions table listing
-purchases with their tags, statuses, amounts and dates.](docs/images/dashboard.png)
+![The dashboard greets the signed-in user with total net worth, then shows a notice about a property without an estimate, a weather panel and the quarterly net-worth chart.](docs/images/dashboard.png)
 
 **Dashboard** — net worth across every account, with the most recent transactions underneath.
 
@@ -76,9 +74,7 @@ purchases with their tags, statuses, amounts and dates.](docs/images/dashboard.p
 <tr>
 <td width="50%">
 
-![The Accounts page with its overview panel open: two donut charts, "Asset allocation" and
-"Liabilities", each with a legend ranking accounts by their share of the
-total.](docs/images/accounts.png)
+![The Accounts page shows donut charts of asset and liability allocation with per-account balances, above summaries by account type and status.](docs/images/accounts.png)
 
 **Accounts** — asset and liability allocation across the portfolio, with per-type and
 per-status rollups.
@@ -86,10 +82,7 @@ per-status rollups.
 </td>
 <td width="50%">
 
-![The Transactions page with its overview and filter regions open: status and direction
-breakdown tiles above a search box and account, status, merchant, tag and direction filters,
-over a paged table of transactions showing description, merchant, account, tag, status,
-amount and date.](docs/images/transactions.png)
+![The Transactions page shows status and type summaries, filter and sort controls, and a list of transactions with merchant, account, tag, status, amount and date.](docs/images/transactions.png)
 
 **Transactions** — server-paged, searchable, and filterable by account, status, tag and
 direction.
@@ -99,9 +92,7 @@ direction.
 <tr>
 <td width="50%">
 
-![An expanded budget record, "Household Budget 2026", showing its period, base currency and
-status, then two donut charts breaking planned income and planned expenses down by
-tag.](docs/images/budgets.png)
+![An expanded budget shows its period, currency, status, expected and actual balance and description, with donut charts comparing planned and actual income.](docs/images/budgets.png)
 
 **Budgets** — a year's planned income and expenses broken down by tag, reported against
 actual spend.
@@ -109,10 +100,7 @@ actual spend.
 </td>
 <td width="50%">
 
-![An expanded tax statement, "Tax Year 2025", flagged with the warning "Declared net worth
-diverges from derived balances — review before approval", above a table comparing declared
-figures with Odyssey-derived ones, with the variance highlighted in
-amber.](docs/images/tax-reconciliation.png)
+![An expanded tax statement flagged for review shows its filing details, tax-payment, income and settlement tag totals, and the start of a table comparing declared figures with Odyssey-derived ones.](docs/images/tax-reconciliation.png)
 
 **Tax reconciliation** — declared figures against the ones Odyssey derives from your
 accounts and tags, with every variance called out.
@@ -122,10 +110,7 @@ accounts and tags, with every variance called out.
 <tr>
 <td width="50%">
 
-![The Contracts page with its upcoming and overview regions open: an amber awaiting-signature
-alert and a paused-contract notice, then the next charges and receipts falling due, monthly
-and yearly run-rate tiles for money out and money in, and counts by contract type and
-status.](docs/images/contracts.png)
+![The Contracts page lists contracts ending soon, awaiting signature or paused, then the upcoming contract charges and receipts, above monthly and yearly run-rate totals.](docs/images/contracts.png)
 
 **Contracts** — agreements with their parties and terms, a monthly and yearly run rate, and
 what is charged next.
@@ -133,9 +118,7 @@ what is charged next.
 </td>
 <td width="50%">
 
-![The Contacts page with its overview region open: counts of active and archived contacts
-and a split by person and organization, then a filter bar and the first record cards, people
-and organizations among them.](docs/images/contacts.png)
+![The Contacts page shows contact counts by type and status, search and sort controls, and a list of people and organizations with their status.](docs/images/contacts.png)
 
 **Contacts** — people and organisations shared across finance and journal, each linkable as a
 counterparty, custodian or contract party.
