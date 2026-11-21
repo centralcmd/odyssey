@@ -77,7 +77,10 @@ internal sealed class InstrumentPriceSourceStateConfiguration : IEntityTypeConfi
 {
     public void Configure(EntityTypeBuilder<InstrumentPriceSourceState> entity)
     {
-        entity.ToTable(tb => tb.HasCheckConstraint(
-            "CK_InstrumentPriceSourceStates_RequestCount", "`RequestCount` >= 0"));
+        entity.ToTable(tb =>
+        {
+            tb.HasCheckConstraint("CK_InstrumentPriceSourceStates_RequestCount", "`RequestCount` >= 0");
+            tb.HasCheckConstraint("CK_InstrumentPriceSourceStates_RequestHourCount", "`RequestHourCount` >= 0");
+        });
     }
 }

@@ -137,7 +137,8 @@ public class InstrumentPriceSourceBinding
 }
 
 /// <summary>
-/// Per-source state shared across worker replicas (issue #446 §4.4): back-off and the daily request counter. No
+/// Per-source state shared across worker replicas (issue #446 §4.4): back-off and the daily and hourly request
+/// counters (issue #447 A1). No
 /// foreign key — sources are code-declared; a row for an unregistered key is ignored.
 /// </summary>
 public class InstrumentPriceSourceState
@@ -155,7 +156,15 @@ public class InstrumentPriceSourceState
 
     public int RequestCount { get; set; }
 
-    /// <summary>The concurrency token of the daily counter; rotated by every save of a modified row.</summary>
+    /// <summary>
+    /// The UTC clock hour <see cref="RequestHourCount"/> counts (issue #447 A1). It only ever moves forward: a
+    /// reservation from a replica whose clock lags counts against this bucket rather than resetting it.
+    /// </summary>
+    public DateTime? RequestHourUtc { get; set; }
+
+    public int RequestHourCount { get; set; }
+
+    /// <summary>The concurrency token of the daily and hourly counters; rotated by every save of a modified row.</summary>
     [ConcurrencyCheck]
     public Guid Version { get; set; }
 
