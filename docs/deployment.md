@@ -115,7 +115,7 @@ never builds.
      entered once by an administrator at **`/settings` → Credentials** after first start; until
      then each behaves as documented in
      [the release note below](#release-note-five-credentials-moved-into-the-encrypted-secret-store-issue-445).
-     `.env.prod.example` marks each retired variable in place.
+     `.env.example` marks each retired variable in place.
 
 5. **If the GHCR packages are private**, log Docker into GHCR once with a PAT that has
    `read:packages`:
@@ -146,6 +146,14 @@ curl -s https://your-domain/api/healthz   # → {"status":"ok","version":"1.4.0"
 
 > **Tip:** wrap steps 2–4 in a small `deploy.sh IMAGE_TAG` on the server so a release is a
 > single command.
+
+### New or revoked permission claims need no sign-out
+
+`RoleClaimSeeder` (in the migrations job) reconciles role claims on every deploy, additions and removals
+alike. A change reaches a live session **within one minute**: the security stamp is revalidated every
+minute (`SecurityStampValidatorOptions.ValidationInterval`, `Odyssey.Api/Program.cs`), and revalidation
+re-reads the role's claims into the cookie. The browser shows the new claims on its next page load. No
+user needs to sign out and back in; every release note below that introduces a claim relies on this.
 
 ## Running Odyssey privately (localhost only)
 
@@ -473,26 +481,17 @@ app-owned from the image on first start.
 ### A fourth, unrelated size limit: photo metadata reads
 
 `System Settings → Photos → Metadata read size` is **not** part of the chain above — it bounds how much
-of an already-accepted image is read back out of the database to extract EXIF/IPTC/XMP, not what an
-upload may contain. It has its own ceiling, and that ceiling is a **compiled assumption about MariaDB's
-default `max_allowed_packet` (16 MiB)**, which this repository pins nowhere: not in
-`docker-compose.yml`, not in `docker/mariadb/init/01-init.sql`.
+of an accepted upload's stream is read to extract EXIF/IPTC/XMP before the photo is stored (issue #428;
+it used to be read back out of the database), not what an upload may contain. It stops at a compiled
+16 MB.
 
-Two consequences worth knowing before you touch either number:
-
-- **Raising `max_allowed_packet` buys you nothing on its own.** The setting still stops at 16 MB,
-  because that is where the compiled bound is. Raising the bound is a code change.
-- **Lowering `max_allowed_packet` below the setting is safe, not fatal.** The prefix read fails, and
-  metadata extraction is *skipped* — the photo is still stored, just without extracted metadata. That
-  fail-soft path is what makes the 16 MB bound defensible rather than merely smaller than a larger one.
-
-Note also that extraction materialises a full byte array of this size per photo, so it is a per-upload
-memory multiplier, not only a database concern. The row carries an advisory above its shipped 8 MB
-saying so.
+Extraction materialises a full byte array of this size per photo, so it is a per-upload memory
+multiplier; the row carries an advisory above its shipped 8 MB saying so. Extraction is best-effort: a
+failed read or a timeout skips it, and the photo is still stored, just without extracted metadata.
 
 ## Tunable policy lives in System Settings, not in configuration
 
-A growing set of runtime policy — 59 values as of issue #439 — is admin-editable at **`/settings`** and
+A growing set of runtime policy is admin-editable at **`/settings`** and
 backed by the database, so changing it needs no redeploy and no restart. That includes every remaining
 product-visible limit that *can* take effect at runtime: the file-analysis token and vocabulary caps,
 photo metadata read size and timeout, calendar window and event-duration bounds, the aggregate ICS
@@ -756,13 +755,12 @@ rather than narrower access today. It needs **no migration**: `RoleClaimSeeder` 
 `AspNetRoleClaims` at runtime and applies removals as well as additions. A revocation lever nobody knows
 about is not a lever, which is why it is written down here.
 
-**Pictures stay blank for already-signed-in users until they sign out and back in.** Claim values are
-baked into the auth cookie at sign-in, so a session that predates this deploy does not hold the new
-claim and sees the initials monogram. It is a one-time, self-healing degradation to a decorative
-surface. On `/account` the picture *is* the feature rather than decoration, so for that window the
-controls are disabled with "Sign out and back in to manage your profile picture" — note that the same
-disable covers **Remove**, so the self-service erasure control is briefly unavailable too. One sign-out
-clears it.
+**Pictures stay blank for already-signed-in users until their session picks up the new claim** — within
+a minute and a page load, see [New or revoked permission claims need no sign-out](#new-or-revoked-permission-claims-need-no-sign-out). Until then
+the session sees the initials monogram. On `/account` the picture *is* the feature rather than
+decoration, so for that window the controls are disabled with "Sign out and back in to manage your
+profile picture" — note that the same disable covers **Remove**, so the self-service erasure control is
+briefly unavailable too.
 
 **Disabling an account also hides its picture — from administrators as well.** The read endpoint `404`s
 an administratively disabled subject, which is what makes "disable the account" a proportionate remedy
@@ -939,8 +937,8 @@ event — a to-do list, not an audit record.
 **API and permissions.** The five `/api/accounts/{accountId}/terms…` routes are gone and answer `404`;
 `/api/contracts/{id}/terms…` is the only term API. `ExistingTerm` loses `accountId` and its
 `contractId` is never null. The account-term read/write claim pair is deleted; `RoleClaimSeeder` revokes
-its `AspNetRoleClaims` rows at the next start with no migration. Cookies issued before the upgrade
-still carry the dead values until sign-out/sign-in, which is harmless — no endpoint checks them.
+its `AspNetRoleClaims` rows at the next start with no migration. Sessions drop the dead values at their next
+revalidation, within a minute ([see above](#new-or-revoked-permission-claims-need-no-sign-out)); until then they are harmless — no endpoint checks them.
 
 **If the migration is interrupted.** An interruption before the schema change is safe to re-run: every
 decision it takes is staged once and reused. An interruption *during* the final column drop is not
@@ -972,7 +970,16 @@ currency and then delete it. From now on, deleting a currency that is still in u
 
 ## Backups
 
-The stateful pieces are three named volumes — back up all three:
+Every named volume, and whether it needs a backup:
+
+| Volume | Back up? | Why |
+|---|---|---|
+| `mariadb_data` | **Yes** | All application data except file bytes. |
+| `files_primary` | **Yes**, after the dump | Every user file and photo (see below). |
+| `dataprotection_keys` | **Yes**, separately | The key ring that decrypts stored credentials (see below). |
+| `caddy_data` (prod) | Recommended | Caddy's TLS certificates and ACME account, and the local CA root a private deployment's clients trust; losing it means re-issuance, or re-trusting a new CA. |
+| `caddy_config` (prod) | No | Caddy's autosaved runtime config, regenerated from `./Caddyfile` on start. |
+| `import_spool` | No | The API's upload spool (`ASPNETCORE_TEMP`); scratch that outlives no request. |
 
 - `mariadb_data` — all application data. A nightly logical dump is recommended:
   ```bash
@@ -985,10 +992,11 @@ The stateful pieces are three named volumes — back up all three:
   credential an administrator stores under **System settings → Credentials**. The `api` mounts it
   read-write and the `worker` read-only. See the section below.
 - `files_primary` (Docker names it `odyssey_files_primary`) — the `primary` **file volume** (issue
-  #346). It holds users' files on disk, under their original names. Back it up **after** the database
-  dump, within the deletion grace period — the order matters; see
-  [File storage → Backup and restore](#backup-and-restore). No feature stores files in it yet, so today it
-  holds only its `.odyssey-volume.json` marker.
+  #346). **It holds every user file and photo**: the shipped compose files bind all six storage features
+  to it (photo originals and thumbnails, finance, journal and contact-avatar files, and the news reader's
+  fetched articles), user files under their original names. The database holds none of those bytes. Back it up
+  **after** the database dump, within the deletion grace period — the order matters; see
+  [File storage → Backup and restore](#backup-and-restore).
 
 ### The Data Protection keys volume
 
@@ -1022,9 +1030,9 @@ feature; the prize behind it is larger.
 
 ### Two containers hold the key ring
 
-Since issue #348 the **worker** mounts the volume too, **read-only**, because a background job reads the
-encrypted secret store (the Frost client id today; mail and other jobs are expected to follow). This was
-a deliberate choice over the alternatives: keeping secret-reading jobs in the API, or an internal endpoint
+Since issue #348 the **worker** mounts the volume too, **read-only**, because background jobs read the
+encrypted secret store: the Frost client id (weather) and, since issue #444 moved statement analysis into the
+worker, the file-analysis API key. This was a deliberate choice over the alternatives: keeping secret-reading jobs in the API, or an internal endpoint
 through which the worker asks the API for one secret at a time.
 
 What it changes and what it does not:
@@ -1036,7 +1044,8 @@ What it changes and what it does not:
   key. A worker started against an empty volume refuses to protect anything rather than inventing a key.
 - **Both must use the same path and the same application name** (`Odyssey`). A worker without
   `DataProtection__KeysPath` logs a warning at startup, and every secret then reads as *cannot be
-  decrypted*: observations stop and log an error hourly, while forecasts continue.
+  decrypted*: weather observations stop and log an error hourly while forecasts continue, and statement analysis
+  fails.
 - **The migrations job still holds no key ring.** It protects nothing.
 
 **The key ring itself is stored unencrypted, and the API says so on every boot.** Expect this line,
@@ -1114,7 +1123,7 @@ and four separate places key off it:
 |---|---|---|
 | Antiforgery (CSRF) enforcement | `Odyssey.Api/Program.cs` | **Skipped** on the Identity endpoints and every controller |
 | Database provider | `Odyssey.Api/DatabaseExtension.cs`, `Odyssey.MigrationService/Program.cs` | Switched to in-memory — nothing is persisted |
-| Demo-data seeding | `Odyssey.MigrationService/DemoDataSeeder.cs` | Allowed, with the published shared password |
+| Demo-data seeding | `Odyssey.TestData/DemoDataGate.cs`, the one gate for both seeding hosts (the migrations job's `DemoDataSeeder` and the worker's `DemoFileSeeder`) | Allowed, with the published shared password |
 | Password-reset links | `Odyssey.Api/Email/SmtpEmailSender.cs` | Written to the log instead of being emailed |
 
 None of that is an authorization bypass — every controller endpoint still requires an
@@ -1179,9 +1188,8 @@ containing 'maiden'" is a one-line script against this shape.
 
 **This is an accepted, deliberate posture, not an oversight.** It is right for a single-household
 deployment where every role holder is a member of that household. The rejected alternative was a
-separate `contacts.sensitive.read` claim: it would make the contact read DTO claim-conditional, need a
-`RolePermissions` change, and force every existing session to sign out and back in, for a boundary
-that does not exist in that threat model.
+separate `contacts.sensitive.read` claim: it would make the contact read DTO claim-conditional and need
+a `RolePermissions` change, for a boundary that does not exist in that threat model.
 
 **If you are deploying Odyssey somewhere the roles do not map to one trusted household, revisit this
 before anything else.** Until a finer claim exists, the only control is role assignment: do not grant
@@ -1214,8 +1222,8 @@ operator's concern.
 ### Release note
 
 - **New claims.** `locations.read` (every role, Guest included), `locations.create` and
-  `locations.update` (Admin, Owner, User). Issue #380 later added `locations.delete` (below). Claims are baked into the
-  auth cookie, so **every user must sign out and back in** before the Locations page appears.
+  `locations.update` (Admin, Owner, User). Issue #380 later added `locations.delete` (below). They reach live sessions
+  within a minute ([no sign-out needed](#new-or-revoked-permission-claims-need-no-sign-out)).
 - **Address search sends text to a third party** (below).
 - **The runtime image needs `tzdata`.** The API Dockerfile installs it, and the API refuses to start
   if `Europe/Oslo`, `Europe/Kyiv`, `America/New_York` or `Etc/UTC` does not resolve. If you build your
@@ -1267,8 +1275,8 @@ and locations are kept until someone overwrites them (next section).
   the contact itself is kept. This is an accepted loss, chosen so the upgrade never stops on it.
 - **Link-like values stay text.** A place that looks like a meeting link or carries a passcode is never
   turned into a location (locations are readable by every `locations.read` holder, Guest included).
-- **New claim `locations.delete`** (Admin, Owner, User; not Guest). **Every user must sign out and back
-  in** to receive it.
+- **New claim `locations.delete`** (Admin, Owner, User; not Guest). It reaches live sessions within a
+  minute ([no sign-out needed](#new-or-revoked-permission-claims-need-no-sign-out)).
 - **Converted places have no coordinates** until someone geocodes them on the Locations page.
 - **An event or entry at a place linked to a weather point uses that point** (issue #387), with no
   fallback to the caller's preference or the household default even when the point's forecast is off; a
@@ -1439,7 +1447,7 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
 - **New claims.** `weather.read` and `weather.preferences.update` (every role, Guest included), and
   three Admin-only management claims — renamed by issue #387 to `weather.points.read`,
   `weather.points.update` and `weather.points.delete` (see *Weather points* below).
-  **Every user must sign out and back in** before the weather widget and the Admin controls appear.
+  They reach live sessions within a minute ([no sign-out needed](#new-or-revoked-permission-claims-need-no-sign-out)).
 - **Nothing is fetched until an administrator sets it up.** MET's terms require a contact in the
   `User-Agent`, so set **`/settings` → Weather → Contact for MET Norway** (an email address or an
   `https://` URL). Until then every weather read reports *not configured* and no request leaves the
@@ -1514,6 +1522,7 @@ every surface that displays it.
    full delete.
 4. Then erase the place itself as in the previous section, if the request covers it.
 5. Copies outside the live rows age out with your backup retention.
+
 ## Exchange-rate sync: what leaves the deployment, and what changes for existing rates
 
 Issue #349 added a scheduled sync of exchange rates from **Norges Bank** (`data.norges-bank.no`).
@@ -1569,11 +1578,14 @@ user's id.
 
 ## File storage (filesystem volumes)
 
-Issue #346 adds a **filesystem object store**: files kept on one or more deploy-time *volumes* instead of
-as `LONGBLOB` rows in MariaDB. It is the foundation photo thumbnails (issue #362) build on, and photo
-thumbnails are its **first and only feature** — see [Photo thumbnails](#photo-thumbnails). Existing uploads
-stay in the database. What changes for an operator is that two containers now mount a
-third named volume, verify it at startup, and refuse to start on a misconfiguration.
+Issue #346 added a **filesystem object store**: files kept on one or more deploy-time *volumes* instead of
+as `LONGBLOB` rows in MariaDB. **Every file and photo is on it now**; the database holds no file bytes. The
+production build has six *storage features*, each bound to a volume: `PhotoOriginals`, `PhotoThumbnails`,
+`FinanceFiles`, `JournalFiles`, `ContactAvatars` and `NewsArticles` (see
+[Photo thumbnails](#photo-thumbnails), [Photo originals](#photo-originals),
+[Files on the object store](#files-on-the-object-store) and
+[News reader](#news-reader-feeds-what-leaves-the-deployment-and-the-workers-network)). For an operator, two
+containers mount a named volume, verify it at startup, and refuse to start on a misconfiguration.
 
 ### Release note
 
@@ -1589,8 +1601,8 @@ third named volume, verify it at startup, and refuse to start on a misconfigurat
 - **One new setting**, **System settings → Storage → Deletion grace period** (default 24 h, 1–168 h). It
   takes the security claim and every change is audited.
 - **One new claim**, `file-storage.read`, Admin only, reconciled onto the role by the migrations job. It
-  gates **System settings → Storage health**. An administrator already signed in must **sign out and back
-  in** to see the panel: claims are baked into the auth cookie.
+  gates **System settings → Storage health**. It reaches a signed-in administrator within a
+  minute ([no sign-out needed](#new-or-revoked-permission-claims-need-no-sign-out)).
 - **A file volume that fails verification in the worker stops file clean-up only.** Weather and
   exchange-rate sync keep running, and the worker container stays up — so `docker compose ps` no longer
   shows the fault. The Storage health panel does: *File clean-up is stopped: the worker's storage check
@@ -1632,7 +1644,7 @@ defect (`Odyssey.Worker.Tests` compares the two compose blocks).
 | Variable | Meaning |
 |---|---|
 | `FileStorage__Volumes__<name>__RootPath` | An absolute path to an **existing** directory. `<name>` is letters and digits, starting with a letter (`primary`, `fastssd`). |
-| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). The shipped files bind both features, `PhotoOriginals` and `PhotoThumbnails`, to `primary`. A host with volumes and an unbound feature refuses to start (check B1). |
+| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). The shipped compose files bind all six features to `primary` (see `FileStorage__Bindings__*` in `docker-compose.yml`). A host with volumes and an unbound feature refuses to start (check B1). |
 
 Several features may share one volume: each writes under its own folder. Volume names and feature keys
 are matched case-insensitively. Inside a volume, files sit under their sanitized original names
@@ -1812,7 +1824,7 @@ and counted. Nothing outside the feature folders, `.tmp` and `.quarantine` is ev
 **A volume backup holds file names and contents.** File names are personal data
 (`Passport_Ola_Nordmann.jpg`), on disk and in `StoredObjects.RelativePath`; they never appear in logs, error
 bodies or the status endpoint. **Bytes are not encrypted by the application**, the same posture as the
-database's `LONGBLOB` columns: encrypt the host disk (LUKS / dm-crypt), and treat a copied volume as
+database: encrypt the host disk (LUKS / dm-crypt), and treat a copied volume as
 directly browsable.
 
 ### Rolling back and removing a feature
@@ -1834,11 +1846,13 @@ API's view, and a volume degraded only in the worker shows in the worker's log.
 
 ## Background jobs: the run log
 
-Issue #409 records the runs of the worker jobs — exchange-rate sync, weather, file-storage maintenance, photo
-thumbnails and, since issue #428, the photo-original move — in one table, `JobRuns`, and each worker process's
-last tick per job in `JobHeartbeats`.
+Issue #409 records the runs of every catalogued worker job in one table, `JobRuns`, and each worker process's
+last tick per job in `JobHeartbeats`. The catalogue, with each job's claims, is `Odyssey.Core/Jobs/JobCatalogue.cs`:
+exchange-rate sync, weather, file-storage maintenance, photo thumbnails, statement analysis (issue #444),
+instrument-price sync (#446), the news fetch (#470) and the recurrence key backfill (#519).
 **`/background-jobs`** reads both; everything there is under `system-settings.read` (Admin), and a job's own
-counters additionally need that job's read claim (`weather.points.read`, `file-storage.read`, `photos.read`).
+counters additionally need that job's read claim (`weather.points.read`, `file-storage.read`, `photos.read`,
+`file-analysis.read`, `news-feeds.update`, `calendar.read`; the two syncs need none).
 
 ### Release note: the exchange-rate sync's run log moved (data migration)
 
@@ -1867,9 +1881,9 @@ same release tag, so the normal `pull` + `up -d` does this.
 
 | Job | One run row per | Held rows |
 |---|---|---|
-| Exchange-rate sync | run or purge (unchanged) | — |
+| Exchange-rate sync, instrument-price sync | run (the exchange-rate sync also per purge) | — |
 | File-storage maintenance | pass — scheduled hourly, or manual, picked up by a **30 s request poll** | while *this* worker's storage checks fail (`HeldByCheck` names the check, never a path) |
-| Weather, photo thumbnails | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable |
+| Weather, photo thumbnails, statement analysis, news fetch, recurrence key backfill | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable; news: while its breaker is tripped or storage is unavailable |
 
 Every job writes its heartbeat first on every tick (at most once a minute per process), before any early
 return, so an idle, unconfigured or held job is never mistaken for a dead one. A job with no heartbeat for
@@ -1884,10 +1898,10 @@ process has stopped heartbeating, and once an hour deletes finished runs older t
 ### Manual runs
 
 `POST /api/background-jobs/{job}/runs` needs `system-settings.update` **and** the job's own claim
-(`weather.points.update`, `file-storage.read` for both file-storage maintenance and the photo-original move,
-`photos.update`; the sync needs none beyond the first). A photo-original move run moves one batch at once and
-**ends a back-off** early; it is refused (`409 held`) only while every live worker is held for storage. The
-file-storage manual pass is gated on `file-storage.read` by decision — no file-storage write claim exists — and
+(`weather.points.update`, `file-storage.read` for file-storage maintenance, `photos.update` for thumbnails,
+`news-feeds.update` for the news fetch, `calendar.update` for the recurrence key backfill; the two syncs need
+none beyond the first). Statement analysis has **no manual run** (`409 job-run.manual-run-unsupported`): every
+job it runs is one a user started. The file-storage manual pass is gated on `file-storage.read` by decision — no file-storage write claim exists — and
 uses the same deletion grace and lease as a scheduled pass. A thumbnail manual run drains pending jobs and
 re-queues each `Failed` job **once in its lifetime** (`ManualRequeues`); `Unsupported` jobs, crashes and
 timeouts included, are never re-queued.
@@ -1898,8 +1912,8 @@ to the application log at Information under the System settings audit category
 (`Odyssey.Api.SystemSettings.SystemSettingsService`) with the acting user's id, the job and the run id —
 independent of the row, which is pruned and whose requester is nulled when the account is deleted.
 
-Under `ASPNETCORE_ENVIRONMENT=Testing` only the exchange-rate sync executes a manual run inline; the others
-stay unclaimed (no test may call MET or load ImageMagick).
+Under `ASPNETCORE_ENVIRONMENT=Testing` only the exchange-rate sync and the news fetch execute a manual run
+inline; the others stay unclaimed (no test may call MET or load ImageMagick).
 
 ## Photo thumbnails
 
@@ -1944,7 +1958,7 @@ state among the workers heard from in the last 3 minutes.
 | Stopped after crashes | 3 crashes or hangs within an hour trip the breaker. Claiming resumes an hour after the latest; the panel names the time. Other jobs keep running. | Read the worker log for the incident lines. Repeated trips across days point at one bad file or a decoder regression: patch (below). |
 | Decoder self-test failed | At startup the worker checks the ImageMagick policy refuses MVG, SVG and `text:@file` and still decodes JPEG, PNG, GIF and WebP. Any surprise disables thumbnails in that process. | Redeploy from a correct image. Never edit `policy.xml` in a running container. |
 | Waiting for storage | The `PhotoThumbnails` volume is degraded or missing in the worker. | Same as a degraded volume (above). Claiming resumes within one tick of the volume answering. |
-| Not running | No worker has written a heartbeat in 3 minutes. Thumbnails, file clean-up, weather and exchange-rate sync are all stopped. | Start the worker container. Photos keep showing their originals. |
+| Not running | No worker has written a heartbeat in 3 minutes. Every background job is stopped — thumbnails and file clean-up among them. | Start the worker container. Photos keep showing their originals. |
 
 ### Patch policy for ImageMagick
 
@@ -2016,39 +2030,17 @@ pixels.
 
 ## Photo originals
 
-Issue #428 moves the original of every photo uploaded in the journal or the photo library out of the
-database (`FileBlob`) onto the **`PhotoOriginals`** file-storage feature. Files uploaded anywhere else —
-finance documents, contract and journal attachments, avatars — stay where they were. A photo now owns its
-bytes: it has no Files-store row, `files.read` does not reach it, and its original is served by
-`GET /api/photos/{id}/content` under `photos.read`.
+Since issue #428 the original of every photo uploaded in the journal or the photo library lives on the
+**`PhotoOriginals`** file-storage feature. A photo owns its bytes: it has no Files-store row, `files.read` does
+not reach it, and its original is served by `GET /api/photos/{id}/content` under `photos.read`.
 
-### Release note
-
-- **One migration**, `MovePhotoOriginalsToObjectStore`: new columns on `Photos` (`StoredObjectId`, `FileName`,
-  `ContentType`, `SizeBytes`, `Sha256Hash`, `LegacyFileId`; `FileId` becomes nullable), three tables
-  (`PhotoOriginalBuckets`, `PhotoOriginalBackfillLeases` with its one row, `PhotoOriginalBackfillFailures`) and
-  two checks (`CK_Photos_ExactlyOneSource`, `CK_Photos_OriginalComplete`). **`Down()` only works before the
-  backfill has moved anything**: once a photo's `FileId` is `NULL` the column cannot become `NOT NULL` again.
-  Rolling back after that is a **backup restore**, nothing else.
-- **`FileStorage__Bindings__PhotoOriginals=primary`** on `api` and `worker`, in both compose files and the
-  AppHost. Without it both refuse to start (check B1). Keep the two services identical.
-- **One more background job on `/background-jobs`**, the photo-original move. Its runs are recorded from the
-  first release (migration `AddPhotoOriginalBackfillJobRuns` widens the run log's checks), and its counts need
-  `file-storage.read`.
+- **`FileStorage__Bindings__PhotoOriginals`** must be set on `api` and `worker` (both compose files and the
+  AppHost bind it to `primary`). Without it both refuse to start (check B1). Keep the two services identical.
 - **Upload is one multipart call**, `POST /api/photos`, rate-limited per user by `RateLimiting:PhotoUpload`
   (120 per 10 minutes by default). It refuses with `507` when the volume's free space is below the reserve —
   the store's 1 GB floor plus 4 GB — and with `409` (`photo-duplicate`) when the same image is already a photo.
-  Creating a photo from an existing Files-store file is gone.
-- **Thumbnails become graced.** Their release used to be *Immediate*; it now waits for the deletion grace
-  like everything else.
-
-### The move (finished and removed)
-
-The release that shipped this section also shipped a worker job, the *photo-original move*
-(`PhotoOriginalBackfillJob`), that moved every existing original out of `FileBlob`. Every production system has
-finished it, and [`RemoveLegacyFileBlobStorage`](#legacy-file-storage-removed) removed the job, its endpoint
-(`GET /api/file-storage/photo-backfill`), its tables and the legacy `Photos.FileId` column. A photo that still wrapped
-a file would block that migration.
+  There is no path that creates a photo from an existing Files-store file.
+- **Thumbnails are graced**: their release waits for the deletion grace like everything else.
 
 ### Erasure of a photo original
 
@@ -2062,14 +2054,13 @@ listing.
 
 Photo originals are **primary data**, unlike thumbnails: the volume that holds `PhotoOriginals` must be in
 every backup, copied after the database dump and within the grace (see [Backup and
-restore](#backup-and-restore)). A database restored without its volume makes every moved photo unreadable,
+restore](#backup-and-restore)). A database restored without its volume makes every photo unreadable,
 and the disk check's breaker halts clean-up rather than quarantine the volume.
 
 ## Files on the object store
 
-Issue #448 moves every other file out of the database (`FileBlob`) onto three file-storage features, one per
-area. Placement is not an access boundary: who may read a file is still decided by the claim of the record it is
-attached to.
+Since issue #448 every other file lives on three file-storage features, one per area. Placement is not an
+access boundary: who may read a file is still decided by the claim of the record it is attached to.
 
 | Area | Feature | Root on the volume | What lands there |
 |---|---|---|---|
@@ -2081,61 +2072,34 @@ Each file sits at `<root>/<upload year>/<bucket>/<sanitized original name>.<exte
 at upload: the upload form sends `area` (`Finance` or `Journal`), the avatar path always writes `ContactAvatars`.
 A file later attached somewhere else stays where it was put.
 
-### Release note
-
-- **Bind the three features before you upgrade.** Add `FileStorage__Bindings__FinanceFiles`,
-  `FileStorage__Bindings__JournalFiles` and `FileStorage__Bindings__ContactAvatars` to **both** `api` and `worker`
-  (the base compose file and the AppHost bind all three to `primary`). Without them both refuse to start (check
-  B1). Keep the two services identical; `FileStorageDeploymentParityTests` enforces it for the shipped files.
-- **One migration**, `MoveFilesToObjectStore`: three nullable columns on `FileMetadata`
-  (`FinanceStoredObjectId`, `JournalStoredObjectId`, `ContactAvatarStoredObjectId`, each `RESTRICT` to
-  `StoredObjects`), `FileBlobId` becomes nullable, the check `CK_FileMetadata_ExactlyOneSource`, and three tables
-  (`StoredFileBuckets`, `FileBlobBackfillLeases` with its one row, `FileBlobBackfillFailures`, which has no
-  foreign key). The run log's checks widen for the new job type. **`Down()` only works before the backfill has
-  moved anything**; after that, rolling back is a **backup restore**.
-- **Uploads go to disk from the first request.** `POST /api/files` takes a required `area` form field and is
+- **All three features must be bound** (`FileStorage__Bindings__FinanceFiles`, `__JournalFiles`,
+  `__ContactAvatars`) on **both** `api` and `worker`; the base compose file and the AppHost bind them to `primary`.
+  Without them both refuse to start (check B1). `FileStorageDeploymentParityTests` keeps the shipped files identical.
+- **`POST /api/files`** takes a required `area` form field, validates `description` at 256 characters, and is
   rate-limited per user by `RateLimiting:FileUpload` (120 per 10 minutes by default); the contact-avatar upload
   shares that limit. An upload refuses with `507` when the volume is below the reserve (the store's 1 GB floor
   plus 4 GB), `503` when it is degraded, and `429` past the limit — each with `Retry-After` where it applies.
   Nothing is stored on a refusal, and no bucket slot is taken.
-- **Downloads are unchanged on the wire** (disposition, content type) and now carry `nosniff`, a strong `ETag`,
-  `Cache-Control: private, no-cache` and range support.
-- **`fileBlobId` is gone from every attachment DTO.** A client that read it must stop.
-- **`POST /api/files` validates `description`** at 256 characters and answers `400` where it used to cut the text
-  silently.
-- **One more background job on `/background-jobs`**, the file move. Its counts need `file-storage.read`. It
-  and the `FileBlob` table are gone since [`RemoveLegacyFileBlobStorage`](#legacy-file-storage-removed).
-
-### The move (finished and removed)
-
-The release that shipped this section also shipped a worker job, the *file move* (`FileBlobBackfillJob`), that moved
-every remaining file out of `FileBlob` into its area. Every production system has finished it, and
-[`RemoveLegacyFileBlobStorage`](#legacy-file-storage-removed) removed the job, its endpoint
-(`GET /api/file-storage/file-backfill`), its tables, the `FileBlob` table and `FileMetadata.FileBlobId`.
+- **Downloads** carry `nosniff`, a strong `ETag`, `Cache-Control: private, no-cache` and range support.
 
 ### Legacy file storage removed
 
-**The database no longer holds file bytes, and nothing reads the legacy shape.** Every file is a `FileMetadata` row
-naming exactly one area's stored object (`CK_FileMetadata_ExactlyOneSource`), and every photo owns its original
-(`Photos.StoredObjectId`, `FileName`, `ContentType`, `SizeBytes` and `Sha256Hash` are `NOT NULL`). The user profile
-picture's own store (`UserProfileImageBlobs`) is a different, deliberate design and is unaffected.
+**The database no longer holds file bytes.** Issues #428 and #448 moved every photo original and file out of the
+`FileBlob` table with two worker jobs (the photo-original move and the file move); every production system finished
+them, and the migration **`RemoveLegacyFileBlobStorage`** then removed the jobs, their endpoints and tables,
+`FileBlob`, `FileMetadata.FileBlobId` and `Photos.FileId`. The user profile picture's own store
+(`UserProfileImageBlobs`) is a different, deliberate design and is unaffected.
 
-- **One migration, `RemoveLegacyFileBlobStorage`, and it destroys data.** It first **refuses to run** — before any
-  drop, since MariaDB commits DDL implicitly — while any photo still has `FileId` set, any file still has `FileBlobId`
-  set, or `FileBlobBackfillFailures` has a row; the error names which. Then it deletes every `JobRuns` and
-  `JobHeartbeats` row of the two retired moves (`JobType` 5 and 7), and drops `FileBlob`, `FileMetadata.FileBlobId`,
-  `Photos.FileId`, the two moves' lease and failure tables and their run counters. `JobType` 5 and 7 and
-  `JobHeldReason` 6 (`BackingOff`) are retired ordinals and will never be reused.
-- **Before upgrading**, on the previous release: `/background-jobs` (or `GET /api/file-storage/photo-backfill` and
-  `/file-backfill`) must show nothing left to move and nothing parked. If the migration refuses, roll the
-  deployment back to the previous release, let the moves finish (clear a parked row as that release's notes
-  describe), and upgrade again.
-- **`Down()` restores the schema only.** The dropped tables and columns come back empty, and the deleted run history
-  does not come back. **The only undo is restoring the database backup taken before the upgrade.**
-- **The demo files of a dev stack** (Development/Testing only) are now written by the worker, after the API has
-  initialised the volumes, instead of by the migrations job: `Seed__DemoData` reaches the worker too, and a fresh dev
-  stack shows its demo photos, attachments and contact images a little after it reports healthy. The production
-  overlay pins it `false` on both.
+- **Upgrading from a release that still had the moves:** the migration **refuses to run** — before any drop, since
+  MariaDB commits DDL implicitly — while any photo still has `FileId` set, any file still has `FileBlobId` set, or
+  `FileBlobBackfillFailures` has a row; the error names which. Roll back to the previous release, let the moves
+  finish on its `/background-jobs` page, and upgrade again.
+- **It destroys data, and `Down()` restores schema only.** The run history of the two moves (`JobType` 5 and 7) is
+  deleted; those ordinals and `JobHeldReason` 6 (`BackingOff`) are retired for good. The only undo is restoring the
+  database backup taken before the upgrade.
+- **Demo files on a dev stack** (Development/Testing only) are written by the worker after the API has initialised
+  the volumes, so a fresh dev stack shows its demo photos, attachments and contact images a little after it reports
+  healthy. `Seed__DemoData` reaches the worker too; the production overlay pins it `false` on both.
 
 ### Moving the finance area to its own volume
 
@@ -2178,7 +2142,7 @@ fetch, ingest, images, and an hourly maintenance pass — and coordinates replic
   within the 30 s settings TTL; the allow-list is read uncached, so a revoked grant binds on the next fetch.
 - **Rolling back** past this release drops every news table (the migration's `Down()` deletes the job's run-log rows
   first). The news `StoredObjects` rows remain and log the B4 Critical ("a live row of an unknown feature"). Delete every
-  feed and wait out the deletion grace (168 h by default) **before** rolling back, so the files are gone too.
+  feed and wait out the deletion grace (24 h by default, at most 168 h) **before** rolling back, so the files are gone too.
 
 ### What leaves the deployment
 
