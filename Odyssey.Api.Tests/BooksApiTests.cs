@@ -398,7 +398,7 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         Assert.Equal(["Dune", "Robots", "Foundation"], await Titles("?sortBy=Year&sortDir=Desc"));
         Assert.Equal("Dune", (await Titles("?sortBy=Author"))[^1]);
         Assert.Equal("Dune", (await Titles("?sortBy=Author&sortDir=Desc"))[0]);
-        Assert.Equal(["Dune"], await Titles("?search=her"));
+        Assert.Equal(["Dune", "Robots"], await Titles("?search=her")); // author or any contributor
         Assert.Empty(await Titles("?search=50%25"));
         var tooMany = string.Join("&", Enumerable.Range(0, ListDefaults.MaxFilterArrayLength + 1).Select(_ => $"tagIds={Guid.NewGuid()}"));
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Path}?{tooMany}")).StatusCode);
