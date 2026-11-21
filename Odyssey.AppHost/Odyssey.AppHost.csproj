@@ -28,6 +28,7 @@
     <PackageReference Include="MySqlConnector" />
     <!-- Direct reference to pin transitive MessagePack (Aspire.Hosting -> StreamJsonRpc) and patch high-severity CVE GHSA-hv8m-jj95-wg3x -->
     <PackageReference Include="MessagePack" />
+    <PackageReference Include="QRCoder" />
   </ItemGroup>
 
   <ItemGroup>
