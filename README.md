@@ -20,14 +20,17 @@ your own infrastructure.
 
 **Money**
 
-- **Accounts** — 15 account types spanning assets and liabilities (cash, current, savings,
-  investment, pension, property, vehicle, credit card, mortgage, loans, tax debt) with
-  balances, custodians, interest-rate terms and fee schedules, plus per-account value estimates.
+- **Accounts** — asset and liability account types (cash, current, savings, investment,
+  pension, credit card, mortgage, loans, tax debt and more) with balances, custodians and
+  per-account value estimates.
+- **Properties** — real estate and vehicles as their own records, with dated value estimates,
+  an event log and, for real estate, an address on the shared location book.
+- **Instruments** — tracked securities with prices synced on a schedule.
 - **Transactions** — searchable, taggable and server-paged, with statuses, comments, attached
   documents and a counterparty resolved against the contact book.
 - **Budgets** — per-year budgets broken down by tag, reported against actual spend.
-- **Multi-currency** — explicit exchange rates per directed currency pair, so cross-currency
-  accounts convert without silent guesswork.
+- **Multi-currency** — exchange rates synced from Norges Bank (other pairs convert through NOK),
+  alongside manual rates, so cross-currency accounts convert without silent guesswork.
 - **Contracts** — recurring commitments with terms, parties, fee run-rate, renewal and derived
   status. A subscription and an insurance policy are each a contract of that type.
 - **Tax statements** — with a reconciliation report that flags what does not line up.
@@ -39,16 +42,23 @@ your own infrastructure.
   receipts and suggests contact and tag matches. Enabling it sends the uploaded document to the
   Anthropic API; it is consent-gated, audit-logged, and stays off unless you configure a key.
 - **Journal, tasks and calendar** — with RFC 5545 iCalendar import/export (`VEVENT`, `VTODO`,
-  `VJOURNAL`).
-- **Photos** — an album-based library with tagging, favourites and embedded-metadata extraction.
-- **Contacts** — people and organisations, shared across finance and journal records.
+  `VJOURNAL`), carrying attached files and photos inline.
+- **Photos** — an album-based library with tagging, favourites, embedded-metadata extraction and
+  thumbnails rendered in the background.
+- **Contacts** — people and organisations, shared across finance and journal records, with vCard
+  export.
+- **Locations and weather** — one shared book of places and addresses, drawn on a map, with
+  forecasts kept per weather point.
+- **News** — a feed reader whose fetching runs in the background worker.
 
 **Administration**
 
 - Cookie-based authentication with TOTP two-factor, email confirmation, self-service and
   admin-initiated password reset, and admin approval for new registrations.
-- Fine-grained authorization: 102 permission claims mapped onto Admin / Owner / User / Guest
+- Fine-grained authorization: permission claims mapped onto Admin / Owner / User / Guest
   roles, enforced server-side on every endpoint.
+- Runtime system settings and credentials, a background-jobs page and file-storage status for
+  administrators.
 - A dark-first design system, keyboard command palette, and per-user page-state persistence.
 
 ## Screenshots
@@ -56,10 +66,9 @@ your own infrastructure.
 The Finance module, running against the deterministic demo seed — the figures, names and
 addresses below are synthetic.
 
-![The Odyssey dashboard in dark theme: a "Good afternoon, Owner" header reading "Net worth
-$270,865.76 across 21 accounts", a teal net-worth area chart running from 2016 to 2026, and a
-recent-transactions table listing groceries, dining out and a card purchase with their tags,
-statuses, amounts and dates.](docs/images/dashboard.png)
+![The Odyssey dashboard in dark theme: a greeting header with the net-worth total, a teal
+net-worth area chart over the years of seeded history, and a recent-transactions table listing
+purchases with their tags, statuses, amounts and dates.](docs/images/dashboard.png)
 
 **Dashboard** — net worth across every account, with the most recent transactions underneath.
 
@@ -67,11 +76,11 @@ statuses, amounts and dates.](docs/images/dashboard.png)
 <tr>
 <td width="50%">
 
-![The Accounts page with its overview panel open: two donut charts, "Asset allocation" over 10
-accounts and "Liabilities" over 7, each with a ranked legend — Primary Residence at 70% of
-$977,499.02 in assets, Home Mortgage at 77% of $453,133.26 owed.](docs/images/accounts.png)
+![The Accounts page with its overview panel open: two donut charts, "Asset allocation" and
+"Liabilities", each with a legend ranking accounts by their share of the
+total.](docs/images/accounts.png)
 
-**Accounts** — asset and liability allocation over a 21-account portfolio, with per-type and
+**Accounts** — asset and liability allocation across the portfolio, with per-type and
 per-status rollups.
 
 </td>
@@ -79,7 +88,7 @@ per-status rollups.
 
 ![The Transactions page with its overview and filter regions open: status and direction
 breakdown tiles above a search box and account, status, merchant, tag and direction filters,
-over a paged table of 2,743 transactions showing description, merchant, account, tag, status,
+over a paged table of transactions showing description, merchant, account, tag, status,
 amount and date.](docs/images/transactions.png)
 
 **Transactions** — server-paged, searchable, and filterable by account, status, tag and
@@ -91,9 +100,8 @@ direction.
 <td width="50%">
 
 ![An expanded budget record, "Household Budget 2026", showing its period, base currency and
-status, then two donut charts: planned income of $98,000.00 across salary, bonus and
-investment income, and planned expenses of $79,200.00 across 14 tags led by housing at
-31%.](docs/images/budgets.png)
+status, then two donut charts breaking planned income and planned expenses down by
+tag.](docs/images/budgets.png)
 
 **Budgets** — a year's planned income and expenses broken down by tag, reported against
 actual spend.
@@ -103,8 +111,8 @@ actual spend.
 
 ![An expanded tax statement, "Tax Year 2025", flagged with the warning "Declared net worth
 diverges from derived balances — review before approval", above a table comparing declared
-figures with Odyssey-derived ones: total assets $980,000 against $718,999, a variance of
-$261,001 in amber.](docs/images/tax-reconciliation.png)
+figures with Odyssey-derived ones, with the variance highlighted in
+amber.](docs/images/tax-reconciliation.png)
 
 **Tax reconciliation** — declared figures against the ones Odyssey derives from your
 accounts and tags, with every variance called out.
@@ -115,9 +123,8 @@ accounts and tags, with every variance called out.
 <td width="50%">
 
 ![The Contracts page with its upcoming and overview regions open: an amber awaiting-signature
-alert and a paused-contract notice, then next charges falling due on Oct 15 and Oct 19 and a
-next receipt on Oct 13, monthly and yearly run-rate tiles reading 23,693.64 and 284,323.69 NOK
-out against 67,391.30 and 808,695.64 NOK in, and counts by contract type and
+alert and a paused-contract notice, then the next charges and receipts falling due, monthly
+and yearly run-rate tiles for money out and money in, and counts by contract type and
 status.](docs/images/contracts.png)
 
 **Contracts** — agreements with their parties and terms, a monthly and yearly run rate, and
@@ -126,10 +133,9 @@ what is charged next.
 </td>
 <td width="50%">
 
-![The Contacts page with its overview region open: 24 active and 1 archived contact, split
-4 Person to 20 Organization by type, then a filter bar and the first record cards — Alex
-Rivera, Allstate with its organization number, BlueCross Health, Cash Withdrawal and an
-archived Chris Rivera.](docs/images/contacts.png)
+![The Contacts page with its overview region open: counts of active and archived contacts
+and a split by person and organization, then a filter bar and the first record cards, people
+and organizations among them.](docs/images/contacts.png)
 
 **Contacts** — people and organisations shared across finance and journal, each linkable as a
 counterparty, custodian or contract party.
@@ -146,9 +152,12 @@ counterparty, custodian or contract party.
 | `Odyssey.Client` | Blazor WebAssembly frontend (MudBlazor v9), served by NGINX |
 | `Odyssey.ApiClient` | Typed HTTP client, free of any web/UI dependency so non-browser consumers can use it |
 | `Odyssey.MigrationService` | Runs EF Core migrations before the API starts |
-| `Odyssey.Worker` | Runs the background jobs (the weather schedule first); no HTTP surface |
+| `Odyssey.Worker` | Runs the background jobs (weather, exchange-rate and price sync, news, photo thumbnails, file-storage maintenance, statement analysis) and seeds the demo files; no HTTP surface |
 | `Odyssey.AppHost` | .NET Aspire orchestrator for local development |
-| `Odyssey.<Domain>[.Context\|.Dtos]` | Business logic, EF Core context and DTOs per domain |
+| `Odyssey.Core` | All business logic, split by folder (`Finance/`, `Journal/`, …) |
+| `Odyssey.Context` | The single EF Core context and its migrations |
+| `Odyssey.Dtos` | Every DTO, shared by the API and the WASM client |
+| `Odyssey.TestData` | Deterministic demo-data generators, used by the seeders and the tests |
 
 One EF Core context — `OdysseyContext` — owns the whole application: identity, profiles and
 preferences alongside finance, journal, tasks, photos, calendars and contacts, in a single MariaDB
@@ -172,13 +181,15 @@ Then open `http://localhost:5199` and sign in with one of the seeded demo users 
 
 ## Docker setup
 
-This repository now includes container support for the full stack:
+The full stack runs in containers:
 
 - `Odyssey.Client/Dockerfile` builds and serves the Blazor WebAssembly client with NGINX.
 - `Odyssey.Api/Dockerfile` builds and runs the ASP.NET Core API.
 - `docker-compose.yml` orchestrates:
   - `client` (frontend) on `http://localhost:5199`
   - `api` (backend) on `http://localhost:5188`
+  - `migrations`, a one-shot job that applies migrations and seeds before the API starts
+  - `worker`, the background-job host (no published port)
   - `mariadb` (database) on `localhost:3307`
 
 ### Start everything
@@ -189,7 +200,7 @@ docker compose up --build
 
 ### Run migrations (if needed)
 
-When running via Docker Compose, the stack now includes an explicit migration step.
+When running via Docker Compose, the stack includes an explicit migration step.
 The migrations service runs once, then exits successfully before the API starts.
 
 If you need to rerun migrations (e.g., after changing migrations), run:
@@ -213,7 +224,7 @@ cp .env.example .env
 2. Set runtime flags:
 
 - `ASPNETCORE_ENVIRONMENT=Development` to run the API in development mode.
-- `SWAGGER_ENABLED=true` to expose Swagger/OpenAPI even outside development.
+- `SWAGGER_ENABLED=true` to expose Swagger/OpenAPI outside Development (never in Production).
 
 ### The first administrator (bootstrap)
 
@@ -254,13 +265,14 @@ administrator enables it (Users admin page → enable). This is the email-confir
 companion gate and is independent of it, and it now applies to every account without exception.
 
 > Configured at runtime in **System Settings**, not `appsettings.json`: the registration-approval and
-> email-confirmation gates, the Contracts summary knobs, the sixteen import/export volume caps, and the
-> AI-analysis processor disclosure and policy, the transactional-email sender identity and
-> per-recipient send throttle, the per-request caps on contracts, photos and
-> journal links, and the maximum upload size. Secrets, connection strings and the SMTP transport stay
-> in environment configuration — see issue #421's Non-Goals for why each one does. A value you had
-> configured for one of the migrated settings is carried into the store on upgrade and keeps applying
-> until an administrator changes it in the UI.
+> email-confirmation gates, the Contracts summary knobs, the import/export volume caps, the
+> AI-analysis processor disclosure and policy, the whole email transport and sender identity with the
+> per-recipient send throttle, the per-request caps on contracts, photos and journal links, and the
+> maximum upload size. Credentials (the SMTP login, the AI-analysis key and similar) are entered at
+> **System settings → Credentials** and encrypted at rest. Connection strings and a few deploy-time
+> values stay in environment configuration — see issue #421's Non-Goals for why each one does. A
+> value is not carried over from configuration when a setting moves into the store: the migration
+> seeds the shipped default and an administrator sets the real value in the UI.
 >
 > Two of these are **tighten-only**, because a raised value would be silently overridden by a limit
 > compiled or configured somewhere earlier in the request: the photo link/album caps (request-model
@@ -357,9 +369,10 @@ Notes specific to Gmail:
 - API base URL (from Docker): `http://localhost:5188`
 - CORS allowed origins are configured in `Odyssey.Api/appsettings.json` under `Cors:AllowedOrigins`.
 - Swagger UI: `http://localhost:5188/swagger`
-- OpenAPI JSON: `http://localhost:5188/openapi/v1.json`
+- OpenAPI JSON: `http://localhost:5188/swagger/v1/swagger.json`
 
-> Swagger is enabled when `ASPNETCORE_ENVIRONMENT=Development` **or** `SWAGGER_ENABLED=true`.
+> Swagger is enabled when `ASPNETCORE_ENVIRONMENT=Development`, or when `SWAGGER_ENABLED=true` in any
+> environment other than `Production` — it is never served in Production (issue #451).
 
 ### Networking notes
 
@@ -381,11 +394,13 @@ docker compose down -v
 
 ## Aspire orchestration
 
-The repository now includes an Aspire AppHost project at `Odyssey.AppHost` that orchestrates the local development stack:
+The Aspire AppHost project at `Odyssey.AppHost` orchestrates the local development stack:
 
 - `client` (`Odyssey.Client`)
 - `api` (`Odyssey.Api`)
-- `mariadb` (Docker container `mariadb:11.4`)
+- `migrations` (`Odyssey.MigrationService`), which completes before the API starts
+- `worker` (`Odyssey.Worker`)
+- `mariadb` (a MariaDB container; the image version is `Aspire:MariaDb:Version` in `Odyssey.AppHost/appsettings.json`)
 
 ### Run with Aspire
 
@@ -411,7 +426,7 @@ This starts the Aspire dashboard and launches all required resources. The AppHos
 
 ## Testing
 
-The full strategy and rationale live in [`docs/test-environment-and-e2e-spec.md`](docs/test-environment-and-e2e-spec.md). There are five tiers:
+The full strategy and rationale live in [`docs/test-environment-and-e2e-spec.md`](docs/test-environment-and-e2e-spec.md). The tiers:
 
 | Project | What it covers | Prerequisite |
 |---|---|---|
@@ -419,9 +434,12 @@ The full strategy and rationale live in [`docs/test-environment-and-e2e-spec.md`
 | `Odyssey.Api.Tests` | API integration via `WebApplicationFactory` + the shared `OdysseyApiFactory` fixture | none (EF InMemory) |
 | `Odyssey.MigrationService.Tests` | The demo-data seeder | none (EF InMemory) |
 | `Odyssey.Worker.Tests` | The worker host: the job loop, its service graph, its read-only key ring | none |
+| `Odyssey.ApiClient.Tests` | The shared typed API client | none |
+| `Odyssey.Client.Tests` | The Blazor client: components and client-side source lints | none |
 | `Odyssey.IntegrationTests` | Real-engine behaviour InMemory can't model — actual migrations, FK `ON DELETE CASCADE`, decimal/datetime fidelity | **Docker** (Testcontainers-MariaDB) |
 | `Odyssey.E2ETests` | Playwright browser smoke: sign in as a seeded user and see seeded data | a **running, seeded stack** |
 | `Odyssey.E2ETests.Api` | API security/permissions/contracts over real HTTP + real login cookie (permission matrix across the seeded role users) | a **running, seeded stack** |
+| *perf* (`Category=Perf` in `Odyssey.Core.Tests` and `Odyssey.IntegrationTests`) | Volume, memory and time-budget checks | `ODYSSEY_REQUIRE_TIER` naming `perf` — skipped otherwise |
 
 ```bash
 # Everything. The Docker and browser tiers self-skip when their prerequisites
@@ -457,7 +475,9 @@ immediately usable and the E2E tests have data to assert on.
   | `guest@demo.example.com` | Guest |
 
 - **How it works:** generators live in `Odyssey.TestData` (the single source of truth, reused by
-  the tests); `Odyssey.MigrationService` runs the `DemoDataSeeder` right after migrations. Seeding
+  the tests); `Odyssey.MigrationService` runs the `DemoDataSeeder` right after migrations, and
+  `Odyssey.Worker` then seeds the demo files, photos and contact images onto the file volumes — so
+  those appear shortly *after* the stack is healthy. Seeding
   is **gated** (only Development and Testing ever seed — every other environment refuses, and an
   explicit `Seed:DemoData=true` cannot override that; inside those two the flag still turns
   seeding off) and **idempotent** (skips if already present).
@@ -482,7 +502,8 @@ covers where each kind of report belongs and what to include.
 Odyssey is released under the [BSD 2-Clause License](LICENSE).
 
 Third-party material redistributed with Odyssey — the bundled Roboto, Roboto Mono and
-Material Icons webfonts, and the NuGet dependency set — is inventoried in
+Material Icons webfonts, MapLibre GL JS and the dark basemap style, the NuGet dependency set and
+the worker's native ImageMagick — is inventoried in
 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 > Note that `LICENSE` is also a runtime input: the API hashes it and serves it as the
