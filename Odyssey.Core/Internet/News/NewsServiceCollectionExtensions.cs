@@ -57,6 +57,11 @@ public static class NewsServiceCollectionExtensions
         services.TryAddSingleton<NewsIngestor>();
         services.TryAddSingleton<NewsFeedFetcher>();
         services.TryAddSingleton<NewsImageDownloader>();
+        // Podcasts (issue #556 §3.4): the artwork and chapter-file phases and the writer over the two podcast features.
+        services.TryAddScoped<Podcasts.Files.PodcastFileWriter>();
+        services.TryAddSingleton<Podcasts.PodcastArtworkPhase>();
+        services.TryAddSingleton<Podcasts.PodcastChaptersPhase>();
+        services.TryAddSingleton<Journal.Thumbnails.PhotoThumbnailProcessHooks>();
         services.TryAddSingleton<NewsFeedPurger>();
         services.TryAddSingleton<NewsMaintenance>();
         return services;
