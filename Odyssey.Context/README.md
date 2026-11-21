@@ -143,7 +143,7 @@ the records kept in it, leaving accounts that could not be edited and budgets an
 refused updates. `AddCurrencyForeignKeys` added the rest, first **restoring** any code already orphaned
 that way as an active `Restored currency XYZ (review)` row — the one data write, which changes no
 referencing row. Adding each key rebuilds its table (`ALGORITHM=COPY`, writes blocked meanwhile); the
-upgrade note is in [`docs/deployment.md`](../docs/deployment.md).
+upgrade note is in [`docs/upgrade-notes.md`](../docs/upgrade-notes.md#currencies-in-use-can-no-longer-be-deleted-issue-241).
 
 `CurrencyService.CountDeleteBlockers` is the explaining pre-check: one clause per key, counts only, a
 `409`. A new currency column needs its key **and** its clause. `FileAnalysisCandidateTransactions.Currency`

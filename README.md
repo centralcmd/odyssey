@@ -220,7 +220,8 @@ the full strategy is [`docs/test-environment-and-e2e-spec.md`](docs/test-environ
 | Guide | Covers |
 |---|---|
 | [`docs/getting-started.md`](docs/getting-started.md) | Running it yourself: Compose and Aspire in detail, the first administrator, registration approval, mail (Gmail included), Swagger, the demo data |
-| [`docs/deployment.md`](docs/deployment.md) | Production on a single host: the overlay, TLS, backups, the key ring, file storage, release notes, the security checklist |
+| [`docs/deployment.md`](docs/deployment.md) | Production on a single host: the overlay, TLS, backups, the key ring, file storage, what leaves the deployment, the security checklist |
+| [`docs/upgrade-notes.md`](docs/upgrade-notes.md) | What to do when upgrading across a release: data migrations, retired configuration, deploy order |
 | [`docs/running-locally-alongside-a-live-stack.md`](docs/running-locally-alongside-a-live-stack.md) | Running your own copy while another stack holds ports 3307 / 5188 / 5199 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Building, the test tiers, commit conventions, code style |
 | [`docs/architecture/`](docs/architecture/) | One page per subsystem: background jobs, calendars, contracts, file storage, maps, settings and more |
