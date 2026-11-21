@@ -14,15 +14,27 @@ namespace Odyssey.Api.Tests;
 /// AC 8 — the gate's real logic, exercised against a genuinely non-compliant session. Every other API
 /// test authenticates through <c>TestAuthHandler</c>, whose principal never carries the
 /// pending-acceptance claim, so the gate is a no-op there and would pass vacuously.
+///
+/// <para>
+/// One host serves the class (<see cref="LegalLoginFactory"/>, a class fixture), reset before each test to no published
+/// Terms of Service (<see cref="LegalLoginFactory.ResetAsync"/>); each test signs in a user of its own.
+/// </para>
 /// </summary>
-public class LegalComplianceGateTests
+public class LegalComplianceGateTests(LegalLoginFactory sharedHost) : IClassFixture<LegalLoginFactory>, IAsyncLifetime
 {
+    public Task InitializeAsync() => sharedHost.ResetAsync();
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
+    private static string UniqueAddress(string label) => $"{label}-{Guid.NewGuid():N}@example.com";
+
     [Fact]
     public async Task ANonCompliantSession_IsRejectedWith451AndTheMachineReadableCode()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("gate@example.com");
-        using var client = await factory.LoginAsync("gate@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("gate");
+        await factory.CreateUserAsync(email);
+        using var client = await factory.LoginAsync(email);
 
         var response = await client.PutAsJsonAsync("/api/profile", new { firstName = "A" });
 
@@ -43,9 +55,10 @@ public class LegalComplianceGateTests
     [Fact]
     public async Task TheAllowlistIsMethodAware_ReadPassesWhileTheWriteOnTheSamePathIsGated()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("methods@example.com");
-        using var client = await factory.LoginAsync("methods@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("methods");
+        await factory.CreateUserAsync(email);
+        using var client = await factory.LoginAsync(email);
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/profile")).StatusCode);
         Assert.Equal(
@@ -61,9 +74,10 @@ public class LegalComplianceGateTests
     [InlineData("/auth/permissions")]
     public async Task TheFeaturesOwnEndpoints_StayReachableWhileGated(string path)
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("allowlist@example.com");
-        using var client = await factory.LoginAsync("allowlist@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("allowlist");
+        await factory.CreateUserAsync(email);
+        using var client = await factory.LoginAsync(email);
 
         var response = await client.GetAsync(path);
 
@@ -78,9 +92,10 @@ public class LegalComplianceGateTests
     [Fact]
     public async Task ANonCompliantAdmin_IsGatedOutOfTheVersionManagementEndpoints()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("noncompliantadmin@example.com", RoleDefinitions.AdminId);
-        using var client = await factory.LoginAsync("noncompliantadmin@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("noncompliantadmin");
+        await factory.CreateUserAsync(email, RoleDefinitions.AdminId);
+        using var client = await factory.LoginAsync(email);
 
         var response = await client.GetAsync("/api/legal/terms-of-service/versions");
 
@@ -94,10 +109,11 @@ public class LegalComplianceGateTests
     [Fact]
     public async Task AcceptingEveryOutstandingDocument_LiftsTheGateImmediately()
     {
-        await using var factory = new LegalLoginFactory();
-        await factory.CreateUserAsync("accepts@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("accepts");
+        await factory.CreateUserAsync(email);
         var version = await factory.PublishTermsOfServiceAsync("Terms v1");
-        using var client = await factory.LoginAsync("accepts@example.com");
+        using var client = await factory.LoginAsync(email);
 
         Assert.Equal(
             HttpStatusCode.UnavailableForLegalReasons,
@@ -116,9 +132,10 @@ public class LegalComplianceGateTests
     [Fact]
     public async Task Declining_SignsTheSessionOutWithoutLockingTheAccount()
     {
-        await using var factory = new LegalLoginFactory();
-        var user = await factory.CreateUserAsync("declines@example.com");
-        using var client = await factory.LoginAsync("declines@example.com");
+        var factory = sharedHost;
+        var email = UniqueAddress("declines");
+        var user = await factory.CreateUserAsync(email);
+        using var client = await factory.LoginAsync(email);
 
         var declined = await RespondAsync(client, LegalDocumentType.License, accepted: false);
         Assert.Equal(HttpStatusCode.NoContent, declined.StatusCode);
@@ -133,7 +150,7 @@ public class LegalComplianceGateTests
         });
 
         // Logging back in works — a decline is not an account lockout.
-        using var secondSession = await factory.LoginAsync("declines@example.com");
+        using var secondSession = await factory.LoginAsync(email);
         Assert.Equal(HttpStatusCode.OK, (await secondSession.GetAsync("/api/legal/status")).StatusCode);
     }
 
@@ -141,7 +158,7 @@ public class LegalComplianceGateTests
     [Fact]
     public async Task AnAnonymousRequest_IsNeverGated()
     {
-        await using var factory = new LegalLoginFactory();
+        var factory = sharedHost;
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/legal/license")).StatusCode);

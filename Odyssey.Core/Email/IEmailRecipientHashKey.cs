@@ -4,7 +4,7 @@ namespace Odyssey.Core.Email;
 /// Resolves the HMAC key behind the throttle's recipient digests (issue #445 Wave 3).
 ///
 /// <para>
-/// <strong>Why this is not read inside <see cref="EmailSendThrottle"/>.</strong> That type's
+/// <strong>Why this is not read inside <c>EmailSendThrottle</c>.</strong> That type's
 /// compare-and-increment runs inside a <c>lock</c>, where <c>await</c> is a compile error, and it is a
 /// singleton resolved from the root provider — so it can neither await a scoped
 /// <c>OdysseyContext</c> nor hold one. The codebase already answers this exact shape for the

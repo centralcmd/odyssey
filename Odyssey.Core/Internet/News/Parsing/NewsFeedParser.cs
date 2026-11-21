@@ -136,7 +136,7 @@ public static class NewsFeedParser
     private static NewsFeedParseResult Finish(NewsParsedFeed feed) => new(NewsFeedParseOutcome.Ok, feed);
 
     /// <summary>
-    /// Streams one XML feed: the container's children are read one at a time with <see cref="XElement.ReadFrom"/>
+    /// Streams one XML feed: the container's children are read one at a time with <see cref="XNode.ReadFrom"/>
     /// (through the depth-capped reader), so only one item is ever materialised.
     /// </summary>
     private sealed class XmlFeedReader(DepthCappedXmlReader reader, NewsFeedFormat format, Uri? documentUri)

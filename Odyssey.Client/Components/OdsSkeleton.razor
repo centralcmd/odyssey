@@ -52,8 +52,14 @@ else
     private static string? Style(string? width, string? height)
     {
         var parts = new List<string>(2);
-        if (!string.IsNullOrEmpty(width)) parts.Add($"width:{width};");
-        if (!string.IsNullOrEmpty(height)) parts.Add($"height:{height};");
+        if (!string.IsNullOrEmpty(width))
+        {
+            parts.Add($"width:{width};");
+        }
+        if (!string.IsNullOrEmpty(height))
+        {
+            parts.Add($"height:{height};");
+        }
         return parts.Count == 0 ? null : string.Concat(parts);
     }
 }

@@ -226,7 +226,7 @@ public class LocationDialogTests
     public async Task The_dialog_closes_before_the_host_hears_about_the_save()
     {
         var order = new List<string>();
-        var (cut, _) = Render(onOpenChanged: open => { if (!open) order.Add("closed"); }, onSaved: _ => order.Add("saved"));
+        var (cut, _) = Render(onOpenChanged: open => { if (!open) { order.Add("closed"); } }, onSaved: _ => order.Add("saved"));
         Type(cut, "Storgata 1");
         PickFirst(cut);
 

@@ -63,7 +63,10 @@ public class WeatherBatchReadTests
         var entries = new[] { await AddEntryAsync(h, stale.LocationId, Noon.AddDays(-3)), await AddEntryAsync(h, fresh.LocationId, Noon.AddDays(-3)) };
         var start = Noon.AddDays(-1);
         foreach (var point in new[] { stale, fresh })
+        {
             await AddStepAsync(h, point.Id, start.AddHours(-6), start, 1, 5m, 0m);
+        }
+
         var events = new[]
         {
             await AddEventAsync(h, stale.LocationId, start, start.AddHours(1)),

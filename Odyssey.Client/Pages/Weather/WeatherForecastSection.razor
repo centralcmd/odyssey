@@ -74,7 +74,9 @@
     protected override async Task OnParametersSetAsync()
     {
         if (_loadedFor == WeatherPointId)
+        {
             return;
+        }
         _loadedFor = WeatherPointId;
         await LoadAsync();
     }
@@ -88,7 +90,9 @@
         var daily = Reads.DailyAsync(id);
         await Task.WhenAll(current, daily);
         if (id != WeatherPointId)
+        {
             return;
+        }
 
         var result = await current;
         if (!result.IsSuccess || result.Value is null)
@@ -104,14 +108,18 @@
         _days = dailyResult.IsSuccess && dailyResult.Value is { } d && d.Point?.WeatherPointId == id ? d.Days : [];
         _phase = Phase.Ready;
         if (_current is not { Status: WeatherStatus.Ok, Step: not null })
+        {
             await OnAnnounce.InvokeAsync($"No forecast for {PointName} yet.");
+        }
         StateHasChanged();
     }
 
     private Task Retry()
     {
         if (_phase == Phase.Loading)
+        {
             return Task.CompletedTask;
+        }
         Reads.Forget(WeatherPointId);
         return LoadAsync();
     }

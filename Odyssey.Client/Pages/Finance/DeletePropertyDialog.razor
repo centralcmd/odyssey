@@ -121,11 +121,15 @@
         // Nothing to count when the count is withheld or zero. A failed read leaves the line stating
         // the contract count alone — this is a confirmation, not a place for an error toast.
         if (ContractCount is not > 0)
+        {
             return;
+        }
 
         var result = await Properties.ListContractsAsync(Property.PropertyId);
         if (result.IsSuccess && result.Value is { } rows)
+        {
             _partyLinks = rows.Sum(r => r.Roles.Count);
+        }
     }
 
     private string ContractLinksLine => ContractCount switch
@@ -149,7 +153,9 @@
     private async Task DeleteAsync()
     {
         if (_busy)
+        {
             return;
+        }
 
         _busy = true;
         try

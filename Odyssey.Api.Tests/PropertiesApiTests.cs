@@ -498,7 +498,10 @@ public class PropertiesApiTests(PropertiesApiTests.Host host) : SharedApiHostTes
     {
         var factory = Factory.ForCaller(FullAccess);
         foreach (var name in new[] { "A", "B", "C", "D", "E" })
+        {
             await SeedPropertyAsync(factory, name);
+        }
+
         await SeedPropertyAsync(factory, "Z car", PropertyType.Vehicle);
         using var client = factory.CreateClient();
 

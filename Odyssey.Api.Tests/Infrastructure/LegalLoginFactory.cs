@@ -153,6 +153,21 @@ public sealed class LegalLoginFactory : WebApplicationFactory<Program>
         return version;
     }
 
+    /// <summary>
+    /// Returns a host shared across a test class (an <c>IClassFixture</c>) to what each test assumes: no Terms of
+    /// Service version published — the one store-wide fact the claims factory reads — and the license readable again.
+    /// Accounts stay, so each test signs in a user of its own.
+    /// </summary>
+    public async Task ResetAsync()
+    {
+        License.ShouldThrow = false;
+        using var scope = Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await context.Database.EnsureCreatedAsync();
+        context.TermsOfServiceVersions.RemoveRange(context.TermsOfServiceVersions);
+        await context.SaveChangesAsync();
+    }
+
     public async Task WithContextAsync(Func<OdysseyContext, Task> work)
     {
         using var scope = Services.CreateScope();

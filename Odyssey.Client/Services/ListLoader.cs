@@ -36,7 +36,9 @@ public sealed class ListLoader : IDisposable
     public async Task<Latest<T>> RunAsync<T>(Func<CancellationToken, Task<T>> fetch)
     {
         if (disposed)
+        {
             return Latest<T>.Superseded;
+        }
 
         // Take the ticket BEFORE cancelling the previous request: Cancel runs that request's
         // continuations inline, and it must already see itself superseded when it resumes.
@@ -63,7 +65,10 @@ public sealed class ListLoader : IDisposable
             // Each request disposes its own source once it has finished with the token, so a newer
             // request never disposes a token an older one may still be registering against.
             if (ReferenceEquals(current, mine))
+            {
                 current = null;
+            }
+
             mine.Dispose();
         }
     }
@@ -74,7 +79,9 @@ public sealed class ListLoader : IDisposable
     public void Dispose()
     {
         if (disposed)
+        {
             return;
+        }
 
         disposed = true;
         current?.Cancel();

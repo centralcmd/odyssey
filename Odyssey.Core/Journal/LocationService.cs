@@ -629,21 +629,81 @@ public class LocationService
         public List<string> ChangedFields(LocationEntity location)
         {
             var changed = new List<string>();
-            if (!string.Equals(location.Name, Name, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.Name));
-            if (!string.Equals(location.Description, Description, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.Description));
-            if (!string.Equals(location.AddressText, AddressText, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.AddressText));
-            if (!string.Equals(location.Line1, Address.Line1, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.Line1));
-            if (!string.Equals(location.Line2, Address.Line2, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.Line2));
-            if (!string.Equals(location.PostalCode, Address.PostalCode, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.PostalCode));
-            if (!string.Equals(location.City, Address.City, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.City));
-            if (!string.Equals(location.Region, Address.Region, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.Region));
-            if (!string.Equals(location.CountryCode, Address.CountryCode, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.CountryCode));
-            if (location.Latitude != Latitude) changed.Add(nameof(LocationEntity.Latitude));
-            if (location.Longitude != Longitude) changed.Add(nameof(LocationEntity.Longitude));
-            if (location.AltitudeMeters != AltitudeMeters) changed.Add(nameof(LocationEntity.AltitudeMeters));
-            if (!string.Equals(location.TimeZoneId, TimeZoneId, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.TimeZoneId));
-            if (location.Source != Source) changed.Add(nameof(LocationEntity.Source));
-            if (!string.Equals(location.SourceReference, SourceReference, StringComparison.Ordinal)) changed.Add(nameof(LocationEntity.SourceReference));
+            if (!string.Equals(location.Name, Name, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.Name));
+            }
+
+            if (!string.Equals(location.Description, Description, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.Description));
+            }
+
+            if (!string.Equals(location.AddressText, AddressText, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.AddressText));
+            }
+
+            if (!string.Equals(location.Line1, Address.Line1, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.Line1));
+            }
+
+            if (!string.Equals(location.Line2, Address.Line2, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.Line2));
+            }
+
+            if (!string.Equals(location.PostalCode, Address.PostalCode, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.PostalCode));
+            }
+
+            if (!string.Equals(location.City, Address.City, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.City));
+            }
+
+            if (!string.Equals(location.Region, Address.Region, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.Region));
+            }
+
+            if (!string.Equals(location.CountryCode, Address.CountryCode, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.CountryCode));
+            }
+
+            if (location.Latitude != Latitude)
+            {
+                changed.Add(nameof(LocationEntity.Latitude));
+            }
+
+            if (location.Longitude != Longitude)
+            {
+                changed.Add(nameof(LocationEntity.Longitude));
+            }
+
+            if (location.AltitudeMeters != AltitudeMeters)
+            {
+                changed.Add(nameof(LocationEntity.AltitudeMeters));
+            }
+
+            if (!string.Equals(location.TimeZoneId, TimeZoneId, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.TimeZoneId));
+            }
+
+            if (location.Source != Source)
+            {
+                changed.Add(nameof(LocationEntity.Source));
+            }
+
+            if (!string.Equals(location.SourceReference, SourceReference, StringComparison.Ordinal))
+            {
+                changed.Add(nameof(LocationEntity.SourceReference));
+            }
+
             return changed;
         }
     }

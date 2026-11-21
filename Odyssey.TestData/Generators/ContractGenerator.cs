@@ -13,7 +13,7 @@ namespace Odyssey.TestData.Generators;
 /// deliberately exercises every <see cref="ContractType"/> — the original four (Employment, Service,
 /// Rental, Other) and the four later ones (Insurance, Subscription, Purchase, Membership) — every
 /// derived status (Active, Upcoming, Expired, Archived) and all three party kinds (an account, a
-/// contact/"institution" and an insurance policy).
+/// contact/"institution" and a property).
 ///
 /// <para>
 /// Since issue #140 the set also covers the fifth derived status,
@@ -61,7 +61,7 @@ namespace Odyssey.TestData.Generators;
 /// full-stack test ever renders or round-trips. Roles stay unconstrained by party KIND — an account may
 /// hold any role its type permits.
 ///
-/// Parties link to the existing accounts, contacts and insurance policies by their stable
+/// Parties link to the existing accounts, contacts and properties by their stable
 /// deterministic ids; no such record is created here. No files are attached — the demo dataset has no
 /// file library to reference.
 /// </summary>
@@ -122,9 +122,9 @@ public static class ContractGenerator
         DateTime? EndDate,
         bool Archived,
         IReadOnlyList<PartySpec> Parties,
-        /// <summary>Offset in months from the anchor at which this contract was paused; null is not paused.</summary>
+        // Offset in months from the anchor at which this contract was paused; null is not paused.
         int? PausedMonths = null,
-        /// <summary>Where this contract sits in the signature lifecycle (issue #145).</summary>
+        // Where this contract sits in the signature lifecycle (issue #145).
         SignatureState Signature = SignatureState.Signed);
 
     /// <summary>
@@ -260,9 +260,9 @@ public static class ContractGenerator
                 "The contract of insurance itself, kept alongside the policy record it prices.",
                 anchor.AddMonths(-8), null, false,
                 [
-                    // The only type with four suggested roles, mirroring an insurance policy's four
-                    // link collections — and the only place the seed records who insures, who holds
-                    // the policy, what is covered and who receives, as four distinct facts.
+                    // One of the two types with four suggested roles — and the only place the seed
+                    // records who insures, who holds the policy, what is covered and who receives,
+                    // as four distinct facts.
                     new(PartyKind.Contact, Catalog.Contacts.StateFarm, ContractPartyRole.Insurer),
                     new(PartyKind.Contact, Catalog.Contacts.PolicyHolder, ContractPartyRole.Policyholder),
                     new(PartyKind.Property, PropertyGenerator.Residence, ContractPartyRole.Insured),

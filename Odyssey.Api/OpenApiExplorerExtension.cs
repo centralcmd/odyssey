@@ -77,6 +77,9 @@ public static class OpenApiExplorerExtension
                 Version = "v1",
             });
 
+            // The controllers' [SwaggerOperation]/[SwaggerParameter] attributes are ignored without this.
+            options.EnableAnnotations();
+
             // Two DTO namespaces can define the same short type name (Sex, today), and the default
             // short-name schema ids would collide — which fails the entire /swagger/v1/swagger.json
             // document, not just those two schemas. Qualify only the ambiguous names with their

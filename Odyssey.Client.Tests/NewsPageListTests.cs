@@ -23,7 +23,7 @@ public class NewsPageListTests
 {
     private sealed record Call(NewsArticleListFilter Filter, int Limit, string? Cursor, CancellationToken Token);
 
-    /// <summary>Records every list call; first pages answer <paramref name="first"/>, appends answer by cursor.</summary>
+    /// <summary>Records every list call; first pages answer through <paramref name="answer"/>, appends answer by cursor.</summary>
     private static (NewsPageTestContext Context, List<Call> Calls) Recorded(Func<Call, ApiResult<NewsArticlePage>> answer,
         IReadOnlyList<string>? claims = null, List<NewsFeedCatalogueEntry>? catalogue = null, List<ExistingNewsTag>? tags = null)
     {

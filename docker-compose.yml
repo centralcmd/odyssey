@@ -81,10 +81,10 @@ services:
       Seed__DemoData: ${SEED_DEMO_DATA:-true}
       # No Email__*, FileAnalysis__* or FileStorage__* here. Those settings are database-backed and
       # edited at /settings; the migrations job used to read them for SystemSettingsConfigAdoption,
-      # which carried a pre-existing configured value into the store on upgrade. That step is gone —
-      # no deployment ever ran the releases it existed to upgrade from — so the job needs none of
-      # them. The API still reads the ones with a startup role (the mail transport, the upload
-      # transport ceiling); see the api service below.
+      # which carried a pre-existing configured value into the store on upgrade. That step was removed
+      # before any production database existed; a setting moved out of configuration from now on needs
+      # a carry-over step again (CLAUDE.md). The API still reads the one value with a startup role (the
+      # upload transport ceiling); see the api service below.
 
       # The initial administrator (issue #290). Applied ONLY when the user table is completely empty;
       # ignored on every later deploy. Required on a fresh database unless demo seeding provides an

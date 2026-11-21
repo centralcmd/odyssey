@@ -30,12 +30,18 @@
     {
         var minutes = (int)Math.Floor((now - value).TotalMinutes);
         if (minutes < 1)
+        {
             return "just now";   // includes a value slightly in the future (clock skew)
+        }
         if (minutes < 60)
+        {
             return $"{minutes} min ago";
+        }
         var hours = minutes / 60;
         if (hours < 24)
+        {
             return $"{hours} h ago";
+        }
         var days = hours / 24;
         return days == 1 ? "yesterday" : $"{days:N0} days ago";
     }

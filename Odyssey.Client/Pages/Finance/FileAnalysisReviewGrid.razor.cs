@@ -64,7 +64,9 @@ public partial class FileAnalysisReviewGrid
 
         FileAnalysisSession.SetAmount(row, next);
         if (next != raw)
+        {
             await RestoreAmountAsync(row);
+        }
     }
 
     // A typed sign picks the direction instead of inserting a character: the sign lands on the value
@@ -72,7 +74,9 @@ public partial class FileAnalysisReviewGrid
     private Task OnAmountKeyDownAsync(FileAnalysisRow row, KeyboardEventArgs e)
     {
         if (e.Key is not ("-" or "\u2212" or "+"))
+        {
             return Task.CompletedTask;
+        }
 
         FileAnalysisSession.SetAmountSign(row, negative: e.Key != "+");
         return Task.CompletedTask;
@@ -92,7 +96,10 @@ public partial class FileAnalysisReviewGrid
         var type = kind == nameof(ContactType.Person) ? ContactType.Person : ContactType.Organization;
         var option = Session.BeginCreateContact(row, text, type, out var tempId);
         if (option is not null)
+        {
             _ = OnCreateContact.InvokeAsync(new FileAnalysisPendingContact(tempId, option.Label, type));
+        }
+
         return option;
     }
 
@@ -100,7 +107,10 @@ public partial class FileAnalysisReviewGrid
     {
         var option = Session.BeginCreateTag(row, text, out var tempId);
         if (option is not null)
+        {
             _ = OnCreateTag.InvokeAsync(new FileAnalysisPendingTag(tempId, option.Label));
+        }
+
         return option;
     }
 
@@ -122,7 +132,10 @@ public partial class FileAnalysisReviewGrid
     private async Task ApplyMerchantSuggestionAsync(FileAnalysisRow row)
     {
         if (Session.ApplyMerchantSuggestion(row) is not { } name)
+        {
             return;
+        }
+
         await AnnounceAndRefocusAsync($"Linked merchant {name}.", MerchantInputId(row));
     }
 
@@ -135,7 +148,10 @@ public partial class FileAnalysisReviewGrid
     private async Task ApplyCategorySuggestionAsync(FileAnalysisRow row)
     {
         if (!FileAnalysisSession.ApplyCategorySuggestion(row))
+        {
             return;
+        }
+
         await AnnounceAndRefocusAsync("Applied category suggestion.", CategoryControlId(row));
     }
 

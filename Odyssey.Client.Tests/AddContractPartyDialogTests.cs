@@ -19,7 +19,7 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The contract New/Edit party dialog — the contract sibling of <see cref="AddPolicyPartyDialogTests"/>.
+/// The contract New/Edit party dialog.
 /// Its kind picker is <see cref="OdsCardSelect"/>, so these render the dialog and drive that picker the
 /// way a user would: the kind decides which picker follows it, which records that picker may offer, and
 /// which of the two scalar ids the request carries.

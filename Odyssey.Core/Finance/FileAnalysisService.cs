@@ -72,20 +72,26 @@ public class FileAnalysisService
             ?? throw new DomainNotFoundException($"File {fileId} is not attached to account {accountId}.");
 
         if (accountFile.FileType != Context.AccountFileType.Statement)
+        {
             throw new DomainValidationException("Only files of type Statement can be analyzed.");
+        }
 
         var fileMetadata = accountFile.FileMetadata
             ?? throw new InvalidOperationException("File metadata could not be loaded.");
 
         // The analysis ceiling (issue #444 v4): the upload cap cannot bound the worker's memory, this does.
         if (fileMetadata.SizeBytes > FileAnalysisJobTiming.MaxAnalysisFileBytes)
+        {
             throw new FileAnalysisTooLargeException(FileAnalysisJobTiming.MaxAnalysisFileBytes);
+        }
 
         // Consent gate — analysis sends the complete document to a third-party AI processor, so a
         // per-document consent is a hard precondition (GDPR Art. 6(1)(a)), not a UI affordance. The
         // affirmed text is captured verbatim on the job for the audit log.
         if (consent?.ConsentAcknowledged != true)
+        {
             throw new DomainValidationException("Consent is required before sending this document to the external AI provider.");
+        }
 
         // One snapshot, read once: every stamp below describes one coherent moment.
         var settings = await settingsLookup.GetAsync(cancellationToken);
@@ -93,7 +99,9 @@ public class FileAnalysisService
         // Issue #433: a failed settings read knows nothing, including the guidance flags the disclosure
         // version covers, so consent cannot be verified against it. 503, never a misleading 409.
         if (settings.ReadFailed)
+        {
             throw new FileAnalysisUnavailableException();
+        }
 
         // Refuse rather than substitute when the model or the destination is unusable — see
         // RequireTarget. Evaluated BEFORE the disclosure-version check, so a misconfigured instance
@@ -103,7 +111,9 @@ public class FileAnalysisService
         // The consent the user affirmed is bound to the disclosure they were shown (issue #439 §5.3c).
         // A mismatch (or a missing echo) is a 409 here, before any job row exists.
         if (!FileAnalysisDisclosureVersion.Matches(settings, consent.DisclosureVersion))
+        {
             throw new FileAnalysisDisclosureChangedException();
+        }
 
         // A stale open job must not wedge the file when no worker is running (issue #444 §3 step 1), so this
         // file's expired rows are failed inline before the one-open-job check.
@@ -119,7 +129,9 @@ public class FileAnalysisService
             .Select(j => (Guid?)j.Id)
             .FirstOrDefaultAsync(cancellationToken);
         if (open is { } openId)
+        {
             throw new FileAnalysisInProgressException(openId);
+        }
 
         var job = new FileAnalysisJob
         {
@@ -226,7 +238,9 @@ public class FileAnalysisService
             .FirstOrDefaultAsync(j => j.Id == jobId, cancellationToken);
 
         if (job is null)
+        {
             return null;
+        }
 
         var contactNames = await LoadMatchedContactNamesAsync(job, cancellationToken);
         // Only used as the fallback for jobs predating AutoLinkThresholdInForce; a stamped job ignores it.
@@ -247,7 +261,9 @@ public class FileAnalysisService
             .ToList();
 
         if (ids.Count == 0)
+        {
             return new Dictionary<Guid, string>();
+        }
 
         var refs = await contactLookup.ResolveRefsAsync(ids, cancellationToken);
         return refs.Values.ToDictionary(r => r.ContactId, r => r.Name);
@@ -270,7 +286,9 @@ public class FileAnalysisService
         var accountExists = await context.Accounts
             .AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
+        {
             throw new DomainNotFoundException($"Account {accountId} not found.");
+        }
 
         // One round-trip: every job for the account, projected to its file id, timestamps and SQL-computed
         // counts (COUNT + conditional COUNT) — never Include-then-count, which would pull candidate free-text.
@@ -376,7 +394,9 @@ public class FileAnalysisService
             ?? throw new DomainNotFoundException($"Analysis job {jobId} not found.");
 
         if (job.Status != ContextJobStatus.Completed)
+        {
             throw new DomainValidationException($"Job {jobId} is not in Completed state (current: {job.Status}).");
+        }
 
         var account = job.AccountFile?.Account
             ?? throw new InvalidOperationException("Account could not be resolved from the analysis job.");
@@ -549,7 +569,9 @@ public class FileAnalysisService
 
         // A failed read cannot verify the job's consent: refuse (503) rather than guess.
         if (matchSettings.ReadFailed)
+        {
             throw new FileAnalysisUnavailableException();
+        }
 
         // Same refusal as the analyze path: an unusable model or destination stops the run rather than
         // quietly falling back to the shipped defaults. The match call is a transfer too.
@@ -625,7 +647,9 @@ public class FileAnalysisService
             await SaveFailedMatchAsync(job);
 
             if (callerCancelled)
+            {
                 throw;
+            }
         }
 
         return await RequireJobAsync(jobId, cancellationToken);
@@ -678,9 +702,14 @@ public class FileAnalysisService
             ?? throw new DomainNotFoundException($"Analysis job {jobId} not found.");
 
         if (job.Status != ContextJobStatus.Completed)
+        {
             throw new DomainConflictException($"Job {jobId} extraction is not Completed (current: {job.Status}).");
+        }
+
         if (job.MatchStatus == ContextMatchStatus.Running)
+        {
             throw new DomainConflictException($"A match for job {jobId} is already running.");
+        }
 
         EnsureDestinationUnchanged(job, settings, target);
 
@@ -723,7 +752,9 @@ public class FileAnalysisService
                     StringComparison.Ordinal));
 
         if (changed)
+        {
             throw new FileAnalysisDestinationChangedException();
+        }
     }
 
     /// <summary>
@@ -833,12 +864,16 @@ public class FileAnalysisService
             // Idempotency: a re-run never clobbers a reviewer-curated row — only None/Llm rows are
             // refreshed with fresh suggestions.
             if (candidate.MatchMethod == ContextMatchMethod.Manual)
+            {
                 continue;
+            }
 
             ClearPriorSuggestions(candidate);
 
             if (!byIndex.TryGetValue(i, out var match))
+            {
                 continue;
+            }
 
             // Whether any field reached the auto-link threshold — drives the row's MatchMethod.
             var autoApplied = false;
@@ -850,7 +885,9 @@ public class FileAnalysisService
                 candidate.MatchedContactId = contactId;
                 candidate.MerchantMatchConfidence = confidence;
                 if (confidence >= threshold)
+                {
                     autoApplied = true;
+                }
             }
 
             var tagIds = match.TagRefs
@@ -873,7 +910,9 @@ public class FileAnalysisService
                 var confidence = ClampConfidence(match.CategoryConfidence);
                 candidate.CategoryMatchConfidence = confidence;
                 if (confidence >= threshold)
+                {
                     autoApplied = true;
+                }
             }
 
             // Llm = at least one field was auto-applied (≥ threshold); a row carrying only
@@ -886,7 +925,10 @@ public class FileAnalysisService
     private void ClearPriorSuggestions(FileAnalysisCandidateTransaction candidate)
     {
         if (candidate.MatchedTags.Count > 0)
+        {
             context.FileAnalysisCandidateTags.RemoveRange(candidate.MatchedTags);
+        }
+
         candidate.MatchedTags.Clear();
         candidate.MatchedContactId = null;
         candidate.MerchantMatchConfidence = null;
@@ -916,7 +958,9 @@ public class FileAnalysisService
     private async Task EnsureEnabledAsync(CancellationToken cancellationToken)
     {
         if (!await settingsLookup.IsEnabledAsync(cancellationToken))
+        {
             throw new FileAnalysisDisabledException();
+        }
     }
 
     /// <summary>
@@ -941,7 +985,9 @@ public class FileAnalysisService
     private static FileAnalysisTarget RequireTarget(FileAnalysisSettings settings)
     {
         if (settings.Model is not { } model || settings.BaseUrl is not { } baseUrl)
+        {
             throw new FileAnalysisUnavailableException();
+        }
 
         return new FileAnalysisTarget(baseUrl, model);
     }
@@ -1003,9 +1049,13 @@ public class FileAnalysisService
             foreach (var entry in ex.Entries)
             {
                 if (entry.Entity is FileAnalysisCandidateTransaction candidate)
+                {
                     await RestoreAsStoredAsync(context.Entry(candidate), cancellationToken);
+                }
                 else
+                {
                     await entry.ReloadAsync(cancellationToken);
+                }
             }
 
             await context.SaveChangesAsync(cancellationToken);
@@ -1025,11 +1075,15 @@ public class FileAnalysisService
         var stored = links.Where(e => e.State != EntityState.Added).Select(e => e.Entity).ToList();
 
         foreach (var link in links)
+        {
             link.State = link.State == EntityState.Added ? EntityState.Detached : EntityState.Unchanged;
+        }
 
         candidate.MatchedTags.Clear();
         foreach (var tag in stored)
+        {
             candidate.MatchedTags.Add(tag);
+        }
 
         await entry.ReloadAsync(cancellationToken);
     }
@@ -1037,7 +1091,10 @@ public class FileAnalysisService
     private static string NormalizeCurrency(string? currency, string fallback)
     {
         if (string.IsNullOrWhiteSpace(currency))
+        {
             return fallback.ToUpperInvariant();
+        }
+
         return currency.Trim().ToUpperInvariant();
     }
 

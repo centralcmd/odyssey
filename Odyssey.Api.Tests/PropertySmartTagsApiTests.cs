@@ -262,7 +262,10 @@ public class PropertySmartTagsApiTests(PropertySmartTagsApiTests.Host host) : Sh
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.PropertyMaxSmartTagsPerProperty, "not-a-number");
         var propertyId = await SeedPropertyAsync(factory);
         for (var i = 0; i < SystemSettingsDefaults.PropertyMaxSmartTagsPerProperty; i++)
+        {
             await LinkSmartTagAsync(factory, propertyId, await SeedTagAsync(factory, $"degraded-{i}"));
+        }
+
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(SmartTagPath(propertyId, await SeedTagAsync(factory, "over-cap")), null);

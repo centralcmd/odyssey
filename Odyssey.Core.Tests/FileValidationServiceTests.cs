@@ -185,29 +185,4 @@ public class FileValidationServiceTests
 
         Assert.Equal("   ", result);
     }
-
-    [Fact]
-    public async Task ComputeSha256Hash_ReturnsConsistentHash()
-    {
-        var service = new FileValidationService();
-        var content = new byte[] { 1, 2, 3, 4, 5 };
-
-        var hash1 = await service.ComputeSha256HashAsync(new MemoryStream(content));
-        var hash2 = await service.ComputeSha256HashAsync(new MemoryStream(content));
-
-        Assert.Equal(hash1, hash2);
-        Assert.Equal(64, hash1.Length);
-        Assert.Matches("^[0-9a-f]{64}$", hash1);
-    }
-
-    [Fact]
-    public async Task ComputeSha256Hash_DiffersForDifferentContent()
-    {
-        var service = new FileValidationService();
-
-        var hash1 = await service.ComputeSha256HashAsync(new MemoryStream(new byte[] { 1 }));
-        var hash2 = await service.ComputeSha256HashAsync(new MemoryStream(new byte[] { 2 }));
-
-        Assert.NotEqual(hash1, hash2);
-    }
 }

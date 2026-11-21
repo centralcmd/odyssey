@@ -34,7 +34,7 @@ public class SecretSettingsSurfaceTests : IDisposable
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
 
     private static string PageCode() =>
-        File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
     /// <summary>
     /// Strips <c>//</c>, <c>/* … */</c> and Razor's <c>@* … *@</c> comments before a lint reads the

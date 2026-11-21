@@ -37,7 +37,7 @@ public sealed record ImportExportLimits(
     int CalendarIcsMaxAggregateExportRows,
     int CalendarIcsMaxAggregateOccurrences,
     int CalendarIcsMaxAggregateExportWindowDays,
-    /// <summary>Repeatable vCard properties per entry. Tighten-only, clamped on read for the same reason.</summary>
+    // Repeatable vCard properties per entry. Tighten-only, clamped on read for the same reason.
     int ContactVCardMaxRepeatablePropertiesPerEntry,
     int ImportMaxSamplesPerSkipReason,
     // ── The news OPML import's size cap (issue #508 §8.5), read by ImportSizeLimitMiddleware's NewsOpml arm ──

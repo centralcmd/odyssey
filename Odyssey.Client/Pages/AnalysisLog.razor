@@ -220,7 +220,9 @@
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         _disclosure = await Disclosures.GetAsync();
         await LoadAsync();
@@ -229,7 +231,9 @@
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
+        {
             StateHasChanged();
+        }
     }
 
     private void OnSearchChanged(string value) => _search = value ?? string.Empty;
@@ -286,7 +290,9 @@
     private static string FormatWhen(DateTime? at)
     {
         if (at is null)
+        {
             return "—";
+        }
         var utc = at.Value.ToUniversalTime();
         return $"{OdsDates.Long(utc)} · {utc:HH:mm} UTC";
     }

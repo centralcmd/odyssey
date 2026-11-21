@@ -80,7 +80,9 @@ public sealed class ViewerTimeZone
         var sentUtc = FellBackToUtc;
         var result = await call();
         if (sentUtc || result.IsSuccess || !RefusedZone(result.Status, result.Problem, field))
+        {
             return result;
+        }
 
         UseUtc();
         return await call();

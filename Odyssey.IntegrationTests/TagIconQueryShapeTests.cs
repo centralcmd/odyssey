@@ -265,7 +265,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     private async Task RecreateAsync()
     {
         await DropAsync();
-        await using (var server = ServerContext())
+        await using (var server = fixture.CreateOdysseyContext())
         {
             await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
         }
@@ -276,14 +276,10 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
     private async Task DropAsync()
     {
-        await using var server = ServerContext();
+        await using var server = fixture.CreateOdysseyContext();
         await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
     }
 
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 
     private sealed class CommandCounter : DbCommandInterceptor
     {

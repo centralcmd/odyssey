@@ -19,7 +19,7 @@ namespace Odyssey.Api.Tests;
 /// attach and update endpoints and read back, the next ordinal is still a <c>400</c>, and the label has
 /// no effect on the contract's derived status. AC 2–5.
 /// </summary>
-public sealed class ContractFileDraftApiTests
+public sealed class ContractFileDraftApiTests(ContractFileDraftApiTests.Host host) : SharedApiHostTests<ContractFileDraftApiTests.Host>(host)
 {
     private const string Path = "/api/contracts";
     private const string ActorUserId = "contract-draft-actor";
@@ -30,7 +30,10 @@ public sealed class ContractFileDraftApiTests
         PermissionClaims.ContractsUpdate, PermissionClaims.FilesRead,
     ];
 
-    private sealed class ApiFactory() : OdysseyApiFactory(ReadWriteWithFiles, ActorUserId);
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory();
+
+    public class ApiFactory() : OdysseyApiFactory(ReadWriteWithFiles, ActorUserId);
 
     [Fact]
     public void Draft_is_appended_at_four_and_every_existing_ordinal_is_unchanged()
@@ -47,7 +50,7 @@ public sealed class ContractFileDraftApiTests
     [Fact]
     public async Task Attach_WithFileTypeFour_Succeeds_AndBothReadsReturnDraft()
     {
-        await using var factory = new ApiFactory();
+        var factory = Factory;
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, signed: true);
         var fileId = await SeedFileAsync(factory);
@@ -68,7 +71,7 @@ public sealed class ContractFileDraftApiTests
     [Fact]
     public async Task Put_FromSignedToDraft_Persists()
     {
-        await using var factory = new ApiFactory();
+        var factory = Factory;
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, signed: true);
         var fileId = await AttachAsync(factory, client, contractId, ContractFileType.Signed);
@@ -85,7 +88,7 @@ public sealed class ContractFileDraftApiTests
     [Fact]
     public async Task Attach_WithFileTypeFive_IsRejected()
     {
-        await using var factory = new ApiFactory();
+        var factory = Factory;
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, signed: true);
         var fileId = await SeedFileAsync(factory);
@@ -101,7 +104,7 @@ public sealed class ContractFileDraftApiTests
     [Fact]
     public async Task Put_WithFileTypeFive_IsRejected_AndLeavesTheTypeUnchanged()
     {
-        await using var factory = new ApiFactory();
+        var factory = Factory;
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, signed: true);
         var fileId = await AttachAsync(factory, client, contractId, ContractFileType.Draft);
@@ -124,7 +127,7 @@ public sealed class ContractFileDraftApiTests
     [InlineData(false, ContractStatus.Ready)]
     public async Task A_draft_file_has_no_effect_on_the_contract_status(bool signed, ContractStatus expected)
     {
-        await using var factory = new ApiFactory();
+        var factory = Factory;
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client, signed);
         var fileId = await AttachAsync(factory, client, contractId, ContractFileType.Other);

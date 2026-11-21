@@ -97,11 +97,20 @@ public sealed class LocationLink
     public static LocationLink For(Guid? stored, LocationPick? pick, Guid? createdId, bool pickerShown)
     {
         if (!pickerShown)
+        {
             return Keep(stored);
+        }
+
         if (pick is null)
+        {
             return stored is null ? Keep(null) : Clear;
+        }
+
         if (pick.Id is { } id)
+        {
             return id == stored ? Keep(stored) : Set(id);
+        }
+
         return createdId is { } created
             ? Set(created)
             : throw new InvalidOperationException("A staged place is created before the record is written.");
@@ -178,13 +187,19 @@ public sealed class PlaceDraft
     public async Task<bool> EnsureCreatedAsync(ILocationsApiClient locations, bool pickerShown)
     {
         if (!pickerShown || CreatedId is not null)
+        {
             return true;
+        }
 
         if (Pick is { IsStagedAddress: true, Candidate: { } candidate } address)
+        {
             return await CreateAddressAsync(locations, address, candidate);
+        }
 
         if (Pick is not { IsStaged: true } pick)
+        {
             return true;
+        }
 
         var result = await locations.CreateAsync(new NewLocation { Name = pick.NewName!, Source = LocationSource.Manual });
         if (result.IsSuccess && result.Value is { } created)
@@ -235,7 +250,9 @@ public sealed class PlaceDraft
             }
 
             if (result.Status == HttpStatusCode.Conflict && result.Problem?.ErrorFor("name") is not null)
+            {
                 continue;
+            }
 
             Error = FirstError(result) ?? AddressAddFailed;
             return false;
@@ -316,17 +333,29 @@ public sealed class PlaceDraft
     private static async Task<(Guid? Id, string? Error)> FindByAddressAsync(ILocationsApiClient locations, LocationCandidate candidate)
     {
         if (AddressKeyOf(candidate) is not { } key || AddressFieldsOf(candidate).Line1 is not { } line1)
+        {
             return (null, null);
+        }
+
         var result = await locations.ListAsync(1, AddressLookupPageSize, line1);
         if (!result.IsSuccess || result.Value is null)
+        {
             return (null, null);
+        }
+
         var matches = result.Value.Items
             .Where(l => LocationAddressKey.Compute(l.CountryCode, l.PostalCode, l.City, l.Line1, l.Line2, l.Region) == key)
             .ToList();
         if (matches.FirstOrDefault(l => l.Archived is null && l.MergedIntoLocationId is null) is { } live)
+        {
             return (live.LocationId, null);
+        }
+
         if (matches.FirstOrDefault(l => l.MergedIntoLocationId is not null) is { MergedIntoLocationId: { } survivor })
+        {
             return (survivor, null);
+        }
+
         return matches.Count > 0 ? (null, AddressArchived) : (null, null);
     }
 }

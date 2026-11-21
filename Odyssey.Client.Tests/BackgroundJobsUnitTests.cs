@@ -264,7 +264,7 @@ public class BackgroundJobsUnitTests
     {
         var (result, requests, _) = await Follow(
             _ => ApiResult<JobRunDetail>.Success(Detail(JobRunStatus.Running), HttpStatusCode.OK),
-            onRequest: (n, stop) => { if (n == 2) stop.Cancel(); });
+            onRequest: (n, stop) => { if (n == 2) { stop.Cancel(); } });
 
         Assert.Equal(FollowEnd.Stopped, result.End);
         Assert.Equal(2, requests);

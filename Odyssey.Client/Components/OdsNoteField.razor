@@ -130,10 +130,19 @@
 
             var hasHelp = !string.IsNullOrEmpty(Help);
             var hasError = !string.IsNullOrEmpty(Error);
-            if (hasHelp) ids.Add($"{FieldId}-help");
+            if (hasHelp)
+            {
+                ids.Add($"{FieldId}-help");
+            }
             // OdsFieldShell gives the error its own id only when a help node renders alongside it.
-            if (hasError) ids.Add(hasHelp ? $"{FieldId}-help-error" : $"{FieldId}-help");
-            if (Counted) ids.Add(CountId);
+            if (hasError)
+            {
+                ids.Add(hasHelp ? $"{FieldId}-help-error" : $"{FieldId}-help");
+            }
+            if (Counted)
+            {
+                ids.Add(CountId);
+            }
 
             return ids.Count == 0 ? null : string.Join(' ', ids.Distinct(StringComparer.Ordinal));
         }

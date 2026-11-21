@@ -33,7 +33,9 @@ public class UserPreferenceServiceTests
         public Task<ApiResult<TValue>> GetAsync<TValue>(string key, CancellationToken ct = default)
         {
             if (GetStatus != HttpStatusCode.OK)
+            {
                 return Task.FromResult(ApiResult<TValue>.Failure(GetStatus, new ApiProblem { Status = (int)GetStatus }));
+            }
 
             var payload = (TValue?)(object?)new UserPreferenceResponse("preferences-page", StoredJson ?? "", DateTime.UtcNow);
             return Task.FromResult(ApiResult<TValue>.Success(payload, HttpStatusCode.OK));

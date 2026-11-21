@@ -27,7 +27,9 @@ public sealed class ClipboardService(IJSRuntime js, ISnackbar snackbar) : IClipb
         {
             await js.InvokeVoidAsync("navigator.clipboard.writeText", text);
             if (!string.IsNullOrEmpty(successMessage))
+            {
                 snackbar.Add(successMessage, Severity.Success);
+            }
 
             return true;
         }

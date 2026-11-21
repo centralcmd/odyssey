@@ -13,7 +13,7 @@ public class UserPreference
 {
     public required Guid UserPreferenceId { get; set; }
 
-    /// <summary>FK to <see cref="ApplicationUser.Id"/>; cascade delete.</summary>
+    /// <summary>FK to <c>ApplicationUser.Id</c>; cascade delete.</summary>
     [Length(1, 256)]
     public required string UserId { get; set; }
 

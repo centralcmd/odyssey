@@ -73,8 +73,7 @@ public class SwaggerProductionLockoutTests
             this.environmentName = environmentName;
 
             // AddDatabases runs before this factory's configuration is applied, so the in-memory
-            // selection has to arrive as an environment variable — same reason
-            // EmailOptionsProductionValidationTests does it this way.
+            // selection has to arrive as an environment variable.
             Environment.SetEnvironmentVariable("UseInMemoryDatabase", "true");
         }
 

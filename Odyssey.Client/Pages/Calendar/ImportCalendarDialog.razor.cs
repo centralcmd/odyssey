@@ -350,9 +350,15 @@ public partial class ImportCalendarDialog
     {
         var fields = new List<KeyValuePair<string, string>>();
         if (allowRemovals)
+        {
             fields.Add(new("allowRemovals", "true"));
+        }
+
         if (!string.IsNullOrEmpty(defaultZone))
+        {
             fields.Add(new("defaultTimeZoneId", defaultZone));
+        }
+
         return fields.Count == 0 ? null : fields;
     }
 

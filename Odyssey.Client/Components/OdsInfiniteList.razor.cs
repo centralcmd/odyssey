@@ -201,7 +201,9 @@ public partial class OdsInfiniteList<TItem>
             {
                 var index = IndexOfKey(RevealKey);
                 if (index >= 0 && index + 1 > _visible)
+                {
                     _visible = index + 1;
+                }
             }
         }
     }
@@ -224,7 +226,9 @@ public partial class OdsInfiniteList<TItem>
             {
                 _appendPending = true;
                 if (!_lastLoadingMore)
+                {
                     _announcement = string.Empty;   // a retry clears the old failure, so a second one is read again
+                }
             }
 
             if (count > _lastRemoteCount && _appendPending)
@@ -243,7 +247,10 @@ public partial class OdsInfiniteList<TItem>
         }
 
         if (_lastLoadingMore && !LoadingMore)
+        {
             _recheck = true;
+        }
+
         _lastLoadingMore = LoadingMore;
         _lastLoadMoreFailed = LoadMoreFailed;
     }
@@ -259,14 +266,20 @@ public partial class OdsInfiniteList<TItem>
     {
         // aria-disabled while loading: a press is a no-op, and focus stays on the pill.
         if (LoadingMore || !RemoteHasMore)
+        {
             return;
+        }
+
         await RequestMoreAsync(fromPill: true);
     }
 
     private async Task RequestMoreAsync(bool fromPill)
     {
         if (_inFlight)
+        {
             return;
+        }
+
         _inFlight = true;
         _appendPending = true;
         try
@@ -289,7 +302,9 @@ public partial class OdsInfiniteList<TItem>
         for (var i = 0; i < Items.Count; i++)
         {
             if (ItemKey is not null && Equals(ItemKey(Items[i]), key))
+            {
                 return i;
+            }
         }
 
         return -1;
@@ -301,14 +316,19 @@ public partial class OdsInfiniteList<TItem>
         if (FooterOnly)
         {
             if (!FooterHasMore)
+            {
                 return;
+            }
+
             _recheck = true;
             await WindowSizeChanged.InvokeAsync(Math.Min(FooterShown + BatchSize, Total));
             return;
         }
 
         if (!HasMore)
+        {
             return;
+        }
 
         _visible = Math.Min(_visible + BatchSize, Total);
         StateHasChanged();
@@ -318,7 +338,10 @@ public partial class OdsInfiniteList<TItem>
     public Task OnSentinelVisible()
     {
         if (Remote && !FooterOnly)
+        {
             return RemoteCanLoad ? RequestMoreAsync(fromPill: false) : Task.CompletedTask;
+        }
+
         return InvokeAsync(Grow);
     }
 
@@ -355,12 +378,16 @@ public partial class OdsInfiniteList<TItem>
     private async Task RaiseShownChangedAsync()
     {
         if (!OnShownChanged.HasDelegate || Loading || Error || FooterOnly)
+        {
             return;
+        }
 
         var shown = (Remote ? Items : Items.Take(Shown)).ToList();
         var keys = shown.Select(item => ItemKey?.Invoke(item) ?? item!).ToHashSet();
         if (_lastShownKeys is not null && _lastShownKeys.SetEquals(keys))
+        {
             return;
+        }
 
         _lastShownKeys = keys;
         await OnShownChanged.InvokeAsync(shown);
@@ -373,7 +400,10 @@ public partial class OdsInfiniteList<TItem>
             if (_module is not null)
             {
                 if (_observing)
+                {
                     await _module.InvokeVoidAsync("unobserve", _id);
+                }
+
                 await _module.DisposeAsync();
             }
         }

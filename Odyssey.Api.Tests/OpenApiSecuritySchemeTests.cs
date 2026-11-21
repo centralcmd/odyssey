@@ -46,6 +46,26 @@ public class OpenApiSecuritySchemeTests
         Assert.Contains("/api/antiforgery/token", antiforgery.GetProperty("description").GetString());
     }
 
+    /// <summary>
+    /// The controllers carry <c>[SwaggerOperation]</c> summaries and descriptions, which Swashbuckle ignores
+    /// unless <c>EnableAnnotations()</c> is called — without it some 380 attributes describe nothing.
+    /// </summary>
+    [Fact]
+    public async Task SwaggerOperationAnnotations_ReachTheDocument()
+    {
+        var root = await GetSwaggerDocumentAsync();
+
+        var summaries = root.GetProperty("paths")
+            .EnumerateObject()
+            .SelectMany(path => path.Value.EnumerateObject())
+            .Where(operation => operation.Value.ValueKind == JsonValueKind.Object
+                && operation.Value.TryGetProperty("summary", out _))
+            .Select(operation => operation.Value.GetProperty("summary").GetString())
+            .ToList();
+
+        Assert.Contains("Get the estimated-value history for an account.", summaries);
+    }
+
     [Fact]
     public async Task BothSchemes_AreListedAsDocumentLevelRequirements()
     {

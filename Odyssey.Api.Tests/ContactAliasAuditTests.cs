@@ -8,7 +8,7 @@ using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -30,7 +30,7 @@ namespace Odyssey.Api.Tests;
 /// retention than the contacts table, and an alias is frequently a maiden name.
 /// </para>
 /// </summary>
-public class ContactAliasAuditTests
+public class ContactAliasAuditTests(ContactAliasAuditTests.Host host) : SharedApiHostTests<ContactAliasAuditTests.Host>(host)
 {
     private const string ActorUserId = "audit-actor-id";
 
@@ -46,7 +46,7 @@ public class ContactAliasAuditTests
     [Fact]
     public async Task EveryAliasMutation_EmitsAValueFreeEvent()
     {
-        await using var factory = new LoggingApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contactId = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -74,7 +74,7 @@ public class ContactAliasAuditTests
     [Fact]
     public async Task RecordingAndClearingADateOfDeath_EmitSeparateValueFreeEvents()
     {
-        await using var factory = new LoggingApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -106,7 +106,7 @@ public class ContactAliasAuditTests
     [Fact]
     public async Task ExportingVCards_EmitsAValueFreeEvent()
     {
-        await using var factory = new LoggingApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contactId = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         await client.PostAsJsonAsync(
@@ -129,7 +129,7 @@ public class ContactAliasAuditTests
     [Fact]
     public async Task ADuplicateRejection_LogsNothingContainingTheValue()
     {
-        await using var factory = new LoggingApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contactId = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         await client.PostAsJsonAsync(
@@ -166,7 +166,7 @@ public class ContactAliasAuditTests
     [Fact]
     public async Task SettingAndRemovingTheImage_EmitsValueFreeEvents()
     {
-        await using var factory = new LoggingApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contactId = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -193,7 +193,7 @@ public class ContactAliasAuditTests
     [Fact]
     public async Task BothVCardExports_EmitACountOnlyEvent()
     {
-        await using var factory = new LoggingApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contactId = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -256,10 +256,20 @@ public class ContactAliasAuditTests
         return id;
     }
 
-    private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : LoggingApiFactory([]);
+
+    public class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId)
     {
         public CapturingLoggerProvider Logs { get; } = new();
+
+        /// <summary>A shared host forgets the previous test's log lines.</summary>
+        public override async Task ResetStoreAsync()
+        {
+            await base.ResetStoreAsync();
+            Logs.Clear();
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

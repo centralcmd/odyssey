@@ -30,7 +30,7 @@ namespace Odyssey.Api.Tests;
 /// the design this rejects. Writing the row directly is the only way to tell the two apart.
 /// </para>
 /// </summary>
-public class FileAnalysisKillSwitchTests
+public class FileAnalysisKillSwitchTests(FileAnalysisKillSwitchTests.Host host) : SharedApiHostTests<FileAnalysisKillSwitchTests.Host>(host)
 {
     private const string DisclosurePath = "/api/file-analysis/disclosure";
 
@@ -48,7 +48,7 @@ public class FileAnalysisKillSwitchTests
     [Fact]
     public async Task EnablingIt_TakesEffectImmediately_WithNoWaitForTheTtl()
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         using var client = factory.CreateClient();
 
         var before = await client.GetFromJsonAsync<FileAnalysisDisclosureDto>(DisclosurePath);
@@ -74,7 +74,7 @@ public class FileAnalysisKillSwitchTests
     [Fact]
     public async Task DisablingItDirectlyInTheDatabase_BindsOnTheVeryNextCall_WithNoEviction()
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         using var client = factory.CreateClient();
 
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisEnabled, "true");
@@ -108,7 +108,7 @@ public class FileAnalysisKillSwitchTests
     [Fact]
     public async Task ConsecutiveReads_EachObserveTheCurrentStoredValue()
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         // Resolving the lookup keeps this on the component under test rather than on an endpoint that
         // happens to call it, so a future caller-side cache cannot make this pass by accident.
         using var scope = factory.Services.CreateScope();
@@ -131,7 +131,7 @@ public class FileAnalysisKillSwitchTests
     [InlineData("TRUE-ish")]
     public async Task AnUnparseableStoredValue_ResolvesToDisabled(string stored)
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisEnabled, stored);
         using var scope = factory.Services.CreateScope();
         var lookup = scope.ServiceProvider.GetRequiredService<IFileAnalysisSettingsLookup>();
@@ -147,7 +147,7 @@ public class FileAnalysisKillSwitchTests
     [Fact]
     public async Task AnAbsentRow_ResolvesToTheCompiledDefault_WithoutError()
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         await factory.RemoveSystemSettingAsync(SystemSettingsKeys.FileAnalysisEnabled);
         using var scope = factory.Services.CreateScope();
         var lookup = scope.ServiceProvider.GetRequiredService<IFileAnalysisSettingsLookup>();
@@ -172,4 +172,7 @@ public class FileAnalysisKillSwitchTests
         Assert.DoesNotContain("IsEnabled", members);
         Assert.DoesNotContain("FileAnalysisEnabled", members);
     }
+
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

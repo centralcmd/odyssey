@@ -206,12 +206,11 @@ public class MigrationDriftDetectorTests
 public class MigrationDriftExceptionTests
 {
     [Fact]
-    public void TheMessage_NamesTheContextTheMigrationAndTheObject()
+    public void TheMessage_NamesTheMigrationAndTheObject()
     {
         var error = new MigrationDriftException(
-            "OdysseyContext", new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
+            new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
 
-        Assert.Contains("OdysseyContext", error.Message);
         Assert.Contains("20260828172122_InitialCreate", error.Message);
         Assert.Contains("table 'Accounts'", error.Message);
     }
@@ -226,7 +225,7 @@ public class MigrationDriftExceptionTests
     public void TheMessage_NamesBothCauses_NotOnlyTheInterruptedRun()
     {
         var error = new MigrationDriftException(
-            "OdysseyContext", new MigrationDrift("20260829005807_InitialCreate", "table 'Budgets'"));
+            new MigrationDrift("20260829005807_InitialCreate", "table 'Budgets'"));
 
         Assert.Contains("interrupted", error.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("superseded", error.Message, StringComparison.OrdinalIgnoreCase);
@@ -244,7 +243,7 @@ public class MigrationDriftExceptionTests
     public void TheMessage_PointsAtTheRepairDocumentation()
     {
         var error = new MigrationDriftException(
-            "OdysseyContext", new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
+            new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
 
         Assert.Contains("docs/migration-history-drift.md", error.Message);
     }

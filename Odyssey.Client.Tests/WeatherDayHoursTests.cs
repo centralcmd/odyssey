@@ -308,7 +308,10 @@ public class WeatherDayHoursTests : IDisposable
         var buttons = body.Find(".wx-hours-msg").QuerySelectorAll("button");
         Assert.Equal(retry, buttons.Length == 1);
         if (status == HttpStatusCode.TooManyRequests)
+        {
             Assert.Equal("true", buttons[0].GetAttribute("aria-disabled"));
+        }
+
         Assert.Equal(4, Cards(body).Count);
         Assert.NotNull(body.Find(".wx-now"));
     }

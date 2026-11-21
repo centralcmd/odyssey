@@ -16,7 +16,7 @@ namespace Odyssey.Api.Tests;
 /// statement's inverted period gets, keyed on <c>EndDate</c> so the form can mark the field, and it
 /// applies to <c>PUT</c> as well as <c>POST</c>.
 /// </summary>
-public class BudgetPeriodApiTests
+public class BudgetPeriodApiTests(BudgetPeriodApiTests.Host host) : SharedApiHostTests<BudgetPeriodApiTests.Host>(host)
 {
     private const string ActorUserId = "budget-period-actor-id";
     private const string Path = "/api/budgets";
@@ -44,7 +44,7 @@ public class BudgetPeriodApiTests
     [Fact]
     public async Task Post_EndBeforeStart_ReturnsBadRequestKeyedOnEndDate()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -56,7 +56,7 @@ public class BudgetPeriodApiTests
     [Fact]
     public async Task Post_SameDayPeriod_IsAccepted()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
         var body = June();
@@ -70,7 +70,7 @@ public class BudgetPeriodApiTests
     [Fact]
     public async Task Put_EndBeforeStart_ReturnsBadRequestAndLeavesTheBudgetUnchanged()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
         var created = await client.PostAsJsonAsync(Path, June());
@@ -90,7 +90,7 @@ public class BudgetPeriodApiTests
     [Fact]
     public async Task Put_UnknownIdWithEndBeforeStart_ReturnsNotFoundAndCreatesNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -109,7 +109,7 @@ public class BudgetPeriodApiTests
     [Fact]
     public async Task TransactionList_BoundedLikeTheBudgetSection_MatchesTheBudgetCount()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([.. ReadWrite, PermissionClaims.TransactionsRead]);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
         var created = await client.PostAsJsonAsync(Path, June());
@@ -184,6 +184,9 @@ public class BudgetPeriodApiTests
         await context.Database.EnsureCreatedAsync();
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 }

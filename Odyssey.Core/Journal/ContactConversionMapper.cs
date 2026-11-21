@@ -65,11 +65,18 @@ public static class ContactConversionMapper
         foreach (var (field, value) in new[] { (Fields.FirstName, p.FirstName), (Fields.MiddleName, p.MiddleName), (Fields.LastName, p.LastName) })
         {
             if (!HasValue(value))
+            {
                 continue;
+            }
+
             if (partsUsed)
+            {
                 result.Converted.Add(new ContactConvertedField { From = field, To = Fields.LegalName });
+            }
             else
+            {
                 result.Lost.Add(field);
+            }
         }
 
         var (established, dissolved) = CarryDates(
@@ -147,9 +154,14 @@ public static class ContactConversionMapper
             else
             {
                 if (firstNameOverride is null)
+                {
                     result.Converted.Add(new ContactConvertedField { From = Fields.LegalName, To = Fields.FirstName });
+                }
+
                 if (lastNameOverride is null && tokens.Length > 1)
+                {
                     result.Converted.Add(new ContactConvertedField { From = Fields.LegalName, To = Fields.LastName });
+                }
             }
         }
 
@@ -188,24 +200,37 @@ public static class ContactConversionMapper
         foreach (var (from, value, to) in new[] { start, end })
         {
             if (value is null)
+            {
                 continue;
+            }
+
             if (carry)
+            {
                 result.Converted.Add(new ContactConvertedField { From = from, To = to });
+            }
             else
+            {
                 result.Lost.Add(from);
+            }
         }
 
         if (!carry)
+        {
             return (null, null);
+        }
 
         foreach (var (_, value, to) in new[] { start, end })
         {
             if (value > today)
+            {
                 result.Issues.Add(Issue(to, "This stored date is in the future, so it cannot be carried over. Convert without the dates."));
+            }
         }
 
         if (start.Value is { } s && end.Value is { } e && e < s)
+        {
             result.Issues.Add(Issue(end.To, "The stored dates are out of order, so they cannot be carried over. Convert without the dates."));
+        }
 
         return (start.Value, end.Value);
     }
@@ -215,7 +240,9 @@ public static class ContactConversionMapper
         foreach (var (field, value) in fields)
         {
             if (HasValue(value))
+            {
                 result.Lost.Add(field);
+            }
         }
     }
 

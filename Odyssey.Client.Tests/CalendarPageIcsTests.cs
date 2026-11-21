@@ -52,8 +52,6 @@ public class CalendarPageIcsTests
         Assert.Equal(Severity.Success, toast.Severity);
         Assert.Equal(10_000, toast.Duration);
         cut.WaitForAssertion(() => Assert.Equal(CalendarIcsExport.Preparing, PageAnnouncer(cut)));
-        context.Calendar.Verify(c => c.ExportAggregateAsync(It.IsAny<DateTime?>(), It.IsAny<DateTime?>(),
-            It.IsAny<IReadOnlyCollection<Guid>?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact] // §3.1: an empty calendar still exports, and the toast says "no events"

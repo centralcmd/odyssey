@@ -37,9 +37,13 @@ public class FileAnalysisImportApiTests
         var (jobId, candidateId) = await SeedAsync(factory, account =>
         {
             if (closed)
+            {
                 account.Closed = DateTime.UtcNow;
+            }
             else
+            {
                 account.Archived = DateTime.UtcNow;
+            }
         });
         using var client = factory.CreateClient();
 
@@ -106,7 +110,9 @@ public class FileAnalysisImportApiTests
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == "USD"))
+        {
             context.Currencies.Add(new Currency { CurrencyCode = "USD", Name = "US Dollar", MinorUnits = 2, Symbol = "$" });
+        }
 
         var account = new Account
         {

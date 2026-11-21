@@ -66,7 +66,9 @@
     protected override void OnParametersSet()
     {
         if (Open && !_wasOpen)
+        {
             _error = null;
+        }
         _wasOpen = Open;
     }
 

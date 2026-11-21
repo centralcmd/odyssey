@@ -43,7 +43,7 @@ public enum ContractPartyRoleLegality
 ///
 /// <para>
 /// The suggested counts are <b>4 / 3 / 2 / 1</b>: four for <see cref="ContractType.Insurance"/>,
-/// mirroring an insurance policy's four link collections, and for <see cref="ContractType.Loan"/>,
+/// (insurer, policyholder, insured, beneficiary), and for <see cref="ContractType.Loan"/>,
 /// whose booked <see cref="ContractPartyRole.Account"/> and pledged
 /// <see cref="ContractPartyRole.Collateral"/> are both as ordinary as its two counterparties; three
 /// for <see cref="ContractType.Rental"/>, <see cref="ContractType.Purchase"/> and
@@ -189,7 +189,7 @@ public static class ContractPartyRoleMatrix
     public static IReadOnlyCollection<ContractType> DeclaredTypes => Cells.Keys;
 
     /// <summary>
-    /// One column of the matrix. <paramref name="allowedBeyondUniversal"/> is what this type permits
+    /// One column of the matrix. <c>allowedBeyondUniversal</c> is what this type permits
     /// <em>in addition to</em> <see cref="UniversallyAllowed"/>, which is appended here rather than
     /// repeated on all ten columns.
     /// </summary>

@@ -111,9 +111,15 @@ internal static class CalendarImportCopy
         {
             var parts = new List<string>();
             if (r.StoredFileCount > 0)
+            {
                 parts.Add($"{r.StoredFileCount} {Plural(r.StoredFileCount, "document", "documents")} stored");
+            }
+
             if (r.ReusedFileCount > 0)
+            {
                 parts.Add($"{r.ReusedFileCount} matched to {Plural(r.ReusedFileCount, "a document", "documents")} already stored");
+            }
+
             items.Add(new($"{string.Join("; ", parts)}.", []));
         }
 
@@ -121,14 +127,22 @@ internal static class CalendarImportCopy
         {
             var parts = new List<string>();
             if (r.StoredPhotoCount > 0)
+            {
                 parts.Add($"{r.StoredPhotoCount} {Plural(r.StoredPhotoCount, "photo", "photos")} added to the photo library");
+            }
+
             if (r.ReusedPhotoCount > 0)
+            {
                 parts.Add($"{r.ReusedPhotoCount} matched to {Plural(r.ReusedPhotoCount, "a photo", "photos")} already stored");
+            }
+
             items.Add(new($"{string.Join("; ", parts)}.", []));
         }
 
         if (r.ReplacedLinkSetCount > 0)
+        {
             items.Add(new($"{r.ReplacedLinkSetCount} {Plural(r.ReplacedLinkSetCount, "event or series had its", "events or series had their")} attachments replaced ({r.RemovedLinkCount} removed).", []));
+        }
 
         if (r.SkippedAttachmentCount > 0)
         {
@@ -137,7 +151,9 @@ internal static class CalendarImportCopy
         }
 
         if (r.IgnoredOccurrenceAttachmentCount > 0)
+        {
             items.Add(new($"{r.IgnoredOccurrenceAttachmentCount} {Plural(r.IgnoredOccurrenceAttachmentCount, "attachment on a single occurrence was", "attachments on single occurrences were")} ignored. Attachments belong to the series.", []));
+        }
 
         return items;
     }
@@ -183,9 +199,15 @@ internal static class CalendarImportCopy
     {
         var items = new List<string>();
         if (r.OverridesApplied > 0)
+        {
             items.Add($"{r.OverridesApplied} separately edited {Plural(r.OverridesApplied, "occurrence", "occurrences")} applied.");
+        }
+
         if (r.ExclusionsApplied > 0)
+        {
             items.Add($"{r.ExclusionsApplied} deleted {Plural(r.ExclusionsApplied, "occurrence", "occurrences")} applied.");
+        }
+
         var dropped = r.DroppedOverrideCount + r.DroppedExclusionCount;
         if (dropped > 0)
         {
@@ -204,7 +226,9 @@ internal static class CalendarImportCopy
         }
 
         if (r.AdjustedCount > 0)
+        {
             items.Add($"{r.AdjustedCount} {Plural(r.AdjustedCount, "occurrence", "occurrences")} fell in a daylight-saving gap and {Plural(r.AdjustedCount, "was", "were")} moved forward.");
+        }
 
         return items;
     }

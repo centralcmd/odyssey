@@ -103,7 +103,9 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             var projection = item.Archived is null ? projected.GetValueOrDefault(item.CurrencyCode) : null;
             item.Status = CurrencyStatuses.Of(item.Archived is not null, projection);
             if (attachSync)
+            {
                 item.Sync = projection;
+            }
         }
 
         return page;

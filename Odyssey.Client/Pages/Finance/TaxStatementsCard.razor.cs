@@ -92,7 +92,9 @@ public partial class TaxStatementsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -185,7 +187,9 @@ public partial class TaxStatementsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "tax statements");
         if (load.IsSuccess)
@@ -248,7 +252,9 @@ public partial class TaxStatementsCard
         foreach (var (id, report, _) in await Task.WhenAll(tasks))
         {
             if (report is not null)
+            {
                 _reports[id] = report;
+            }
         }
 
         BuildProblems();
@@ -261,7 +267,9 @@ public partial class TaxStatementsCard
         foreach (var s in _statements)
         {
             if (s.Archived is not null || !_reports.TryGetValue(s.TaxStatementId, out var report))
+            {
                 continue;
+            }
 
             var list = new List<TaxProblem>();
             if (!report.Derived.Available)
@@ -285,7 +293,9 @@ public partial class TaxStatementsCard
                     "Set exchange rates", "exchange-rates"));
             }
             if (list.Count > 0)
+            {
                 _problems[s.TaxStatementId] = list;
+            }
         }
     }
 
@@ -337,7 +347,11 @@ public partial class TaxStatementsCard
 
     private void AddClicked()
     {
-        if (!_canCreate) return;
+        if (!_canCreate)
+        {
+            return;
+        }
+
         _createKey = Guid.NewGuid();
         _createOpen = true;
     }
@@ -356,7 +370,10 @@ public partial class TaxStatementsCard
     private async Task<bool> AttachTaxFileAsync(AttachDocumentItem item)
     {
         if (_uploadStatement is null)
+        {
             return false;
+        }
+
         return (await TaxStatements.AttachFileAsync(_uploadStatement.TaxStatementId, AttachDocumentRequests.TaxStatement(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
@@ -367,7 +384,11 @@ public partial class TaxStatementsCard
 
     private void AddFile(ExistingTaxStatement s)
     {
-        if (!CanAttachFiles) return;
+        if (!CanAttachFiles)
+        {
+            return;
+        }
+
         _uploadStatement = s;
         _uploadKey = Guid.NewGuid();
         _uploadOpen = true;
@@ -377,7 +398,10 @@ public partial class TaxStatementsCard
     {
         // Expand the affected statement and force its files section to reload by changing its @key.
         if (_uploadStatement is not null)
+        {
             _expandedId = _uploadStatement.TaxStatementId;
+        }
+
         _filesRefreshToken = Guid.NewGuid();
         await GetStatements();
     }
@@ -390,7 +414,9 @@ public partial class TaxStatementsCard
     private void EditClicked(ExistingTaxStatement s)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editStatement = s;
         _editStatementKey = Guid.NewGuid();
@@ -406,7 +432,11 @@ public partial class TaxStatementsCard
     // ── Status + lifecycle actions ───────────────────────────────────────────
     private async Task SetStatus(ExistingTaxStatement s, TaxStatementStatus status, string? comment)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var body = new UpdateTaxStatementStatus { Status = status, StatusComment = comment };
         if ((await TaxStatements.UpdateStatusAsync(s.TaxStatementId, body)).Toast(Snackbar, "Update failed",
                 $"Marked {status.ToString().ToLowerInvariant()}."))
@@ -420,7 +450,11 @@ public partial class TaxStatementsCard
 
     private async Task ToggleArchive(ExistingTaxStatement s)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var archiving = s.Archived is null;
         var update = ToUpdate(s, archiving);
         if ((await TaxStatements.UpdateAsync(s.TaxStatementId, update)).Toast(Snackbar, "Update failed",
@@ -436,7 +470,11 @@ public partial class TaxStatementsCard
 
     private async Task ConfirmDelete(ExistingTaxStatement s)
     {
-        if (!_canDelete) return;
+        if (!_canDelete)
+        {
+            return;
+        }
+
         var confirmed = await _confirm.AskAsync("Delete tax statement", $"Delete '{s.Name}'? This cannot be undone.", "Delete");
         if (confirmed && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
         {

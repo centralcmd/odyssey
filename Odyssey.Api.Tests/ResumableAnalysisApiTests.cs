@@ -167,8 +167,16 @@ public class ResumableAnalysisApiTests
                 Currency = "USD",
                 ReviewStatus = status,
             });
-        for (var i = 0; i < pending; i++) AddCandidate(ReviewStatus.Pending);
-        for (var i = 0; i < reviewed; i++) AddCandidate(ReviewStatus.Accepted);
+        for (var i = 0; i < pending; i++)
+        {
+            AddCandidate(ReviewStatus.Pending);
+        }
+
+        for (var i = 0; i < reviewed; i++)
+        {
+            AddCandidate(ReviewStatus.Accepted);
+        }
+
         await db.SaveChangesAsync();
 
         return (account.AccountId, file.Id, job.Id);

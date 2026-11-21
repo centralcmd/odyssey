@@ -70,7 +70,10 @@ public partial class CurrenciesCard
     private async Task LoadSyncStatusAsync()
     {
         if (!_canReadSync)
+        {
             return;
+        }
+
         var result = await Sync.GetStatusAsync();
         if (result.IsSuccess && result.Value is { } status)
         {
@@ -91,7 +94,9 @@ public partial class CurrenciesCard
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_runNowWhenMounted || MountedPanel is not { } panel)
+        {
             return;
+        }
 
         if (panel.LoadFailed)
         {
@@ -170,21 +175,31 @@ public partial class CurrenciesCard
         // A load the user started is already bringing fresh rows; merging would supersede it and patch
         // the previous filter's rows instead.
         if (_isLoading || _refetching)
+        {
             return;
+        }
 
         var response = await _listLoader.RunAsync(ct => Currencies.ListAsync(
             1, OdsPageSizes.All, search: _search, statuses: _statusFilter, sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc", ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
+
         if (!response.Value.IsSuccess || response.Value.Value is not { } page)
+        {
             return;
+        }
 
         var fresh = page.Items.ToDictionary(c => c.CurrencyCode, StringComparer.Ordinal);
         _currencies = [.. _currencies.Select(c => fresh.GetValueOrDefault(c.CurrencyCode, c))];
         // The "By status" tile counts _allCurrencies, which a filtered page cannot refresh: re-read it too.
         if ((await Currencies.ListAllAsync()) is { IsSuccess: true, Value: { } all })
+        {
             _allCurrencies = [.. all];
+        }
+
         StateHasChanged();
     }
 
@@ -226,9 +241,15 @@ public partial class CurrenciesCard
     private string? RowNote(ExistingExchangeRateSyncCurrency s)
     {
         if (s.Locked)
+        {
             return $"{ProviderName}’s base — always synced";
+        }
+
         if (s.Supported == false && s.Enabled)
+        {
             return "No longer published — stop syncing";
+        }
+
         return null;
     }
 
@@ -250,14 +271,20 @@ public partial class CurrenciesCard
     private IEnumerable<OdsMenuItem> SyncActions(ExistingCurrency c)
     {
         if (!_canWriteSync || c.Sync is not { Locked: false } s)
+        {
             yield break;
+        }
 
         // The save is started, not awaited: the menu waits out its item's handler before closing, and it
         // should close at once while the row itself says "Saving…".
         if (s.Enabled)
+        {
             yield return new OdsMenuItem { Icon = "sync_disabled", Label = "Stop sync", OnClick = EventCallback.Factory.Create(this, () => Detach(() => ToggleSyncAsync(c, false))) };
+        }
         else if (s.Supported != false)
+        {
             yield return new OdsMenuItem { Icon = "sync", Label = "Start sync", OnClick = EventCallback.Factory.Create(this, () => Detach(() => ToggleSyncAsync(c, true))) };
+        }
     }
 
     private OdsMenuItem? PurgeAction(ExistingCurrency c) =>
@@ -277,7 +304,9 @@ public partial class CurrenciesCard
     private async Task ToggleSyncAsync(ExistingCurrency c, bool enable)
     {
         if (c.Sync is not { } s || _busy.Contains(c.CurrencyCode) || !_canWriteSync || s.Locked)
+        {
             return;
+        }
 
         _busy.Add(c.CurrencyCode);
         _rowErrors.Remove(c.CurrencyCode);
@@ -297,7 +326,9 @@ public partial class CurrenciesCard
         {
             await ReportRowFailureAsync(c, result, enable);
             if (_rowErrors.ContainsKey(c.CurrencyCode))
+            {
                 _openCode = c.CurrencyCode;
+            }
         }
 
         StateHasChanged();
@@ -338,7 +369,10 @@ public partial class CurrenciesCard
     private void StartPurge(ExistingExchangeRateSyncCurrency s)
     {
         if (!_canPurge || s.Enabled || s.FetchedRowCount == 0)
+        {
             return;
+        }
+
         _purging = s;
         _purgeOpen = true;
     }
@@ -352,14 +386,19 @@ public partial class CurrenciesCard
     private async Task<string?> ConfirmPurgeAsync()
     {
         if (_purging is not { } target)
+        {
             return null;
+        }
 
         var code = target.CurrencyCode;
         var result = await Sync.PurgeCurrencyAsync(code);
         if (!result.IsSuccess)
         {
             if (result.Status == HttpStatusCode.Forbidden)
+            {
                 return ExchangeRateSyncStatusPanel.PermissionMessage;
+            }
+
             return string.IsNullOrWhiteSpace(result.Error) ? "The fetched rates couldn’t be deleted." : result.Error;
         }
 

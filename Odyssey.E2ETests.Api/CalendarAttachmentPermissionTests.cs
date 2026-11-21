@@ -104,7 +104,10 @@ public class CalendarAttachmentPermissionTests(ApiStackFixture fixture)
         {
             // A calendar holding events refuses deletion (409), so the event goes first.
             if (eventId is { } id)
+            {
                 await fixture.DeleteWithAntiforgeryAsync(client, $"/api/calendar-events/{id}");
+            }
+
             await fixture.DeleteWithAntiforgeryAsync(client, $"/api/calendars/{calendar.CalendarId}");
         }
     }

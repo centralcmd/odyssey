@@ -43,7 +43,7 @@ public static class OdsPageSizes
 
 /// <summary>
 /// Pure pagination arithmetic shared by <c>OdsPager</c> and the pages' live-region announcements
-/// (so the "Showing X–Y of N" summary and the announced range never drift). <paramref name="page"/>
+/// (so the "Showing X–Y of N" summary and the announced range never drift). <c>page</c>
 /// is 1-based; <see cref="OdsPageSizes.All"/> collapses to a single page spanning the whole result
 /// set. Extracted from the component so it is unit-testable without a bUnit harness.
 /// </summary>

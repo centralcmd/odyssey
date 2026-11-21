@@ -79,7 +79,9 @@ public class PropertySummaryService
         };
 
         if (!includeValue)
+        {
             return summary;
+        }
 
         var owned = rows.Where(r => statusById[r.PropertyId] == PropertyStatus.Owned).ToList();
         var ownedIds = owned.Select(r => r.PropertyId).ToList();

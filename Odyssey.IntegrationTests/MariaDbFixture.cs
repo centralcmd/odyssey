@@ -76,6 +76,13 @@ public sealed class MariaDbFixture : IAsyncLifetime
     public string OdysseyConnectionString => BuildConnectionString(SharedDatabase);
     public string RelationalConnectionString => BuildConnectionString(RelationalDatabase);
 
+    /// <summary>A context on <see cref="OdysseyConnectionString"/>, for a test that needs the server itself (to create
+    /// or drop its own database, or to read the shared one).</summary>
+    public OdysseyContext CreateOdysseyContext() =>
+        new(new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(OdysseyConnectionString, ServerVersion.AutoDetect(OdysseyConnectionString))
+            .Options);
+
     /// <summary>A connection string for an arbitrary (typically throwaway) database on the same server —
     /// for tests that need a private schema they fully own (the app user has server-wide privileges).</summary>
     public string ConnectionStringFor(string database) => BuildConnectionString(database);

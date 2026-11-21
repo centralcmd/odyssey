@@ -33,7 +33,10 @@ public class PropertyEventsApiClientTests
             LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
             var response = new HttpResponseMessage(status);
             if (body is not null)
+            {
                 response.Content = new StringContent(body, Encoding.UTF8, "application/json");
+            }
+
             return response;
         }
     }

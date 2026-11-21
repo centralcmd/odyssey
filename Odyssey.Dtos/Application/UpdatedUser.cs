@@ -5,10 +5,10 @@ namespace Odyssey.Dtos.Application;
 
 public sealed record UpdatedUser
 {
-    public bool? EmailConfirmed { get; init; }
+    public bool? EmailConfirmed { get; set; }
 
-    public bool? Enabled { get; init; }
+    public bool? Enabled { get; set; }
 
     [JsonExtensionData]
-    public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

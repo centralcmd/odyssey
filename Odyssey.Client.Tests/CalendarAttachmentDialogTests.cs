@@ -64,9 +64,15 @@ public class CalendarAttachmentDialogTests
     internal static ExistingCalendarEvent Withheld(ExistingCalendarEvent source, bool files, bool photos)
     {
         if (files)
+        {
             source.Attachments = [.. source.Attachments!.Select(a => new CalendarLinkFileDto { FileId = a.FileId, CreatedAt = a.CreatedAt })];
+        }
+
         if (photos)
+        {
             source.Photos = [.. source.Photos!.Select(p => new CalendarLinkPhotoDto { PhotoId = p.PhotoId, Position = p.Position, CreatedAt = p.CreatedAt })];
+        }
+
         return source;
     }
 

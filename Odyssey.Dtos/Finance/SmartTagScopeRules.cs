@@ -58,12 +58,17 @@ public static class SmartTagScopeRules
         DateTime? startDate, DateTime? endDate, DateTime? completionDate)
     {
         if (completionDate is not null)
+        {
             return (null, null);
+        }
 
         DateTime? start = startDate is { } s ? DateTime.SpecifyKind(s.Date, DateTimeKind.Utc) : null;
         DateTime? end = endDate is { } e ? DateTime.SpecifyKind(e.Date, DateTimeKind.Utc) : null;
         if (start is { } from && end is { } to && to < from)
+        {
             end = null;
+        }
+
         return (start, end);
     }
 

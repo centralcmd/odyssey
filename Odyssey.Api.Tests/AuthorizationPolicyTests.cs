@@ -1002,7 +1002,10 @@ public class AuthorizationPolicyTests
         {
             var candidate = Path.Combine(dir, "Odyssey.MigrationService", "RoleClaimSeeder.cs");
             if (File.Exists(candidate) && File.Exists(Path.Combine(dir, "Odyssey.sln")))
+            {
                 return candidate;
+            }
+
             dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
         }
 

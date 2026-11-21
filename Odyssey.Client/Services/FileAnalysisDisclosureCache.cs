@@ -9,7 +9,7 @@ namespace Odyssey.Client.Services;
 /// <remarks>
 /// <para>
 /// Modelled on <see cref="ImportLimitsCache"/> — one shared in-flight <see cref="Task"/> so concurrent
-/// readers cost one request, failures never cached, a static <see cref="Fallback"/>, and an
+/// readers cost one request, failures never cached, a static <see cref="FileAnalysisDisclosureCache.Fallback"/>, and an
 /// <see cref="Invalidate"/> the settings page calls on a successful save.
 /// </para>
 /// <para>
@@ -20,7 +20,7 @@ namespace Odyssey.Client.Services;
 /// and the consent gate opens rarely enough that the extra request costs nothing worth optimising.
 /// </para>
 /// <para>
-/// <b><see cref="Fallback"/> is where the old client constants went.</b> They were compile-time consts
+/// <b><see cref="FileAnalysisDisclosureCache.Fallback"/> is where the old client constants went.</b> They were compile-time consts
 /// in <c>Models/FileAnalysisConsent.cs</c>, duplicated from the server and already drifted — the panel
 /// named a model the server did not use. They live here now, as the last resort for a failed fetch,
 /// which is the only reason the client still needs a copy at all.

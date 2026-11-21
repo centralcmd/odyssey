@@ -129,7 +129,9 @@
     private async Task SubmitAsync()
     {
         if (_isSaving || OnSubmit is null)
+        {
             return;
+        }
 
         _isSaving = true;
         try

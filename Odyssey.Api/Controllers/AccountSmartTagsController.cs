@@ -34,7 +34,9 @@ public sealed class AccountSmartTagsController : ControllerBase
     {
         var tags = await accountSmartTagService.GetSmartTags(accountId, cancellationToken);
         if (tags is null)
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         return Ok(tags);
     }
@@ -67,7 +69,9 @@ public sealed class AccountSmartTagsController : ControllerBase
     {
         var removed = await accountSmartTagService.RemoveSmartTag(accountId, tagId, cancellationToken);
         if (!removed)
+        {
             return this.NotFoundProblem($"Tag ID {tagId} is not a smart tag for account ID {accountId}.");
+        }
 
         return NoContent();
     }

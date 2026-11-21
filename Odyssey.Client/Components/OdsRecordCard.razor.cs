@@ -223,7 +223,10 @@ public partial class OdsRecordCard
     {
         var next = !IsOpen;
         if (Open is null)
+        {
             _internal = next;
+        }
+
         await OpenChanged.InvokeAsync(next);
         await OnToggle.InvokeAsync(next);
     }

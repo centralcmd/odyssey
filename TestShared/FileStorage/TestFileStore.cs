@@ -12,7 +12,7 @@ namespace Odyssey.Testing.FileStorage;
 /// <summary>
 /// The Files store's write and read path (issue #448) over a temp folder, for a test that builds its services by hand over
 /// an existing context — so an upload or a contact image writes a real file, as it does in production. The store works
-/// on <paramref name="context"/>'s database: reservations commit through a second context of the same options.
+/// on the given context's database: reservations commit through a second context of the same options.
 /// </summary>
 public sealed class TestFileStore : IDisposable
 {

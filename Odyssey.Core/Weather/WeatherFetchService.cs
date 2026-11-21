@@ -749,7 +749,6 @@ public sealed class WeatherFetchService
         schedule.NextObservationFetchAfterUtc = now.Add(Backoff(kind, schedule.ObservationConsecutiveFailures, retryAfter));
     }
 
-    /// <summary>The next 08:00 site-local after <paramref name="now"/> — today's if it is still pending and ahead.</summary>
     /// <summary>
     /// A place whose history has never started — no station looked up, nothing fetched, no failure pause — is due
     /// whatever its wake-up time says. An earlier release parked such a place until the next morning; this lets it
@@ -758,6 +757,7 @@ public sealed class WeatherFetchService
     internal static bool FirstLookupPending(WeatherPoint weather, WeatherPointSchedule schedule) =>
         weather.StationResolvedAtUtc == null && schedule.ObservationsCheckedThroughDate == null && schedule.ObservationFailureKind == null;
 
+    /// <summary>The next 08:00 site-local after <paramref name="now"/> — today's if it is still pending and ahead.</summary>
     private static DateTime NextObservationWindow(WeatherPointSite site, DateTime now, bool dailyPending)
     {
         var zone = WeatherSiteTimeline.Zone(site);

@@ -54,7 +54,9 @@
     private async Task OnOpenChanged(bool open)
     {
         if (open)
+        {
             return;
+        }
         var confirmed = _confirmed;
         _confirmed = false;
         await OnDecided.InvokeAsync(confirmed);

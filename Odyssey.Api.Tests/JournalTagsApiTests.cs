@@ -11,7 +11,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class JournalTagsApiTests
+public class JournalTagsApiTests(JournalTagsApiTests.Host host) : SharedApiHostTests<JournalTagsApiTests.Host>(host)
 {
     private const string ActorUserId = "journal-tags-actor-id";
     private const string Path = "/api/journal-tags";
@@ -35,7 +35,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -46,7 +46,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task List_WithoutTagClaims_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -59,7 +59,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task Create_Then_List_ReturnsTag()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Travel", "Trips and holidays");
@@ -72,7 +72,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task Create_DuplicateName_CaseInsensitive_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "Travel");
@@ -84,7 +84,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task Rename_And_Archive_ViaPut()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Wrok");
@@ -113,7 +113,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task Delete_UnusedTag_ReturnsNoContent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Ephemeral");
@@ -125,7 +125,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task Delete_TagInUse_ReturnsConflict_NotServerError()
     {
-        await using var factory = new ApiFactory(ReadWriteWithEntries);
+        var factory = Factory.ForCaller(ReadWriteWithEntries);
         using var client = factory.CreateClient();
 
         var tag = await CreateAsync(client, "Linked");
@@ -147,7 +147,7 @@ public class JournalTagsApiTests
     [Fact]
     public async Task Rename_ToExistingName_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "Travel");
@@ -166,7 +166,10 @@ public class JournalTagsApiTests
         return (await post.Content.ReadFromJsonAsync<ExistingJournalTag>())!;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateDomainContext)

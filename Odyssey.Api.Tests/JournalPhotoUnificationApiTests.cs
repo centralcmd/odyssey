@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// Journal photo links (issue #321 v4, as changed by issue #428 §3.3): a journal entry links library photos by id, the
 /// photos are uploaded through the photo API first, and the journal never creates a photo from a file.
 /// </summary>
-public class JournalPhotoUnificationApiTests
+public class JournalPhotoUnificationApiTests(JournalPhotoUnificationApiTests.Host host) : SharedApiHostTests<JournalPhotoUnificationApiTests.Host>(host)
 {
     private const string ActorUserId = "journal-unify-actor-id";
     private const string JournalPath = "/api/journal-entries";
@@ -39,7 +39,7 @@ public class JournalPhotoUnificationApiTests
     [Fact]
     public async Task JournalAdd_LinksAnUploadedPhoto_CarryingItsLabel()
     {
-        await using var factory = new ApiFactory(JournalAndPhotos);
+        var factory = Factory.ForCaller(JournalAndPhotos);
         using var client = factory.CreateClient();
         var uploaded = await PhotoTestSupport.UploadPhotoAsync(
             client, new NewPhotoUpload { Title = "Beach" }, fileName: "beach.jpg");
@@ -55,7 +55,7 @@ public class JournalPhotoUnificationApiTests
     [Fact]
     public async Task JournalUser_WithoutPhotosRead_CannotLinkAPhoto()
     {
-        await using var factory = new ApiFactory(JournalUserNoPhotos);
+        var factory = Factory.ForCaller(JournalUserNoPhotos);
         var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
 
@@ -68,7 +68,7 @@ public class JournalPhotoUnificationApiTests
     [Fact]
     public async Task A_body_carrying_photoFileIds_creates_no_photo()
     {
-        await using var factory = new ApiFactory(JournalAndPhotos);
+        var factory = Factory.ForCaller(JournalAndPhotos);
         var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
 
@@ -90,7 +90,7 @@ public class JournalPhotoUnificationApiTests
     [Fact]
     public async Task UnknownPhotoId_IsUnprocessable_KeyedPhotoIds()
     {
-        await using var factory = new ApiFactory(JournalAndPhotos);
+        var factory = Factory.ForCaller(JournalAndPhotos);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(JournalPath, NewEntry([Guid.NewGuid()]));
@@ -102,7 +102,7 @@ public class JournalPhotoUnificationApiTests
     [Fact]
     public async Task SamePhoto_InTwoEntries_IsOneLibraryPhoto()
     {
-        await using var factory = new ApiFactory(JournalAndPhotos);
+        var factory = Factory.ForCaller(JournalAndPhotos);
         using var client = factory.CreateClient();
         var uploaded = await PhotoTestSupport.UploadPhotoAsync(client);
 
@@ -117,7 +117,7 @@ public class JournalPhotoUnificationApiTests
     [Fact]
     public async Task DeletingEntry_KeepsTheLibraryPhoto()
     {
-        await using var factory = new ApiFactory(JournalAndPhotos);
+        var factory = Factory.ForCaller(JournalAndPhotos);
         using var client = factory.CreateClient();
         var uploaded = await PhotoTestSupport.UploadPhotoAsync(client);
 
@@ -132,7 +132,7 @@ public class JournalPhotoUnificationApiTests
     [Fact]
     public async Task DeletingLibraryPhoto_DropsTheStaleJournalLink()
     {
-        await using var factory = new ApiFactory(JournalAndPhotos);
+        var factory = Factory.ForCaller(JournalAndPhotos);
         using var client = factory.CreateClient();
         var uploaded = await PhotoTestSupport.UploadPhotoAsync(client);
 
@@ -160,7 +160,10 @@ public class JournalPhotoUnificationApiTests
         return (await post.Content.ReadFromJsonAsync<ExistingJournalEntry>())!;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateDomainContext)

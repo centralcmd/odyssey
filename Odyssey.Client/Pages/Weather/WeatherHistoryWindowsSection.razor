@@ -123,7 +123,9 @@
     {
         await LoadAsync();
         if (_phase != Phase.Ready)
+        {
             return;
+        }
         StateHasChanged();
         await Task.Yield();
         try { await Js.InvokeVoidAsync("odsFocusSectionHeading", SectionId); }

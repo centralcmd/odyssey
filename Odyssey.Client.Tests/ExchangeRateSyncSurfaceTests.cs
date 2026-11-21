@@ -228,7 +228,10 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
             .ReturnsAsync(() =>
             {
                 if (!first)
+                {
                     return ApiResult<ExchangeRateSyncStatus>.Failure(HttpStatusCode.ServiceUnavailable, new ApiProblem { Title = "down" });
+                }
+
                 first = false;
                 return ApiResult<ExchangeRateSyncStatus>.Success(Running(Now.UtcDateTime), HttpStatusCode.OK);
             });

@@ -33,7 +33,6 @@ updates:
         patterns:
           - "xunit*"
           - "Moq"
-          - "AwesomeAssertions"
           - "coverlet.*"
           - "Microsoft.NET.Test.Sdk"
     ignore:

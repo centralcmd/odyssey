@@ -112,13 +112,19 @@
         get
         {
             if (string.IsNullOrEmpty(Value) || Value != StoredValue || Current is not { } contact)
+            {
                 return null;
+            }
 
             var name = contact.ResolvedDisplayName;
             if (contact.Archived is not null)
+            {
                 return $"{name} is archived. Saving keeps this link; pick another association or clear it to change it.";
+            }
             if (contact.Type != ContactType.Organization)
+            {
                 return $"{name} is no longer an organization. Saving keeps this link; pick another association or clear it to change it.";
+            }
             return null;
         }
     }
@@ -170,7 +176,9 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         try
         {

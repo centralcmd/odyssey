@@ -21,7 +21,10 @@ public static class AttachDocumentRequests
     {
         var lower = fileName.ToLowerInvariant();
         if (lower.Contains("assess") || lower.Contains("notice") || lower.Contains("vedtak") || lower.Contains("skatteoppgj"))
+        {
             return nameof(TaxStatementFileType.TaxAssessment);
+        }
+
         return lower.EndsWith(".pdf", StringComparison.Ordinal)
             ? nameof(TaxStatementFileType.TaxReturn)
             : nameof(TaxStatementFileType.SupportingDocument);
@@ -41,7 +44,10 @@ public static class AttachDocumentRequests
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (extension is ".eml" or ".msg")
+        {
             return nameof(ContractFileType.Correspondence);
+        }
+
         return DraftName.IsMatch(fileName) ? nameof(ContractFileType.Draft) : nameof(ContractFileType.Signed);
     }
 

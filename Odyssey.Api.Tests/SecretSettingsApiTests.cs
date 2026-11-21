@@ -329,16 +329,16 @@ public class SecretSettingsApiTests(SecretSettingsApiTests.Host host) : SharedAp
     {
         const string unknown = Path + "/NoSuchSecret";
 
-        await using var without = new ApiFactory(ReadAndCountUpdate);
+        using var without = Factory.ClientFor(ReadAndCountUpdate);
         Assert.Equal(
             HttpStatusCode.Forbidden,
-            (await without.CreateClient().PutAsJsonAsync(unknown, new SecretSettingUpdate { Value = Sentinel }))
+            (await without.PutAsJsonAsync(unknown, new SecretSettingUpdate { Value = Sentinel }))
                 .StatusCode);
 
-        await using var with = new ApiFactory(ReadAndSecurityUpdate);
+        using var with = Factory.ClientFor(ReadAndSecurityUpdate);
         Assert.Equal(
             HttpStatusCode.NotFound,
-            (await with.CreateClient().PutAsJsonAsync(unknown, new SecretSettingUpdate { Value = Sentinel }))
+            (await with.PutAsJsonAsync(unknown, new SecretSettingUpdate { Value = Sentinel }))
                 .StatusCode);
     }
 
@@ -348,11 +348,11 @@ public class SecretSettingsApiTests(SecretSettingsApiTests.Host host) : SharedAp
     {
         const string unknown = Path + "/NoSuchSecret";
 
-        await using var without = new ApiFactory(ReadAndCountUpdate);
-        Assert.Equal(HttpStatusCode.Forbidden, (await without.CreateClient().DeleteAsync(unknown)).StatusCode);
+        using var without = Factory.ClientFor(ReadAndCountUpdate);
+        Assert.Equal(HttpStatusCode.Forbidden, (await without.DeleteAsync(unknown)).StatusCode);
 
-        await using var with = new ApiFactory(ReadAndSecurityUpdate);
-        Assert.Equal(HttpStatusCode.NotFound, (await with.CreateClient().DeleteAsync(unknown)).StatusCode);
+        using var with = Factory.ClientFor(ReadAndSecurityUpdate);
+        Assert.Equal(HttpStatusCode.NotFound, (await with.DeleteAsync(unknown)).StatusCode);
     }
 
     /// <summary>

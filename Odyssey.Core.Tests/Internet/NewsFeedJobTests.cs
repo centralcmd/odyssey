@@ -12,7 +12,7 @@ using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Internet;
 using Odyssey.Testing.FileStorage;
 using Odyssey.Testing.News;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 using static Odyssey.Testing.News.NewsFeedFixtures;
 

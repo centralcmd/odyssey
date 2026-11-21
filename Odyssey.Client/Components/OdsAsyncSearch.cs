@@ -72,10 +72,16 @@ public sealed class OdsAsyncSearch(Func<string, CancellationToken, Task<IReadOnl
         try
         {
             if (DebounceMs > 0)
+            {
                 await Task.Delay(DebounceMs, cts.Token);
+            }
+
             var rows = await search(query, cts.Token);
             if (!ReferenceEquals(current, cts) || cts.IsCancellationRequested)
+            {
                 return null;
+            }
+
             Results = rows;
             Set(OdsAsyncSearchStatus.Done);
             return rows;
@@ -114,7 +120,10 @@ public sealed class OdsAsyncSearch(Func<string, CancellationToken, Task<IReadOnl
         var previous = current;
         current = null;
         if (previous is null)
+        {
             return;
+        }
+
         previous.Cancel();
         previous.Dispose();
     }

@@ -17,7 +17,7 @@ namespace Odyssey.Client.Services;
 /// </para>
 /// <para>
 /// <b>Failures are never cached, and never surfaced as null.</b> A failed load leaves the slot empty so
-/// the next reader retries, and this attempt resolves to <see cref="Fallback"/> — the shipped-default
+/// the next reader retries, and this attempt resolves to <see cref="ImportLimitsCache.Fallback"/> — the shipped-default
 /// caps, sourced once from the same per-surface <c>MaxImportBytes</c> constants the four typed export
 /// clients already carry (issue #343 fe C4: "the fallback constants live in one place in
 /// Odyssey.ApiClient, not per-dialog"). Callers always get a usable <see cref="ImportLimitsDto"/> and

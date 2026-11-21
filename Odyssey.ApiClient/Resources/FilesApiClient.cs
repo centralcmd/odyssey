@@ -74,7 +74,9 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
     public Task<ApiResult<FileUploadResponse>> UploadAsync(ApiUpload file, FileUploadArea area, string? fileName = null, CancellationToken ct = default)
     {
         if (!Enum.IsDefined(area))
+        {
             throw new ArgumentOutOfRangeException(nameof(area), area, "Choose Finance or Journal.");
+        }
 
         var upload = string.IsNullOrWhiteSpace(fileName) ? file : file with { FileName = fileName };
         return api.UploadAsync<FileUploadResponse>(
@@ -96,7 +98,9 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
                 IssuedBy = issuedBy,
             }, ct);
         if (!result.IsSuccess)
+        {
             throw new Exception($"Failed to attach file: {result.Error}");
+        }
     }
 
     public async Task AttachToTransactionAsync(Guid transactionId, Guid fileId, TransactionFileType type, CancellationToken ct = default)
@@ -104,7 +108,9 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
         var result = await api.SendAsync(HttpMethod.Post, $"api/transactions/{transactionId}/files",
             new AttachTransactionFileRequest { FileId = fileId, Type = type }, ct);
         if (!result.IsSuccess)
+        {
             throw new Exception($"Failed to attach file: {result.Error}");
+        }
     }
 
     public async Task<FileMetadataResponse?> GetMetadataAsync(Guid fileId, CancellationToken ct = default) =>

@@ -485,7 +485,9 @@ public class WeatherCalendarJournalTests : IDisposable
         Assert.DoesNotContain("SERVER", cut.Markup, StringComparison.Ordinal);
         Assert.Equal(retry, cut.FindAll("button").Any(b => b.TextContent.Contains("Try again", StringComparison.Ordinal)));
         if (code == HttpStatusCode.TooManyRequests)
+        {
             Assert.Equal("true", cut.FindAll("button").Single(b => b.TextContent.Contains("Try again", StringComparison.Ordinal)).GetAttribute("aria-disabled"));
+        }
     }
 
     [Fact]
@@ -589,7 +591,9 @@ public class WeatherCalendarJournalTests : IDisposable
         Assert.All(named, f => Assert.Contains(f, files));
         Assert.All(named, f => Assert.True(File.Exists(f), f));
         foreach (var name in new[] { "JournalEntryWeather.razor", "WeatherEventSummaryText.razor", "CalendarEventWeatherSection.razor", "WeatherStepTable.razor" })
+        {
             Assert.Contains(Path.Combine(weatherDir, name), files);
+        }
 
         var hits = files
             .SelectMany(file => File.ReadAllLines(file).Select((line, i) => (file, line, i)))
@@ -622,7 +626,10 @@ public class WeatherCalendarJournalTests : IDisposable
     {
         var clone = (AngleSharp.Dom.IElement)element.Clone(deep: true);
         foreach (var hidden in clone.QuerySelectorAll("[aria-hidden=true]").ToList())
+        {
             hidden.Remove();
+        }
+
         return Normalize(clone.TextContent);
     }
 

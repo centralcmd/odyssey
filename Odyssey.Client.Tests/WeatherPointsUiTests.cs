@@ -677,9 +677,14 @@ public partial class WeatherPointsUiTests : IDisposable
             .Add(x => x.Open, true).Add(x => x.Point, point).Add(x => x.Mode, WeatherPurgeMode.Full).Add(x => x.LinkedLocationCount, count)));
 
         if (expected is null)
+        {
             Assert.DoesNotContain("unlinked", cut.Markup);
+        }
         else
+        {
             Assert.Contains(expected, cut.Markup);
+        }
+
         Assert.DoesNotContain("0 locations", cut.Markup);
     }
 

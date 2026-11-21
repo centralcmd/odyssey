@@ -68,7 +68,10 @@ public partial class CreateTaxStatementDialog
     {
         var option = TagCreator.Begin(text);
         if (option is not null)
+        {
             _createdTags.Add(option);
+        }
+
         return option;
     }
 
@@ -127,7 +130,9 @@ public partial class CreateTaxStatementDialog
         }
 
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         if (IsEdit)
         {
@@ -183,7 +188,9 @@ public partial class CreateTaxStatementDialog
         }
 
         if (string.Equals(_name, $"Tax year {_fiscalYear}", StringComparison.Ordinal))
+        {
             _name = $"Tax year {year}";
+        }
 
         if (year is >= 1900 and <= 2200)
         {
@@ -197,7 +204,10 @@ public partial class CreateTaxStatementDialog
     private void FollowPeriod()
     {
         if (_rangeTouched || _startDate is null || _endDate is null)
+        {
             return;
+        }
+
         (_settlementStartDate, _settlementEndDate) = TaxSettlementRange.Default(_startDate.Value, _endDate.Value);
     }
 
@@ -209,12 +219,17 @@ public partial class CreateTaxStatementDialog
     {
         _settlementRangeError = false;
         if (_rangeTouched)
+        {
             return;
+        }
+
         if (_startDate is { } periodStart && _endDate is { } periodEnd)
         {
             var (start, end) = TaxSettlementRange.Default(periodStart, periodEnd);
             if (_settlementStartDate?.Date == start.Date && _settlementEndDate?.Date == end.Date)
+            {
                 return;
+            }
         }
         _rangeTouched = true;
         _rangeAnnouncement = "Settlement range set to a custom range.";
@@ -228,7 +243,9 @@ public partial class CreateTaxStatementDialog
         FollowPeriod();
         _rangeAnnouncement = "Settlement range follows the period, +1 year.";
         if (_settlementStartPicker is not null)
+        {
             await _settlementStartPicker.FocusAsync();
+        }
     }
 
     // A settlement-overlap error on show is re-checked as the tax-payment tags change, so removing
@@ -237,7 +254,9 @@ public partial class CreateTaxStatementDialog
     {
         _taxTags = value;
         if (_settlementTagsError is not null)
+        {
             _settlementTagsError = SettlementOverlapError();
+        }
     }
 
     private void OnSettlementTagsChanged(IReadOnlyCollection<string> value)
@@ -250,7 +269,10 @@ public partial class CreateTaxStatementDialog
     {
         var overlap = TaxSettlementRange.Overlap(_taxTags, _settlementTags);
         if (overlap.Count == 0)
+        {
             return null;
+        }
+
         var names = overlap.Select(id => _tagOpts.FirstOrDefault(o => o.Value == id)?.Label ?? id);
         return $"{string.Join(", ", names)} {(overlap.Count == 1 ? "is" : "are")} also a tax-payment tag — it would be counted twice.";
     }
@@ -268,7 +290,10 @@ public partial class CreateTaxStatementDialog
             && _settlementEndDate.Value.Date < _settlementStartDate.Value.Date;
         _settlementTagsError = IsEdit ? SettlementOverlapError() : null;
         if (_nameError || _dateError || _settlementRangeError || _settlementTagsError is not null)
+        {
             return false;
+        }
+
         if (IsEdit && _rangeTouched && (_settlementStartDate is null || _settlementEndDate is null))
         {
             Snackbar.Add("Set both settlement dates, or reset the range to follow the period.", Severity.Error);
@@ -317,7 +342,9 @@ public partial class CreateTaxStatementDialog
             };
 
             if (!(await TaxStatements.UpdateAsync(Statement.TaxStatementId, update)).Toast(Snackbar, "Update failed"))
+            {
                 return false;
+            }
 
             // Let any in-flight inline tag create land, then map staged ids to the real ones; a create
             // that failed resolves to null and is dropped rather than posted.
@@ -329,7 +356,9 @@ public partial class CreateTaxStatementDialog
                 SettlementTagIds = [.. ResolveTagIds(_settlementTags)],
             };
             if (!(await TaxStatements.UpdateTagsAsync(Statement.TaxStatementId, tags)).Toast(Snackbar, "Tag update failed"))
+            {
                 return false;
+            }
 
             Snackbar.Add("Tax statement updated.", Severity.Success);
             return true;

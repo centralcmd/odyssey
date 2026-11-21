@@ -217,7 +217,7 @@ public class ExchangeRateSyncPhaseZeroTests
         var cleared = false;
         var second = cut.InvokeAsync(() => cut.Instance.Announce("Rate deleted"));
         // The region empties before the same text returns — that is what makes it speak again.
-        cut.WaitForAssertion(() => { if (cut.Find("[role=status]").TextContent == string.Empty) cleared = true; Assert.True(cleared); });
+        cut.WaitForAssertion(() => { if (cut.Find("[role=status]").TextContent == string.Empty) { cleared = true; } Assert.True(cleared); });
         await second;
         cut.WaitForAssertion(() => Assert.Equal("Rate deleted", cut.Find("[role=status]").TextContent));
     }
@@ -232,7 +232,9 @@ public class ExchangeRateSyncPhaseZeroTests
         {
             var text = cut.Find("[role=status]").TextContent;
             if (text.Length > 0 && (shown.Count == 0 || shown[^1] != text))
+            {
                 shown.Add(text);
+            }
         };
 
         // Called back to back, as a row save and a run finishing can be.

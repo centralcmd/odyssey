@@ -67,7 +67,9 @@ public partial class AccountProfileSection
     protected override void OnParametersSet()
     {
         if (ReferenceEquals(_original, Profile) || Matches(_original, Profile))
+        {
             return;
+        }
 
         _draft = Profile with { };
         _original = Profile;
@@ -186,7 +188,9 @@ public partial class AccountProfileSection
     {
         var (errors, complete) = ProfileValidation.Validate(_draft);
         if (errors.Count > 0 || !complete)
+        {
             return;
+        }
 
         _saving = true;
         var saved = await ProfileApi.SaveAsync(_draft);

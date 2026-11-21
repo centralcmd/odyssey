@@ -160,7 +160,11 @@ public partial class Account
     private bool Matches(string key)
     {
         var q = _search.Trim();
-        if (string.IsNullOrEmpty(q)) return true;
+        if (string.IsNullOrEmpty(q))
+        {
+            return true;
+        }
+
         q = q.ToLowerInvariant();
         return SectionTerms.TryGetValue(key, out var terms) &&
                terms.Any(t => t.Contains(q, StringComparison.Ordinal) || q.Contains(t, StringComparison.Ordinal));
@@ -171,7 +175,9 @@ public partial class Account
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -195,13 +201,17 @@ public partial class Account
         }
 
         if (string.IsNullOrWhiteSpace(_username))
+        {
             _username = _email;
+        }
 
         _displayName = BuildDisplayName(_username, _email);
         _initials = BuildInitials(_displayName);
 
         if (await ProfileApi.GetAsync() is { IsSuccess: true, Value: { } profile })
+        {
             _profile = profile;
+        }
 
         await LoadTwoFactorAsync();
 
@@ -213,7 +223,9 @@ public partial class Account
         // Posting an empty body reads status and hands back a pending shared key (Identity
         // generates one if absent) so the setup wizard is ready without a second round-trip.
         if (await AuthApiClient.GetTwoFactorStatusAsync() is not { } status)
+        {
             return;
+        }
 
         _twoFactor = new AccountTwoFactorSection.TwoFactorStatus(
             status.IsTwoFactorEnabled, status.RecoveryCodesLeft, status.SharedKey ?? string.Empty);
@@ -222,7 +234,9 @@ public partial class Account
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
+        {
             StateHasChanged();
+        }
     }
 
     /// <summary>
@@ -240,15 +254,27 @@ public partial class Account
         var basis = !string.IsNullOrWhiteSpace(username) ? username : email;
         var local = basis.Split('@')[0];
         var parts = local.Split('.', '_', '-', ' ').Where(p => p.Length > 0).ToArray();
-        if (parts.Length == 0) return basis;
+        if (parts.Length == 0)
+        {
+            return basis;
+        }
+
         return string.Join(" ", parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
     }
 
     private static string BuildInitials(string name)
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0) return "?";
-        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        if (parts.Length == 0)
+        {
+            return "?";
+        }
+
+        if (parts.Length == 1)
+        {
+            return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        }
+
         return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
     }
 

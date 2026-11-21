@@ -13,7 +13,7 @@ namespace Odyssey.Api.Identity;
 /// ever tightens.
 ///
 /// When the setting is off, every account reads as confirmed for sign-in purposes regardless of its
-/// real <see cref="ApplicationUser.EmailConfirmed"/> flag; when it's on, the real flag is authoritative.
+/// real <c>ApplicationUser.EmailConfirmed</c> flag; when it's on, the real flag is authoritative.
 /// This is a live read (no cache) so a toggle takes effect on the very next sign-in attempt.
 /// </summary>
 public sealed class SystemSettingsUserConfirmation(OdysseyContext context) : IUserConfirmation<ApplicationUser>

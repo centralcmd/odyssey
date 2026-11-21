@@ -59,10 +59,14 @@ public class ContactMethodLabelScopeTests(ApiStackFixture fixture)
             var claims = ClaimsForRole(user.Role);
 
             foreach (var (path, claim, body) in CreateEndpoints)
+            {
                 AssertGated(await client.PostAsJsonAsync(path, body), user.Role, "POST", path, claim, claims);
+            }
 
             foreach (var (path, claim, body) in UpdateEndpoints)
+            {
                 AssertGated(await client.PutAsJsonAsync(path, body), user.Role, "PUT", path, claim, claims);
+            }
         }
     }
 
@@ -80,7 +84,9 @@ public class ContactMethodLabelScopeTests(ApiStackFixture fixture)
         {
             var claims = ClaimsForRole(user.Role);
             if (claims.Contains(PermissionClaims.ContactsUpdate))
+            {
                 continue;
+            }
 
             var client = await fixture.CreateAuthenticatedClientAsync(user.Email, user.Password);
 

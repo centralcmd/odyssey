@@ -85,7 +85,9 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (Mixed == _appliedMixed && !firstRender)
+        {
             return;
+        }
         _appliedMixed = Mixed;
         try { await Js.InvokeVoidAsync("odsSetIndeterminate", _input, Mixed); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
@@ -94,7 +96,9 @@
     private Task OnChange(ChangeEventArgs e)
     {
         if (AriaDisabled)
+        {
             return Task.CompletedTask;
+        }
         var next = e.Value is bool b ? b : !Checked;
         Checked = next;
         return CheckedChanged.InvokeAsync(next);

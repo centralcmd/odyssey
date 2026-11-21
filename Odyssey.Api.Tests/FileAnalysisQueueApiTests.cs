@@ -163,7 +163,9 @@ public class FileAnalysisQueueApiTests(FileAnalysisQueueApiTests.Host host) : Sh
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == "USD"))
+        {
             context.Currencies.Add(new Currency { CurrencyCode = "USD", Name = "US Dollar", MinorUnits = 2, Symbol = "$" });
+        }
 
         var account = new Account
         {

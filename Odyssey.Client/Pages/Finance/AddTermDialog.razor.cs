@@ -149,7 +149,9 @@ public partial class AddTermDialog
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         var currencies = await ReferenceData.CurrenciesAsync();
         if (currencies.Count > 0)
@@ -167,7 +169,9 @@ public partial class AddTermDialog
         // unset currency (a contract's starting state) adds no such entry — there is nothing to
         // preserve, and an empty option would read as a currency.
         if (!string.IsNullOrEmpty(_currency) && !_currencyOptions.Any(o => o.Value == _currency))
+        {
             _currencyOptions.Insert(0, new OdsOption(_currency, _currency));
+        }
 
         StateHasChanged();
     }
@@ -205,7 +209,9 @@ public partial class AddTermDialog
         get
         {
             if (IsPeriodicInterval || SelectedInterval is not { } interval || interval == Interval.OneTime)
+            {
                 return null;
+            }
 
             var applies = $"Applies {TermVisuals.InfoFor(interval)!.Adverb}";
 
@@ -264,9 +270,15 @@ public partial class AddTermDialog
                 var t = inForce ?? sorted[^1];
                 var parts = new List<string>(3) { SuggestionValue(t) };
                 if (TermVisuals.CadenceText(t) is { } cadence)
+                {
                     parts.Add(cadence);
+                }
+
                 if (inForce is null)
+                {
                     parts.Add($"from {t.EffectiveFrom:yyyy-MM-dd}");
+                }
+
                 return new NameSuggestion(group.Key, label, string.Join(" · ", parts), Scheduled: inForce is null);
             })
             .OrderBy(s => s.Label, StringComparer.OrdinalIgnoreCase)
@@ -285,7 +297,9 @@ public partial class AddTermDialog
     private static string SuggestionValue(ExistingTerm t)
     {
         if (t.ValueUnit != TermValueUnit.Text)
+        {
             return TermVisuals.FormatValue(t, (v, c) => OdsMoney.Format(v, c));
+        }
 
         var text = t.TextValue ?? "";
         return text.Length > SuggestionTextLength
@@ -341,7 +355,10 @@ public partial class AddTermDialog
     private void OnUnitChanged(string value)
     {
         if (Enum.TryParse<TermValueUnit>(value, out var unit) && Enum.IsDefined(unit))
+        {
             _unit = unit;
+        }
+
         _errors.Remove("value");
         _errors.Remove("textValue");
         _errors.Remove("dateTimeDate");
@@ -359,7 +376,9 @@ public partial class AddTermDialog
         get
         {
             if (Term is null || Term.ValueUnit == _unit)
+            {
                 return null;
+            }
 
             var from = TermVisuals.UnitInfo(Term.ValueUnit).Label.ToLowerInvariant();
             var to = TermVisuals.UnitInfo(_unit).Label.ToLowerInvariant();
@@ -389,9 +408,15 @@ public partial class AddTermDialog
         get
         {
             if (_errors.TryGetValue("textValue", out var error))
+            {
                 return error;
+            }
+
             if (TrimmedTextLength > TermTextValue.MaxLength)
+            {
                 return TextTooLongMessage;
+            }
+
             return _textValue.Length > 0 && TermTextValue.HasForbiddenCharacter(_textValue.Trim())
                 ? TextControlMessage
                 : null;
@@ -460,7 +485,10 @@ public partial class AddTermDialog
         // A count that is no longer meaningful is dropped rather than carried invisibly into a
         // request the server would refuse — the field it belonged to has just gone away.
         if (!IsPeriodicInterval)
+        {
             _intervalCount = null;
+        }
+
         _errors.Remove("intervalCount");
     }
 
@@ -523,7 +551,9 @@ public partial class AddTermDialog
     private async Task SubmitAsync()
     {
         if (_isSaving)
+        {
             return;
+        }
 
         _errors.Clear();
 
@@ -546,7 +576,9 @@ public partial class AddTermDialog
             else if (IsPercentage)
             {
                 if (raw < -100m || raw > 100m)
+                {
                     _errors["value"] = "Must be between −100% and 100%.";
+                }
             }
             else if (raw < 0m)
             {
@@ -558,11 +590,17 @@ public partial class AddTermDialog
             // The SAME rule, in the same order, the server applies — the shared TermTextValue delegate.
             textValue = TermTextValue.Normalize(_textValue);
             if (textValue is null)
+            {
                 _errors["textValue"] = "Enter the text this term records.";
+            }
             else if (textValue.Length > TermTextValue.MaxLength)
+            {
                 _errors["textValue"] = TextTooLongMessage;
+            }
             else if (TermTextValue.HasForbiddenCharacter(textValue))
+            {
                 _errors["textValue"] = TextControlMessage;
+            }
         }
         else if (IsDateTime)
         {
@@ -570,15 +608,25 @@ public partial class AddTermDialog
             // aria-invalid rather than floating beside the row.
             dateTimeValue = DateTimeUtc;
             if (_dtDate is null)
+            {
                 _errors["dateTimeDate"] = "Pick a date.";
+            }
+
             if (_dtTime is null)
+            {
                 _errors["dateTimeTime"] = "Pick a time.";
+            }
+
             if (dateTimeValue is { } picked && !TermDateTimeValue.IsInRange(picked))
+            {
                 _errors["dateTimeDate"] = "Pick a date between 1900 and 2200.";
+            }
         }
 
         if (_effectiveFrom is null)
+        {
             _errors["effectiveFrom"] = "Pick the date this takes effect.";
+        }
 
         // The same bound the DTO's [Range] carries and the service re-checks — named from the one
         // constant pair, so the message cannot quote a number the server would not enforce.
@@ -593,7 +641,9 @@ public partial class AddTermDialog
         // billed in arrears and prepaid are both legitimate records, and the server rejects neither.
 
         if ((_note?.Length ?? 0) > 512)
+        {
             _errors["note"] = "Keep the note under 512 characters.";
+        }
 
         // Label — required on every term.
         var label = TermLabel.Normalize(_label);
@@ -602,7 +652,9 @@ public partial class AddTermDialog
             _errors["label"] = "Name this term so it keeps its own history.";
         }
         else if (label is { Length: > TermLabel.MaxLength })
+        {
             _errors["label"] = $"Keep the name under {TermLabel.MaxLength} characters.";
+        }
 
         // Duplicate (label, effectiveFrom) → the server's 409, excluding the row being edited.
         // Compared on the SAME normalized, case-folded key the server writes, so "ATM abroad" and
@@ -620,7 +672,9 @@ public partial class AddTermDialog
         }
 
         if (_errors.Count > 0)
+        {
             return;
+        }
 
         decimal? value = !IsNumeric
             ? null
@@ -667,7 +721,9 @@ public partial class AddTermDialog
                 : result.Toast(Snackbar, "Unable to create term", "Term created.");
 
             if (!ok)
+            {
                 return;
+            }
 
             await OnSaved.InvokeAsync();
             await OpenChanged.InvokeAsync(false);

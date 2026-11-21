@@ -51,7 +51,10 @@ public partial class Preferences
         set
         {
             if (_isDarkMode == value)
+            {
                 return;
+            }
+
             _isDarkMode = value;
             UserPreferences.PreviewDarkMode(_isDarkMode);
         }
@@ -120,7 +123,9 @@ public partial class Preferences
     protected override async Task OnInitializedAsync()
     {
         if (!InteractiveCheck())
+        {
             return;
+        }
 
         await RestoreViewStateAsync();
         StateHasChanged();
@@ -141,7 +146,9 @@ public partial class Preferences
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
+        {
             StateHasChanged();
+        }
     }
 
     private async Task LoadCurrencies()
@@ -150,10 +157,14 @@ public partial class Preferences
         _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
 
         if (_currencies.Count > 0 && _currencies.All(c => !string.Equals(c.CurrencyCode, _currencyCode, StringComparison.OrdinalIgnoreCase)))
+        {
             _currencyCode = _currencies[0].CurrencyCode;
+        }
 
         if (_currencies.Count > 0 && _currencies.All(c => !string.Equals(c.CurrencyCode, _mainCurrencyCode, StringComparison.OrdinalIgnoreCase)))
+        {
             _mainCurrencyCode = _currencies[0].CurrencyCode;
+        }
     }
 
     /// <summary>
@@ -164,13 +175,17 @@ public partial class Preferences
     {
         var user = await Auth.GetUserAsync();
         if (!user.HasPermission(PermissionClaims.WeatherPreferencesUpdate))
+        {
             return;
+        }
 
         var options = WeatherOptions.GetAsync();
         var preferences = Weather.PreferencesAsync();
         await Task.WhenAll(options, preferences);
         if ((await options).Value is not { } loaded || (await preferences).Value is not { } own)
+        {
             return;
+        }
 
         _weatherOptions = loaded;
         _weatherPoint = _savedWeatherPoint = WeatherVisuals.PickerValue(loaded, own.DefaultPoint);
@@ -198,7 +213,9 @@ public partial class Preferences
     private async Task Save(MouseEventArgs arg)
     {
         if (_isSaving || !HasUnsavedChanges)
+        {
             return;
+        }
 
         _isSaving = true;
         _justSaved = false;
@@ -214,7 +231,9 @@ public partial class Preferences
         }
 
         if (WeatherPointDirty)
+        {
             saved &= await SaveWeatherPointAsync();
+        }
 
         _isSaving = false;
 
@@ -249,6 +268,8 @@ public partial class Preferences
     public void Dispose()
     {
         if (_isDarkMode != _savedDarkMode)
+        {
             UserPreferences.PreviewDarkMode(_savedDarkMode);
+        }
     }
 }

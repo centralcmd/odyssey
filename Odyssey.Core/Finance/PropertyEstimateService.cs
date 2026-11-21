@@ -42,7 +42,9 @@ public class PropertyEstimateService
         Guid propertyId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         if (!await PropertyExists(propertyId, cancellationToken))
+        {
             return null;
+        }
 
         var query = context.PropertyEstimates.AsNoTracking().Where(estimate => estimate.PropertyId == propertyId);
 
@@ -111,11 +113,15 @@ public class PropertyEstimateService
         var estimate = await context.PropertyEstimates
             .FirstOrDefaultAsync(e => e.PropertyEstimateId == estimateId && e.PropertyId == propertyId, cancellationToken);
         if (estimate is null)
+        {
             return false;
+        }
 
         var property = await context.Properties.FirstOrDefaultAsync(p => p.PropertyId == propertyId, cancellationToken);
         if (property is null)
+        {
             return false;
+        }
 
         await ApplyAndValidate(estimate, putEstimate, property, excludeEstimateId: estimateId, cancellationToken);
 
@@ -129,7 +135,9 @@ public class PropertyEstimateService
         var estimate = await context.PropertyEstimates
             .FirstOrDefaultAsync(e => e.PropertyEstimateId == estimateId && e.PropertyId == propertyId, cancellationToken);
         if (estimate is null)
+        {
             return false;
+        }
 
         context.PropertyEstimates.Remove(estimate);
         await context.SaveChangesAsync(cancellationToken);
@@ -141,7 +149,9 @@ public class PropertyEstimateService
         CancellationToken cancellationToken)
     {
         if (source.Value < 0m)
+        {
             throw new DomainValidationException("An estimated value must be greater than or equal to zero.");
+        }
 
         // The currency defaults to the property currency and must match it when supplied.
         var requested = string.IsNullOrWhiteSpace(source.CurrencyCode) ? property.CurrencyCode : source.CurrencyCode;
@@ -151,8 +161,10 @@ public class PropertyEstimateService
 
         var propertyCurrency = CurrencyValidationService.Normalize(property.CurrencyCode);
         if (!string.Equals(normalized, propertyCurrency, StringComparison.Ordinal))
+        {
             throw new DomainValidationException(
                 $"An estimate must be recorded in the property currency ('{propertyCurrency}'), not '{normalized}'.");
+        }
 
         var effectiveFrom = DateTimeNormalization.NormalizeToUtc(source.EffectiveFrom);
 
@@ -163,8 +175,10 @@ public class PropertyEstimateService
             effectiveFrom,
             cancellationToken);
         if (duplicateExists)
+        {
             throw new DomainConflictException(
                 $"An estimate effective from {effectiveFrom:yyyy-MM-dd} already exists for this property.");
+        }
 
         estimate.Value = source.Value;
         estimate.CurrencyCode = normalized;

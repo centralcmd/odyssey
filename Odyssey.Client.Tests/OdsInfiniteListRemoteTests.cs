@@ -69,7 +69,10 @@ public class OdsInfiniteListRemoteTests
     {
         var clone = (AngleSharp.Dom.IElement)element.Clone(deep: true);
         foreach (var hidden in clone.QuerySelectorAll("[aria-hidden='true']").ToList())
+        {
             hidden.Remove();
+        }
+
         return System.Text.RegularExpressions.Regex.Replace(clone.TextContent, @"\s+", " ").Trim();
     }
 

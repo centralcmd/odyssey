@@ -124,7 +124,9 @@ public partial class PropertiesCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await LoadPermissionsAsync();
         await RestorePageStateAsync();
@@ -228,7 +230,9 @@ public partial class PropertiesCard
             _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
 
@@ -268,7 +272,9 @@ public partial class PropertiesCard
         {
             var index = _properties.FindIndex(p => p.PropertyId == id);
             if (index >= 0)
+            {
                 _properties[index] = fresh;
+            }
         }
 
         await LoadSummary();
@@ -350,7 +356,9 @@ public partial class PropertiesCard
         items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(p.PropertyId.ToString(), OdsCopied.Id("Property")))));
 
         if (_canUpdate || _canDelete)
+        {
             items.Add(new OdsMenuItem { Divider = true });
+        }
 
         if (_canUpdate)
         {
@@ -442,13 +450,17 @@ public partial class PropertiesCard
     private async Task SetArchived(ExistingProperty p, bool archived)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         var ok = (await Properties.UpdateAsync(p.PropertyId, PropertyWrites.WithArchived(p, archived)))
             .Toast(Snackbar, archived ? "Unable to archive property" : "Unable to restore property",
                 archived ? "Property archived." : "Property restored.");
         if (ok)
+        {
             await ReloadProperty(p.PropertyId);
+        }
     }
 
     private void DeleteClicked(ExistingProperty p)
@@ -461,10 +473,14 @@ public partial class PropertiesCard
     private async Task DeleteAsync(ExistingProperty p)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         if (!(await Properties.DeleteAsync(p.PropertyId)).Toast(Snackbar, "Unable to delete property", "Property deleted."))
+        {
             return;
+        }
 
         _properties.RemoveAll(x => x.PropertyId == p.PropertyId);
         _newEstimateTokens.Remove(p.PropertyId);
@@ -472,7 +488,10 @@ public partial class PropertiesCard
         _documentCounts.Remove(p.PropertyId);
         _newEventTokens.Remove(p.PropertyId);
         if (_expandedId == p.PropertyId)
+        {
             _expandedId = null;
+        }
+
         if (_editProperty?.PropertyId == p.PropertyId)
         {
             _editProperty = null;
@@ -582,7 +601,9 @@ public partial class PropertiesCard
     {
         var counts = new List<OdsRecordCount>(5);
         if (canReadEstimates)
+        {
             counts.Add(new OdsRecordCount("monitor", (p.EstimateCount ?? 0).ToString(CultureInfo.CurrentCulture), "Estimates"));
+        }
 
         // Between Estimates and Smart tags, as the design orders it (Properties.jsx): properties.read data,
         // always shown — the attachment list itself is readable under the same claim.
@@ -592,7 +613,9 @@ public partial class PropertiesCard
         counts.Add(new OdsRecordCount("history", p.EventCount.ToString(CultureInfo.CurrentCulture), "Events"));
 
         if (p.ContractCount is > 0 and var contractCount)
+        {
             counts.Add(new OdsRecordCount("handshake", contractCount.ToString(CultureInfo.CurrentCulture), "Contracts"));
+        }
 
         return counts;
     }

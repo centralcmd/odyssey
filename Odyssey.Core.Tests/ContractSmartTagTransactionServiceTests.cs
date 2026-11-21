@@ -153,7 +153,9 @@ public class ContractSmartTagTransactionServiceTests
             await context.SaveChangesAsync();
         }
         if (withParty)
+        {
             await fixture.AddParty(fixture.SupplierId);
+        }
 
         return fixture;
     }

@@ -167,7 +167,9 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard());
         foreach (var name in new[] { "Bravo", "Alpha", "Charlie" })
+        {
             await service.Create(Org(name));
+        }
 
         var asc = await service.ListAsync(new ContactsQueryParams { SortBy = ContactSortBy.Name, SortDir = SortDirection.Asc }, claims: LocationClaims.Trusted);
         Assert.Equal(["Alpha", "Bravo", "Charlie"], asc.Items.Select(c => c.ResolvedDisplayName));

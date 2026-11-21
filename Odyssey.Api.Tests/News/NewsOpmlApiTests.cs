@@ -183,12 +183,10 @@ public class NewsOpmlApiTests(NewsOpmlApiTests.Host host) : SharedApiHostTests<N
     [Fact]
     public async Task AC42_The_filtered_export_needs_news_feeds_update_and_json()
     {
-        await using var reader = new OdysseyApiFactory([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate]);
-        using var readerClient = reader.CreateClient();
+        using var readerClient = Factory.ClientFor([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate]);
         Assert.Equal(HttpStatusCode.Forbidden, (await readerClient.PostAsJsonAsync(FilteredExport, new NewsOpmlExportRequest { FeedIds = [Guid.NewGuid()] })).StatusCode);
 
-        await using var owner = new OdysseyApiFactory(AllNewsClaims);
-        using var ownerClient = owner.CreateClient();
+        using var ownerClient = Factory.ClientFor(AllNewsClaims);
         Assert.Equal(HttpStatusCode.UnsupportedMediaType,
             (await ownerClient.PostAsync(FilteredExport, new StringContent("feedIds", Encoding.UTF8, "text/plain"))).StatusCode);
     }
@@ -218,14 +216,12 @@ public class NewsOpmlApiTests(NewsOpmlApiTests.Host host) : SharedApiHostTests<N
     [Fact]
     public async Task AC7_Export_needs_news_feeds_update_and_import_news_feeds_create()
     {
-        await using var noUpdate = new OdysseyApiFactory([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate]);
-        using var noUpdateClient = noUpdate.CreateClient();
+        using var noUpdateClient = Factory.ClientFor([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate]);
         Assert.Equal(HttpStatusCode.Forbidden, (await noUpdateClient.GetAsync(Opml)).StatusCode);
 
-        await using var noCreate = new OdysseyApiFactory([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsUpdate]);
-        using var noCreateClient = noCreate.CreateClient();
+        using var noCreateClient = Factory.ClientFor([PermissionClaims.NewsRead, PermissionClaims.NewsFeedsUpdate]);
         Assert.Equal(HttpStatusCode.Forbidden, (await noCreateClient.PostAsync(Opml, Upload(Document("https://a.example/rss")))).StatusCode);
-        Assert.Equal(0, await noCreate.WithContextAsync(c => c.NewsFeeds.CountAsync()));
+        Assert.Equal(0, await Factory.WithContextAsync(c => c.NewsFeeds.CountAsync()));
     }
 
     [Fact]
@@ -550,9 +546,8 @@ public class NewsOpmlApiTests(NewsOpmlApiTests.Host host) : SharedApiHostTests<N
     [Fact]
     public async Task AC34_Import_limits_publish_both_fields_and_a_settings_save_is_reflected()
     {
-        await using var factory = new OdysseyApiFactory(
+        using var client = Factory.ClientFor(
             [PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate, PermissionClaims.SystemSettingsSecurityUpdate]);
-        using var client = factory.CreateClient();
 
         var before = await client.GetFromJsonAsync<ImportLimitsDto>("/api/import-limits", Json);
         Assert.Equal(((int?)SystemSettingsDefaults.NewsOpmlMaxImportEntries, SystemSettingsDefaults.NewsOpmlMaxImportMegabytes),

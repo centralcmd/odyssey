@@ -80,7 +80,9 @@ public partial class AccountTwoFactorSection
     {
         var basis = $"{Email}|{Status.SharedKey}";
         if (basis == _qrBasis)
+        {
             return;
+        }
 
         _qrBasis = basis;
         _qrDataUri = string.IsNullOrEmpty(Status.SharedKey) || string.IsNullOrEmpty(Email)
@@ -226,7 +228,9 @@ public partial class AccountTwoFactorSection
         // Only flip the button to "Copied" when the copy actually succeeded; on
         // failure CopyAsync toasts the error and the codes stay on screen.
         if (!await Clipboard.CopyAsync(string.Join("\n", _recoveryCodes), OdsCopied.Value("Recovery codes")))
+        {
             return;
+        }
 
         _codesCopied = true;
         StateHasChanged();

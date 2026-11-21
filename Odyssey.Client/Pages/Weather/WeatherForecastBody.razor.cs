@@ -109,7 +109,9 @@ public partial class WeatherForecastBody : IAsyncDisposable
     private async Task RetryAsync()
     {
         if (_selected is not { } date || !RetryEnabled || _pointId is not { } point)
+        {
             return;
+        }
 
         Reads.ForgetDay(point, date);
         _focusAfterRender = FocusTarget.Heading;
@@ -119,7 +121,9 @@ public partial class WeatherForecastBody : IAsyncDisposable
     private async Task LoadAsync(DateOnly date)
     {
         if (_pointId is not { } point)
+        {
             return;
+        }
 
         var token = ++_loadToken;
         _phase = WeatherHoursPhase.Loading;
@@ -131,7 +135,9 @@ public partial class WeatherForecastBody : IAsyncDisposable
 
         // A newer selection, a close, or another point while this was in flight: its answer is not for this panel.
         if (token != _loadToken || _selected != date || _pointId != point)
+        {
             return;
+        }
 
         _inFlight = false;
         if (result is { IsSuccess: true, Value: { } value })
@@ -152,7 +158,9 @@ public partial class WeatherForecastBody : IAsyncDisposable
             // Status and failure class only: never the point's name, the date or a response body (issue #415 S5).
             Log.LogWarning("The hours read failed with {Status} ({Phase}).", (int)result.Status, _phase);
             if (_phase == WeatherHoursPhase.RateLimited)
+            {
                 StartCoolDown();
+            }
         }
 
         StateHasChanged();
@@ -203,7 +211,10 @@ public partial class WeatherForecastBody : IAsyncDisposable
         var coolDown = _coolDown;
         _coolDown = null;
         if (coolDown is null)
+        {
             return;
+        }
+
         coolDown.Cancel();
         coolDown.Dispose();
     }
@@ -235,7 +246,9 @@ public partial class WeatherForecastBody : IAsyncDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_selected is not null && !_escapeAttached)
+        {
             await AttachEscapeAsync();
+        }
 
         var target = _focusAfterRender;
         _focusAfterRender = FocusTarget.None;
@@ -250,9 +263,13 @@ public partial class WeatherForecastBody : IAsyncDisposable
         try
         {
             if (target == FocusTarget.Heading && await ModuleAsync() is { } module)
+            {
                 await module.InvokeVoidAsync("focusById", WeatherDayHours.FocusIdFor(HeadingId));
+            }
             else if (element is { } el)
+            {
                 await el.FocusAsync();
+            }
         }
         catch (JSException)
         {
@@ -281,7 +298,10 @@ public partial class WeatherForecastBody : IAsyncDisposable
     private async Task<bool> ContainsFocusAsync(DateOnly date)
     {
         if (await ModuleAsync() is not { } module)
+        {
             return false;
+        }
+
         try
         {
             var card = _cards.TryGetValue(date, out var c) ? (object)c : null;
@@ -300,7 +320,10 @@ public partial class WeatherForecastBody : IAsyncDisposable
     private async Task AttachEscapeAsync()
     {
         if (await ModuleAsync() is not { } module)
+        {
             return;
+        }
+
         try
         {
             _self ??= DotNetObjectReference.Create(this);
@@ -318,7 +341,10 @@ public partial class WeatherForecastBody : IAsyncDisposable
     private async Task DetachEscapeAsync()
     {
         if (!_escapeAttached || _module is null)
+        {
             return;
+        }
+
         _escapeAttached = false;
         try
         {

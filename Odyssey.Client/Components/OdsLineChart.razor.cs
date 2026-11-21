@@ -154,7 +154,10 @@ public partial class OdsLineChart : IAsyncDisposable
         get
         {
             if (_pts[0].Kind == OdsLinePointKind.Partial || _pts[^1].Kind == OdsLinePointKind.Partial)
+            {
                 return "change withheld";
+            }
+
             var d = _pts[^1].Value - _pts[0].Value;
             var sign = d > 0 ? "+" : d < 0 ? "−" : "";
             return $"{sign}{Format((decimal)Math.Abs(d))}{(string.IsNullOrEmpty(DeltaSuffix) ? "" : " " + DeltaSuffix)}";
@@ -182,7 +185,9 @@ public partial class OdsLineChart : IAsyncDisposable
     private void OnPlotFocus()
     {
         if (_pts.Count > 0)
+        {
             ShowHover(_hover ?? _pts.Count - 1, byKey: true);
+        }
     }
 
     /// <summary>
@@ -198,7 +203,10 @@ public partial class OdsLineChart : IAsyncDisposable
             return;
         }
         if (_pts.Count == 0 || e.Key is not ("ArrowLeft" or "ArrowRight"))
+        {
             return;
+        }
+
         var from = _hover ?? _pts.Count - 1;
         ShowHover(Math.Clamp(from + (e.Key == "ArrowRight" ? 1 : -1), 0, _pts.Count - 1), byKey: true);
     }
@@ -209,7 +217,11 @@ public partial class OdsLineChart : IAsyncDisposable
     /// <summary>The change from the previous point, as the readout and the table state it; "—" for the first.</summary>
     internal string ChangeText(int i)
     {
-        if (i == 0) return "—";
+        if (i == 0)
+        {
+            return "—";
+        }
+
         var d = _pts[i].Value - _pts[i - 1].Value;
         return d == 0 ? "No change" : $"{(d > 0 ? "+" : "−")}{Format((decimal)Math.Abs(d))}";
     }
@@ -288,7 +300,11 @@ public partial class OdsLineChart : IAsyncDisposable
     private Task OnPlotWidth(double width) => InvokeAsync(() =>
     {
         var w = Math.Round(width);
-        if (w <= 0 || w == _vbW) return;
+        if (w <= 0 || w == _vbW)
+        {
+            return;
+        }
+
         _vbW = w;
         _every = ResolveEvery();
         StateHasChanged();
@@ -297,7 +313,10 @@ public partial class OdsLineChart : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_widthObserver is not null)
+        {
             await _widthObserver.DisposeAsync();
+        }
+
         GC.SuppressFinalize(this);
     }
 
@@ -349,7 +368,11 @@ public partial class OdsLineChart : IAsyncDisposable
         double acc = 0;
         foreach (var point in Series)
         {
-            if (point?.Value is null) continue;
+            if (point?.Value is null)
+            {
+                continue;
+            }
+
             acc += (double)point.Value.Value;
             _pts.Add((point.Label, Cumulative ? acc : (double)point.Value.Value, point.Kind));
         }
@@ -359,9 +382,16 @@ public partial class OdsLineChart : IAsyncDisposable
                    && _pts[0].Kind != OdsLinePointKind.Partial
                    && _pts[^1].Kind != OdsLinePointKind.Partial;
 
-        if (_hover >= _pts.Count) ClearHover();
+        if (_hover >= _pts.Count)
+        {
+            ClearHover();
+        }
+
         _x0 = DefaultX0;
-        if (_pts.Count == 0) return;
+        if (_pts.Count == 0)
+        {
+            return;
+        }
 
         _single = _pts.Count == 1;
         var lo = _pts.Min(p => p.Value);
@@ -423,12 +453,18 @@ public partial class OdsLineChart : IAsyncDisposable
     /// </summary>
     internal static int TickEvery(int n, double plotWidth, double labelWidth)
     {
-        if (n <= 1) return 1;
+        if (n <= 1)
+        {
+            return 1;
+        }
+
         var every = Math.Max(1, (int)Math.Ceiling(n / 8.0));
         var step = plotWidth > 0 && labelWidth > 0 ? plotWidth / (n - 1) : 0;
         var need = labelWidth + XLabelGap;
         if (step > 0)
+        {
             every = Math.Max(every, (int)Math.Ceiling(need / step));
+        }
 
         bool Crowded(int e)
         {
@@ -437,7 +473,11 @@ public partial class OdsLineChart : IAsyncDisposable
         }
 
         // Past n - 1 only the first and the tail label are left, and nothing further can help.
-        while (every < n - 1 && Crowded(every)) every += 1;
+        while (every < n - 1 && Crowded(every))
+        {
+            every += 1;
+        }
+
         return Math.Min(every, Math.Max(1, n - 1));
     }
 

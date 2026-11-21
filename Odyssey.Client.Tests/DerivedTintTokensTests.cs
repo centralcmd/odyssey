@@ -49,7 +49,9 @@ public sealed class DerivedTintTokensTests
             // other base must be declared in app.css or the tint resolves to nothing.
             var baseToken = match.Groups["base"].Value;
             if (!baseToken.StartsWith("--mud-palette-", StringComparison.Ordinal))
+            {
                 Assert.NotNull(Declaration(css, baseToken));
+            }
         }
     }
 
@@ -120,12 +122,16 @@ public sealed class DerivedTintTokensTests
             {
                 if (!Regex.IsMatch(body, PendingText) || selector.Contains("material-icons", StringComparison.Ordinal)
                     || selector.Contains("mud-icon", StringComparison.Ordinal) || selector.EndsWith("-ic", StringComparison.Ordinal))
+                {
                     continue;
+                }
 
                 var onTint = Regex.IsMatch(body, Tint)
                     || selector.Split(',').Select(LeadClass).Any(c => c is not null && tinted.Any(t => c.StartsWith(t!, StringComparison.Ordinal)));
                 if (onTint)
+                {
                     offenders.Add($"{ClientSource.Relative(file)}: {selector}");
+                }
             }
         }
 

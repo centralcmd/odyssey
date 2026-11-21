@@ -565,7 +565,9 @@ public class ContractSignatureSurfaceTests
     /// </summary>
     private static string Source(string fileName)
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName));
+        var source = fileName.EndsWith(".razor.cs", StringComparison.Ordinal)
+            ? ClientSource.CodeBehind($"Pages/Finance/{fileName}")
+            : File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName));
         source = Regex.Replace(source, @"@\*[\s\S]*?\*@", string.Empty);
         source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
         source = Regex.Replace(source, @"^\s*(///?).*$", string.Empty, RegexOptions.Multiline);

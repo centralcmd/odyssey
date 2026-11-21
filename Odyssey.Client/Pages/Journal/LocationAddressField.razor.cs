@@ -82,12 +82,18 @@ public partial class LocationAddressField
             // The place's usage feeds the usage line; the stored one's is already known.
             ExistingLocation? place = null;
             if (id != Model.Stored?.LocationId && (await Locations.GetAsync(id)) is { IsSuccess: true, Value: { } found })
+            {
                 place = found;
+            }
+
             Model.PickPlace(id, place);
         }
 
         if (announcement is not null)
+        {
             await OnAnnounce.InvokeAsync(announcement);
+        }
+
         await OnChange.InvokeAsync();
     }
 
@@ -111,18 +117,27 @@ public partial class LocationAddressField
     private async Task EditAddressAsync()
     {
         if (Model.LinkedId is not { } id)
+        {
             return;
+        }
+
         var result = await Locations.GetAsync(id);
         if (result is { IsSuccess: true, Value: { } place })
+        {
             _editing = place;
+        }
         else
+        {
             await OnAnnounce.InvokeAsync("Couldn’t load that place.");
+        }
     }
 
     private void OnEditOpenChanged(bool open)
     {
         if (!open)
+        {
             _editing = null;
+        }
     }
 
     /// <summary>The place was saved: the field names its new address, and the change reaches every record using it.</summary>
@@ -139,7 +154,10 @@ public partial class LocationAddressField
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusNext is not { } id)
+        {
             return;
+        }
+
         _focusNext = null;
         try { await Js.InvokeVoidAsync("odsFocusById", id); }
         catch (JSException) { }
