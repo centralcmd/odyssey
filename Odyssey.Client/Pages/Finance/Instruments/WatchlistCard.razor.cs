@@ -63,7 +63,9 @@ public partial class WatchlistCard
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrWhiteSpace(DisplayCurrencyCode) || DisplayCurrencyCode == _requested)
+        {
             return;
+        }
 
         await LoadAsync();
     }
@@ -71,7 +73,9 @@ public partial class WatchlistCard
     private async Task LoadAsync()
     {
         if (string.IsNullOrWhiteSpace(DisplayCurrencyCode))
+        {
             return;
+        }
 
         var requested = DisplayCurrencyCode;
         _requested = requested;
@@ -82,7 +86,10 @@ public partial class WatchlistCard
         // A newer display currency was requested while this one was in flight: its response wins, so a slow
         // reply for the old currency must not overwrite it (PR #457 frontend review).
         if (requested != _requested)
+        {
             return;
+        }
+
         if (result is { IsSuccess: true, Value: { } watchlist })
         {
             _watchlist = watchlist;
@@ -124,11 +131,15 @@ public partial class WatchlistCard
     {
         var closes = r.Sparkline.OrderBy(p => p.Date).Where(p => p.Close is not null).Select(p => p.Close!.Value).ToList();
         if (closes.Count < 2 || closes[0] == 0m)
+        {
             return $"{SparklineDays}-day trend: not enough prices";
+        }
 
         var percent = Math.Round((closes[^1] - closes[0]) / closes[0] * 100m, 1, MidpointRounding.AwayFromZero);
         if (percent == 0m)
+        {
             return $"{SparklineDays}-day trend: unchanged";
+        }
 
         var magnitude = Math.Abs(percent).ToString("0.0", CultureInfo.InvariantCulture);
         return $"{SparklineDays}-day trend: {(percent > 0 ? "up" : "down")} {magnitude} %";

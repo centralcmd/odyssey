@@ -113,16 +113,28 @@
     {
         get
         {
-            if (Rows.Count == 0) return null;
+            if (Rows.Count == 0)
+            {
+                return null;
+            }
             // An explicit figure IS the opt-in — a caller that computed a net has already said it
             // wants the row, and making them pass Total as well would be a second switch for one fact.
-            if (TotalValue is not null) return TotalValue;
-            if (!Total) return null;
+            if (TotalValue is not null)
+            {
+                return TotalValue;
+            }
+            if (!Total)
+            {
+                return null;
+            }
 
             var sum = 0m;
             foreach (var row in Rows)
             {
-                if (!TryNumber(row.Count, out var n)) return null;
+                if (!TryNumber(row.Count, out var n))
+                {
+                    return null;
+                }
                 sum += n;
             }
             // Whole counts read as whole counts: the summed form is what the rows themselves are.

@@ -30,7 +30,9 @@ public static class ApiInteropExtensions
         where T : class
     {
         if (result.IsSuccess)
+        {
             return result.Value;
+        }
 
         snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
         return null;
@@ -46,7 +48,9 @@ public static class ApiInteropExtensions
         where T : class
     {
         if (result.IsSuccess)
+        {
             return result.Value;
+        }
 
         snackbar.Add($"{failureLead}: {result.Error}", Severity.Error,
             config => config.RequireInteraction = requireInteraction,
@@ -62,7 +66,9 @@ public static class ApiInteropExtensions
     public static T ValueOrToast<T>(this ApiResult<T> result, ISnackbar snackbar, string what, T fallback)
     {
         if (!result.IsSuccess)
+        {
             snackbar.Add($"Unable to load {what}: {result.Error}", Severity.Error);
+        }
 
         return result.ValueOr(fallback);
     }
@@ -85,7 +91,9 @@ public static class ApiInteropExtensions
     public static PagedLoad<T> PagedOrToast<T>(this ApiResult<PagedResult<T>> result, ISnackbar snackbar, string what)
     {
         if (!result.IsSuccess)
+        {
             snackbar.Add($"Unable to load {what}: {result.Error}", Severity.Error);
+        }
 
         return PagedLoad<T>.From(result);
     }
@@ -107,7 +115,9 @@ public static class ApiInteropExtensions
         if (result.IsSuccess)
         {
             if (!string.IsNullOrEmpty(successMessage))
+            {
                 snackbar.Add(successMessage, Severity.Success);
+            }
 
             return true;
         }
@@ -140,7 +150,9 @@ public static class ApiInteropExtensions
         if (result.IsSuccess)
         {
             if (!string.IsNullOrEmpty(successMessage))
+            {
                 snackbar.Add(successMessage, Severity.Success);
+            }
 
             return true;
         }

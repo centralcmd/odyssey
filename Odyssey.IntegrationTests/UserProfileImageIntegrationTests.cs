@@ -6,7 +6,7 @@ using Odyssey.Context;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Profiles;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 
 namespace Odyssey.IntegrationTests;

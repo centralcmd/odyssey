@@ -363,7 +363,9 @@ public class AccountService
             .FirstOrDefaultAsync(cancellationToken);
 
         if (projection is null)
+        {
             return null;
+        }
 
         var account = projection.Account;
         var dto = account.Adapt<ExistingAccount>();
@@ -397,7 +399,9 @@ public class AccountService
     private async Task<Custodian?> ResolveCustodian(Guid? custodianId, CancellationToken cancellationToken = default)
     {
         if (custodianId is null)
+        {
             return null;
+        }
 
         var id = custodianId.Value;
         var refs = await contactLookup.ResolveRefsAsync([id], cancellationToken);
@@ -414,16 +418,22 @@ public class AccountService
     private async Task ValidateCustodianTarget(Guid? custodianId, CancellationToken cancellationToken = default)
     {
         if (custodianId is null)
+        {
             return;
+        }
 
         var id = custodianId.Value;
         var refs = await contactLookup.ResolveRefsAsync([id], cancellationToken);
 
         if (!refs.TryGetValue(id, out var custodian))
+        {
             throw new DomainValidationException($"Contact with ID {id} was not found.");
+        }
 
         if (custodian.Archived is not null)
+        {
             throw new DomainValidationException($"Contact with ID {id} is archived and cannot be set as a custodian.");
+        }
     }
 
     /// <summary>
@@ -434,7 +444,9 @@ public class AccountService
     private async Task<Dictionary<Guid, AccountEstimate>> GetCurrentEstimates(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
     {
         if (accountIds.Count == 0)
+        {
             return [];
+        }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var estimates = await context.AccountEstimates

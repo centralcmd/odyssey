@@ -78,7 +78,11 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Interactivity.IsInteractive) return;
+        if (!Interactivity.IsInteractive)
+        {
+            return;
+        }
+
         uploadLimits = await UploadLimits.GetAsync();
         await LoadFilesAsync();
     }
@@ -92,7 +96,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
 
     protected async Task UploadFilesAsync(IReadOnlyList<IBrowserFile>? files)
     {
-        if (files is null || files.Count == 0) return;
+        if (files is null || files.Count == 0)
+        {
+            return;
+        }
 
         // Re-read on each upload, not just at init: a long-lived page could otherwise enforce a cap
         // an administrator changed minutes ago.
@@ -121,7 +128,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             valid = valid.Take(MaxFileCount - items.Count).ToList();
         }
 
-        if (valid.Count == 0) return;
+        if (valid.Count == 0)
+        {
+            return;
+        }
 
         isUploading = true;
         var uploaded = 0;
@@ -154,7 +164,9 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             }
 
             if (perFile.Count > 0)
+            {
                 Snackbar.Add(UploadFailureText.Several(perFile, itemised: perFile.Count <= 3), Severity.Error, o => o.RequireInteraction = true);
+            }
 
             if (uploaded > 0)
             {
@@ -168,7 +180,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task PreviewFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!previewingFiles.Add(meta.Id)) return;
+        if (!previewingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try
@@ -187,7 +202,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task DownloadFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!downloadingFiles.Add(meta.Id)) return;
+        if (!downloadingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try
@@ -206,13 +224,19 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
         var meta = MetadataOf(file);
         var confirmed = await confirm.AskAsync("Detach file", $"Detach '{meta.FileName}' from this {EntityNoun}?", "Detach", "link_off");
 
-        if (confirmed) await DeleteFileAsync(file);
+        if (confirmed)
+        {
+            await DeleteFileAsync(file);
+        }
     }
 
     private async Task DeleteFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!deletingFiles.Add(meta.Id)) return;
+        if (!deletingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try

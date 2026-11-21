@@ -39,7 +39,9 @@ public class AccountEstimateService
     {
         var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
+        {
             return null;
+        }
 
         var query = context.AccountEstimates.AsNoTracking().Where(estimate => estimate.AccountId == accountId);
 
@@ -64,7 +66,9 @@ public class AccountEstimateService
     {
         var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
+        {
             return null;
+        }
 
         var cutoff = DateTimeNormalization.NormalizeToUtc(asOf ?? timeProvider.GetUtcNow().UtcDateTime);
 
@@ -111,11 +115,15 @@ public class AccountEstimateService
         var estimate = await context.AccountEstimates
             .FirstOrDefaultAsync(e => e.AccountEstimateId == estimateId && e.AccountId == accountId, cancellationToken);
         if (estimate is null)
+        {
             return false;
+        }
 
         var account = await context.Accounts.FirstOrDefaultAsync(a => a.AccountId == accountId, cancellationToken);
         if (account is null)
+        {
             return false;
+        }
 
         await ApplyAndValidate(estimate, putEstimate, account, excludeEstimateId: estimateId, cancellationToken);
 
@@ -131,7 +139,9 @@ public class AccountEstimateService
         var estimate = await context.AccountEstimates
             .FirstOrDefaultAsync(e => e.AccountEstimateId == estimateId && e.AccountId == accountId, cancellationToken);
         if (estimate is null)
+        {
             return false;
+        }
 
         context.AccountEstimates.Remove(estimate);
         await context.SaveChangesAsync(cancellationToken);
@@ -141,7 +151,9 @@ public class AccountEstimateService
     private async Task ApplyAndValidate(AccountEstimate estimate, NewAccountEstimate source, Account account, Guid? excludeEstimateId, CancellationToken cancellationToken = default)
     {
         if (source.Value < 0m)
+        {
             throw new DomainValidationException("An estimated value must be greater than or equal to zero.");
+        }
 
         // The currency defaults to the account currency and must match it when supplied — an estimate
         // is always recorded in the account's own currency.
@@ -151,8 +163,10 @@ public class AccountEstimateService
 
         var accountCurrency = CurrencyValidationService.Normalize(account.CurrencyCode);
         if (!string.Equals(normalized, accountCurrency, StringComparison.Ordinal))
+        {
             throw new DomainValidationException(
                 $"An estimate must be recorded in the account currency ('{accountCurrency}'), not '{normalized}'.");
+        }
 
         var effectiveFrom = DateTimeNormalization.NormalizeToUtc(source.EffectiveFrom);
 
@@ -163,8 +177,10 @@ public class AccountEstimateService
             effectiveFrom,
             cancellationToken);
         if (duplicateExists)
+        {
             throw new DomainConflictException(
                 $"An estimate effective from {effectiveFrom:yyyy-MM-dd} already exists for this account.");
+        }
 
         estimate.Value = source.Value;
         estimate.CurrencyCode = normalized;

@@ -55,7 +55,9 @@ public partial class PropertyEstimatesSection
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await LoadAsync();
     }
@@ -63,7 +65,9 @@ public partial class PropertyEstimatesSection
     protected override void OnParametersSet()
     {
         if (NewEstimateRequestToken is not { } token || token == Guid.Empty || token == _handledNewEstimateToken)
+        {
             return;
+        }
 
         _handledNewEstimateToken = token;
         OpenNew();
@@ -102,12 +106,16 @@ public partial class PropertyEstimatesSection
     {
         var confirmed = await _confirm.AskAsync("Delete estimate?", $"Delete the {Money(estimate.Value)} estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? The history keeps every other entry.", "Delete");
         if (!confirmed)
+        {
             return;
+        }
 
         var ok = (await Properties.DeleteEstimateAsync(Property.PropertyId, estimate.PropertyEstimateId))
             .Toast(Snackbar, "Unable to delete estimate", "Estimate deleted.");
         if (ok)
+        {
             await OnEstimateChanged();
+        }
     }
 
     private async Task OnEstimateChanged()

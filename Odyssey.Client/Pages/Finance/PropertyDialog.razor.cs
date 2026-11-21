@@ -151,7 +151,10 @@ public partial class PropertyDialog
     {
         ExistingLocation? place = null;
         if (_addressPermissions.CanReadLocations && (await Locations.GetAsync(locationId)) is { IsSuccess: true, Value: { } found })
+        {
             place = found;
+        }
+
         return new AddressBlockStored
         {
             LocationId = locationId,
@@ -210,11 +213,15 @@ public partial class PropertyDialog
     private async Task LoadContactsAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
         if (string.IsNullOrEmpty(_currencyCode) && _currencyOptions.Count > 0)
+        {
             _currencyCode = _currencyOptions[0].Value;
+        }
 
         _contactsLoading = true;
         try
@@ -236,15 +243,21 @@ public partial class PropertyDialog
     private void OnTypeChanged(string value)
     {
         if (Enum.TryParse<PropertyType>(value, out var type))
+        {
             _type = type;
+        }
     }
 
     private void OnKindChanged(string value)
     {
         if (IsVehicle && Enum.TryParse<VehicleKind>(value, out var vehicleKind))
+        {
             _vehicleKind = vehicleKind;
+        }
         else if (!IsVehicle && Enum.TryParse<RealEstateKind>(value, out var realEstateKind))
+        {
             _realEstateKind = realEstateKind;
+        }
     }
 
     private void OnCurrencyChanged(string value)
@@ -264,7 +277,9 @@ public partial class PropertyDialog
         _formAlert = null;
         foreach (var key in new[] { AddressBlockModel.AddressKey, AddressBlockModel.Line1Key, AddressBlockModel.PostalCodeKey,
                                     AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey })
+        {
             _errors.Remove(key);
+        }
     }
 
     // The summary lists the address field's errors in field order (issue #383 §6.8).
@@ -280,7 +295,10 @@ public partial class PropertyDialog
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusSummary)
+        {
             return;
+        }
+
         _focusSummary = false;
         try { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
         catch (Exception) { /* best-effort: no JS runtime under bUnit */ }
@@ -303,37 +321,72 @@ public partial class PropertyDialog
         _errors.Clear();
 
         if (string.IsNullOrWhiteSpace(_name))
+        {
             _errors["name"] = "Give the property a name.";
+        }
+
         if (string.IsNullOrWhiteSpace(_description))
+        {
             _errors["description"] = "Add a short description.";
+        }
+
         if (string.IsNullOrWhiteSpace(_currencyCode))
+        {
             _errors["currencyCode"] = "Pick a currency.";
+        }
         else if (CurrencyChangeBlocked)
+        {
             _errors["currencyCode"] = "The currency can’t change while the property has estimates.";
+        }
+
         if (_acquired is { } a && _disposed is { } d && d.Date < a.Date)
+        {
             _errors["disposedDate"] = "Disposed can’t be before Acquired.";
+        }
 
         if (IsVehicle)
         {
             if (_modelYear is { } my && (my < 1900 || my > ThisYear + 1))
+            {
                 _errors["modelYear"] = my > ThisYear + 1 ? $"No later than {ThisYear + 1}." : "Enter a year after 1900.";
+            }
+
             if (PropertyVisuals.NormalizePlate(_registration).Length > 16)
+            {
                 _errors["registrationNumber"] = "At most 16 characters.";
+            }
+
             if (PropertyVisuals.NormalizePlate(_vin).Length > 32)
+            {
                 _errors["vin"] = "At most 32 characters.";
+            }
         }
         else
         {
             foreach (var (key, message) in _address.Validate())
+            {
                 _errors[key] = message;
+            }
+
             if (_buildYear is { } by && (by < 1000 || by > ThisYear))
+            {
                 _errors["buildYear"] = by > ThisYear ? "Build year can’t be in the future." : "Enter a year after 1000.";
+            }
+
             if (_livingArea is { } la && (la < 0 || la > 1_000_000))
+            {
                 _errors["livingAreaSqm"] = "Between 0 and 1,000,000 m².";
+            }
+
             if (_plotArea is { } pa && (pa < 0 || pa > 1_000_000))
+            {
                 _errors["plotAreaSqm"] = "Between 0 and 1,000,000 m².";
+            }
+
             if (AssociationPreCheck(_homeownerAssociationId, StoredAssociationId, _contacts) is { } associationError)
+            {
                 _errors["homeownerAssociationId"] = associationError;
+            }
         }
     }
 
@@ -346,7 +399,9 @@ public partial class PropertyDialog
         string? associationId, string? storedAssociationId, IReadOnlyList<ExistingContact> contacts)
     {
         if (string.IsNullOrEmpty(associationId) || associationId == storedAssociationId)
+        {
             return null;
+        }
 
         var contact = contacts.FirstOrDefault(c => c.ContactId.ToString() == associationId);
         return contact switch
@@ -411,7 +466,9 @@ public partial class PropertyDialog
     private async Task<bool> SaveAsync()
     {
         if (!_addressReady)
+        {
             return false;
+        }
 
         _formAlert = null;
         Validate();
@@ -459,7 +516,9 @@ public partial class PropertyDialog
         }
 
         if (created.Value is { } property)
+        {
             await OnCreated.InvokeAsync(property);
+        }
 
         return true;
     }
@@ -471,7 +530,10 @@ public partial class PropertyDialog
     private async Task<bool> AddressFailureAsync(System.Net.HttpStatusCode status, ApiProblem? problem)
     {
         if (IsVehicle)
+        {
             return false;
+        }
+
         if (status == System.Net.HttpStatusCode.Forbidden)
         {
             _formAlert = AddressBlockModel.ForbiddenMessage(_addressWrite.Kind, _address.Noun);
@@ -489,7 +551,10 @@ public partial class PropertyDialog
             var locationId = _address.Stored?.LocationId;
             ExistingLocation? place = null;
             if (locationId is { } id && _addressPermissions.CanReadLocations && (await Locations.GetAsync(id)) is { IsSuccess: true, Value: { } found })
+            {
                 place = found;
+            }
+
             _address.UsesChanged(fresh.Value?.RealEstateDetails?.OtherUses ?? _address.Stored?.OtherUses ?? 0, OthersOf(place));
             _formAlert = AddressBlockModel.UsesChangedAlert;
             return true;
@@ -555,11 +620,15 @@ public partial class PropertyDialog
 
         var key = known.FirstOrDefault(k => string.Equals(k, leaf, StringComparison.OrdinalIgnoreCase));
         if (key is null)
+        {
             return false;
+        }
 
         // An address field the picker hides is reported on the picker.
         if (!IsVehicle && !_address.Hand && key is "countryCode" or "city" or "postalCode")
+        {
             key = AddressBlockModel.AddressKey;
+        }
 
         _errors[key] = message;
         return true;

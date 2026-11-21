@@ -280,26 +280,37 @@ public partial class FileAnalysisDialog : IDisposable
         }
 
         if (_focusedPhase == Phase)
+        {
             return;
+        }
 
         var initial = !_initialFocusSettled;
         _initialFocusSettled = true;
         _focusedPhase = Phase;
 
         if (Phase == FileAnalysisPhase.Submitting)
+        {
             return;
+        }
 
         if (Phase == FileAnalysisPhase.Consent)
         {
             if (ShowPriorAlert)
+            {
                 await TryFocusAsync(_priorRef);
+            }
             else if (!_analyzeRateLimited && !initial)
+            {
                 await TryFocusAsync(_phaseHeading);
+            }
+
             return;
         }
 
         if (!initial)
+        {
             await TryFocusAsync(_phaseHeading);
+        }
     }
 
     private static async Task TryFocusAsync(ElementReference target)
@@ -319,9 +330,13 @@ public partial class FileAnalysisDialog : IDisposable
         // Resolve the host-decided initial phase synchronously, before the first await, so the dialog
         // never flashes the consent gate while a resume/reanalyze/progress open is in flight.
         if (Start == StartMode.ReanalyzeConfirm)
+        {
             _session.SetPhase(FileAnalysisPhase.ReanalyzeConfirm);
+        }
         else if (Start == StartMode.Resume)
+        {
             _session.SetPhase(FileAnalysisPhase.ResumeLoading);
+        }
         else if (Start is StartMode.Progress or StartMode.Result)
         {
             _attached = true;
@@ -330,7 +345,9 @@ public partial class FileAnalysisDialog : IDisposable
         }
 
         if (!Interactivity.IsInteractive)
+        {
             return;
+        }
 
         // Fetched here rather than in the panel, which stays purely presentational (#373). Stale-while-
         // revalidate, so an admin's change reaches the gate on its next open rather than next session.
@@ -350,13 +367,19 @@ public partial class FileAnalysisDialog : IDisposable
 
         // Resume: reference data is now loaded, so fetch the saved job and seed the Review rows.
         if (Start == StartMode.Resume)
+        {
             await ContinueResumeAsync();
+        }
         else if (Start is StartMode.Progress or StartMode.Result)
         {
             if (JobId is { } id && id != Guid.Empty)
+            {
                 StartPolling(id);
+            }
             else
+            {
                 ShowTerminal(FileAnalysisJobCopy.PostRefused);
+            }
         }
     }
 
@@ -365,7 +388,10 @@ public partial class FileAnalysisDialog : IDisposable
     {
         // Submitting: the busy button ignores a second activation, so a double click sends nothing (AC 1).
         if (!_consentChecked || Phase == FileAnalysisPhase.Submitting)
+        {
             return;
+        }
+
         await RunAnalysisAsync();
     }
 
@@ -437,7 +463,9 @@ public partial class FileAnalysisDialog : IDisposable
         }
 
         if (_closed)
+        {
             return;
+        }
 
         _analyzeRateLimited = false;
         if (analyzed.IsSuccess && analyzed.Status != default)
@@ -535,7 +563,10 @@ public partial class FileAnalysisDialog : IDisposable
         await InvokeAsync(() =>
         {
             if (ct.IsCancellationRequested || Phase != FileAnalysisPhase.Submitting)
+            {
                 return;
+            }
+
             _slowStart = true;
             StateHasChanged();
         });
@@ -559,7 +590,9 @@ public partial class FileAnalysisDialog : IDisposable
     {
         StopPolling();
         if (_closed)
+        {
             return;
+        }
 
         _jobId = jobId;
         _hiccup = false;
@@ -594,20 +627,27 @@ public partial class FileAnalysisDialog : IDisposable
             }
 
             if (ct.IsCancellationRequested)
+            {
                 return;
+            }
 
             TimeSpan? next = null;
             await InvokeAsync(async () =>
             {
                 if (ct.IsCancellationRequested || _closed || jobId != _jobId)
+                {
                     return;
+                }
+
                 next = await ApplyPollAsync(polled, first, () => ++transient, () => transient = 0);
                 first = false;
                 StateHasChanged();
             });
 
             if (next is not { } delay)
+            {
                 return;
+            }
 
             try
             {
@@ -627,7 +667,9 @@ public partial class FileAnalysisDialog : IDisposable
         if (polled.IsSuccess && polled.Value is { } job)
         {
             if (job.Id != _jobId)
+            {
                 return FileAnalysisPollPolicy.Interval(polled.RetryAfterDelta);
+            }
 
             // A job for another file is dropped, never shown (S7).
             if (first && AccountFileId != Guid.Empty && job.AccountFileId != AccountFileId)
@@ -693,7 +735,10 @@ public partial class FileAnalysisDialog : IDisposable
                 // A network error or any 5xx — a 503 included — is transient: keep polling, back off.
                 var failures = countTransient();
                 if (failures >= FileAnalysisPollPolicy.HiccupAfter)
+                {
                     _hiccup = true;
+                }
+
                 return FileAnalysisPollPolicy.Backoff(failures);
             default:
                 ShowTerminal(FileAnalysisJobCopy.PostRefused);
@@ -705,7 +750,9 @@ public partial class FileAnalysisDialog : IDisposable
     {
         // The attach note gives way once the job moves on from the status it was attached at.
         if (_jobStatus is { } previous && previous != job.Status)
+        {
             _attachNote = false;
+        }
 
         _jobStatus = job.Status == FileAnalysisJobStatus.New ? FileAnalysisJobStatus.Queued : job.Status;
         _transferStarted = job.TransferStartedAt is not null;
@@ -714,10 +761,14 @@ public partial class FileAnalysisDialog : IDisposable
         var now = Time.GetUtcNow();
         _firstObservedOpen ??= now;
         if (!_takingLong && now - _firstObservedOpen.Value >= FileAnalysisPollPolicy.TakingLongerAfter)
+        {
             _takingLong = true;
+        }
 
         if (Phase != FileAnalysisPhase.Analyzing)
+        {
             _session.SetPhase(FileAnalysisPhase.Analyzing);
+        }
     }
 
     /// <summary>
@@ -752,7 +803,9 @@ public partial class FileAnalysisDialog : IDisposable
     private async Task RunMatchAsync(bool preserveManual = false)
     {
         if (_closed)
+        {
             return;
+        }
 
         _session.SetPhase(FileAnalysisPhase.Matching);
         StateHasChanged();
@@ -803,9 +856,13 @@ public partial class FileAnalysisDialog : IDisposable
         }
 
         if (preserveManual)
+        {
             _session.ApplyMatchesPreservingManual();
+        }
         else
+        {
             _session.SeedRows();
+        }
 
         _session.SetPhase(_session.Rows.Count == 0 ? FileAnalysisPhase.Empty : FileAnalysisPhase.Review);
     }
@@ -830,9 +887,13 @@ public partial class FileAnalysisDialog : IDisposable
     private async Task ReturnToConsentAsync()
     {
         if (_session.Job is { } latest && FileAnalysisJobCopy.MayHaveBeenSent(latest.DocumentSent))
+        {
             _priorSent = latest.DocumentSent;
+        }
         else if (_terminal is { ShowSent: true } && FileAnalysisJobCopy.MayHaveBeenSent(_terminalSent))
+        {
             _priorSent = _terminalSent;
+        }
 
         StopPolling();
         Disclosures.Invalidate();
@@ -921,7 +982,9 @@ public partial class FileAnalysisDialog : IDisposable
     private async Task ImportAsync()
     {
         if (_isImporting || _session.SelectedCount == 0)
+        {
             return;
+        }
 
         _isImporting = true;
         try
@@ -1043,7 +1106,9 @@ public partial class FileAnalysisDialog : IDisposable
                 var match = _session.Contacts.FirstOrDefault(c =>
                     string.Equals(c.ResolvedDisplayName, name, StringComparison.OrdinalIgnoreCase));
                 if (match is not null)
+                {
                     _session.ReconcileCreatedContact(tempId, match.ContactId, match.ResolvedDisplayName);
+                }
             }
         }
         catch

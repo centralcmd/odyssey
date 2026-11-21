@@ -93,7 +93,9 @@ public sealed class RegistryGlyphInkSourceTests
             {
                 var expr = m.Groups["expr"].Value.Trim();
                 if (!NamesAColour.IsMatch(expr))
+                {
                     continue;
+                }
 
                 if (expr.StartsWith(nameof(OdsGlyphInk) + ".", StringComparison.Ordinal))
                 {
@@ -103,9 +105,13 @@ public sealed class RegistryGlyphInkSourceTests
 
                 var exempt = InlineExempt.FirstOrDefault(e => e.File == relative && Normalise(e.Expr) == Normalise(expr));
                 if (exempt.File is not null)
+                {
                     usedExemptions.Add((exempt.File, exempt.Expr));
+                }
                 else
+                {
                     offenders.Add($"{relative}:{SourceLint.LineAt(text, m.Index)}  color:{expr}");
+                }
             }
         }
 
@@ -236,7 +242,9 @@ public sealed class RegistryGlyphInkSourceTests
                 var relative = ClientSource.Relative(file);
                 var line = text.Split('\n')[SourceLint.LineAt(text, m.Index) - 1];
                 if (!PaleLiteralExempt.Any(e => e.File == relative && line.Contains(e.Rule, StringComparison.Ordinal)))
+                {
                     offenders.Add($"{relative}:{SourceLint.LineAt(text, m.Index)}  {line.Trim()}");
+                }
             }
         }
 

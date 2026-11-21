@@ -18,7 +18,7 @@ namespace Odyssey.Dtos.Journal;
 /// A source-lint in <c>Odyssey.Core.Tests</c> fails on a second copy.
 /// </para>
 /// <para>
-/// Only a free-text note keeps line breaks (<paramref name="allowLineBreaks"/>), normalized to <c>\n</c>.
+/// Only a free-text note keeps line breaks (<c>allowLineBreaks</c>), normalized to <c>\n</c>.
 /// A name or an address is one line, and a stray tab or newline in one is the same kind of hidden text a
 /// bidi override is.
 /// </para>

@@ -346,12 +346,16 @@ public class MapStylesApiTests(MapStylesApiTests.Host host) : SharedApiHostTests
         if (exception is AggregateException aggregate)
         {
             foreach (var inner in aggregate.InnerExceptions.SelectMany(Flatten))
+            {
                 yield return inner;
+            }
         }
         else if (exception.InnerException is not null)
         {
             foreach (var inner in Flatten(exception.InnerException))
+            {
                 yield return inner;
+            }
         }
     }
 

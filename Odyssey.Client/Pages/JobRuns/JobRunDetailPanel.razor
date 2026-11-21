@@ -66,13 +66,17 @@
     protected override void OnParametersSet()
     {
         if (State is null)
+        {
             _ = ObserveAsync(OnLoad(Run.Id));
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusSelf)
+        {
             return;
+        }
         _focusSelf = false;
         try
         {

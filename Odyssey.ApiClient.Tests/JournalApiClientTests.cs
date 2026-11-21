@@ -97,15 +97,15 @@ public class JournalApiClientTests
     // a filter added to the list and forgotten on the export shows up here rather than as a download
     // quietly containing rows the page never showed.
     [Fact]
-    public async Task Export_SendsTheSameFilterSetAsTheList()
+    public void Export_SendsTheSameFilterSetAsTheList()
     {
-        var (client, handler) = Create();
+        var (_, handler) = Create();
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         var ics = new JournalIcsApiClient(api);
         var tagId = Guid.NewGuid();
         var contactId = Guid.NewGuid();
 
-        await ics.ExportAsync(
+        var url = new Uri(ics.ExportUrl(
             search: "trip",
             tagIds: [tagId.ToString()],
             status: "Active",
@@ -113,10 +113,10 @@ public class JournalApiClientTests
             from: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             to: new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
             hasPhotos: true,
-            hasFiles: true);
+            hasFiles: true));
 
-        var query = QueryOf(handler);
-        Assert.Contains("/api/journal-entries/vjournal", handler.LastRequest!.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        var query = Uri.UnescapeDataString(url.Query);
+        Assert.Contains("/api/journal-entries/vjournal", url.AbsolutePath, StringComparison.Ordinal);
         Assert.Contains("search=trip", query, StringComparison.Ordinal);
         Assert.Contains($"tagIds={tagId}", query, StringComparison.Ordinal);
         Assert.Contains($"contactIds={contactId}", query, StringComparison.Ordinal);

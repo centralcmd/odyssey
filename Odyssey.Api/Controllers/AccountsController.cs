@@ -299,7 +299,9 @@ public sealed class AccountsController : ControllerBase
     {
         var files = await accountService.GetAccountFiles(accountId, cancellationToken);
         if (files is null)
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         await displayNames.EnrichFileAttributionAsync(User, files, cancellationToken);
         return Ok(files);
@@ -321,7 +323,9 @@ public sealed class AccountsController : ControllerBase
     {
         var contracts = await contractService.ListForAccountAsync(accountId, cancellationToken);
         if (contracts is null)
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         return Ok(contracts);
     }
@@ -341,11 +345,15 @@ public sealed class AccountsController : ControllerBase
         [FromBody] AttachAccountFileRequest request, CancellationToken cancellationToken = default)
     {
         if (!await accountService.Exists(accountId, cancellationToken))
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         var fileMetadata = await fileService.GetFileMetadataAsync(request.FileId, cancellationToken);
         if (fileMetadata is null)
+        {
             return this.NotFoundProblem($"File ID {request.FileId} not found.");
+        }
 
         if (User.ActingUserId() is not { } userId)
         {

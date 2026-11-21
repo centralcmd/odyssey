@@ -51,7 +51,9 @@ public class MapLibreBundleIntegrityTests
             Regex.Matches(readme, @"maplibre-gl@(?<v>\d+\.\d+\.\d+)").Select(m => m.Groups["v"].Value),
             v => v != Version);
         foreach (var row in PinnedFiles)
+        {
             Assert.Contains((string)row[1], readme, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

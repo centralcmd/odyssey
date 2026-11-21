@@ -46,7 +46,7 @@ public class SettingFieldTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
 
     private static string PageCodeBehind() =>
-        File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
     // ── OdsSettingField ──────────────────────────────────────────────────────────────────────────
 

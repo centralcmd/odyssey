@@ -254,7 +254,10 @@ public class UnifiedLocationsWritePathRenderTests
             // Only the application's own collaborators: the framework's (the component activator, …) must keep
             // their real defaults.
             if (!serviceType.IsInterface || serviceType.Namespace?.StartsWith("Odyssey.", StringComparison.Ordinal) != true)
+            {
                 return null;
+            }
+
             if (!made.TryGetValue(serviceType, out var mock))
             {
                 mock = ((Mock)Activator.CreateInstance(typeof(Mock<>).MakeGenericType(serviceType))!).Object;

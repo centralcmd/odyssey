@@ -30,6 +30,7 @@
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
     <Compile Include="..\TestShared\StackProbe.cs" Link="TestShared\StackProbe.cs" />
     <Compile Include="..\TestShared\DemoFileWait.cs" Link="TestShared\DemoFileWait.cs" />
+    <Compile Include="..\TestShared\Fixtures\ContactImageFixtures.cs" Link="TestShared\Fixtures\ContactImageFixtures.cs" />
   </ItemGroup>
 
 </Project>

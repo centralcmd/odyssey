@@ -170,18 +170,24 @@ public class ReturnUrlCallSiteTests
         {
             var relative = ClientSource.Relative(file);
             if (relative.Replace('\\', '/') == "Auth/LocalReturnUrl.cs")
+            {
                 continue;
+            }
 
             var text = File.ReadAllText(file);
             if (!text.Contains("returnUrl", StringComparison.OrdinalIgnoreCase))
+            {
                 continue;
+            }
 
             var lines = SourceLint.StripComments(text).Split('\n');
             for (var i = 0; i < lines.Length; i++)
             {
                 var code = lines[i].TrimStart();
                 if (InlineValidation.IsMatch(code))
+                {
                     violations.Add($"{relative}:{i + 1} — {code.Trim()}");
+                }
             }
         }
 

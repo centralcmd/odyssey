@@ -442,7 +442,9 @@ public class ContractService
         Guid accountId, CancellationToken cancellationToken = default)
     {
         if (!await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken))
+        {
             return null;
+        }
 
         var today = Today;
         var rows = await context.Contracts
@@ -485,7 +487,9 @@ public class ContractService
         Guid propertyId, CancellationToken cancellationToken = default)
     {
         if (!await context.Properties.AnyAsync(p => p.PropertyId == propertyId, cancellationToken))
+        {
             return null;
+        }
 
         var today = Today;
         var rows = await context.Contracts

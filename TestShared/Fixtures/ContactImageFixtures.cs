@@ -1,4 +1,4 @@
-namespace Odyssey.TestData.Fixtures;
+namespace Odyssey.Testing.Fixtures;
 
 /// <summary>
 /// Real, decodable image containers for the contact-image tests (issue #86), plus the constructors for

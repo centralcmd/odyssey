@@ -117,7 +117,9 @@
     {
         var option = OnCreateContact?.Invoke(text, kind);
         if (option is not null)
+        {
             _created.Add(option);
+        }
         return option;
     }
 
@@ -161,7 +163,9 @@
     {
         _touched = true;
         if (!_valid || _typeMissing || _rangeBad || _anyYearBad)
+        {
             return false;
+        }
 
         var patch = new OdsFileEdit(_name.Trim(), _kind)
         {

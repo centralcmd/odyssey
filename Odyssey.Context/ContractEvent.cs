@@ -15,7 +15,7 @@ namespace Odyssey.Context;
 /// ones included, so a row's presence is evidence that something happened and its absence is evidence
 /// of nothing. The non-editable record lives in the application log
 /// (<c>ContractService.LogStampWrite</c>, <c>LogPartyWrite</c>, <c>TermService.LogTermWrite</c>), which
-/// no endpoint can reach. <see cref="Source"/> is what tells the two kinds of row apart, and an event of
+/// no endpoint can reach. <see cref="OwnedEvent.Source"/> is what tells the two kinds of row apart, and an event of
 /// type
 /// <see cref="ContractEventType.Terminated"/> does <b>not</b> move the contract's derived
 /// <c>ContractStatus</c> (issue #138 §4.2) — making a free-form log entry authoritative over derived
@@ -32,8 +32,8 @@ namespace Odyssey.Context;
 /// lookup, because an event links to no other entity (Non-Goal 5).
 /// </para>
 /// <para>
-/// <see cref="CreatedByUserId"/> is <c>SET NULL</c>, per the project's user-attribution rule: an event
-/// is shared data that must survive its author's departure, so <c>RESTRICT</c> (which would make any
+/// <see cref="OwnedEvent.CreatedByUserId"/> is <c>SET NULL</c>, per the project's user-attribution rule: an
+/// event is shared data that must survive its author's departure, so <c>RESTRICT</c> (which would make any
 /// author undeletable) and <c>CASCADE</c> (which would destroy the shared record) are both wrong.
 /// </para>
 /// </remarks>

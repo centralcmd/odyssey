@@ -68,7 +68,6 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
                     () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
 
                 Assert.Equal(migrationId, error.MigrationId);
-                Assert.Equal(nameof(OdysseyContext), error.ContextName);
                 Assert.Contains(firstTable, error.ExistingObject);
                 Assert.Contains("docs/migration-history-drift.md", error.Message);
             }

@@ -113,7 +113,9 @@
     {
         // A disabled To (No end date ticked) reports its cleared value; that must not forget the typed end.
         if (row.Open)
+        {
             return Task.CompletedTask;
+        }
         row.To = value is { } v ? DateOnly.FromDateTime(v) : null;
         row.KeptTo = row.To;
         return OnChanged.InvokeAsync(row.Key);
@@ -153,9 +155,13 @@
         StateHasChanged();
         await Task.Yield();
         if (next is not null)
+        {
             await JsAsync("odsFocusById", RemoveId(next));
+        }
         else
+        {
             await JsAsync("odsFocusFirstIn", AddId, false, 0);
+        }
     }
 
     private async Task JsAsync(string fn, params object?[] args)

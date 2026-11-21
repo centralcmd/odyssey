@@ -27,8 +27,7 @@ namespace Odyssey.Client.Tests;
 /// </remarks>
 public class ContractDocumentsSectionTests
 {
-    // The ceiling is raised above bUnit's default for scheduling starvation on a contended runner,
-    // where a render continuation can wait that long for a thread; it is not about how long an
+    // The ceiling is raised for scheduling starvation on a contended runner, not for how long an
     // assertion takes to settle.
     static ContractDocumentsSectionTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 

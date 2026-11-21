@@ -88,6 +88,8 @@ public class ContractSmartTagTransactionsApiClientTests
         Assert.Null(result.Value);
         Assert.Equal(status, result.Status);
         if (status == HttpStatusCode.NotFound)
+        {
             Assert.Equal("Contract ID x not found.", result.Problem?.Detail);
+        }
     }
 }

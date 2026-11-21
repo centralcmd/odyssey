@@ -27,7 +27,7 @@ public class SecretSettingsSurfaceTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
 
     private static string PageCode() =>
-        File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
     // ── AC 16 — the persisted payload ───────────────────────────────────────────────────────────
 

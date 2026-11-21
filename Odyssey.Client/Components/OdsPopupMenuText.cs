@@ -12,7 +12,9 @@ internal static class OdsPopupMenuText
         for (var i = 0; i < items.Count; i++)
         {
             if (match(items[i]))
+            {
                 return i;
+            }
         }
         return -1;
     }

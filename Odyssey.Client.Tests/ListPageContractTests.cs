@@ -82,7 +82,9 @@ public class ListPageContractTests
         {
             var text = File.ReadAllText(file);
             if (!text.Contains("_totalCount"))
+            {
                 continue; // not server-paginated
+            }
 
             foreach (Match delete in Regex.Matches(text, @"\.DeleteAsync\("))
             {
@@ -90,7 +92,9 @@ public class ListPageContractTests
                 // it without needing to parse the method body.
                 var window = string.Join('\n', text[delete.Index..].Split('\n').Take(12));
                 if (window.Contains("RefreshAsync") || window.Contains("ReloadAsync") || window.Contains("_totalCount"))
+                {
                     continue;
+                }
 
                 var line = text[..delete.Index].Count(c => c == '\n') + 1;
                 violations.Add($"{Path.GetRelativePath(clientRoot, file)}:{line} — delete on a paged list " +
@@ -123,7 +127,9 @@ public class ListPageContractTests
             {
                 var attrs = tag.Groups[1].Value;
                 if (!Regex.IsMatch(attrs, @"\bOnSearch=") || attrs.Contains("DebounceInterval="))
+                {
                     continue;
+                }
 
                 var line = text[..tag.Index].Count(c => c == '\n') + 1;
                 violations.Add($"{Path.GetRelativePath(clientRoot, file)}:{line} — " +
@@ -198,7 +204,9 @@ public class ListPageContractTests
         foreach (var file in EnumeratePageSources())
         {
             if (Path.GetFileName(file) == "OdsListStatus.razor")
+            {
                 continue;
+            }
 
             var text = File.ReadAllText(file);
             foreach (Match hit in Regex.Matches(text, @"<OdsEmptyState[^>]*error_outline"))
@@ -250,13 +258,17 @@ public class ListPageContractTests
         foreach (var file in EnumeratePageSources())
         {
             if (Path.GetFileName(file) == "OdsListStatus.razor")
+            {
                 continue;
+            }
 
             var text = File.ReadAllText(file);
             foreach (Match bar in Regex.Matches(text, @"<MudProgressLinear\b[^>]*>", RegexOptions.Singleline))
             {
                 if (!bar.Value.Contains("role=\"status\""))
+                {
                     continue;
+                }
 
                 var line = text[..bar.Index].Count(c => c == '\n') + 1;
                 violations.Add($"{Path.GetRelativePath(clientRoot, file)}:{line} — second copy of the " +
@@ -294,8 +306,10 @@ public class ListPageContractTests
             {
                 var bound = Regex.Match(pager.Value, @"\bPage\s*=\s*""([^""]*)""");
                 if (bound.Success && Regex.IsMatch(bound.Groups[1].Value, @"[+-]\s*1\b"))
+                {
                     violations.Add($"{page} — OdsPager Page=\"{bound.Groups[1].Value}\" offsets the " +
                                    "page number; make the page's own counter 1-based instead");
+                }
             }
 
             foreach (Match back in Regex.Matches(text, @"\bGoToPage\(\s*page\s*-\s*1\s*\)"))
@@ -379,7 +393,9 @@ public class ListPageContractTests
         foreach (var (page, source) in ListFetchingComponents())
         {
             if (SupersededResponseExemptions.ContainsKey(page))
+            {
                 continue;
+            }
 
             violations.AddRange(SupersededResponseViolations(source).Select(problem => $"{page} — {problem}"));
         }
@@ -472,18 +488,26 @@ public class ListPageContractTests
         var problems = new List<string>();
 
         if (!source.Contains("_listLoader"))
+        {
             return ["unwraps a list response without a ListLoader"];
+        }
 
         if (!source.Contains("private readonly ListLoader _listLoader = new();"))
+        {
             problems.Add("does not declare `private readonly ListLoader _listLoader = new();`");
+        }
 
         if (!source.Contains("_listLoader.Dispose()")
             || !Regex.IsMatch(source, @"@implements\s+I(?:Async)?Disposable\b|\bclass\s+\w+(?:<[^>]*>)?\s*:[^{]*\bI(?:Async)?Disposable\b"))
+        {
             problems.Add("does not dispose the loader with the component");
+        }
 
         var calls = Regex.Matches(source, @"_listLoader\.RunAsync\(");
         if (calls.Count == 0)
+        {
             problems.Add("declares a loader but never fetches through _listLoader.RunAsync");
+        }
 
         foreach (Match call in calls)
         {
@@ -495,7 +519,9 @@ public class ListPageContractTests
             var lambda = Regex.Match(args, @"^\s*(?:async\s+)?(\w+)\s*=>");
             if (!lambda.Success
                 || Regex.Matches(args[lambda.Length..], $@"\b{lambda.Groups[1].Value}\b").Count == 0)
+            {
                 problems.Add($"line {line}: RunAsync does not forward the loader's token to the API call");
+            }
 
             var assigned = Regex.Match(source[..call.Index], @"var\s+(\w+)\s*=\s*await\s*$");
             if (!assigned.Success)
@@ -516,9 +542,13 @@ public class ListPageContractTests
             var check = Regex.Match(rest, $@"\b{name}\.IsSuperseded\b");
             var firstValue = Regex.Match(rest, $@"\b{name}\.Value\b");
             if (!check.Success)
+            {
                 problems.Add($"line {line}: `{name}.IsSuperseded` is never checked in the method that fetched it");
+            }
             else if (firstValue.Success && firstValue.Index < check.Index)
+            {
                 problems.Add($"line {line}: `{name}.Value` is read before `{name}.IsSuperseded` is checked");
+            }
         }
 
         return problems;
@@ -529,7 +559,9 @@ public class ListPageContractTests
     {
         var header = MethodHeader.Matches(source[..index]).LastOrDefault();
         if (header is null)
+        {
             return -1;
+        }
 
         var close = MatchingClose(source, header.Index + header.Length - 1);
         return close > index ? close : -1;
@@ -570,28 +602,35 @@ public class ListPageContractTests
                 for (i++; i < source.Length && source[i] != '"'; i++)
                 {
                     if (source[i] == '\\')
+                    {
                         i++;
+                    }
                 }
                 continue;
             }
 
             if (c == opener)
+            {
                 depth++;
+            }
             else if (c == closer && --depth == 0)
+            {
                 return i;
+            }
         }
 
         return -1;
     }
 
-    /// <summary>A page's markup plus its code-behind, if it has one.</summary>
+    /// <summary>A page's markup plus its code-behind, if it has one, and every further partial file of it.</summary>
     private static string SourceFor(string clientRoot, string page)
     {
         var razor = Path.Combine(clientRoot, page.Replace('/', Path.DirectorySeparatorChar));
         Assert.True(File.Exists(razor), $"Registered list page not found: {page}");
 
         var codeBehind = razor + ".cs";
-        return File.ReadAllText(razor) + (File.Exists(codeBehind) ? File.ReadAllText(codeBehind) : string.Empty);
+        return File.ReadAllText(razor) + (File.Exists(codeBehind) ? File.ReadAllText(codeBehind) : string.Empty)
+            + string.Concat(ClientSource.PartialFilesOf(razor).Select(File.ReadAllText));
     }
 
     /// <summary>

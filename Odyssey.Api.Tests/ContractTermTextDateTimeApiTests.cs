@@ -204,10 +204,14 @@ public class ContractTermTextDateTimeApiTests(ContractTermTextDateTimeApiTests.H
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = (await response.Content.ReadFromJsonAsync<ExistingTerm>())!;
         if (kind == "text")
+        {
             Assert.Equal(TermTextValue.MaxLength, created.TextValue!.Length);
+        }
         else
+        {
             Assert.Equal(DateTime.Parse(instant!, null, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal),
                 created.DateTimeValue!.Value.ToUniversalTime());
+        }
     }
 
     /// <summary>AC 7 — a refusal names the field and the rule and never echoes the submitted text.</summary>

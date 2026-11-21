@@ -99,8 +99,16 @@ public class AttachPhotosDialogTests
         ctx.Services.AddSingleton(limits.Object);
 
         var claims = new List<string>();
-        if (canUpload) claims.Add(PermissionClaims.PhotosCreate);
-        if (canBrowse) claims.Add(PermissionClaims.PhotosRead);
+        if (canUpload)
+        {
+            claims.Add(PermissionClaims.PhotosCreate);
+        }
+
+        if (canBrowse)
+        {
+            claims.Add(PermissionClaims.PhotosRead);
+        }
+
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn(claims));
 
         var submitted = new List<AttachPhotoItem>();
@@ -110,7 +118,9 @@ public class AttachPhotosDialogTests
             .Add(h => h.OnSubmit, items => submitted.AddRange(items)));
 
         if (!canUpload && canBrowse)
+        {
             cut.WaitForState(() => cut.FindAll("button.apd-tile").Count == 3);
+        }
 
         return new Harness(cut, photos, files, submitted, ctx.Services.GetRequiredService<ISnackbar>());
     }

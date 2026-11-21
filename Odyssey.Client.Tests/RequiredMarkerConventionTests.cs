@@ -76,7 +76,9 @@ public class RequiredMarkerConventionTests
             // Blank comments out rather than removing them, so reported line numbers stay true.
             var text = LineComment.Replace(HtmlComment.Replace(RazorComment.Replace(raw, Blank), Blank), Blank);
             foreach (Match match in pattern.Matches(text))
+            {
                 violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} — {describe(match)}");
+            }
         }
         return violations;
     }

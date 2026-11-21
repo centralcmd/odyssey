@@ -28,14 +28,13 @@ namespace Odyssey.Client.Tests;
 /// The rule most worth pinning is the UNRECOGNISED-role tile. Ordinals append server-side, so a client
 /// older than the deployment is handed a member it has never heard of — and the <c>PUT</c> is a full
 /// replacement, so a dialog that cannot name the role would silently rewrite it. Edit is therefore
-/// withheld while Detach stays, the same reasoning the insurance tiles apply to an unresolvable
-/// TARGET, extended to an unresolvable ROLE.
+/// withheld while Detach stays — the reasoning an unresolvable TARGET already gets, extended to an
+/// unresolvable ROLE.
 /// </para>
 /// </remarks>
 public class ContractPartyTileTests
 {
-    // The ceiling is raised above bUnit's default for scheduling starvation on a contended runner,
-    // where a render continuation can wait that long for a thread; it is not about how long an
+    // The ceiling is raised for scheduling starvation on a contended runner, not for how long an
     // assertion takes to settle.
     static ContractPartyTileTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 

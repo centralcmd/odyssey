@@ -194,7 +194,10 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
         var builder = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
         if (interceptor is not null)
+        {
             builder.AddInterceptors(interceptor);
+        }
+
         return new OdysseyContext(builder.Options);
     }
 

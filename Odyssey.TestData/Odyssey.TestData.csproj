@@ -13,11 +13,6 @@
 
     <ItemGroup>
       <PackageReference Include="Bogus" />
-      <PackageReference Include="Ical.Net" />
-      <PackageReference Include="Mapster" />
-      <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" />
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-      <PackageReference Include="MySqlConnector" />
     </ItemGroup>
 
 </Project>

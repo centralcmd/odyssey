@@ -53,7 +53,9 @@ public sealed class ClaimsRefresher : IClaimsRefresher, IDisposable
     public async Task<bool> OnResponseAsync(HttpStatusCode status)
     {
         if (status != HttpStatusCode.Forbidden)
+        {
             return false;
+        }
 
         Task<bool> task;
         lock (gate)

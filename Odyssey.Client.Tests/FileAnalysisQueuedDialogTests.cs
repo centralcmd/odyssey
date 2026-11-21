@@ -204,7 +204,9 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
         Assert.DoesNotContain(FileAnalysisJobCopy.TakingLonger, Text(cut));
 
         for (var i = 0; i < 31; i++)
+        {
             Advance(TimeSpan.FromSeconds(2), cut);
+        }
 
         cut.WaitForAssertion(() => Assert.Contains(FileAnalysisJobCopy.TakingLonger, Text(cut)));
     }

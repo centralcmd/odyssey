@@ -133,7 +133,9 @@ public partial class AlbumsPage
         {
             var load = await Photos.ListAsync(1, PagedQuery.LimitAll, albumIds: [id.ToString()], status: status);
             foreach (var p in load.PagedItemsOrToast(Snackbar, "album photos"))
+            {
                 byId[p.PhotoId] = p;
+            }
         }
 
         _albumPhotos = [.. album.PhotoIds.Select(pid => byId.GetValueOrDefault(pid)).Where(p => p is not null).Select(p => p!)];
@@ -145,16 +147,26 @@ public partial class AlbumsPage
 
     // ── Selection (only meaningful inside an open album) ──
     private void ToggleSelecting() { _selecting = !_selecting; _selected.Clear(); }
-    private void ToggleSelect(Guid id) { if (!_selected.Add(id)) _selected.Remove(id); }
+    private void ToggleSelect(Guid id) { if (!_selected.Add(id))
+        {
+            _selected.Remove(id);
+        }
+    }
     private void StartSelectWith(Guid id) { _selecting = true; _selected.Clear(); _selected.Add(id); }
     private void ExitSelect() { _selecting = false; _selected.Clear(); }
 
     private void ToggleSelectAll()
     {
         if (_selected.Count >= _albumPhotos.Count)
+        {
             _selected.Clear();
+        }
         else
-        { _selected.Clear(); foreach (var p in _albumPhotos) _selected.Add(p.PhotoId); }
+        { _selected.Clear(); foreach (var p in _albumPhotos)
+            {
+                _selected.Add(p.PhotoId);
+            }
+        }
     }
 
     private void OpenAddToAlbum() => _addToAlbumIds = [.. _selected];
@@ -179,7 +191,9 @@ public partial class AlbumsPage
         // pages. The server authorizes independently; this stops a handler still reachable
         // through a stale render or the keyboard from firing a request the user cannot make.
         if (!_canUpdate)
+        {
             return;
+        }
 
         if (_openAlbum is not { } album || _selected.Count == 0)
         {

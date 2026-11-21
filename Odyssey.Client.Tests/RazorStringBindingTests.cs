@@ -48,7 +48,9 @@ public class RazorStringBindingTests
             {
                 var component = tag.Groups[1].Value;
                 if (!stringParams.TryGetValue(component, out var paramNames))
+                {
                     continue;
+                }
 
                 foreach (Match attr in BareAttribute.Matches(tag.Groups[2].Value))
                 {
@@ -83,10 +85,14 @@ public class RazorStringBindingTests
             var text = File.ReadAllText(file);
             var names = new HashSet<string>();
             foreach (Match m in paramRegex.Matches(text))
+            {
                 names.Add(m.Groups[1].Value);
+            }
 
             if (names.Count > 0)
+            {
                 map[component] = names;
+            }
         }
 
         return map;

@@ -147,7 +147,9 @@ public partial class MainLayout
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         if (_focusMainAfterRender)
         {

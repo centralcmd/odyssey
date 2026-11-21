@@ -32,35 +32,35 @@ public enum ContractSmartTagEmptyReason
 public sealed record ContractSmartTagScope
 {
     /// <summary>Inclusive lower bound applied to the transaction timestamp; <c>null</c> = unbounded.</summary>
-    public DateTime? From { get; init; }
+    public DateTime? From { get; set; }
 
     /// <summary>Exclusive upper bound applied to the transaction timestamp; <c>null</c> = unbounded.</summary>
-    public DateTime? ToExclusive { get; init; }
+    public DateTime? ToExclusive { get; set; }
 
     /// <summary>Smart tags configured on the contract.</summary>
-    public int SmartTagCount { get; init; }
+    public int SmartTagCount { get; set; }
 
     /// <summary>Distinct contacts holding a party role on the contract.</summary>
-    public int PartyContactCount { get; init; }
+    public int PartyContactCount { get; set; }
 
-    public ContractSmartTagEmptyReason EmptyReason { get; init; }
+    public ContractSmartTagEmptyReason EmptyReason { get; set; }
 }
 
 /// <summary>Matched-spend totals for one currency. No FX is applied and nothing sums across currencies.</summary>
 public sealed record ContractSmartTagCurrencyTotal
 {
-    public required string CurrencyCode { get; init; }
+    public required string CurrencyCode { get; set; }
 
-    public int TransactionCount { get; init; }
+    public int TransactionCount { get; set; }
 
     /// <summary>Sum of non-negative amounts; a zero amount counts here.</summary>
-    public decimal TotalIn { get; init; }
+    public decimal TotalIn { get; set; }
 
     /// <summary>Absolute sum of negative amounts — a positive magnitude.</summary>
-    public decimal TotalOut { get; init; }
+    public decimal TotalOut { get; set; }
 
     /// <summary><see cref="TotalIn"/> minus <see cref="TotalOut"/>, signed.</summary>
-    public decimal Net { get; init; }
+    public decimal Net { get; set; }
 }
 
 /// <summary>
@@ -69,17 +69,17 @@ public sealed record ContractSmartTagCurrencyTotal
 /// </summary>
 public sealed record ContractSmartTagSummary
 {
-    public int TransactionCount { get; init; }
+    public int TransactionCount { get; set; }
 
-    public IReadOnlyList<ContractSmartTagCurrencyTotal> ByCurrency { get; init; } = [];
+    public IReadOnlyList<ContractSmartTagCurrencyTotal> ByCurrency { get; set; } = [];
 }
 
 /// <summary>The response of <c>GET /api/contracts/{contractId}/smart-tag-transactions</c>.</summary>
 public sealed record ContractSmartTagTransactionsResult
 {
-    public required ContractSmartTagScope Scope { get; init; }
+    public required ContractSmartTagScope Scope { get; set; }
 
-    public required ContractSmartTagSummary Summary { get; init; }
+    public required ContractSmartTagSummary Summary { get; set; }
 
-    public required PagedResult<ExistingTransaction> Page { get; init; }
+    public required PagedResult<ExistingTransaction> Page { get; set; }
 }

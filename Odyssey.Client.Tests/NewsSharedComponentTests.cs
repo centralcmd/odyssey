@@ -40,7 +40,9 @@ public class NewsSharedComponentTests
         var classes = chip.ClassList.ToHashSet();
         Assert.Contains("odc-newshealth", classes);
         if (tone is not null)
+        {
             Assert.Contains(tone, classes);
+        }
         // Only Pending first fetch reads as info: waiting, not wrong.
         Assert.Equal(health == NewsFeedHealth.Pending, classes.Contains("info"));
     }

@@ -68,9 +68,13 @@ public partial class AddEstimateDialog
         _recommended = Account is not null && EstimateVisuals.IsRecommended(Account.AccountType);
 
         if (ForProperty && PropertyEstimate is { } pe)
+        {
             Seed(pe.Value, pe.EffectiveFrom, pe.Note);
+        }
         else if (!ForProperty && Estimate is { } ae)
+        {
             Seed(ae.Value, ae.EffectiveFrom, ae.Note);
+        }
         else
         {
             _effectiveFrom = DateTime.UtcNow.Date;
@@ -80,13 +84,17 @@ public partial class AddEstimateDialog
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         var currencies = await ReferenceData.CurrenciesAsync();
         var currency = currencies
             .FirstOrDefault(c => string.Equals(c.CurrencyCode, OwnerCurrency, StringComparison.OrdinalIgnoreCase));
         if (currency is not null)
+        {
             _minorUnits = OdsMoney.MinorUnitsOf(currency);
+        }
 
         StateHasChanged();
     }
@@ -129,28 +137,42 @@ public partial class AddEstimateDialog
     private async Task SubmitAsync()
     {
         if (_isSaving)
+        {
             return;
+        }
 
         _errors.Clear();
 
         var raw = ParseValue();
         if (raw is null)
+        {
             _errors["value"] = "Enter an estimated value.";
+        }
         else if (raw < 0m)
+        {
             _errors["value"] = "An estimate can’t be negative.";
+        }
 
         if (_effectiveFrom is null)
+        {
             _errors["effectiveFrom"] = "Pick the date this takes effect.";
+        }
 
         if ((_note?.Length ?? 0) > 512)
+        {
             _errors["note"] = "Keep the note under 512 characters.";
+        }
 
         // Duplicate EffectiveFrom → the server's 409, excluding the row being edited.
         if (_effectiveFrom is { } date && IsDuplicateDate(date))
+        {
             _errors["effectiveFrom"] = $"This {OwnerNoun} already has an estimate on that date.";
+        }
 
         if (_errors.Count > 0)
+        {
             return;
+        }
 
         var value = Math.Round(raw!.Value, 2);
         var effectiveFrom = DateTime.SpecifyKind(_effectiveFrom!.Value.Date, DateTimeKind.Utc);
@@ -164,7 +186,9 @@ public partial class AddEstimateDialog
                 : await SaveAccountEstimateAsync(value, effectiveFrom, trimmedNote);
 
             if (!ok)
+            {
                 return;
+            }
 
             await OnSaved.InvokeAsync();
             await OpenChanged.InvokeAsync(false);

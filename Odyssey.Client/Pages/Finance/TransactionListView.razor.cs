@@ -65,7 +65,9 @@ public partial class TransactionListView
     protected override async Task OnInitializedAsync()
     {
         if (!Interactivity.IsInteractive)
+        {
             return;
+        }
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canUpdate = user.HasPermission(PermissionClaims.TransactionsUpdate);
@@ -87,7 +89,9 @@ public partial class TransactionListView
     private Task AttachAsync(ExistingTransaction t)
     {
         if (!_canUpdate)
+        {
             return Task.CompletedTask;
+        }
 
         _attachTransaction = t;
         _attachKey = Guid.NewGuid();
@@ -98,7 +102,9 @@ public partial class TransactionListView
     private Task EditAsync(ExistingTransaction t)
     {
         if (!_canUpdate)
+        {
             return Task.CompletedTask;
+        }
 
         _editTransaction = t;
         _editKey = Guid.NewGuid();
@@ -109,7 +115,9 @@ public partial class TransactionListView
     private async Task SetStatusAsync(ExistingTransaction t, TransactionStatus status)
     {
         if (!_canUpdate || t.Status == status)
+        {
             return;
+        }
 
         if ((await Transactions.UpdateAsync(t.TransactionId, TransactionRowMenu.StatusPatch(t, status)))
             .Toast(Snackbar, "Update failed", "Transaction updated."))
@@ -121,11 +129,15 @@ public partial class TransactionListView
     private async Task HandleDeleteAsync(object key)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var transaction = Rows.FirstOrDefault(t => t.TransactionId.Equals(key));
         if (transaction is null)
+        {
             return;
+        }
 
         if ((await Transactions.DeleteAsync(transaction.TransactionId))
             .Toast(Snackbar, "Delete failed", "Transaction deleted."))

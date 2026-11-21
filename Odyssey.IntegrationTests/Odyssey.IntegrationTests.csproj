@@ -44,6 +44,7 @@
     <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
     <Compile Include="..\TestShared\PerfTier.cs" Link="TestShared\PerfTier.cs" />
+    <Compile Include="..\TestShared\Fixtures\ContactImageFixtures.cs" Link="TestShared\Fixtures\ContactImageFixtures.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\Logging\*.cs" Link="TestShared\Logging\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\News\*.cs" Link="TestShared\News\%(Filename)%(Extension)" />

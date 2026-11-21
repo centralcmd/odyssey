@@ -62,12 +62,21 @@ public partial class OdsImageCarousel
     public static string FrameRatio(OdsCarouselImage? first)
     {
         if (Dimension(first?.Width) is not { } width || Dimension(first?.Height) is not { } height)
+        {
             return "4 / 3";
+        }
+
         var ratio = (double)width / height;
         if (ratio >= 16.0 / 9)
+        {
             return "16 / 9";
+        }
+
         if (ratio <= 4.0 / 3)
+        {
             return "4 / 3";
+        }
+
         return $"{width} / {height}";
     }
 
@@ -100,7 +109,9 @@ public partial class OdsImageCarousel
         }
 
         if (next == _index)
+        {
             return;
+        }
 
         _animate = true;
         _index = next;
@@ -126,7 +137,9 @@ public partial class OdsImageCarousel
     private void OnImageError(int index)
     {
         if (_failed.Add(index))
+        {
             StateHasChanged();
+        }
     }
 
     /// <summary>The most either side may be before it is treated as missing (the design system's 20 000).</summary>

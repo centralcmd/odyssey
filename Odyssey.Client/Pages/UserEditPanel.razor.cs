@@ -37,7 +37,9 @@ public partial class UserEditPanel
     protected override void OnParametersSet()
     {
         if (_seededId == User.Id)
+        {
             return;
+        }
 
         _seededId = User.Id;
         _emailConfirmed = User.EmailConfirmed;

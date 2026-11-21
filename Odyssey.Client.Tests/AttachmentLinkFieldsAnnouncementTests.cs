@@ -76,7 +76,10 @@ public class AttachmentLinkFieldsAnnouncementTests
             await Cut.InvokeAsync(async () =>
             {
                 foreach (var item in items)
+                {
                     await picker.Attach(item);
+                }
+
                 await picker.OnAttached.InvokeAsync(items);
             });
         }

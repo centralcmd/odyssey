@@ -45,7 +45,9 @@ internal static class PageTestContext
             // Only the app's own services: the framework asks the provider for optional services of
             // its own (a component activator, say) and must keep getting its defaults for those.
             if (!serviceType.IsInterface || serviceType.Namespace?.StartsWith("Odyssey.", StringComparison.Ordinal) != true)
+            {
                 return null;
+            }
 
             if (!made.TryGetValue(serviceType, out var instance))
             {
@@ -78,7 +80,9 @@ internal static class PageTestContext
         private static object? Value(Type type)
         {
             if (type == typeof(ApiResult))
+            {
                 return ApiResult.Success(HttpStatusCode.OK);
+            }
 
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ApiResult<>))
             {

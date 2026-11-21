@@ -2256,17 +2256,6 @@ tr:focus-within > .odc-rowactions.reveal,
    heavier figure, and the status cell that names In force / Superseded / Scheduled in words. */
 .trm-tbl tbody tr.current .trm-cell-value { font-weight: var(--fw-medium); }
 
-/* The dialog's Direction refusal — the state that stands in place of the control where direction
-   has no meaning (a rate kind, or an account-owned term). */
-.trm-dir-refused {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 9px 11px; border-radius: var(--radius-sm);
-  border: 1px dashed var(--mud-palette-divider);
-  font: 400 11.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary);
-}
-.trm-dir-refused .material-icons { color: var(--mud-palette-text-disabled, var(--mud-palette-text-secondary)); flex: none; margin-top: 1px; font-size: 15px; }
-.trm-dir-refused b { color: var(--mud-palette-text-primary); font-weight: 500; }
-
 .trm-cadence { display: flex; flex-direction: column; gap: var(--space-2); }
 /* The Interval cell: the picker with the cadence echo as its helper line, laid out like an .odc-field
    so the echo sits under the picker exactly where "Leave blank for …" sits under Every. */
@@ -3292,12 +3281,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-colorpick-dot { width: 12px; height: 12px; }
 .odc-colorpick-custom { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
 .odc-colorpick-hex { display: flex; flex-direction: column; gap: 4px; flex: 1 1 180px; min-width: 0; }
-.odc-colorpick-label { font: 500 var(--fs-caption, 12px)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.odc-colorpick-input { height: 40px; padding: 0 12px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); color: var(--mud-palette-text-primary); font: 400 var(--fs-body1, 15px)/1 var(--font-mono); }
-.odc-colorpick-input:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.odc-colorpick-input[aria-invalid="true"] { border-color: var(--mud-palette-error); }
-.odc-colorpick-help { font: 400 var(--fs-caption, 12px)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.odc-colorpick-error { font: 400 var(--fs-caption, 12px)/1.35 var(--font-sans); color: var(--error-text, var(--mud-palette-error)); }
 .odc-colorpick-well { display: inline-flex; align-items: center; gap: var(--space-2); margin-top: 22px; font: 500 var(--fs-body2, 14px)/1 var(--font-sans); color: var(--mud-palette-text-primary); cursor: pointer; }
 .odc-colorpick-well input { width: 40px; height: 40px; padding: 2px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
 .odc-colorpick-well input:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
@@ -4980,12 +4963,6 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 .odc-toast.error   .odc-toast-ic { color: var(--coral-300); }
 .odc-toast.info    .odc-toast-ic { color: var(--sea-300); }
 .odc-toast-body { flex: 1; min-width: 0; }
-.odc-toast-action {
-  appearance: none; background: none; border: none; cursor: pointer;
-  color: var(--tide-300); padding: 0; margin-top: 2px;
-  font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
-}
-.odc-toast-action:hover { text-decoration: underline; }
 .odc-toast-close {
   appearance: none; background: none; border: none; cursor: pointer; flex: none;
   color: var(--ink-300); width: 20px; height: 20px; display: grid; place-items: center;
@@ -4993,7 +4970,7 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 }
 .odc-toast-close .material-icons { font-size: var(--icon-md); }
 .odc-toast-close:hover { color: var(--ink-50); }
-.odc-toast-close:focus-visible, .odc-toast-action:focus-visible { outline: var(--focus-ring-width) solid var(--tide-400); outline-offset: var(--focus-ring-offset); }
+.odc-toast-close:focus-visible { outline: var(--focus-ring-width) solid var(--tide-400); outline-offset: var(--focus-ring-offset); }
 @media (prefers-reduced-motion: reduce) { .odc-toast { animation: none; } }
 .odc-toast-close { position: relative; }
 .odc-toast-close::after { content: ''; position: absolute; inset: -2px; }

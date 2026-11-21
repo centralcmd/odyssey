@@ -18,7 +18,7 @@ namespace Odyssey.Core.Tests;
 /// <para>
 /// The behavioural tests next to this one pin what the services compute. This pins what they are
 /// allowed to read, because the regression is one word long: <c>Archived</c> is the app's generic
-/// declutter verb — photos, journal entries, tags, budgets, contracts and insurance policies all carry
+/// declutter verb — photos, journal entries, tags, budgets and contracts all carry
 /// the same column — so reaching for it in a finance query reads as ordinary and compiles fine.
 /// </para>
 ///

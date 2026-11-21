@@ -99,7 +99,10 @@ public partial class EditPhotoDialog
     {
         var option = ContactCreator.Begin(name, nameof(ContactType.Person));
         if (option is not null)
+        {
             _createdPeople.Add(option);
+        }
+
         return option;
     }
 

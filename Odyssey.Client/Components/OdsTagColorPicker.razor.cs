@@ -336,9 +336,6 @@ public partial class OdsTagColorPicker : IAsyncDisposable
     /// <summary>Focuses the hex field when Custom is selected, else the selected cell.</summary>
     public ValueTask FocusErrorAsync() => _sel == CustomIndex && _hexField is not null ? _hexField.FocusAsync() : FocusSelectedAsync();
 
-    /// <summary>True while Custom holds no valid colour — the host must block submit.</summary>
-    public bool BlocksSubmit => State is "CustomEmpty" or "CustomInvalid";
-
     public async ValueTask DisposeAsync()
     {
         try

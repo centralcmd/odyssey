@@ -73,15 +73,6 @@ public enum WeatherTrackingSuspendedReason
     CapReached = 1,
 }
 
-/// <summary>Which day a measured value belongs to. Frost's daily values are UTC days.</summary>
-[JsonConverter(typeof(JsonStringEnumConverter<WeatherDayDefinition>))]
-public enum WeatherDayDefinition
-{
-    Utc = 1,
-    /// <summary>06:00–06:00 UTC, the convention for Frost's daily precipitation sum.</summary>
-    Utc06 = 2,
-}
-
 public enum WeatherPointSortBy
 {
     Name,
@@ -279,18 +270,19 @@ public static class WeatherRules
 /// <summary>MET Norway's attribution, carried on every weather response (§5).</summary>
 public sealed record WeatherAttribution
 {
-    public string Text { get; init; } = "Weather data from MET Norway";
-    public string License { get; init; } = "NLOD 2.0 / CC BY 4.0";
-    public string Url { get; init; } = "https://api.met.no/";
+    public string Text { get; set; } = "Weather data from MET Norway";
+    public string License { get; set; } = "NLOD 2.0 / CC BY 4.0";
+    public string Url { get; set; } = "https://api.met.no/";
 
-    public static WeatherAttribution MetNorway { get; } = new();
+    /// <summary>A fresh copy each time: the properties are settable, so one shared instance could be changed for every response.</summary>
+    public static WeatherAttribution MetNorway => new();
 }
 
 /// <summary>The only point shape a weather read embeds (issue #387): no coordinates, no site.</summary>
 public sealed record WeatherPointRef
 {
-    public Guid WeatherPointId { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public Guid WeatherPointId { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -300,12 +292,12 @@ public sealed record WeatherPointRef
 /// </summary>
 public sealed record LinkedWeatherPointRef
 {
-    public Guid WeatherPointId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public bool ForecastEnabled { get; init; }
-    public bool HistoryEnabled { get; init; }
-    public bool HasStoredHistory { get; init; }
-    public bool PurgeInProgress { get; init; }
+    public Guid WeatherPointId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool ForecastEnabled { get; set; }
+    public bool HistoryEnabled { get; set; }
+    public bool HasStoredHistory { get; set; }
+    public bool PurgeInProgress { get; set; }
 }
 
 /// <summary>
@@ -314,40 +306,40 @@ public sealed record LinkedWeatherPointRef
 /// </summary>
 public sealed record WeatherLinkedLocationRef
 {
-    public Guid LocationId { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public Guid LocationId { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>One effective forecast step (§3 Day composition).</summary>
 public sealed record WeatherStep
 {
-    public DateTime TimeUtc { get; init; }
-    public int PeriodHours { get; init; }
-    public DateTime IssuedAtUtc { get; init; }
-    public string? SymbolCode { get; init; }
-    public decimal? AirTemperatureC { get; init; }
-    public decimal? PrecipitationMm { get; init; }
-    public decimal? PrecipitationProbabilityPct { get; init; }
-    public decimal? WindSpeedMps { get; init; }
-    public decimal? WindGustMps { get; init; }
-    public decimal? WindFromDirectionDeg { get; init; }
-    public decimal? RelativeHumidityPct { get; init; }
-    public decimal? CloudAreaFractionPct { get; init; }
-    public decimal? AirPressureHpa { get; init; }
-    public decimal? UvIndexClearSky { get; init; }
-    public decimal? TempMinC { get; init; }
-    public decimal? TempMaxC { get; init; }
+    public DateTime TimeUtc { get; set; }
+    public int PeriodHours { get; set; }
+    public DateTime IssuedAtUtc { get; set; }
+    public string? SymbolCode { get; set; }
+    public decimal? AirTemperatureC { get; set; }
+    public decimal? PrecipitationMm { get; set; }
+    public decimal? PrecipitationProbabilityPct { get; set; }
+    public decimal? WindSpeedMps { get; set; }
+    public decimal? WindGustMps { get; set; }
+    public decimal? WindFromDirectionDeg { get; set; }
+    public decimal? RelativeHumidityPct { get; set; }
+    public decimal? CloudAreaFractionPct { get; set; }
+    public decimal? AirPressureHpa { get; set; }
+    public decimal? UvIndexClearSky { get; set; }
+    public decimal? TempMinC { get; set; }
+    public decimal? TempMaxC { get; set; }
 
     /// <summary>
     /// The step's start in the point's own clock, with its offset at that instant. Filled only by the hourly read's
     /// day mode (issue #414) and omitted from every other response, whose wire shape is unchanged.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public DateTimeOffset? LocalStart { get; init; }
+    public DateTimeOffset? LocalStart { get; set; }
 
     /// <summary>The step's end (<see cref="TimeUtc"/> + <see cref="PeriodHours"/>) in the point's clock; day mode only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public DateTimeOffset? LocalEnd { get; init; }
+    public DateTimeOffset? LocalEnd { get; set; }
 }
 
 /// <summary>
@@ -357,78 +349,76 @@ public sealed record WeatherStep
 /// </summary>
 public sealed record WeatherHourlyDay
 {
-    public DateOnly Date { get; init; }
-    public bool IsToday { get; init; }
-    public DateTime? FromUtc { get; init; }
-    public DateTime? ToUtc { get; init; }
+    public DateOnly Date { get; set; }
+    public bool IsToday { get; set; }
+    public DateTime? FromUtc { get; set; }
+    public DateTime? ToUtc { get; set; }
 
     /// <summary>23, 24 or 25 on most days; 23.5 or 24.5 where DST shifts by half an hour.</summary>
-    public decimal? LengthHours { get; init; }
+    public decimal? LengthHours { get; set; }
 }
 
 public sealed record WeatherDayForecast
 {
-    public string? SymbolCode { get; init; }
-    public decimal? MinTempC { get; init; }
-    public decimal? MaxTempC { get; init; }
-    public decimal? PrecipitationMm { get; init; }
-    public decimal? MeanWindSpeedMps { get; init; }
-    public decimal? MaxWindGustMps { get; init; }
-    public int CoverageHours { get; init; }
-    public DateTime? IssuedAtUtc { get; init; }
+    public string? SymbolCode { get; set; }
+    public decimal? MinTempC { get; set; }
+    public decimal? MaxTempC { get; set; }
+    public decimal? PrecipitationMm { get; set; }
+    public decimal? MeanWindSpeedMps { get; set; }
+    public decimal? MaxWindGustMps { get; set; }
+    public int CoverageHours { get; set; }
+    public DateTime? IssuedAtUtc { get; set; }
 }
 
 public sealed record WeatherDayObserved
 {
-    public decimal? MinTempC { get; init; }
-    public decimal? MaxTempC { get; init; }
-    public decimal? MeanTempC { get; init; }
-    public decimal? PrecipitationMm { get; init; }
-    public decimal? MeanWindSpeedMps { get; init; }
-    public decimal? MaxWindGustMps { get; init; }
-    public WeatherDayDefinition DayDefinition { get; init; } = WeatherDayDefinition.Utc;
-    public WeatherDayDefinition PrecipitationDayDefinition { get; init; } = WeatherDayDefinition.Utc06;
-    public DateTime? FetchedAtUtc { get; init; }
+    public decimal? MinTempC { get; set; }
+    public decimal? MaxTempC { get; set; }
+    public decimal? MeanTempC { get; set; }
+    public decimal? PrecipitationMm { get; set; }
+    public decimal? MeanWindSpeedMps { get; set; }
+    public decimal? MaxWindGustMps { get; set; }
+    public DateTime? FetchedAtUtc { get; set; }
 }
 
 /// <summary>One local date: the forecast half and the measured half, either of which may be absent.</summary>
 public sealed record WeatherDaySummary
 {
-    public DateOnly Date { get; init; }
-    public WeatherDayForecast? Forecast { get; init; }
-    public WeatherDayObserved? Observed { get; init; }
+    public DateOnly Date { get; set; }
+    public WeatherDayForecast? Forecast { get; set; }
+    public WeatherDayObserved? Observed { get; set; }
 }
 
 public sealed record WeatherCurrentResponse
 {
-    public WeatherPointRef? Point { get; init; }
-    public WeatherStatus Status { get; init; }
+    public WeatherPointRef? Point { get; set; }
+    public WeatherStatus Status { get; set; }
 
     /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherResolvedFrom? ResolvedFrom { get; init; }
-    public bool Stale { get; init; }
-    public WeatherStep? Step { get; init; }
-    public WeatherDaySummary? Today { get; init; }
-    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+    public WeatherResolvedFrom? ResolvedFrom { get; set; }
+    public bool Stale { get; set; }
+    public WeatherStep? Step { get; set; }
+    public WeatherDaySummary? Today { get; set; }
+    public WeatherAttribution Attribution { get; set; } = WeatherAttribution.MetNorway;
 }
 
 public sealed record WeatherHourlyResponse
 {
-    public WeatherPointRef? Point { get; init; }
-    public WeatherStatus Status { get; init; }
+    public WeatherPointRef? Point { get; set; }
+    public WeatherStatus Status { get; set; }
 
     /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherResolvedFrom? ResolvedFrom { get; init; }
-    public bool Stale { get; init; }
+    public WeatherResolvedFrom? ResolvedFrom { get; set; }
+    public bool Stale { get; set; }
 
     /// <summary>The day a day-mode read answered; omitted in range mode and when nothing resolved.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherHourlyDay? Day { get; init; }
+    public WeatherHourlyDay? Day { get; set; }
 
-    public IReadOnlyList<WeatherStep> Steps { get; init; } = [];
-    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+    public IReadOnlyList<WeatherStep> Steps { get; set; } = [];
+    public WeatherAttribution Attribution { get; set; } = WeatherAttribution.MetNorway;
 }
 
 /// <summary>
@@ -438,29 +428,29 @@ public sealed record WeatherHourlyResponse
 public sealed record WeatherHistoryBounds
 {
     /// <summary>The oldest stored local date with a measured half; null when none is stored.</summary>
-    public DateOnly? MeasuredFrom { get; init; }
+    public DateOnly? MeasuredFrom { get; set; }
 
     /// <summary>The newest stored local date with a measured half; null when none is stored.</summary>
-    public DateOnly? MeasuredThrough { get; init; }
+    public DateOnly? MeasuredThrough { get; set; }
 
     /// <summary>
     /// False only once every measure group has been looked up and none found a station. A position never
     /// looked up yet — Frost not configured, the Worker not run, a fresh move — reads as true, so it is never
     /// reported as having no station when nobody has asked.
     /// </summary>
-    public bool HasObservationStation { get; init; }
+    public bool HasObservationStation { get; set; }
 
     /// <summary>
     /// The station each measure group is measured at, one entry per group looked up so far (none before the
     /// first lookup). An entry with no <see cref="WeatherStationRef.Name"/> is a group with no station in reach.
     /// </summary>
-    public IReadOnlyList<WeatherStationRef> Stations { get; init; } = [];
+    public IReadOnlyList<WeatherStationRef> Stations { get; set; } = [];
 
     /// <summary>
     /// Whether measured history can be fetched at all: a MET contact address and a Frost client ID are both
     /// set. Lets the client say why nothing is measured instead of promising it will arrive.
     /// </summary>
-    public bool ObservationsConfigured { get; init; }
+    public bool ObservationsConfigured { get; set; }
 }
 
 /// <summary>The three kinds of measured values, each fetched from its own nearest suitable station.</summary>
@@ -484,73 +474,73 @@ public enum WeatherMeasureGroup
 public sealed record WeatherStationRef
 {
     [EnumDataType(typeof(WeatherMeasureGroup))]
-    public WeatherMeasureGroup Group { get; init; }
+    public WeatherMeasureGroup Group { get; set; }
 
     [StringLength(WeatherRules.StationNameMaxLength)]
-    public string? Name { get; init; }
+    public string? Name { get; set; }
 
-    public int? DistanceKm { get; init; }
+    public int? DistanceKm { get; set; }
 
-    public int MaxDistanceKm { get; init; }
+    public int MaxDistanceKm { get; set; }
 }
 
 public sealed record WeatherDailyResponse
 {
-    public WeatherPointRef? Point { get; init; }
-    public WeatherStatus Status { get; init; }
+    public WeatherPointRef? Point { get; set; }
+    public WeatherStatus Status { get; set; }
 
     /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherResolvedFrom? ResolvedFrom { get; init; }
-    public bool Stale { get; init; }
-    public IReadOnlyList<WeatherDaySummary> Days { get; init; } = [];
+    public WeatherResolvedFrom? ResolvedFrom { get; set; }
+    public bool Stale { get; set; }
+    public IReadOnlyList<WeatherDaySummary> Days { get; set; } = [];
 
     /// <summary>Null when no point resolved or the range is out of range; otherwise always filled.</summary>
-    public WeatherHistoryBounds? History { get; init; }
-    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+    public WeatherHistoryBounds? History { get; set; }
+    public WeatherAttribution Attribution { get; set; } = WeatherAttribution.MetNorway;
 }
 
 public sealed record CalendarEventWeatherResponse
 {
-    public WeatherPointRef? Point { get; init; }
-    public WeatherStatus Status { get; init; }
+    public WeatherPointRef? Point { get; set; }
+    public WeatherStatus Status { get; set; }
 
     /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherResolvedFrom? ResolvedFrom { get; init; }
-    public bool Stale { get; init; }
+    public WeatherResolvedFrom? ResolvedFrom { get; set; }
+    public bool Stale { get; set; }
     /// <summary>The place whose link answered, when <see cref="ResolvedFrom"/> is <c>Linked</c>; else omitted.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherLinkedLocationRef? LinkedLocation { get; init; }
+    public WeatherLinkedLocationRef? LinkedLocation { get; set; }
 
     /// <summary>Whole kilometres from the linked place to the point's current site; omitted unless both are known.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? DistanceKm { get; init; }
-    public bool IsAllDay { get; init; }
-    public IReadOnlyList<WeatherStep> Steps { get; init; } = [];
-    public IReadOnlyList<WeatherDaySummary> Days { get; init; } = [];
-    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+    public int? DistanceKm { get; set; }
+    public bool IsAllDay { get; set; }
+    public IReadOnlyList<WeatherStep> Steps { get; set; } = [];
+    public IReadOnlyList<WeatherDaySummary> Days { get; set; } = [];
+    public WeatherAttribution Attribution { get; set; } = WeatherAttribution.MetNorway;
 }
 
 public sealed record JournalEntryWeatherResponse
 {
-    public WeatherPointRef? Point { get; init; }
-    public WeatherStatus Status { get; init; }
+    public WeatherPointRef? Point { get; set; }
+    public WeatherStatus Status { get; set; }
 
     /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherResolvedFrom? ResolvedFrom { get; init; }
-    public bool Stale { get; init; }
+    public WeatherResolvedFrom? ResolvedFrom { get; set; }
+    public bool Stale { get; set; }
     /// <summary>The place whose link answered, when <see cref="ResolvedFrom"/> is <c>Linked</c>; else omitted.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherLinkedLocationRef? LinkedLocation { get; init; }
+    public WeatherLinkedLocationRef? LinkedLocation { get; set; }
 
     /// <summary>Whole kilometres from the linked place to the point's current site; omitted unless both are known.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? DistanceKm { get; init; }
-    public DateOnly? Date { get; init; }
-    public WeatherDaySummary? Day { get; init; }
-    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+    public int? DistanceKm { get; set; }
+    public DateOnly? Date { get; set; }
+    public WeatherDaySummary? Day { get; set; }
+    public WeatherAttribution Attribution { get; set; } = WeatherAttribution.MetNorway;
 }
 
 /// <summary>Binding model for the optional <c>weatherPointId</c> every weather read takes.</summary>
@@ -677,60 +667,60 @@ public sealed class WeatherDailyQuery : IValidatableObject
 /// <summary>A point's current frozen site, rounded to 3 decimals.</summary>
 public sealed record WeatherPointSiteDto
 {
-    public int Version { get; init; }
-    public decimal Latitude { get; init; }
-    public decimal Longitude { get; init; }
-    public int? AltitudeMeters { get; init; }
-    public string TimeZoneId { get; init; } = string.Empty;
-    public DateTime AppliedAt { get; init; }
+    public int Version { get; set; }
+    public decimal Latitude { get; set; }
+    public decimal Longitude { get; set; }
+    public int? AltitudeMeters { get; set; }
+    public string TimeZoneId { get; set; } = string.Empty;
+    public DateTime AppliedAt { get; set; }
 }
 
 /// <summary>The Admin row (issue #387 §5 endpoints 1–2).</summary>
 public sealed record ExistingWeatherPoint
 {
-    public Guid WeatherPointId { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public Guid WeatherPointId { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>The concurrency token a <c>PUT</c> sends back; rotated by Admin writes only.</summary>
-    public Guid SettingsVersion { get; init; }
+    public Guid SettingsVersion { get; set; }
 
     /// <summary>The forecast half: MET Norway forecasts are fetched, and the point is selectable on the dashboard.</summary>
-    public bool ForecastEnabled { get; init; }
+    public bool ForecastEnabled { get; set; }
 
     /// <summary>The history half: measured days are fetched from MET Norway's Frost service.</summary>
-    public bool HistoryEnabled { get; init; }
+    public bool HistoryEnabled { get; set; }
 
-    public bool IsTracked { get; init; }
-    public bool TrackingSuspended { get; init; }
-    public WeatherTrackingSuspendedReason? TrackingSuspendedReason { get; init; }
+    public bool IsTracked { get; set; }
+    public bool TrackingSuspended { get; set; }
+    public WeatherTrackingSuspendedReason? TrackingSuspendedReason { get; set; }
 
     /// <summary>The windows' summary — on the list and the single read (issue #436 §5.2).</summary>
-    public WeatherHistoryWindowSummary HistoryWindowSummary { get; init; } = new();
+    public WeatherHistoryWindowSummary HistoryWindowSummary { get; set; } = new();
 
     /// <summary>
     /// The windows themselves, oldest first — on the single-point read only; null (not serialized) on the list, so a
     /// page costs one aggregate query whatever the window counts.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IReadOnlyList<ExistingWeatherHistoryWindow>? HistoryWindows { get; init; }
-    public WeatherPointSiteDto Site { get; init; } = new();
-    public bool PurgeInProgress { get; init; }
-    public bool IsHouseholdDefault { get; init; }
+    public IReadOnlyList<ExistingWeatherHistoryWindow>? HistoryWindows { get; set; }
+    public WeatherPointSiteDto Site { get; set; } = new();
+    public bool PurgeInProgress { get; set; }
+    public bool IsHouseholdDefault { get; set; }
 
     /// <summary>How many places link to the point; null — never 0 — for a caller without <c>locations.read</c>.</summary>
-    public int? LinkedLocationCount { get; init; }
+    public int? LinkedLocationCount { get; set; }
 
     /// <summary>False only once every measure group was looked up and none found a station; an unresolved position reads as true.</summary>
-    public bool HasObservationStation { get; init; }
+    public bool HasObservationStation { get; set; }
 
     /// <summary>The station per measure group looked up so far; see <see cref="WeatherHistoryBounds.Stations"/>.</summary>
-    public IReadOnlyList<WeatherStationRef> Stations { get; init; } = [];
-    public DateTime? LastForecastSuccessUtc { get; init; }
-    public WeatherFetchFailureKind? ForecastFailureKind { get; init; }
-    public DateTime? LastObservationSuccessUtc { get; init; }
-    public WeatherFetchFailureKind? ObservationFailureKind { get; init; }
-    public DateTime EnabledAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
+    public IReadOnlyList<WeatherStationRef> Stations { get; set; } = [];
+    public DateTime? LastForecastSuccessUtc { get; set; }
+    public WeatherFetchFailureKind? ForecastFailureKind { get; set; }
+    public DateTime? LastObservationSuccessUtc { get; set; }
+    public WeatherFetchFailureKind? ObservationFailureKind { get; set; }
+    public DateTime EnabledAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     /// <summary>Redacted: the name may be an address, and a record prints its members wherever it is logged.</summary>
     public override string ToString() => nameof(ExistingWeatherPoint) + " { (redacted) }";
@@ -912,29 +902,29 @@ internal static class WeatherPointValidation
 /// <summary>One advisory on a point or link write (issue #387 §8). The message never names a place or a coordinate.</summary>
 public sealed record WeatherAdvisory
 {
-    public WeatherAdvisoryCode Code { get; init; }
-    public string Message { get; init; } = string.Empty;
+    public WeatherAdvisoryCode Code { get; set; }
+    public string Message { get; set; } = string.Empty;
 
     /// <summary><c>LinkedLocationsFollowMove</c> only: how many places follow, for a <c>locations.read</c> holder.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? Count { get; init; }
+    public int? Count { get; set; }
 }
 
 /// <summary>The <c>PUT /api/weather/points/{weatherPointId}</c> response.</summary>
 public sealed record WeatherPointUpdateResult
 {
-    public ExistingWeatherPoint Point { get; init; } = new();
-    public IReadOnlyList<WeatherAdvisory> Warnings { get; init; } = [];
+    public ExistingWeatherPoint Point { get; set; } = new();
+    public IReadOnlyList<WeatherAdvisory> Warnings { get; set; } = [];
 }
 
 /// <summary>One place linked to a point (issue #387 §5 endpoint 3): id, name, whole-km distance. Never an address.</summary>
 public sealed record WeatherPointLinkedLocation
 {
-    public Guid LocationId { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public Guid LocationId { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>Null when the place has no coordinates.</summary>
-    public int? DistanceKm { get; init; }
+    public int? DistanceKm { get; set; }
 
     public override string ToString() => nameof(WeatherPointLinkedLocation) + " { (redacted) }";
 }
@@ -949,21 +939,21 @@ public sealed class WeatherPointOptionsQuery
 /// <summary>One picker entry (issue #387 §5 endpoint 9). No coordinates, no site, no schedule.</summary>
 public sealed record WeatherPointOption
 {
-    public Guid WeatherPointId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public bool ForecastEnabled { get; init; }
-    public bool HistoryEnabled { get; init; }
+    public Guid WeatherPointId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool ForecastEnabled { get; set; }
+    public bool HistoryEnabled { get; set; }
 
     /// <summary>Whole kilometres from <c>nearLocationId</c>; null without it or when that place has no coordinates.</summary>
-    public int? DistanceKm { get; init; }
+    public int? DistanceKm { get; set; }
 }
 
 public sealed record WeatherPointOptions
 {
-    public IReadOnlyList<WeatherPointOption> Points { get; init; } = [];
+    public IReadOnlyList<WeatherPointOption> Points { get; set; } = [];
 
     /// <summary>The household default, when it is one of the selectable points; else null.</summary>
-    public Guid? HouseholdDefaultPointId { get; init; }
+    public Guid? HouseholdDefaultPointId { get; set; }
 }
 
 /// <summary>
@@ -979,26 +969,26 @@ public sealed record SetLocationWeatherPoint
 /// <summary>The link response.</summary>
 public sealed record LocationWeatherPointLink
 {
-    public Guid LocationId { get; init; }
-    public WeatherPointRef? WeatherPoint { get; init; }
+    public Guid LocationId { get; set; }
+    public WeatherPointRef? WeatherPoint { get; set; }
 
     /// <summary>Whole kilometres from the place to the point's current site; null when unlinked or either end lacks coordinates.</summary>
-    public int? DistanceKm { get; init; }
+    public int? DistanceKm { get; set; }
 
-    public IReadOnlyList<WeatherAdvisory> Warnings { get; init; } = [];
+    public IReadOnlyList<WeatherAdvisory> Warnings { get; set; } = [];
 }
 
 public sealed record WeatherRefreshResult
 {
-    public bool Fetched { get; init; }
-    public DateTime? IssuedAtUtc { get; init; }
-    public WeatherFetchFailureKind? ForecastFailureKind { get; init; }
+    public bool Fetched { get; set; }
+    public DateTime? IssuedAtUtc { get; set; }
+    public WeatherFetchFailureKind? ForecastFailureKind { get; set; }
 }
 
 public sealed record WeatherPreferences
 {
-    public WeatherPointRef? DefaultPoint { get; init; }
-    public WeatherPointRef? HouseholdDefaultPoint { get; init; }
+    public WeatherPointRef? DefaultPoint { get; set; }
+    public WeatherPointRef? HouseholdDefaultPoint { get; set; }
 }
 
 /// <summary><c>PUT /api/weather/preferences</c>. Takes no user id: the caller's own row only.</summary>
@@ -1058,72 +1048,72 @@ public enum WeatherSummaryBasis
 /// </summary>
 public sealed record WeatherEventSummary
 {
-    public WeatherSummaryBasis Basis { get; init; }
-    public string? SymbolCode { get; init; }
-    public decimal? MinTempC { get; init; }
-    public decimal? MaxTempC { get; init; }
-    public decimal? PrecipitationMm { get; init; }
+    public WeatherSummaryBasis Basis { get; set; }
+    public string? SymbolCode { get; set; }
+    public decimal? MinTempC { get; set; }
+    public decimal? MaxTempC { get; set; }
+    public decimal? PrecipitationMm { get; set; }
 
     /// <summary>The hours the summed precipitation spans; null for an all-day summary.</summary>
-    public int? PrecipitationHours { get; init; }
-    public DateTime? IssuedAtUtc { get; init; }
-    public bool Measured { get; init; }
+    public int? PrecipitationHours { get; set; }
+    public DateTime? IssuedAtUtc { get; set; }
+    public bool Measured { get; set; }
 }
 
 /// <summary>One item of the journal batch: the single read's shape without attribution, keyed by the entry.</summary>
 public sealed record JournalEntryWeatherItem
 {
-    public Guid JournalEntryId { get; init; }
+    public Guid JournalEntryId { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherPointRef? Point { get; init; }
-    public WeatherStatus Status { get; init; }
+    public WeatherPointRef? Point { get; set; }
+    public WeatherStatus Status { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherResolvedFrom? ResolvedFrom { get; init; }
-    public bool Stale { get; init; }
+    public WeatherResolvedFrom? ResolvedFrom { get; set; }
+    public bool Stale { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherLinkedLocationRef? LinkedLocation { get; init; }
+    public WeatherLinkedLocationRef? LinkedLocation { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? DistanceKm { get; init; }
+    public int? DistanceKm { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public DateOnly? Date { get; init; }
+    public DateOnly? Date { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherDaySummary? Day { get; init; }
+    public WeatherDaySummary? Day { get; set; }
 }
 
 /// <summary><c>GET /api/journal-entries/weather?ids=…</c> (issue #430 §5.2).</summary>
 public sealed record JournalEntryWeatherBatch
 {
-    public IReadOnlyList<JournalEntryWeatherItem> Items { get; init; } = [];
-    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+    public IReadOnlyList<JournalEntryWeatherItem> Items { get; set; } = [];
+    public WeatherAttribution Attribution { get; set; } = WeatherAttribution.MetNorway;
 }
 
 /// <summary>One item of the calendar batch (issue #430 §5.3).</summary>
 public sealed record CalendarEventWeatherItem
 {
-    public Guid CalendarEventId { get; init; }
+    public Guid CalendarEventId { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherPointRef? Point { get; init; }
-    public WeatherStatus Status { get; init; }
+    public WeatherPointRef? Point { get; set; }
+    public WeatherStatus Status { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherResolvedFrom? ResolvedFrom { get; init; }
-    public bool Stale { get; init; }
-    public bool IsAllDay { get; init; }
+    public WeatherResolvedFrom? ResolvedFrom { get; set; }
+    public bool Stale { get; set; }
+    public bool IsAllDay { get; set; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public WeatherEventSummary? Summary { get; init; }
+    public WeatherEventSummary? Summary { get; set; }
 }
 
 /// <summary><c>GET /api/calendar-events/weather?ids=…</c> (issue #430 §5.3).</summary>
 public sealed record CalendarEventWeatherBatch
 {
-    public IReadOnlyList<CalendarEventWeatherItem> Items { get; init; } = [];
-    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+    public IReadOnlyList<CalendarEventWeatherItem> Items { get; set; } = [];
+    public WeatherAttribution Attribution { get; set; } = WeatherAttribution.MetNorway;
 }

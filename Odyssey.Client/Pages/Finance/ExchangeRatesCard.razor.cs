@@ -98,12 +98,21 @@ public partial class ExchangeRatesCard
         get
         {
             if (_summary is not { } summary)
+            {
                 return string.Empty;
+            }
+
             var text = $"{summary.TotalCount.ToString("N0", CultureInfo.CurrentCulture)} rate{(summary.TotalCount == 1 ? "" : "s")}";
             if (summary.LatestAsOfUtc is { } latest)
+            {
                 text += $" · latest {latest.ToLocalTime():MMM dd, yyyy, HH:mm}";
+            }
+
             if (!string.IsNullOrEmpty(summary.Attribution))
+            {
                 text += $" · Source: {summary.Attribution}";
+            }
+
             return text;
         }
     }
@@ -132,7 +141,9 @@ public partial class ExchangeRatesCard
     protected override async Task OnInitializedAsync()
     {
         if (!Interactivity.IsInteractive)
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -208,7 +219,10 @@ public partial class ExchangeRatesCard
     private async Task RefreshAsync()
     {
         if ((await ExchangeRates.GetSummaryAsync()).OrToast(Snackbar, "Unable to load the exchange-rate summary") is { } summary)
+        {
             _summary = summary;
+        }
+
         await ReloadAsync();
     }
 
@@ -236,7 +250,9 @@ public partial class ExchangeRatesCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "exchange rates");
         if (load.IsSuccess)
@@ -323,7 +339,9 @@ public partial class ExchangeRatesCard
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _createKey = Guid.NewGuid();
         _createOpen = true;
@@ -334,7 +352,9 @@ public partial class ExchangeRatesCard
     private void EditClicked(ExistingExchangeRate rate)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editRate = rate;
         _editRateKey = Guid.NewGuid();
@@ -347,11 +367,15 @@ public partial class ExchangeRatesCard
     private async Task HandleDelete(object key)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var rate = _rates.FirstOrDefault(r => r.ExchangeRateId.Equals(key));
         if (rate is null)
+        {
             return;
+        }
 
         if ((await ExchangeRates.DeleteAsync(rate.ExchangeRateId)).Toast(Snackbar, "Delete failed", "Exchange rate deleted."))
         {

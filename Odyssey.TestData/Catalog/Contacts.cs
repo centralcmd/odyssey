@@ -36,15 +36,15 @@ public static class Contacts
     public const string Landlord = "Jane Smith (Landlord)";
     public const string CashWithdrawal = "Cash Withdrawal";
 
-    // The household, and one former member. These exist so the insurance link collections have real
-    // people to name — insured contacts and beneficiaries (issue #27) — including the ARCHIVED case,
-    // which is the one a demo cannot fabricate at read time: the seeded policy keeps the link, and the
-    // read path returns it with no name.
+    // The household, and one former member. The policyholder and the spouse are parties to the seeded
+    // Insurance contract (policyholder and beneficiary); the former member is the demo's ARCHIVED
+    // person (issue #27). They were first seeded for the insurance-policy link collections, which
+    // were removed with that feature.
     public const string PolicyHolder = "Alex Rivera";
     public const string Spouse = "Sam Rivera";
     public const string FormerBeneficiary = "Chris Rivera";
 
-    /// <summary>A second insurance provider, so a policy can be placed across co-insurers.</summary>
+    /// <summary>A second insurance provider. No seeded contract names it today.</summary>
     public const string Allstate = "Allstate";
 
     /// <summary>A deceased person — the issue #48 case that must NOT read as archived.</summary>
@@ -230,8 +230,7 @@ public static class Contacts
             })
             .ToList();
 
-        // The Person contacts. The landlord predates the household, which exists so the insurance
-        // link collections have real people to name.
+        // The Person contacts: the landlord, then the household (see the constants above).
         //
         // The landlord carries a MAIDEN NAME and a middle name — the two additions of issue #48 that
         // are searchable — so the alias and middle-name search arms have something real to match.
@@ -239,17 +238,16 @@ public static class Contacts
             middleName: "Elisabeth", dateOfBirth: new DateOnly(1968, 3, 14)));
         contacts.Add(Person(PolicyHolder, "Alex", "Rivera", "Policyholder on the household policies"));
         contacts.Add(Person(Spouse, "Sam", "Rivera", "Named on the household policies"));
-        // Archived on purpose: this is the demo's UNNAMED-member case. The Term Life policy keeps the
-        // beneficiary link, and the read path returns it with its id and type but NO name — the state
-        // an ordinary write can neither remove nor accidentally delete (issue #27 §9).
+        // Archived on purpose: the demo's archived person (issue #27). Nothing links to it any more;
+        // it was the beneficiary of a seeded insurance policy before that feature was removed.
         contacts.Add(Person(
             FormerBeneficiary, "Chris", "Rivera", "Former beneficiary — archived",
             archived: SeededAt.AddYears(1)));
 
         // The DECEASED case (issue #48). Recording a death date archives nothing and removes no
-        // capability, so this contact keeps its policy links and stays selectable everywhere — which
-        // is exactly what the demo has to show, since the archived case above looks superficially
-        // similar and is not the same thing at all.
+        // capability, so this contact stays selectable everywhere — which is exactly what the demo has
+        // to show, since the archived case above looks superficially similar and is not the same thing
+        // at all.
         contacts.Add(Person(LatePartner, "Morgan", "Rivera",
             "Late partner — the record stays live; finance rows still reference it",
             dateOfBirth: new DateOnly(1951, 9, 2), dateOfDeath: new DateOnly(2024, 3, 11)));

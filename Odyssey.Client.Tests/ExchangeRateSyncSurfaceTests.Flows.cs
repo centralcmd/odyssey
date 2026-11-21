@@ -119,7 +119,10 @@ public partial class ExchangeRateSyncSurfaceTests
         sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() =>
         {
             if (!first)
+            {
                 return Refused<ExchangeRateSyncStatus>(HttpStatusCode.Forbidden);
+            }
+
             first = false;
             return ApiResult<ExchangeRateSyncStatus>.Success(Running(Now.UtcDateTime), HttpStatusCode.OK);
         });
@@ -143,7 +146,10 @@ public partial class ExchangeRateSyncSurfaceTests
         sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() =>
         {
             if (!first)
+            {
                 return Refused<ExchangeRateSyncStatus>(HttpStatusCode.TooManyRequests);
+            }
+
             first = false;
             return ApiResult<ExchangeRateSyncStatus>.Success(Running(Now.UtcDateTime), HttpStatusCode.OK);
         });

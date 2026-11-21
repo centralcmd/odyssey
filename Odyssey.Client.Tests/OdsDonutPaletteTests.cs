@@ -37,7 +37,9 @@ public class OdsDonutPaletteTests
             .ToHashSet(StringComparer.Ordinal);
 
         foreach (var token in OdsDonutPalette.Default)
+        {
             Assert.Contains(Regex.Match(token, @"^var\((--[a-z0-9-]+)\)$").Groups[1].Value, declared);
+        }
     }
 
     /// <summary>A zero slice would draw a zero-width arc but still take a legend row and consume a
@@ -66,7 +68,9 @@ public class OdsDonutPaletteTests
     public void ColorFor_walks_the_default_palette_by_index()
     {
         for (var i = 0; i < OdsDonutPalette.Default.Count; i++)
+        {
             Assert.Equal(OdsDonutPalette.Default[i], OdsDonutPalette.ColorFor(Slice("s", 1), i, null));
+        }
     }
 
     /// <summary>More slices than stops must wrap, not index out of range — a category breakdown can

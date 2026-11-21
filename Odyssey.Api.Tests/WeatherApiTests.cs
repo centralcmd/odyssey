@@ -898,7 +898,10 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
         using var client = factory.CreateClient();
 
         for (var i = 0; i < 20; i++)
+        {
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/journal-entries/weather?ids={Guid.NewGuid()}")).StatusCode);
+        }
+
         Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync($"/api/calendar-events/weather?ids={Guid.NewGuid()}")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/current")).StatusCode);
     }
@@ -1104,7 +1107,9 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
             var response = await client.GetFromJsonAsync<WeatherHourlyResponse>(
                 $"/api/weather/hourly?weatherPointId={pointId}&date={candidate:yyyy-MM-dd}", Json);
             if (response!.Day!.IsToday)
+            {
                 return candidate;
+            }
         }
 
         throw new InvalidOperationException("No date within a day of UTC is the point's today.");
@@ -1247,7 +1252,10 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
         })
         {
             if (carriesSteps)
+            {
                 Assert.Contains("\"timeUtc\"", body, StringComparison.Ordinal);
+            }
+
             Assert.DoesNotContain("\"localStart\"", body, StringComparison.Ordinal);
             Assert.DoesNotContain("\"localEnd\"", body, StringComparison.Ordinal);
         }

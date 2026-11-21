@@ -39,7 +39,9 @@ public partial class WeatherStepTable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
+        {
             return;
+        }
 
         try
         {
@@ -61,7 +63,10 @@ public partial class WeatherStepTable
     public Task OnOverflowChanged(bool overflows)
     {
         if (_overflows == overflows)
+        {
             return Task.CompletedTask;
+        }
+
         _overflows = overflows;
         return InvokeAsync(StateHasChanged);
     }
@@ -73,7 +78,10 @@ public partial class WeatherStepTable
             try
             {
                 if (_observing)
+                {
                     await _module.InvokeVoidAsync("unobserveOverflow", _wrapper);
+                }
+
                 await _module.DisposeAsync();
             }
             catch (JSDisconnectedException)

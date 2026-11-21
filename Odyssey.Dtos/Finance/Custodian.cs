@@ -6,7 +6,7 @@ namespace Odyssey.Dtos.Finance;
 /// <summary>
 /// A slim, response-only projection of the contact that holds an account (its custodian).
 /// Carries the identifying/display fields the custodian chip needs, but deliberately omits the
-/// free-text <c>Description</c> the full <see cref="ExistingContact"/> exposes — that field stays
+/// free-text <c>Description</c> the full <see cref="Odyssey.Dtos.Journal.ExistingContact"/> exposes — that field stays
 /// reachable only through <c>GET /api/contacts</c> (gated by <c>contacts.read</c>), so an
 /// <c>accounts.read</c>-only principal cannot read it through the account path (data minimisation).
 ///

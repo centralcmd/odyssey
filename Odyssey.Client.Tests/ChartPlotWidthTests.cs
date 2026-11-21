@@ -169,7 +169,9 @@ public class ChartPlotWidthTests
 
         var x1 = 300 - OdsLineChart.PlotRightInset;
         foreach (var line in findAll("svg.odc-line-svg > g > line"))
+        {
             Assert.Equal(x1, double.Parse(line.GetAttribute("x2")!, CultureInfo.InvariantCulture));
+        }
 
         // Every coordinate in every drawn path, x and y alike, stays inside the 300 × 252 box.
         var numbers = findAll("svg.odc-line-svg path")

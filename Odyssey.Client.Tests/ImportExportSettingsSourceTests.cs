@@ -151,9 +151,14 @@ public class ImportExportSettingsSourceTests
         {
             var line = SourceLint.LineAt(text, tag.Index);
             if (!tag.Value.Contains("LabelId=", StringComparison.Ordinal))
+            {
                 violations.Add($"Settings.razor:{line} — missing LabelId");
+            }
+
             if (!tag.Value.Contains("HelpId=", StringComparison.Ordinal))
+            {
                 violations.Add($"Settings.razor:{line} — missing HelpId");
+            }
         }
 
         Assert.True(violations.Count == 0,
@@ -245,7 +250,7 @@ public class ImportExportSettingsSourceTests
     [InlineData("taskIcsMaxExportTasks")]
     public void Every_export_count_SettingItem_omits_a_max_below_the_shared_capacity_ceiling(string key)
     {
-        var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Settings.razor.cs"));
+        var text = ClientSource.CodeBehind("Pages/Settings.razor.cs");
         var match = Regex.Match(text, $@"new\(""{key}"".*?\);", RegexOptions.Singleline);
 
         Assert.True(match.Success, $"Expected a {key} SettingItem in Settings.razor.cs.");
@@ -266,7 +271,7 @@ public class ImportExportSettingsSourceTests
     [InlineData("journalIcsMaxExportMegabytes")]
     public void Settings_catalog_contains_the_new_export_limit_key(string key)
     {
-        var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Settings.razor.cs"));
+        var text = ClientSource.CodeBehind("Pages/Settings.razor.cs");
         Assert.Contains($"\"{key}\"", text, StringComparison.Ordinal);
     }
 

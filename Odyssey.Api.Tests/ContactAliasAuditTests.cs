@@ -8,7 +8,7 @@ using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Odyssey.Testing.Logging;
 using Xunit;
 

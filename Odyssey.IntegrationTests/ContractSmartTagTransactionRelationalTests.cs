@@ -255,7 +255,9 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
         await using (var reader = await command.ExecuteReaderAsync())
         {
             while (await reader.ReadAsync())
+            {
                 rows.Add((reader.GetString(0), reader.GetString(1)));
+            }
         }
 
         Assert.Equal(
@@ -350,13 +352,10 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
         var builder = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
         if (interceptor is not null)
+        {
             builder = builder.AddInterceptors(interceptor);
+        }
 
         return new OdysseyContext(builder.Options);
     }
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 }

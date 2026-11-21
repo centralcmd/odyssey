@@ -96,8 +96,10 @@ public class UsersRowDisclosureTests
             foreach (var control in row.QuerySelectorAll(NestedInteractiveControlTests.InteractiveSelector))
             {
                 for (var up = control.ParentElement; up is not null && up != row; up = up.ParentElement)
+                {
                     Assert.False(up.Matches(NestedInteractiveControlTests.InteractiveSelector),
                         $"<{control.LocalName}> is nested inside <{up.LocalName}>");
+                }
             }
         }
     }

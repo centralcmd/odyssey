@@ -292,7 +292,9 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
     private async Task<Dictionary<Guid, decimal>> GetCurrentEstimateValuesAsync(IReadOnlyCollection<Guid> accountIds, DateTime now, CancellationToken cancellationToken = default)
     {
         if (accountIds.Count == 0)
+        {
             return [];
+        }
 
         var estimates = await context.AccountEstimates
             .AsNoTracking()

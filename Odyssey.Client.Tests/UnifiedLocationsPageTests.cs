@@ -51,7 +51,9 @@ public class UnifiedLocationsPageTests
         Assert.Contains("Copy coordinates", labels);
         Assert.Equal(canUpdate, LocationsPage.ShowsFindCoordinates(Hytta(coordinates: false), canUpdate));
         if (role == "Guest")
+        {
             Assert.DoesNotContain("Delete", labels);
+        }
     }
 
     [Theory]

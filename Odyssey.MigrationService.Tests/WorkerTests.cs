@@ -109,7 +109,7 @@ public class WorkerTests
             Environment.ExitCode = 0;
             var logger = new RecordingLogger<Worker>();
             var drift = new MigrationDriftException(
-                "OdysseyContext", new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
+                new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
             var worker = BuildWorker(
                 [], failAt: nameof(OdysseyMigrationService), logger: logger, failWith: drift);
 

@@ -40,7 +40,7 @@ public class UserProfileImage
     public Guid UserProfileImageId { get; set; }
 
     /// <summary>
-    /// FK to <see cref="ApplicationUser.Id"/>; unique (1:1) with cascade delete. The unique index is
+    /// FK to <c>ApplicationUser.Id</c>; unique (1:1) with cascade delete. The unique index is
     /// what turns a concurrent <b>first</b> upload race into a <c>409</c> rather than two rows, and the
     /// cascade is what makes the picture die with the account inside the existing delete transaction.
     ///

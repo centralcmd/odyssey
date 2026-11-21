@@ -60,7 +60,9 @@ public class SourceConventionTests
             {
                 var value = ReadAttributeValue(text, attr.Index + attr.Length);
                 if (value is null || !value.StartsWith('@') || ProducesAString(value))
+                {
                     continue;
+                }
 
                 violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, attr.Index)} — " +
                                $"{attr.Groups[1].Value}=\"{value}\" renders \"True\"/\"False\"; " +
@@ -98,11 +100,17 @@ public class SourceConventionTests
             if (c == '"')
             {
                 if (inLiteral)
+                {
                     inLiteral = false;
+                }
                 else if (depth > 0)
+                {
                     inLiteral = true;
+                }
                 else
+                {
                     return value.ToString();
+                }
             }
             else if (!inLiteral && c == '(')
             {
@@ -141,7 +149,9 @@ public class SourceConventionTests
         foreach (var file in ClientSource.RazorFiles())
         {
             if (SpinnerOwners.Contains(Path.GetFileName(file)))
+            {
                 continue;
+            }
 
             var text = File.ReadAllText(file);
             foreach (Match use in Regex.Matches(text, @"<MudProgressCircular\b"))
@@ -235,7 +245,9 @@ public class SourceConventionTests
         {
             var name = Path.GetFileNameWithoutExtension(file);
             if (ParityOptOut.IsMatch(File.ReadAllText(file)))
+            {
                 continue;
+            }
 
             // A tag use ("<OdsFoo ", "<OdsFoo>", "<OdsFoo/>") or a programmatic reference. The trailing
             // delimiter keeps "<OdsTable" from counting as a use of a hypothetical "<OdsTab".
@@ -247,7 +259,9 @@ public class SourceConventionTests
                 reference.IsMatch(s.Text));
 
             if (!referenced)
+            {
                 unreferenced.Add(name);
+            }
         }
 
         return unreferenced;
@@ -314,13 +328,17 @@ public class SourceConventionTests
             var lines = File.ReadAllLines(file);
             var start = Array.FindIndex(lines, l => l.TrimStart().StartsWith("@code", StringComparison.Ordinal));
             if (start < 0)
+            {
                 continue;
+            }
 
             // The block runs to the last line that closes it; everything between the braces counts.
             var end = Array.FindLastIndex(lines, l => l.Trim() == "}");
             var length = end - start - 1;
             if (length <= MaxInlineCodeLines)
+            {
                 continue;
+            }
 
             violations.Add($"{ClientSource.Relative(file)}:{start + 1} — @code block is {length} lines " +
                            $"(limit {MaxInlineCodeLines}); move it to {Path.GetFileName(file)}.cs");
@@ -354,7 +372,9 @@ public class SourceConventionTests
             foreach (Match match in Regex.Matches(text, @"<button\b[^>]*\bafm-meta-toggle\b[^>]*>", RegexOptions.Singleline))
             {
                 if (match.Value.Contains("aria-expanded", StringComparison.Ordinal))
+                {
                     continue;
+                }
 
                 violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} — " +
                                "the validity disclosure button needs aria-expanded; the changing label is not enough.");

@@ -439,7 +439,9 @@ public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, Demo
             var dtoType = (Odyssey.Dtos.Finance.PropertyEventType)e.Type;
             Assert.True(Odyssey.Dtos.Finance.PropertyEventTypeMatrix.IsLegal(properties[e.PropertyId], dtoType), e.Title);
             if (Odyssey.Dtos.Finance.PropertyEventTypeMatrix.IsSystemOnly(dtoType))
+            {
                 Assert.Equal(ContractEventSource.System, e.Source);
+            }
         });
 
         // The shared table's other branch is untouched by the property seed.

@@ -136,9 +136,14 @@ public class LocationsApiClientTests
         var query = handler.LastRequest!.RequestUri!.Query;
         Assert.Contains(expected, query);
         if (hasCoordinates is null)
+        {
             Assert.DoesNotContain("hasCoordinates", query);
+        }
+
         if (referenced is null)
+        {
             Assert.DoesNotContain("referenced", query);
+        }
     }
 
     [Fact]

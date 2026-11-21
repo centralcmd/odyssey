@@ -21,7 +21,9 @@ public class OdsRecordTableRowLabelTests
                 .Add(t => t.Columns, [new OdsRecordColumn<Row> { Key = "name", HeaderText = "Name", Cell = (r, _) => b => b.AddContent(0, r.Name) }])
                 .Add(t => t.RenderDetail, r => b => b.AddContent(0, $"Detail of {r.Name}"));
             if (label is not null)
+            {
                 p.Add(t => t.RowLabel, label);
+            }
         });
 
     [Fact]

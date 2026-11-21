@@ -13,7 +13,9 @@ public static class ByteSize
     public static string Format(long bytes)
     {
         if (bytes <= 0)
+        {
             return string.Empty;
+        }
 
         double size = bytes;
         var unit = 0;

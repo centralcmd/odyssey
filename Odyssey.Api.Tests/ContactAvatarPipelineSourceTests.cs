@@ -164,16 +164,24 @@ public class ContactAvatarPipelineSourceTests
         // contact mis-pointed at a PDF would have had that PDF destroyed by the next upload: the
         // likeliest of the three to be reached, since replacing an image is ordinary and deleting one
         // is not.
+        // ContactService and ContactVCardService are partial classes split across sibling files
+        // (<Class>.cs plus <Class>.<Area>.cs), so each caller is read as the whole class: a rule that
+        // only looked at <Class>.cs would let a release site move into a partial and leave the lint's scope.
         var callers = new[]
         {
-            Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "Avatar", "ContactAvatarService.cs"),
-            Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "ContactService.cs"),
-            Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "ContactVCardService.cs"),
+            (Directory: Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "Avatar"), Class: "ContactAvatarService"),
+            (Directory: Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal"), Class: "ContactService"),
+            (Directory: Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal"), Class: "ContactVCardService"),
         };
 
-        foreach (var caller in callers)
+        foreach (var (directory, className) in callers)
         {
-            var text = SourceLint.StripComments(File.ReadAllText(caller));
+            var files = Directory.EnumerateFiles(directory, className + ".cs")
+                .Concat(Directory.EnumerateFiles(directory, className + ".*.cs"))
+                .ToList();
+            Assert.True(files.Count > 0, $"No source file found for {className} in {directory}.");
+            var caller = className + ".cs";
+            var text = string.Join("\n", files.Select(file => SourceLint.StripComments(File.ReadAllText(file))));
             if (!text.Contains("AvatarFileId", StringComparison.Ordinal))
             {
                 continue;

@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Mapster;
 using Odyssey.Dtos.Finance;
 using Odyssey.TestData;
@@ -17,7 +16,7 @@ public class DemoDataSetTests
         var first = DemoDataSet.Build();
         var second = DemoDataSet.Build();
 
-        first.Transactions.Should().HaveCount(second.Transactions.Count);
+        Assert.Equal(second.Transactions.Count, first.Transactions.Count);
 
         var firstSignature = first.Transactions
             .Select(transaction => (transaction.TransactionId, transaction.Amount, transaction.TimeStamp))
@@ -26,7 +25,7 @@ public class DemoDataSetTests
             .Select(transaction => (transaction.TransactionId, transaction.Amount, transaction.TimeStamp))
             .ToList();
 
-        firstSignature.Should().Equal(secondSignature);
+        Assert.Equal(secondSignature, firstSignature);
     }
 
     [Fact]
@@ -39,7 +38,7 @@ public class DemoDataSetTests
             .ToHashSet();
         var actual = data.Accounts.Select(account => account.AccountType).ToHashSet();
 
-        actual.Should().BeEquivalentTo(expected);
+        Assert.True(expected.SetEquals(actual), $"missing: {string.Join(", ", expected.Except(actual))}; unexpected: {string.Join(", ", actual.Except(expected))}");
     }
 
     [Fact]
@@ -48,12 +47,12 @@ public class DemoDataSetTests
         var data = DemoDataSet.Build();
 
         var years = DemoDataDefaults.LastYear - DemoDataDefaults.FirstYear + 1;
-        data.Budgets.Should().HaveCount(years);
-        data.BudgetItems.Should().HaveCount(years * 17);
+        Assert.Equal(years, data.Budgets.Count);
+        Assert.Equal(years * 17, data.BudgetItems.Count);
 
         foreach (var budget in data.Budgets)
         {
-            data.BudgetItems.Count(item => item.BudgetId == budget.BudgetId).Should().Be(17);
+            Assert.Equal(17, data.BudgetItems.Count(item => item.BudgetId == budget.BudgetId));
         }
     }
 
@@ -65,8 +64,8 @@ public class DemoDataSetTests
         var tagIds = data.Tags.Select(tag => tag.TransactionTagId).ToHashSet();
         var transactionIds = data.Transactions.Select(transaction => transaction.TransactionId).ToHashSet();
 
-        data.TransactionTagLinks.Should().OnlyContain(link =>
-            tagIds.Contains(link.TransactionTagId) && transactionIds.Contains(link.TransactionId));
+        Assert.All(data.TransactionTagLinks, link =>
+            Assert.True(tagIds.Contains(link.TransactionTagId) && transactionIds.Contains(link.TransactionId)));
     }
 
     [Fact]
@@ -90,11 +89,11 @@ public class DemoDataSetTests
         {
             foreach (var to in displayCurrencies.Where(code => code != from))
             {
-                pairs.Should().Contain((from, to), "accounts in {0} must convert to {1}", from, to);
+                Assert.True(pairs.Contains((from, to)), $"accounts in {from} must convert to {to}");
             }
         }
 
-        data.ExchangeRates.Should().OnlyContain(rate => rate.Rate > 0m);
+        Assert.All(data.ExchangeRates, rate => Assert.True(rate.Rate > 0m));
     }
 
     [Fact]
@@ -109,10 +108,10 @@ public class DemoDataSetTests
 
         foreach (var pair in data.ExchangeRates.GroupBy(rate => (rate.FromCurrencyCode, rate.ToCurrencyCode)))
         {
-            pair.Min(rate => rate.AsOf).Should().BeOnOrBefore(windowStartInstant,
-                "{0}->{1} needs a rate in force at the chart's first point", pair.Key.FromCurrencyCode, pair.Key.ToCurrencyCode);
-            pair.Max(rate => rate.AsOf).Should().Be(DemoDataDefaults.AnchorDate,
-                "conversions read the latest row, which is anchored on the seed date");
+            Assert.True(pair.Min(rate => rate.AsOf) <= windowStartInstant,
+                $"{pair.Key.FromCurrencyCode}->{pair.Key.ToCurrencyCode} needs a rate in force at the chart's first point");
+            // Conversions read the latest row, which is anchored on the seed date.
+            Assert.Equal(DemoDataDefaults.AnchorDate, pair.Max(rate => rate.AsOf));
         }
     }
 
@@ -127,7 +126,7 @@ public class DemoDataSetTests
                 .Where(transaction => transaction.AccountId == account.AccountId)
                 .Sum(transaction => transaction.Amount);
 
-            balance.Should().Be(0m, "closed account '{0}' should be settled to zero", account.Name);
+            Assert.True(balance == 0m, $"closed account '{account.Name}' should be settled to zero, was {balance}");
         }
     }
 
@@ -140,24 +139,18 @@ public class DemoDataSetTests
         foreach (var transaction in data.Transactions)
         {
             var account = accountsById[transaction.AccountId];
-            transaction.TimeStamp.Should().BeOnOrAfter(account.Opened);
+            Assert.True(transaction.TimeStamp >= account.Opened);
             if (account.Closed is not null)
             {
-                transaction.TimeStamp.Should().BeOnOrBefore(account.Closed.Value);
+                Assert.True(transaction.TimeStamp <= account.Closed.Value);
             }
         }
     }
 
     /// <summary>
-    /// AC 21 (issue #121) — the seeded parties cover all five NAMED v1 roles, leave at least one
-    /// party <c>Unspecified</c> and give at least one a non-default term.
+    /// AC 21 (issue #121) — the seeded parties cover both tiers of the role matrix and give at least
+    /// one party a non-default term. (<c>Unspecified</c> is retired, so no party can carry it.)
     /// </summary>
-    /// <remarks>
-    /// <c>Unspecified</c> is asserted separately from the named five on purpose: it is the state the
-    /// migration backfills every pre-#121 row to, and the one whose tile falls back to the kind word
-    /// rather than rendering a sentinel. A fixture that roled every party would leave that rendering
-    /// path unexercised by the demo stack, which is where it is actually looked at.
-    /// </remarks>
     [Fact]
     public void ContractParties_CoverBothMatrixTiersAndANonDefaultTerm()
     {
@@ -166,8 +159,8 @@ public class DemoDataSetTests
         var roles = parties.Select(party => party.Role).ToHashSet();
 
         // Suggested roles across several type columns, including all four of Insurance's.
-        roles.Should().Contain(
-        [
+        Assert.Superset(new HashSet<ContractPartyRole>
+        {
             ContractPartyRole.Employee,
             ContractPartyRole.Employer,
             ContractPartyRole.Buyer,
@@ -179,19 +172,19 @@ public class DemoDataSetTests
             ContractPartyRole.Beneficiary,
             ContractPartyRole.Lender,
             ContractPartyRole.Borrower,
-        ]);
+        }, roles);
 
         // …and the ALLOWED-but-not-suggested tier, which a set covering only the suggested cells
         // would never exercise (issue #157 §4.6).
-        roles.Should().Contain([ContractPartyRole.Guarantor, ContractPartyRole.Other]);
+        Assert.Superset(new HashSet<ContractPartyRole> { ContractPartyRole.Guarantor, ContractPartyRole.Other }, roles);
 
         // The two type-specific OBJECT roles (issue #169 §14 step 11): what the house purchase bought
         // and what the car loan is secured on. The E2E tiers read seeded data, so a role absent here
         // is a role no full-stack test ever renders or round-trips — which is why this is asserted
         // rather than left to the seeder's discretion.
-        roles.Should().Contain([ContractPartyRole.Property, ContractPartyRole.Collateral]);
+        Assert.Superset(new HashSet<ContractPartyRole> { ContractPartyRole.Property, ContractPartyRole.Collateral }, roles);
 
-        parties.Should().Contain(party => party.FromDate != null || party.ToDate != null);
+        Assert.Contains(parties, party => party.FromDate != null || party.ToDate != null);
     }
 
     /// <summary>
@@ -212,7 +205,7 @@ public class DemoDataSetTests
             .Select(party => $"{typeOf[party.ContractId]} contract holds a {party.Role} party")
             .ToList();
 
-        violations.Should().BeEmpty();
+        Assert.Empty(violations);
     }
 
     /// <summary>
@@ -224,7 +217,7 @@ public class DemoDataSetTests
     {
         var data = DemoDataSet.Build();
 
-        data.Contracts.Should().Contain(contract => contract.Type == ContractType.Loan);
+        Assert.Contains(data.Contracts, contract => contract.Type == ContractType.Loan);
     }
 
     /// <summary>
@@ -238,13 +231,14 @@ public class DemoDataSetTests
         var data = DemoDataSet.Build();
 
         // The one SPECIFIED deposit; issue #190 adds more, created for the accounts whose terms it moved.
-        var deposit = data.Contracts.Should().ContainSingle(contract => contract.Name == "Fixed-term Deposit — 12 Months").Subject;
-        deposit.Type.Should().Be(ContractType.Deposit);
+        var deposit = Assert.Single(data.Contracts, contract => contract.Name == "Fixed-term Deposit — 12 Months");
+        Assert.Equal(ContractType.Deposit, deposit.Type);
 
-        data.ContractParties.Where(party => party.ContractId == deposit.ContractId).Select(party => party.Role)
-            .Should().Contain([ContractPartyRole.Depositor, ContractPartyRole.Custodian]);
+        var depositRoles = data.ContractParties.Where(party => party.ContractId == deposit.ContractId)
+            .Select(party => party.Role).ToHashSet();
+        Assert.Superset(new HashSet<ContractPartyRole> { ContractPartyRole.Depositor, ContractPartyRole.Custodian }, depositRoles);
 
-        data.Terms.Should().Contain(term =>
+        Assert.Contains(data.Terms, term =>
             term.ContractId == deposit.ContractId && term.Direction == Odyssey.Context.TermDirection.Incoming);
     }
 
@@ -263,13 +257,13 @@ public class DemoDataSetTests
         {
             if (startDates[party.ContractId] is { } start)
             {
-                party.FromDate!.Value.Date.Should().BeOnOrAfter(start.Date);
+                Assert.True(party.FromDate!.Value.Date >= start.Date);
             }
         }
 
         foreach (var party in data.ContractParties.Where(p => p is { FromDate: not null, ToDate: not null }))
         {
-            party.ToDate!.Value.Date.Should().BeOnOrAfter(party.FromDate!.Value.Date);
+            Assert.True(party.ToDate!.Value.Date >= party.FromDate!.Value.Date);
         }
     }
 }

@@ -5,8 +5,7 @@ using Odyssey.Dtos.Finance;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// How a tax statement's review state reads — the sibling of <see cref="OdsContractStatus"/> and
-/// <see cref="OdsCoverageStatus"/>.
+/// How a tax statement's review state reads — the sibling of <see cref="OdsContractStatus"/>.
 ///
 /// <para>
 /// A statement has exactly ONE state, and archiving outranks the review status: an archived year is
@@ -73,11 +72,19 @@ public static class TaxStatementStatusVisuals
     {
         var parts = new List<string>();
         if (s.Archived is { } archivedAt)
+        {
             parts.Add(OdsDates.Long(archivedAt));
+        }
         else if (s.StatusChangedAt != default)
+        {
             parts.Add(OdsDates.Long(s.StatusChangedAt));
+        }
+
         if (!string.IsNullOrWhiteSpace(s.StatusComment))
+        {
             parts.Add("see note above");
+        }
+
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 

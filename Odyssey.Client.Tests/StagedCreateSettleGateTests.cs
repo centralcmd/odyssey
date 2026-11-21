@@ -36,11 +36,15 @@ public class StagedCreateSettleGateTests
         {
             var text = File.ReadAllText(file);
             if (!text.Contains("Creator.Resolve(", StringComparison.Ordinal))
+            {
                 continue;
+            }
 
             checkedHosts.Add(ClientSource.Relative(file));
             if (!text.Contains("WhenSettledAsync()", StringComparison.Ordinal))
+            {
                 offenders.Add(ClientSource.Relative(file));
+            }
         }
 
         Assert.True(offenders.Count == 0,

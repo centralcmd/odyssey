@@ -116,7 +116,9 @@ public static class JournalTaskAttachments
         // unreachable server is not, and reporting either as a deletion would misdescribe it.
         var read = await tasks.GetResultAsync(taskId);
         if (read.Value is not { } fresh)
+        {
             return (new ApiResult { Status = read.Status, Problem = read.Problem ?? new ApiProblem { Detail = "The task could not be read." } }, null);
+        }
 
         var update = JournalTaskWrite.WithAttachments(fresh, change(fresh.Attachments.Select(a => a.FileId)));
         return (await tasks.UpdateAsync(taskId, update), fresh);

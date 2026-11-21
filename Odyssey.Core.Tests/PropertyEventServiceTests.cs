@@ -36,9 +36,13 @@ public class PropertyEventServiceTests
             UpdatedAt = FixedNow,
         };
         if (type == PropertyType.RealEstate)
+        {
             property.RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House };
+        }
         else
+        {
             property.VehicleDetails = new VehicleDetails { Kind = VehicleKind.Car };
+        }
 
         context.Properties.Add(property);
         await context.SaveChangesAsync();

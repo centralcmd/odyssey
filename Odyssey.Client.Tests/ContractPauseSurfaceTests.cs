@@ -349,6 +349,8 @@ public class ContractPauseSurfaceTests
 
     private static string Source(string fileName)
     {
-        return SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName)));
+        return SourceLint.StripComments(fileName.EndsWith(".razor.cs", StringComparison.Ordinal)
+            ? ClientSource.CodeBehind($"Pages/Finance/{fileName}")
+            : File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", fileName)));
     }
 }

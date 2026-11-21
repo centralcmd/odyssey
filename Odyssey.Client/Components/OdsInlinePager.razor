@@ -48,7 +48,9 @@
             ? 1
             : Math.Max(1, (int)Math.Ceiling((double)Items.Count / _pageSize));
         if (_page > totalPages)
+        {
             _page = totalPages;
+        }
     }
 
     private IReadOnlyList<TItem> Paged
@@ -56,7 +58,9 @@
         get
         {
             if (_pageSize == OdsPageSizes.All)
+            {
                 return Items;
+            }
             return [.. Items.Skip((_page - 1) * _pageSize).Take(_pageSize)];
         }
     }

@@ -36,8 +36,7 @@ public class ContractsCardRowActionTests
     /// </summary>
     private static string CardSource()
     {
-        return SourceLint.StripComments(File.ReadAllText(
-            Path.Combine(ClientSource.Root, "Pages", "Finance", "ContractsCard.razor.cs")));
+        return SourceLint.StripComments(ClientSource.CodeBehind("Pages/Finance/ContractsCard.razor.cs"));
     }
 
     /// <summary>

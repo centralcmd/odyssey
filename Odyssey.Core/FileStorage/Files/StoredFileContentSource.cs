@@ -60,32 +60,6 @@ public sealed class StoredFileContentSource(OdysseyContext context, IObjectStore
         return (await ReadUpToAsync(stream, (int)stored.Length, cancellationToken), false);
     }
 
-    /// <summary>At most <paramref name="maxBytes"/> leading bytes, never the whole file. Null when the file does not exist.</summary>
-    public async Task<byte[]?> ReadPrefixAsync(Guid fileId, int maxBytes, CancellationToken cancellationToken)
-    {
-        if (maxBytes <= 0)
-        {
-            return null;
-        }
-
-        var file = await context.FileMetadata.AsNoTracking().FirstOrDefaultAsync(f => f.Id == fileId, cancellationToken);
-        if (file is null)
-        {
-            return null;
-        }
-
-        var stored = await OpenStoredAsync(file, cancellationToken);
-        await using var stream = stored.Content;
-        return await ReadUpToAsync(stream, maxBytes, cancellationToken);
-    }
-
-    /// <summary>Whether the file's committed stored object is present. For the admin export's count.</summary>
-    public Task<bool> IsPresentAsync(FileMetadata file, CancellationToken cancellationToken)
-    {
-        var objectId = StoredFileAreas.StoredObjectIdOf(file);
-        return context.StoredObjects.AnyAsync(o => o.Id == objectId && o.State == StoredObjectState.Committed, cancellationToken);
-    }
-
     private Task<StoredObjectContent> OpenStoredAsync(FileMetadata file, CancellationToken cancellationToken) =>
         Store().OpenReadAsync(StoredFileAreas.FeatureKey(StoredFileAreas.AreaOf(file)), StoredFileAreas.StoredObjectIdOf(file), cancellationToken);
 

@@ -6,7 +6,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using Odyssey.TestData;
 using Odyssey.TestData.Catalog;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 
 namespace Odyssey.E2ETests.Api;

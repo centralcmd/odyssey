@@ -9,11 +9,10 @@ namespace Odyssey.Client.Tests;
 /// <remarks>
 /// <para>
 /// The lock existed to serialize the insurance write path against a contact delete, back when the
-/// foreign key from a policy to its insurer had been removed. That key is back — as three of them, on
-/// the new link tables — so the DATABASE arbitrates the race the lock was written for, and its
-/// violation maps to a <c>409</c> rather than surfacing as a <c>500</c>. Removing the insurance call
-/// sites left it a mutex with no counterparty, still taking a pinned connection and a blocking
-/// ten-second <c>GET_LOCK</c> on every contact delete.
+/// foreign key from a policy to its insurer had been removed. The insurance-policy feature and its
+/// link tables are gone, and with them every call site, which left the lock a mutex with no
+/// counterparty, still taking a pinned connection and a blocking ten-second <c>GET_LOCK</c> on every
+/// contact delete.
 /// </para>
 /// <para>
 /// A lint rather than a behavioural test because the failure mode is <b>reintroduction by merge</b>: a

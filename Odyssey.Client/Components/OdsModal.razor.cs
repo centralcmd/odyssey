@@ -158,9 +158,14 @@ public partial class OdsModal
     protected override void OnParametersSet()
     {
         if (Open && !wasOpen)
+        {
             focusPending = true;
+        }
         else if (!Open && wasOpen)
+        {
             restorePending = true;
+        }
+
         wasOpen = Open;
 
         _options = new DialogOptions
@@ -185,11 +190,15 @@ public partial class OdsModal
     private async Task ApplyDismissalAsync()
     {
         if (_instance is not { } instance || !Open)
+        {
             return;
+        }
 
         var live = instance.Options;
         if ((live.CloseOnEscapeKey ?? false) == CanDismiss && (live.BackdropClick ?? false) == CanDismiss)
+        {
             return;
+        }
 
         try
         { await instance.SetOptionsAsync(_options); }
@@ -212,7 +221,10 @@ public partial class OdsModal
                 // Role and description go on before focus moves, so the name, role and description are
                 // what a screen reader reads as focus lands (WCAG 4.1.2).
                 if (Role != OdsModalRole.Dialog || !string.IsNullOrEmpty(DescribedById))
+                {
                     await Js.InvokeVoidAsync("odsDialogA11y", ModalKey, RoleAttribute(Role), DescribedById);
+                }
+
                 await Js.InvokeVoidAsync(InitialFocus == OdsModalInitialFocus.Cancel ? "odsFocusDialogCancel" : "odsFocusFirstField");
             }
             catch { /* JS unavailable (e.g. prerender / teardown) */ }
@@ -224,9 +236,13 @@ public partial class OdsModal
             try
             {
                 if (string.IsNullOrEmpty(ReturnFocusToId))
+                {
                     await Js.InvokeVoidAsync("odsRestoreFocusOwner");
+                }
                 else
+                {
                     await Js.InvokeVoidAsync("odsRestoreFocusOwner", ReturnFocusToId);
+                }
             }
             catch { /* JS unavailable (e.g. teardown) */ }
         }
@@ -240,7 +256,9 @@ public partial class OdsModal
         Open = visible;
         await OpenChanged.InvokeAsync(visible);
         if (!visible)
+        {
             await OnClose.InvokeAsync();
+        }
     }
 
     private Task CloseAsync() => OnVisibleChanged(false);

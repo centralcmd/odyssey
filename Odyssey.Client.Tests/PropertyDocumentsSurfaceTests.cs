@@ -71,7 +71,9 @@ public class PropertyDocumentsSurfaceTests
         var keys = OdsTypeRegistries.PropertyFileTypes.Select(t => t.Key).ToHashSet(StringComparer.Ordinal);
 
         foreach (var name in new[] { "deed", "sale", "takst", "survey", "regist", "policy", "garanti", "invoice", "maint", "tax", "plan", "x" })
+        {
             Assert.Contains(PropertyFileTypeGuess.GuessKey(name), keys);
+        }
     }
 
     /// <summary>
@@ -103,8 +105,10 @@ public class PropertyDocumentsSurfaceTests
             .Concat(["scan001.pdf", "IMG_4411.jpeg", "title-insurance-invoice.pdf", "Kjøpekontrakt.PDF"]);
 
         foreach (var name in corpus)
+        {
             Assert.True(DsGuess(name) == PropertyFileTypeGuess.GuessKey(name),
                 $"'{name}': design system guesses {DsGuess(name)}, the client {PropertyFileTypeGuess.GuessKey(name)}");
+        }
     }
 
     // ── The two type pickers ────────────────────────────────────────────────────
@@ -314,7 +318,9 @@ public class PropertyDocumentsSurfaceTests
         var attach = items.Where(i => i.Label == "Attach documents").ToList();
         Assert.Equal(offered ? 1 : 0, attach.Count);
         if (offered)
+        {
             Assert.Equal("attach_file", attach[0].Icon);
+        }
     }
 
     /// <summary>The menu item expands the row and issues a fresh token for that property alone.</summary>

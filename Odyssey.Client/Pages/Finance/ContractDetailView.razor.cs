@@ -295,7 +295,10 @@ public partial class ContractDetailView : IAsyncDisposable
             });
         }
 
-        if (!CanWrite) return items;
+        if (!CanWrite)
+        {
+            return items;
+        }
 
         if (OnEditParty.HasDelegate && resolved && !PartyRoleLabel.IsUnknown(party.Role))
         {
@@ -344,11 +347,18 @@ public partial class ContractDetailView : IAsyncDisposable
 
     private async Task DetachPartyAsync(ExistingContractParty party)
     {
-        if (!CanWrite) return;
+        if (!CanWrite)
+        {
+            return;
+        }
+
         var r = Resolve(party);
         var confirmed = await _confirm.AskAsync("Detach party", $"Detach '{r.Name}' from this contract? The {r.KindLabel.ToLowerInvariant()} itself is not affected.", "Detach", "link_off");
 
-        if (!confirmed) return;
+        if (!confirmed)
+        {
+            return;
+        }
 
         // Armed BEFORE the write, while the list still holds the party: the tile that had focus is
         // gone by the time the re-fetched contract arrives.

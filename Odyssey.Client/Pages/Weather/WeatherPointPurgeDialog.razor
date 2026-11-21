@@ -128,7 +128,9 @@
     private async Task PressAsync()
     {
         if (_running)
+        {
             return;
+        }
         if (!Matches)
         {
             _nudge = $"Type {Point.Name} exactly to confirm.";
@@ -216,7 +218,9 @@
         _interrupted = reread.Value is { PurgeInProgress: true };
         _announce = _interrupted ? "The deletion was interrupted. Continue to delete the rest." : $"The {Noun} couldn't be deleted.";
         if (!_interrupted)
+        {
             _error = result.Problem?.Message ?? $"The {Noun} couldn’t be deleted. Try again.";
+        }
         await OnInterrupted.InvokeAsync(reread.Value);
     }
 
