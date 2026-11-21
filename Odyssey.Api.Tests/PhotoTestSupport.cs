@@ -61,18 +61,65 @@ public static class PhotoTestSupport
     private static IEnumerable<(string Name, string Value)> FormFields(NewPhotoUpload f)
     {
         var invariant = CultureInfo.InvariantCulture;
-        if (f.Title is not null) yield return ("title", f.Title);
-        if (f.Caption is not null) yield return ("caption", f.Caption);
-        if (f.TakenAt is { } takenAt) yield return ("takenAt", takenAt.ToString("O", invariant));
-        if (f.CapturedLatitude is { } lat) yield return ("capturedLatitude", lat.ToString("R", invariant));
-        if (f.CapturedLongitude is { } lon) yield return ("capturedLongitude", lon.ToString("R", invariant));
-        if (f.LocationName is not null) yield return ("locationName", f.LocationName);
-        if (f.PixelWidth is { } w) yield return ("pixelWidth", w.ToString(invariant));
-        if (f.PixelHeight is { } h) yield return ("pixelHeight", h.ToString(invariant));
-        if (f.Favourite) yield return ("favourite", "true");
-        foreach (var id in f.TagIds) yield return ("tagIds", id.ToString());
-        foreach (var id in f.PersonContactIds) yield return ("personContactIds", id.ToString());
-        foreach (var id in f.AlbumIds) yield return ("albumIds", id.ToString());
+        if (f.Title is not null)
+        {
+            yield return ("title", f.Title);
+        }
+
+        if (f.Caption is not null)
+        {
+            yield return ("caption", f.Caption);
+        }
+
+        if (f.TakenAt is { } takenAt)
+        {
+            yield return ("takenAt", takenAt.ToString("O", invariant));
+        }
+
+        if (f.CapturedLatitude is { } lat)
+        {
+            yield return ("capturedLatitude", lat.ToString("R", invariant));
+        }
+
+        if (f.CapturedLongitude is { } lon)
+        {
+            yield return ("capturedLongitude", lon.ToString("R", invariant));
+        }
+
+        if (f.LocationName is not null)
+        {
+            yield return ("locationName", f.LocationName);
+        }
+
+        if (f.PixelWidth is { } w)
+        {
+            yield return ("pixelWidth", w.ToString(invariant));
+        }
+
+        if (f.PixelHeight is { } h)
+        {
+            yield return ("pixelHeight", h.ToString(invariant));
+        }
+
+        if (f.Favourite)
+        {
+            yield return ("favourite", "true");
+        }
+
+        foreach (var id in f.TagIds)
+        {
+            yield return ("tagIds", id.ToString());
+        }
+
+        foreach (var id in f.PersonContactIds)
+        {
+            yield return ("personContactIds", id.ToString());
+        }
+
+        foreach (var id in f.AlbumIds)
+        {
+            yield return ("albumIds", id.ToString());
+        }
     }
 
     /// <summary>A photo owning its original on the store, inserted directly (no extraction, no thumbnail job).</summary>
@@ -151,9 +198,14 @@ public static class PhotoTestSupport
             Type = type,
         };
         if (type == Odyssey.Dtos.ContactType.Person)
+        {
             contact.PersonDetails = new() { FirstName = name, LastName = string.Empty };
+        }
         else
+        {
             contact.OrganizationDetails = new() { LegalName = name };
+        }
+
         context.Contacts.Add(contact);
         await context.SaveChangesAsync();
         return id;

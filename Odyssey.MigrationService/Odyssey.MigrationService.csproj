@@ -25,8 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Odyssey.Context\Odyssey.Context.csproj" />
-    <!-- Journal module now owns journal + photo + calendar (contexts merged): the seeder/services and
-         the metadata extractor used when seeding library photos come from Odyssey.Journal. -->
+    <!-- The seeder's domain services come from Odyssey.Core. -->
     <ProjectReference Include="..\Odyssey.Core\Odyssey.Core.csproj" />
     <!-- Reached transitively already, but named explicitly: RoleClaimSeeder and DemoDataSeeder use
          PermissionClaims and the Application DTOs directly. -->

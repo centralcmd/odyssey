@@ -668,7 +668,9 @@ builder.Services.AddOptions<ForwardedHeadersOptions>().Configure(options =>
         : ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
 
     foreach (var cidr in networks)
+    {
         options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
+    }
 }).ValidateOnStart();
 
 var app = builder.Build();

@@ -58,7 +58,9 @@
         _pending.Enqueue(message);
         // One player at a time; a call made while it plays joins its queue and waits for it.
         if (_playing is not { IsCompleted: false })
+        {
             _playing = PlayAsync();
+        }
         return _playing;
     }
 
@@ -72,13 +74,19 @@
             // would be coalesced into no change at all.
             await Task.Delay(50);
             if (_disposed)
+            {
                 return;
+            }
             _text = message;
             StateHasChanged();
             if (_pending.Count > 0)
+            {
                 await Task.Delay(Dwell);
+            }
             if (_disposed)
+            {
                 return;
+            }
         }
     }
 

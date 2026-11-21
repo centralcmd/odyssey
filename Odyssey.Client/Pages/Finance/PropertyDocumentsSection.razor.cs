@@ -85,7 +85,9 @@ public partial class PropertyDocumentsSection
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         var user = await AuthenticationState.GetUserAsync();
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
@@ -104,11 +106,15 @@ public partial class PropertyDocumentsSection
     protected override void OnParametersSet()
     {
         if (AttachRequestToken is not { } token || token == Guid.Empty || token == _handledAttachToken)
+        {
             return;
+        }
 
         _handledAttachToken = token;
         if (CanAttach)
+        {
             OpenAttach();
+        }
     }
 
     /// <summary>
@@ -121,10 +127,16 @@ public partial class PropertyDocumentsSection
         var result = await Properties.ListFilesAsync(Property.PropertyId);
         _loadFailed = !result.IsSuccess;
         if (result.IsSuccess)
+        {
             _files = result.ValueOr([]);
+        }
+
         _isLoading = false;
         if (!_loadFailed)
+        {
             await OnCountChanged.InvokeAsync(_files.Count);
+        }
+
         StateHasChanged();
     }
 
@@ -172,9 +184,15 @@ public partial class PropertyDocumentsSection
     private string? IssuerName(Guid? issuedBy)
     {
         if (issuedBy is null)
+        {
             return null;
+        }
+
         if (!_canReadContacts)
+        {
             return "Contact (no access)";
+        }
+
         return _contacts.FirstOrDefault(c => c.ContactId == issuedBy)?.ResolvedDisplayName ?? "Unknown contact";
     }
 
@@ -182,7 +200,10 @@ public partial class PropertyDocumentsSection
     {
         var option = ContactCreator.Begin(text, kind);
         if (option is not null)
+        {
             _issuerOptions = [.. _issuerOptions, option];
+        }
+
         return option;
     }
 
@@ -211,7 +232,9 @@ public partial class PropertyDocumentsSection
     {
         var result = await Properties.DownloadFileAsync(Property.PropertyId, file.FileMetadata.Id);
         if (result.OrToast(Snackbar, "Download failed") is not { } content)
+        {
             return;
+        }
 
         await JsRuntime.SaveFileAsync(content, file.FileMetadata.FileName, file.FileMetadata.ContentType);
     }
@@ -260,7 +283,9 @@ public partial class PropertyDocumentsSection
             newType != file.FileType || patch.ValidFrom != file.ValidFrom || patch.ValidTo != file.ValidTo
             || patch.IssuedAt != file.IssuedAt || issuedBy != file.IssuedBy;
         if (!nameChanged && !linkChanged)
+        {
             return;
+        }
 
         // The existing description is sent back unchanged so a rename doesn't wipe it (the service
         // overwrites it). Fail() keeps the edit dialog open with what the user typed (issue #252).
@@ -286,7 +311,10 @@ public partial class PropertyDocumentsSection
             // A rename in the same save has already landed; re-read so the row shows it while the
             // dialog stays open for the part that did not.
             if (nameChanged)
+            {
                 await LoadAsync();
+            }
+
             return;
         }
 
@@ -298,9 +326,13 @@ public partial class PropertyDocumentsSection
     {
         var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileMetadata.FileName}' from {Property.Name}? The file itself is kept in Files.", "Detach", "link_off");
         if (!confirmed)
+        {
             return;
+        }
 
         if ((await Properties.DetachFileAsync(Property.PropertyId, file.FileMetadata.Id)).Toast(Snackbar, "Detach failed", "Document detached."))
+        {
             await LoadAsync();
+        }
     }
 }

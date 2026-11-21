@@ -15,7 +15,9 @@ public partial class Roles
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await LoadRolesAsync();
         _isLoading = false;
@@ -24,7 +26,9 @@ public partial class Roles
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
+        {
             StateHasChanged();
+        }
     }
 
     private async Task LoadRolesAsync()

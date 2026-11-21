@@ -826,7 +826,9 @@ public partial class ExchangeRateSyncSurfaceTests
         currencies.Verify(c => c.UpdateAsync("USD", It.Is<NewCurrency>(n => n.Archived), It.IsAny<CancellationToken>()), Times.Once);
         // The synced count in the header follows a stopped sync.
         if (synced)
+        {
             cut.WaitForAssertion(() => Assert.True(sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync)) > reads));
+        }
     }
 
     // ── Purge ────────────────────────────────────────────────────────────────────────────────────

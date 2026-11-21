@@ -48,7 +48,9 @@ public class PageStateServiceTests
         public Task<ApiResult<TValue>> GetAsync<TValue>(string key, CancellationToken ct = default)
         {
             if (GetStatus != HttpStatusCode.OK)
+            {
                 return Task.FromResult(ApiResult<TValue>.Failure(GetStatus, new ApiProblem { Status = (int)GetStatus }));
+            }
 
             var payload = (TValue?)(object?)new UserPreferenceResponse(key, StoredJson ?? "", DateTime.UtcNow);
             return Task.FromResult(ApiResult<TValue>.Success(payload, HttpStatusCode.OK));
@@ -67,7 +69,10 @@ public class PageStateServiceTests
             while (DateTime.UtcNow < deadline)
             {
                 if (writes.Count >= count)
+                {
                     return true;
+                }
+
                 await Task.Delay(10);
             }
 
@@ -121,7 +126,9 @@ public class PageStateServiceTests
         var service = Create(prefs);
 
         foreach (var term in new[] { "o", "os", "osl", "oslo" })
+        {
             service.QueueSave("accounts-page", new PageState { Search = term });
+        }
 
         Assert.True(await prefs.WaitForWritesAsync(1));
         await SettleAsync();
@@ -296,14 +303,18 @@ public class PageStateServiceTests
         var service = Create(prefs);
 
         foreach (var key in new[] { "accounts-page", "budgets-page", "users-page" })
+        {
             service.QueueSave(key, new PageState { Search = key });
+        }
 
         Assert.True(await prefs.WaitForWritesAsync(3));
 
         // The PUT is awaited inside the debounce task, so the last one can still be retiring when
         // its write lands; give the continuations a moment rather than racing them.
         for (var attempt = 0; attempt < 50 && service.PendingSaveCount > 0; attempt++)
+        {
             await Task.Delay(20);
+        }
 
         Assert.Equal(0, service.PendingSaveCount);
     }
@@ -320,12 +331,16 @@ public class PageStateServiceTests
         var service = Create(prefs);
 
         for (var i = 0; i < 12; i++)
+        {
             service.QueueSave("accounts-page", new PageState { Search = new string('o', i + 1) });
+        }
 
         Assert.True(await prefs.WaitForWritesAsync(1));
 
         for (var attempt = 0; attempt < 50 && service.PendingSaveCount > 0; attempt++)
+        {
             await Task.Delay(20);
+        }
 
         Assert.Equal(0, service.PendingSaveCount);
         Assert.Single(prefs.Writes);

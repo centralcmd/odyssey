@@ -269,7 +269,9 @@ public class ListLoaderCardTests
             {
                 // The subline's whole-library count asks for a one-row window; answer it at once.
                 if (pageSize == 1)
+                {
                     return Task.FromResult(Page<PhotoSummary>());
+                }
 
                 var call = new PhotoCall(search, page, ct, new());
                 calls.Add(call);

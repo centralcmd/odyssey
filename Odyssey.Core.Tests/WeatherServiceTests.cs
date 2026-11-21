@@ -435,7 +435,10 @@ public class WeatherServiceTests
         var schedule = await h.Context.WeatherPointSchedules.SingleAsync(s => s.WeatherPointId == location.Id);
         schedule.NextObservationFetchAfterUtc = new DateTime(2026, 10, 23, 6, 0, 0);
         if (failed)
+        {
             schedule.ObservationFailureKind = WeatherFetchFailureKind.RateLimited;
+        }
+
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();
 
@@ -1392,8 +1395,15 @@ public class WeatherServiceTests
     {
         using var h = new WeatherTestHarness();
         var home = await h.EnableAsync();
-        if (!contact) h.Settings.Value = h.Settings.Value with { Contact = null };
-        if (clientId) h.Secrets.Frost = SecretResult.Found("frost-client");
+        if (!contact)
+        {
+            h.Settings.Value = h.Settings.Value with { Contact = null };
+        }
+
+        if (clientId)
+        {
+            h.Secrets.Frost = SecretResult.Found("frost-client");
+        }
 
         var daily = await h.Read().DailyAsync(Daily(home.Id, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 22)), "u1", CancellationToken.None);
 

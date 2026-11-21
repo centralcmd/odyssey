@@ -65,7 +65,9 @@
     private async Task DeleteAsync()
     {
         if (_busy)
+        {
             return;
+        }
         _alert = null;
         _busy = true;
         try

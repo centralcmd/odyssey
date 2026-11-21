@@ -131,7 +131,9 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusAfterReset)
+        {
             return;
+        }
         _focusAfterReset = false;
         try
         { await Js.InvokeVoidAsync("odsFocusById", _inputId); }
@@ -141,7 +143,9 @@
     private Task OnValueChanged(bool value)
     {
         if (Busy || AriaDisabled)
+        {
             return Task.CompletedTask;
+        }
         Checked = value;
         return CheckedChanged.InvokeAsync(value);
     }

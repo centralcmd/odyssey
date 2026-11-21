@@ -42,12 +42,6 @@ public interface ICalendarApiClient
     /// </summary>
     Task<ApiResult<ExistingRecurrencePattern>> GetPatternResultAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Fetches a calendar's events as an <c>.ics</c> file. A non-success status yields a
-    /// failure result rather than a body that would download as a fake <c>.ics</c>. For a non-browser consumer: the
-    /// browser summarizes with <see cref="SummarizeExportAsync"/> and downloads <see cref="ExportUrl"/> itself
-    /// (issue #516), because a calendar export can be gigabytes.</summary>
-    Task<ApiResult<ApiFile>> ExportAsync(Guid calendarId, CancellationToken ct = default);
-
     /// <summary>Runs the calendar export's checks and reports its counts without writing it (issue #516 §5).</summary>
     Task<ApiResult<CalendarIcsExportSummary>> SummarizeExportAsync(Guid calendarId, CancellationToken ct = default);
 
@@ -72,17 +66,11 @@ public interface ICalendarApiClient
     /// multipart body carries the file as <c>file</c> and, optionally, <c>allowRemovals=true</c>.</summary>
     string ImportUrl(Guid calendarId);
 
-    /// <summary>Exports a single event as a standalone <c>.ics</c> VEVENT (issue #340).</summary>
-    Task<ApiResult<ApiFile>> ExportEventAsync(Guid eventId, CancellationToken ct = default);
-
     /// <summary>Runs the single-event export's checks and reports its counts (issue #516 §5).</summary>
     Task<ApiResult<CalendarIcsExportSummary>> SummarizeEventExportAsync(Guid eventId, CancellationToken ct = default);
 
     /// <summary>The absolute URL of the single-event export.</summary>
     string ExportEventUrl(Guid eventId);
-
-    /// <summary>Exports a recurring series as one RRULE VEVENT, or its per-occurrence fallback (issue #340).</summary>
-    Task<ApiResult<ApiFile>> ExportPatternAsync(Guid patternId, CancellationToken ct = default);
 
     /// <summary>Runs the series export's checks and reports its counts (issue #516 §5).</summary>
     Task<ApiResult<CalendarIcsExportSummary>> SummarizePatternExportAsync(Guid patternId, CancellationToken ct = default);
@@ -124,14 +112,6 @@ public interface ICalendarApiClient
     /// <summary>The absolute URL of the aggregate export with the window read in <paramref name="viewTimeZoneId"/>.</summary>
     string ExportAggregateUrl(
         DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search, string? viewTimeZoneId);
-
-    /// <summary>Exports every matching event across every calendar the caller can read, as one
-    /// multi-VEVENT <c>.ics</c> file, optionally filtered by date range / calendar / search term (issue
-    /// #340). Omitting <paramref name="from"/>/<paramref name="to"/> and <paramref name="search"/>
-    /// exports everything (subject to the server's caps).</summary>
-    Task<ApiResult<ApiFile>> ExportAggregateAsync(
-        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,
-        CancellationToken ct = default);
 
     /// <summary>Runs the aggregate export's checks for the same query and reports its counts (issue #516 §5).</summary>
     Task<ApiResult<CalendarIcsExportSummary>> SummarizeAggregateExportAsync(
@@ -214,7 +194,6 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
     private const string CalendarsBase = "api/calendars";
     private const string EventsBase = "api/calendar-events";
     private const string PatternsBase = "api/recurrence-patterns";
-    private const string CompletenessMarker = "BEGIN:VEVENT";
 
     public Task<ApiResult<List<ExistingCalendar>>> ListCalendarsAsync(CancellationToken ct = default) =>
         api.GetAllAsync<ExistingCalendar>(PagedQuery.For(CalendarsBase).Build(), ct);
@@ -245,11 +224,6 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 
     public async Task<ExistingRecurrencePattern?> GetPatternAsync(Guid id, CancellationToken ct = default) =>
         (await api.GetAsync<ExistingRecurrencePattern>($"{PatternsBase}/{id}", ct)).Value;
-
-    // Every calendar export streams since issue #516 and declares X-Odyssey-Export-Rows, so each download checks its
-    // VEVENT count against it: a connection aborted at the byte cap fails rather than saving a short file.
-    public Task<ApiResult<ApiFile>> ExportAsync(Guid calendarId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{CalendarsBase}/{calendarId}/ics", "calendar.ics", completenessMarker: CompletenessMarker, ct: ct);
 
     public Task<ApiResult<CalendarIcsExportSummary>> SummarizeExportAsync(Guid calendarId, CancellationToken ct = default) =>
         api.GetAsync<CalendarIcsExportSummary>($"{CalendarsBase}/{calendarId}/ics/summary", ct);
@@ -289,16 +263,10 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 
     public string ImportUrl(Guid calendarId) => Absolute($"{CalendarsBase}/{calendarId}/ics");
 
-    public Task<ApiResult<ApiFile>> ExportEventAsync(Guid eventId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{EventsBase}/{eventId}/ics", "odyssey-event.ics", completenessMarker: CompletenessMarker, ct: ct);
-
     public Task<ApiResult<CalendarIcsExportSummary>> SummarizeEventExportAsync(Guid eventId, CancellationToken ct = default) =>
         api.GetAsync<CalendarIcsExportSummary>($"{EventsBase}/{eventId}/ics/summary", ct);
 
     public string ExportEventUrl(Guid eventId) => Absolute($"{EventsBase}/{eventId}/ics");
-
-    public Task<ApiResult<ApiFile>> ExportPatternAsync(Guid patternId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{PatternsBase}/{patternId}/ics", "odyssey-series.ics", completenessMarker: CompletenessMarker, ct: ct);
 
     public Task<ApiResult<CalendarIcsExportSummary>> SummarizePatternExportAsync(Guid patternId, CancellationToken ct = default) =>
         api.GetAsync<CalendarIcsExportSummary>($"{PatternsBase}/{patternId}/ics/summary", ct);
@@ -328,12 +296,6 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 
     public string ExportPatternUrl(Guid patternId, IcsAttachmentsMode attachments) =>
         Absolute($"{PatternsBase}/{patternId}/ics{AttachmentsQuery(attachments)}");
-
-    public Task<ApiResult<ApiFile>> ExportAggregateAsync(
-        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,
-        CancellationToken ct = default) =>
-        api.GetFileAsync(AggregateQuery("ics", from, to, calendarIds, search), "calendar-events.ics",
-            completenessMarker: CompletenessMarker, ct: ct);
 
     public Task<ApiResult<CalendarIcsExportSummary>> SummarizeAggregateExportAsync(
         DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,

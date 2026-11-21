@@ -51,19 +51,6 @@ public sealed class PhotoOriginalSource(OdysseyContext context, IObjectStore sto
         return new PhotoOriginalContent(stored.Content, stored.Length, info.ContentType, info.FileName, info.Sha256Hash);
     }
 
-    /// <summary>At most <paramref name="maxBytes"/> leading bytes, for metadata extraction; never the whole file.</summary>
-    public async Task<byte[]?> ReadPrefixAsync(Guid photoId, int maxBytes, CancellationToken cancellationToken)
-    {
-        if (maxBytes <= 0 || await DescribeAsync(photoId, cancellationToken) is not { } info)
-        {
-            return null;
-        }
-
-        var stored = await store.OpenReadAsync(PhotoOriginalStorage.FeatureKey, info.StoredObjectId, cancellationToken);
-        await using var stream = stored.Content;
-        return await ReadUpToAsync(stream, maxBytes, cancellationToken);
-    }
-
     /// <summary>The whole original when it is at most <paramref name="maxBytes"/>, refusing a larger one from metadata alone.</summary>
     public async Task<ImageContent?> ReadAllAsync(Guid photoId, long maxBytes, CancellationToken cancellationToken)
     {

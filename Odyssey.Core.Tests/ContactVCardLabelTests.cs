@@ -66,7 +66,9 @@ public class ContactVCardLabelTests
     {
         var colon = line.IndexOf(':');
         if (line.StartsWith(' ') || colon < 0)
+        {
             return line;
+        }
 
         var parameters = line[..colon].Split(';')
             .Where(segment => !segment.StartsWith("X-ODYSSEY-LABEL=", StringComparison.Ordinal));

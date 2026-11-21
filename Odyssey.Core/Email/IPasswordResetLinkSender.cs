@@ -6,7 +6,7 @@ namespace Odyssey.Core.Email;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A narrower seam over the same composition and send code <see cref="SmtpEmailSender"/> already uses
+/// A narrower seam over the same composition and send code <c>SmtpEmailSender</c> already uses
 /// for Identity's <c>/forgotPassword</c>, not a parallel implementation of it. The two differ in one
 /// respect only: <c>IEmailSender&lt;ApplicationUser&gt;</c> returns <c>Task</c>, so its endpoints must
 /// answer identically whether or not the relay accepted the message — correct for an anonymous flow

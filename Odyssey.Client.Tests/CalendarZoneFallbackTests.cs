@@ -86,7 +86,10 @@ public class CalendarZoneFallbackTests
             var zone = viewer.ViewZoneId;
             sent.Add(zone);
             if (zone == "UTC")
+            {
                 return ApiResult<int>.Success(1, HttpStatusCode.OK);
+            }
+
             await release.Task;
             return Refused<int>("viewTimeZoneId");
         });

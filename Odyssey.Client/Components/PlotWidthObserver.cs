@@ -38,7 +38,9 @@ internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidt
     {
         var id = plot?.Id;
         if (id == observedId)
+        {
             return;
+        }
 
         // Claimed before any await: observe() measures synchronously, so the first width can arrive,
         // and re-render the chart, while the call below is still in flight. That render's SyncAsync
@@ -47,13 +49,17 @@ internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidt
         observedId = id;
         await DetachAsync();
         if (plot is not { } element)
+        {
             return;
+        }
 
         // One shared load: a sync that arrives while the first import is still in flight (the plot
         // swapped meanwhile) awaits the same import rather than finding no module and giving up.
         var module = await (moduleLoad ??= LoadModuleAsync());
         if (module is null || observedId != id || disposed)
+        {
             return;
+        }
 
         IJSObjectReference? observed;
         try
@@ -104,7 +110,9 @@ internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidt
     private static async Task DisconnectAsync(IJSObjectReference? observed)
     {
         if (observed is null)
+        {
             return;
+        }
 
         try
         {
@@ -124,7 +132,9 @@ internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidt
         try
         {
             if (moduleLoad is { IsCompletedSuccessfully: true } load && load.Result is { } module)
+            {
                 await module.DisposeAsync();
+            }
         }
         catch (JSDisconnectedException)
         {

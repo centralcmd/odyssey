@@ -1,6 +1,5 @@
 using Odyssey.Core;
 using Odyssey.Core.Imaging;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace Odyssey.Core.Finance;
@@ -126,13 +125,6 @@ public class FileValidationService
         }
 
         return sanitized.Length > MaxFileNameLength ? sanitized[..MaxFileNameLength].TrimEnd() : sanitized;
-    }
-
-    public async Task<string> ComputeSha256HashAsync(Stream stream)
-    {
-        using var sha256 = SHA256.Create();
-        var hashBytes = await sha256.ComputeHashAsync(stream);
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
     /// <summary>

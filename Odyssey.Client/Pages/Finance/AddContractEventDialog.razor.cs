@@ -202,7 +202,9 @@ public partial class AddContractEventDialog
     private async Task SubmitAsync()
     {
         if (_isSaving)
+        {
             return;
+        }
 
         _errors.Clear();
 
@@ -226,7 +228,9 @@ public partial class AddContractEventDialog
         }
 
         if (_errors.Count > 0 || occurredAt is not { } value)
+        {
             return;
+        }
 
         _isSaving = true;
         try
@@ -266,7 +270,9 @@ public partial class AddContractEventDialog
                 IsEdit ? "Unable to update event" : "Unable to add event",
                 IsEdit ? "Event updated." : "Event recorded.");
             if (!ok)
+            {
                 return;
+            }
 
             await OnSaved.InvokeAsync();
             await OpenChanged.InvokeAsync(false);
@@ -297,7 +303,9 @@ public partial class AddContractEventDialog
     private static (string Field, string Message)? InlineErrorFor(ApiProblem? problem)
     {
         if (problem?.Errors is not { } errors)
+        {
             return null;
+        }
 
         foreach (var field in (string[])["title", "occurredAt"])
         {

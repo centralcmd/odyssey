@@ -73,7 +73,9 @@ public class WeatherParsingTests
         foreach (var line in File.ReadLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "met-symbol-codes.txt")))
         {
             if (line.Length > 0 && line[0] != '#')
+            {
                 data.Add(line);
+            }
         }
         return data;
     }

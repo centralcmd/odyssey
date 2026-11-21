@@ -44,7 +44,9 @@ public class AccountTermRoutesRemovedTests
 
         using var request = new HttpRequestMessage(new HttpMethod(method), $"/api/accounts/{accountId}/terms{suffix}");
         if (method is "POST" or "PUT")
+        {
             request.Content = JsonContent.Create(Body);
+        }
 
         var response = await client.SendAsync(request);
 

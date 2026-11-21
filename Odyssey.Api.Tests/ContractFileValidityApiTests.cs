@@ -624,7 +624,10 @@ public class ContractFileValidityApiTests(ContractFileValidityApiTests.Host host
 
         db.Users.Add(new ApplicationUser { Id = ActorUserId, UserName = ActorEmail, Email = ActorEmail });
         if (displayName is not null)
+        {
             db.UserProfiles.Add(new UserProfile { UserId = ActorUserId, DisplayName = displayName });
+        }
+
         await db.SaveChangesAsync();
     }
 

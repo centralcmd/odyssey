@@ -25,7 +25,9 @@ public sealed class RelativeTimeTicker(TimeProvider time) : IDisposable
         get
         {
             lock (gate)
+            {
                 return subscribers;
+            }
         }
     }
 
@@ -74,7 +76,10 @@ public sealed class RelativeTimeTicker(TimeProvider time) : IDisposable
         public void Dispose()
         {
             if (disposed)
+            {
                 return;
+            }
+
             disposed = true;
             owner.Unsubscribe(onTick);
         }

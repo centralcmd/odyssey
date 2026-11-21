@@ -50,7 +50,9 @@
     {
         _touched = true;
         if (!_valid)
+        {
             return false;
+        }
 
         var patch = new Patch(
             _name.Trim(),

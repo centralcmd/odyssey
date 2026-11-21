@@ -61,7 +61,7 @@ public class SettingAdvisoryAncestorDimmingTests
             @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
 
     private static string PageCodeBehind() =>
-        File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
     /// <summary>The advisory element's own class, and the field root that encloses it.</summary>
     private const string AdvisoryClass = "odc-sfield-advisory";

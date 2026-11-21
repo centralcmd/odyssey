@@ -89,7 +89,9 @@ public partial class Files
     protected override async Task OnInitializedAsync()
     {
         if (!InteractiveCheck())
+        {
             return;
+        }
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canUpdate = user.HasPermission(PermissionClaims.FilesUpdate);
@@ -105,7 +107,9 @@ public partial class Files
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
+        {
             StateHasChanged();
+        }
     }
 
     // ── Data loading ──
@@ -128,7 +132,9 @@ public partial class Files
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "files");
         if (load.IsSuccess)
@@ -238,7 +244,9 @@ public partial class Files
 
             // Search is applied server-side (issue #277); the Type multi-select remains client-side.
             if (_kindFilter.Count > 0)
+            {
                 files = files.Where(f => _kindFilter.Contains(KindLabel(f.ContentType)));
+            }
 
             return files.ToList();
         }
@@ -281,6 +289,7 @@ public partial class Files
         var items = new List<OdsMenuItem>();
 
         if (IsPreviewable(file.ContentType))
+        {
             items.Add(new OdsMenuItem
             {
                 Icon = "visibility",
@@ -288,6 +297,7 @@ public partial class Files
                 Disabled = busy,
                 OnClick = EventCallback.Factory.Create(this, () => ViewFileAsync(file)),
             });
+        }
 
         items.Add(new OdsMenuItem
         {
@@ -327,7 +337,9 @@ public partial class Files
         var nameChanged = !string.Equals(patch.Name, file.FileName, StringComparison.Ordinal);
         var descriptionChanged = !string.Equals(patch.Description, file.Description, StringComparison.Ordinal);
         if (!nameChanged && !descriptionChanged)
+        {
             return;
+        }
 
         // Fail() keeps the edit dialog open with what the user typed; OrToast carries the server's
         // reason (a 400 naming the field, a 409 name clash) into the toast (issue #252).
@@ -342,16 +354,20 @@ public partial class Files
         Snackbar.Add("File updated.", Severity.Success);
         var index = _files.FindIndex(f => f.Id == updated.Id);
         if (index >= 0)
+        {
             _files[index] = new FileListItem(
                 updated.Id, updated.FileName, updated.ContentType,
                 updated.SizeBytes, updated.UploadedAtUtc, updated.Description);
+        }
     }
 
     // ── Row actions ──
     private async Task ViewFileAsync(FileListItem file)
     {
         if (!_busyFiles.Add(file.Id))
+        {
             return;
+        }
 
         StateHasChanged();
         try
@@ -384,7 +400,9 @@ public partial class Files
     private async Task DownloadFileAsync(FileListItem file)
     {
         if (!_busyFiles.Add(file.Id))
+        {
             return;
+        }
 
         StateHasChanged();
         try
@@ -413,13 +431,17 @@ public partial class Files
         var confirmed = await _confirm.AskAsync("Delete file", $"Permanently delete '{file.FileName}'? This can't be undone.", "Delete");
 
         if (confirmed)
+        {
             await DeleteFileAsync(file);
+        }
     }
 
     private async Task DeleteFileAsync(FileListItem file)
     {
         if (!_busyFiles.Add(file.Id))
+        {
             return;
+        }
 
         StateHasChanged();
         try
@@ -454,7 +476,9 @@ public partial class Files
     private void OpenExportConfirm(string scope)
     {
         if (!_isExportingFiles)
+        {
             _exportScope = scope;
+        }
     }
 
     private async Task ConfirmExport()
@@ -462,7 +486,9 @@ public partial class Files
         var scope = _exportScope;
         _exportScope = null;
         if (_isExportingFiles || scope is null)
+        {
             return;
+        }
 
         _isExportingFiles = true;
         StateHasChanged();
@@ -506,9 +532,15 @@ public partial class Files
     private static string FormatFileSize(long bytes)
     {
         if (bytes < 1024)
+        {
             return $"{bytes} B";
+        }
+
         if (bytes < 1024 * 1024)
+        {
             return $"{bytes / 1024.0:F1} KB";
+        }
+
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
 
@@ -516,9 +548,15 @@ public partial class Files
     private static string KindLabel(string contentType)
     {
         if (string.Equals(contentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
+        {
             return "PDF";
+        }
+
         if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
             return "Image";
+        }
+
         return "File";
     }
 

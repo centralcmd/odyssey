@@ -135,9 +135,14 @@ public partial class CalendarEventWeatherSection : IAsyncDisposable
                 _ => Phase.Error,
             };
             if (_phase != Phase.Ready)
+            {
                 Log.LogWarning("Weather for {Surface} failed: {FailureClass}.", "event dialog", _phase);
+            }
+
             if (_phase == Phase.RateLimited)
+            {
                 _ = CoolDownAsync();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -151,7 +156,9 @@ public partial class CalendarEventWeatherSection : IAsyncDisposable
         finally
         {
             if (ReferenceEquals(_load, source))
+            {
                 _inFlight = false;
+            }
         }
 
         await InvokeAsync(StateHasChanged);
@@ -164,7 +171,9 @@ public partial class CalendarEventWeatherSection : IAsyncDisposable
     private async Task RetryAsync()
     {
         if (!RetryEnabled)
+        {
             return;
+        }
 
         try
         {
@@ -231,7 +240,10 @@ public partial class CalendarEventWeatherSection : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_subscribed)
+        {
             Auth.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
+
         Cancel(ref _load);
         Cancel(ref _coolDown);
         if (_module is not null)

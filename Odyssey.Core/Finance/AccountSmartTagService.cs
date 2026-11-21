@@ -39,7 +39,9 @@ public class AccountSmartTagService
     {
         var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
+        {
             return null;
+        }
 
         var tags = await context.AccountSmartTags
             .Where(smartTag => smartTag.AccountId == accountId)
@@ -61,26 +63,34 @@ public class AccountSmartTagService
     {
         var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
+        {
             throw new DomainNotFoundException($"Account with ID {accountId} was not found.");
+        }
 
         var tag = await context.TransactionTags.FirstOrDefaultAsync(t => t.TransactionTagId == tagId, cancellationToken)
             ?? throw new DomainNotFoundException($"Transaction tag with ID {tagId} was not found.");
 
         if (tag.Archived is not null)
+        {
             throw new DomainUnprocessableException(
                 $"Tag '{tag.Name}' is archived and cannot be added as a smart tag.");
+        }
 
         var alreadyAssociated = await context.AccountSmartTags
             .AnyAsync(smartTag => smartTag.AccountId == accountId && smartTag.TransactionTagId == tagId, cancellationToken);
         if (alreadyAssociated)
+        {
             throw new DomainConflictException(
                 $"Tag '{tag.Name}' is already a smart tag for this account.");
+        }
 
         var maxSmartTags = (await limits.GetAsync(cancellationToken)).MaxSmartTagsPerAccount;
         var smartTagCount = await context.AccountSmartTags.CountAsync(smartTag => smartTag.AccountId == accountId, cancellationToken);
         if (smartTagCount >= maxSmartTags)
+        {
             throw new DomainUnprocessableException(
                 $"An account may have at most {maxSmartTags} smart tags.");
+        }
 
         context.AccountSmartTags.Add(new AccountSmartTag
         {
@@ -102,7 +112,9 @@ public class AccountSmartTagService
         var smartTag = await context.AccountSmartTags
             .FirstOrDefaultAsync(s => s.AccountId == accountId && s.TransactionTagId == tagId, cancellationToken);
         if (smartTag is null)
+        {
             return false;
+        }
 
         context.AccountSmartTags.Remove(smartTag);
         await context.SaveChangesAsync(cancellationToken);

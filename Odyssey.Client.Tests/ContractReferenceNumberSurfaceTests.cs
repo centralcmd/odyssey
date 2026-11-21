@@ -256,7 +256,7 @@ public class ContractReferenceNumberSurfaceTests : IAsyncLifetime
     public void The_card_places_the_number_where_the_design_system_does()
     {
         var markup = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ContractsCard.razor"));
-        var code = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ContractsCard.razor.cs"));
+        var code = ClientSource.CodeBehind("Pages/Finance/ContractsCard.razor.cs");
 
         // Search covers it, and the placeholder says so.
         Assert.Contains("Placeholder=\"Search name, reference, party…\"", markup, StringComparison.Ordinal);

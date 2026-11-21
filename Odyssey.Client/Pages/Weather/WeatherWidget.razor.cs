@@ -54,7 +54,9 @@ public partial class WeatherWidget
     {
         _hoursReads = new WeatherPointReads(Weather, ClockOrNull);
         if (!InteractiveCheck())
+        {
             return;
+        }
 
         var user = await Auth.GetUserAsync();
         // The set-up link opens /weather-points, which needs read as well as update (issue #388 §5).
@@ -139,7 +141,9 @@ public partial class WeatherWidget
     private async Task ChooseAsync(string value)
     {
         if (_saving)
+        {
             return;
+        }
 
         Guid? next = Guid.TryParse(value, out var id) ? id : null;
         _saving = true;

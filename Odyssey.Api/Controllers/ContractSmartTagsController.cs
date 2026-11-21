@@ -55,7 +55,9 @@ public sealed class ContractSmartTagsController : ControllerBase
     {
         var tags = await contractSmartTagService.GetSmartTags(contractId, cancellationToken);
         if (tags is null)
+        {
             return this.NotFoundProblem($"Contract ID {contractId} not found.");
+        }
 
         return Ok(tags);
     }
@@ -86,7 +88,9 @@ public sealed class ContractSmartTagsController : ControllerBase
     {
         var result = await smartTagTransactions.ListAsync(contractId, query, cancellationToken);
         if (result is null)
+        {
             return this.NotFoundProblem($"Contract ID {contractId} not found.");
+        }
 
         await displayNames.EnrichFileAttributionAsync(User, result.Page.Items, cancellationToken);
         return Ok(result);
@@ -120,8 +124,10 @@ public sealed class ContractSmartTagsController : ControllerBase
     {
         var removed = await contractSmartTagService.RemoveSmartTag(contractId, tagId, cancellationToken);
         if (!removed)
+        {
             return this.NotFoundProblem(
                 $"Tag ID {tagId} is not a smart tag for contract ID {contractId}.");
+        }
 
         return NoContent();
     }

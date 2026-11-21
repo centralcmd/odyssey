@@ -1110,7 +1110,9 @@ public class ContractEventSurfaceTests
 
         var start = css.IndexOf(selector + " {", StringComparison.Ordinal);
         if (start < 0)
+        {
             start = css.IndexOf(selector, StringComparison.Ordinal);
+        }
 
         Assert.True(start >= 0, $"No rule for '{selector}' in odyssey-components.css.");
 

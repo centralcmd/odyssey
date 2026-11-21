@@ -173,7 +173,9 @@ public class ListLoaderTests
             Refetching = true;
             var response = await loader.RunAsync(_ => fetch);
             if (response.IsSuperseded)
+            {
                 return;
+            }
 
             Rows = response.Value;
             Refetching = false;

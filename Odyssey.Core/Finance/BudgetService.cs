@@ -67,7 +67,9 @@ public class BudgetService
         var counts = await ComputeTransactionCounts(budgets, cancellationToken);
         var dtos = budgets.Adapt<List<ExistingBudget>>();
         foreach (var dto in dtos)
+        {
             dto.TransactionCount = counts.GetValueOrDefault(dto.BudgetId);
+        }
 
         return new PagedResult<ExistingBudget>
         {

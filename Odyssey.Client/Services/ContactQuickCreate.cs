@@ -73,42 +73,29 @@ public sealed class ContactQuickCreate(
     // over that is truncated rather than rejected, so the gesture still completes.
     private const int MaxNameLength = 128;
 
-    private readonly List<Task> _pending = [];
-    private readonly Dictionary<string, string> _resolved = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
+    private readonly QuickCreateLedger ledger = new();
 
     public Action<string>? OnCreateFailed { get; set; }
 
-    public bool HasPending => _pending.Any(t => !t.IsCompleted);
+    public bool HasPending => ledger.HasPending;
 
     public OdsOption? Begin(string name, string? kind)
     {
-        var clean = (name ?? string.Empty).Trim();
-        if (clean.Length == 0)
+        if (QuickCreateLedger.CleanName(name, MaxNameLength) is not { } clean)
+        {
             return null;
-        if (clean.Length > MaxNameLength)
-            clean = clean[..MaxNameLength];
+        }
 
         var type = kind == nameof(ContactType.Person) ? ContactType.Person : ContactType.Organization;
-        var tempId = Guid.NewGuid().ToString();
         var meta = OdsTypeRegistries.ContactTypeOf(type.ToString());
-
-        _staged.Add(tempId);
-        _pending.Add(CreateAsync(clean, type, tempId));
+        var tempId = ledger.Stage(id => CreateAsync(clean, type, id));
 
         return new OdsOption(tempId, clean) { Icon = meta.Icon, IconColor = meta.Color };
     }
 
-    public Task WhenSettledAsync() => Task.WhenAll(_pending.ToArray());
+    public Task WhenSettledAsync() => ledger.WhenSettledAsync();
 
-    public string? Resolve(string? id)
-    {
-        if (string.IsNullOrEmpty(id))
-            return null;
-        if (!_staged.Contains(id))
-            return id;
-        return _resolved.GetValueOrDefault(id);
-    }
+    public string? Resolve(string? id) => ledger.Resolve(id);
 
     private async Task CreateAsync(string name, ContactType type, string tempId)
     {
@@ -120,7 +107,10 @@ public sealed class ContactQuickCreate(
                 // The session-wide contact cache is now stale — the next picker must re-fetch.
                 referenceData.InvalidateContacts();
                 if (result.CreatedId is { } id)
-                    _resolved[tempId] = id.ToString();
+                {
+                    ledger.Complete(tempId, id);
+                }
+
                 return;
             }
 

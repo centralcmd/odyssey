@@ -163,7 +163,10 @@ public sealed class InstrumentDialogsTests
         var prices = new Mock<IInstrumentPricesApiClient>();
         var sequence = prices.SetupSequence(p => p.ListAsync(1, 1, It.IsAny<InstrumentPricesFilter?>(), It.IsAny<CancellationToken>()));
         foreach (var count in counts)
+        {
             sequence = sequence.ReturnsAsync(Ok(new PagedResult<ExistingInstrumentPrice> { Items = [], TotalCount = count }));
+        }
+
         return prices;
     }
 

@@ -295,7 +295,9 @@ public sealed class FileAnalysisSession
     {
         Rows.Clear();
         if (Job is null)
+        {
             return;
+        }
 
         var matched = MatchStatus == FileAnalysisMatchStatus.Completed;
 
@@ -372,7 +374,9 @@ public sealed class FileAnalysisSession
     public void ApplyMatchesPreservingManual()
     {
         if (Job is null)
+        {
             return;
+        }
 
         var matched = MatchStatus == FileAnalysisMatchStatus.Completed;
         var byId = Job.Candidates.ToDictionary(c => c.Id);
@@ -380,7 +384,9 @@ public sealed class FileAnalysisSession
         foreach (var row in Rows)
         {
             if (!byId.TryGetValue(row.CandidateId, out var c))
+            {
                 continue;
+            }
 
             if (row.MerchantSource is not (OdsMatchState.Manual or OdsMatchState.Created))
             {
@@ -407,7 +413,9 @@ public sealed class FileAnalysisSession
     private void ApplyCandidateMerchant(FileAnalysisRow row, ExistingFileAnalysisCandidateTransaction c, bool matched)
     {
         if (!matched || c.MatchedContactId is not { } contactId)
+        {
             return;
+        }
 
         var conf = c.MerchantMatchConfidence;
         if (conf is not null && conf >= AutoLinkThreshold)
@@ -427,7 +435,9 @@ public sealed class FileAnalysisSession
     private void ApplyCandidateCategory(FileAnalysisRow row, ExistingFileAnalysisCandidateTransaction c, bool matched)
     {
         if (!matched || c.MatchedTagIds.Count == 0)
+        {
             return;
+        }
 
         var conf = c.CategoryMatchConfidence;
         if (conf is not null && conf >= AutoLinkThreshold)
@@ -450,7 +460,9 @@ public sealed class FileAnalysisSession
     {
         var target = !AllSelected;
         foreach (var row in Rows)
+        {
             row.Selected = target;
+        }
     }
 
     public void RemoveRow(FileAnalysisRow row) => Rows.Remove(row);
@@ -458,14 +470,18 @@ public sealed class FileAnalysisSession
     public static void SetDate(FileAnalysisRow row, string? value)
     {
         if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        {
             row.TransactionDate = parsed;
+        }
     }
 
     public static void SetAmount(FileAnalysisRow row, string? value)
     {
         row.AmountText = value ?? string.Empty;
         if (OdsMoneyText.Parse(value) is { } parsed)
+        {
             row.Amount = parsed;
+        }
     }
 
     /// <summary>
@@ -536,9 +552,14 @@ public sealed class FileAnalysisSession
         tempId = Guid.Empty;
         var name = (text ?? string.Empty).Trim();
         if (name.Length == 0)
+        {
             return null;
+        }
+
         if (name.Length > MaxContactNameLength)
+        {
             name = name[..MaxContactNameLength];
+        }
 
         tempId = Guid.NewGuid();
         createdContactIds.Add(tempId);
@@ -571,9 +592,14 @@ public sealed class FileAnalysisSession
         tempId = Guid.Empty;
         var name = (text ?? string.Empty).Trim();
         if (name.Length == 0)
+        {
             return null;
+        }
+
         if (name.Length > MaxTagNameLength)
+        {
             name = name[..MaxTagNameLength];
+        }
 
         tempId = Guid.NewGuid();
         createdTagIds.Add(tempId);
@@ -593,14 +619,18 @@ public sealed class FileAnalysisSession
 
         var tag = tags.FirstOrDefault(t => t.TransactionTagId == tempId);
         if (tag is not null)
+        {
             tag.TransactionTagId = realId;
+        }
 
         TagOptions = [.. TagOptions.Select(o => o.Value == tempId.ToString() ? new OdsOption(realId.ToString(), name) : o)];
 
         foreach (var row in Rows)
         {
             if (row.TagIds.Contains(tempId.ToString()))
+            {
                 SetCategory(row, [.. row.TagIds.Select(id => id == tempId.ToString() ? realId.ToString() : id)]);
+            }
         }
     }
 
@@ -616,7 +646,9 @@ public sealed class FileAnalysisSession
         foreach (var row in Rows)
         {
             if (row.TagIds.Contains(tempId.ToString()))
+            {
                 SetCategory(row, [.. row.TagIds.Where(id => id != tempId.ToString())]);
+            }
         }
     }
 
@@ -629,12 +661,16 @@ public sealed class FileAnalysisSession
         var contact = contacts.FirstOrDefault(c => c.ContactId == tempId);
         var type = contact?.Type ?? ContactType.Organization;
         if (contact is not null)
+        {
             contact.ContactId = realId;
+        }
 
         ContactOptions = [.. ContactOptions.Select(o => o.Value == tempId.ToString() ? ContactOption(realId, name, type) : o)];
 
         foreach (var row in Rows.Where(r => r.ContactId == tempId))
+        {
             row.ContactId = realId;
+        }
     }
 
     /// <summary>
@@ -674,7 +710,9 @@ public sealed class FileAnalysisSession
     public string? ApplyMerchantSuggestion(FileAnalysisRow row)
     {
         if (row.MerchantSuggestion is null || row.MerchantSuggestionId is not { } contactId)
+        {
             return null;
+        }
 
         var name = row.MerchantSuggestion.Name;
         row.ContactId = contactId;
@@ -699,7 +737,9 @@ public sealed class FileAnalysisSession
     public static bool ApplyCategorySuggestion(FileAnalysisRow row)
     {
         if (row.CatSuggestion is null)
+        {
             return false;
+        }
 
         row.TagIds = [.. row.CatSuggestionIds];
         row.CatSource = OdsMatchState.Manual;
@@ -741,7 +781,10 @@ public sealed class FileAnalysisSession
     public static (int? Pct, string Tone) ConfidenceBand(decimal? confidence)
     {
         if (confidence is null)
+        {
             return (null, "empty");
+        }
+
         var pct = (int)Math.Round(confidence.Value * 100);
         var tone = confidence >= 0.85m ? "info" : confidence >= 0.60m ? "pending" : "expense";
         return (pct, tone);

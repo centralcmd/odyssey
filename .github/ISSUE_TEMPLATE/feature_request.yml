@@ -21,7 +21,7 @@ body:
         - Client / Frontend (Odyssey.Client — new pages, UI components, UX)
         - Finance (transactions, accounts, budgets, categories, reports)
         - Auth (login, registration, session management, roles)
-        - Files / Attachments (Odyssey.Finance — upload, storage, AI file analysis)
+        - Files / Attachments (Odyssey.Core/FileStorage — upload, storage, AI file analysis)
         - User Preferences (persisted per-page UI state)
         - Database / EF Core (new entities, migrations, schema changes)
         - Docker / Infrastructure (docker-compose, NGINX, CI/CD)

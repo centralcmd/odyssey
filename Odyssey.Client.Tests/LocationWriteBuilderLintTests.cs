@@ -135,7 +135,9 @@ public class LocationWriteBuilderLintTests
         {
             parens += code[i] switch { '(' => 1, ')' => -1, _ => 0 };
             if (parens == 0)
+            {
                 break;
+            }
         }
 
         var open = code.IndexOf('{', i);
@@ -144,7 +146,9 @@ public class LocationWriteBuilderLintTests
         {
             depth += code[i] switch { '{' => 1, '}' => -1, _ => 0 };
             if (depth == 0)
+            {
                 return code[open..(i + 1)];
+            }
         }
 
         throw new InvalidOperationException($"Unbalanced braces after {name}.");

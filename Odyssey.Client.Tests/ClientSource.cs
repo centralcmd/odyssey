@@ -20,12 +20,48 @@ internal static class ClientSource
     public static IEnumerable<string> RazorFiles() =>
         Directory.EnumerateFiles(Root, "*.razor", SearchOption.AllDirectories);
 
-    /// <summary>Every <c>.razor</c> and <c>.razor.cs</c> file under the given client-relative directories.</summary>
+    /// <summary>
+    /// Every <c>.razor</c> and <c>.razor.cs</c> file under the given client-relative directories, plus each
+    /// component's further <c>partial</c> code-behind files (<c>Settings.Catalogue.cs</c> beside
+    /// <c>Settings.razor</c>), so splitting a code-behind never moves code out of a lint's scope.
+    /// </summary>
     public static IEnumerable<string> RazorFilesIn(params string[] relativeDirs) =>
         relativeDirs
             .Select(dir => Path.Combine(Root, dir))
             .SelectMany(dir => Directory.EnumerateFiles(dir, "*.razor", SearchOption.AllDirectories)
-                .Concat(Directory.EnumerateFiles(dir, "*.razor.cs", SearchOption.AllDirectories)));
+                .Concat(Directory.EnumerateFiles(dir, "*.razor.cs", SearchOption.AllDirectories))
+                .Concat(Directory.EnumerateFiles(dir, "*.razor", SearchOption.AllDirectories).SelectMany(PartialFilesOf)));
+
+    /// <summary>
+    /// A component's whole code-behind: <paramref name="codeBehindPath"/> (a client-relative <c>.razor.cs</c>
+    /// path) followed by every sibling <c>partial</c> file of the same component (<c>&lt;Name&gt;.*.cs</c>),
+    /// in ordinal name order. For the lints that read one component's code — a member moved into a partial
+    /// file stays in their scope.
+    /// </summary>
+    public static string CodeBehind(string codeBehindPath)
+    {
+        var path = Path.Combine(Root, codeBehindPath.Replace('/', Path.DirectorySeparatorChar));
+        if (!path.EndsWith(".razor.cs", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Expected a .razor.cs path.", nameof(codeBehindPath));
+        }
+
+        var razor = path[..^".cs".Length];
+        return string.Join("\n", new[] { path }.Concat(PartialFilesOf(razor)).Select(File.ReadAllText));
+    }
+
+    /// <summary>
+    /// The <c>&lt;Name&gt;.*.cs</c> partial files beside <paramref name="razorPath"/>, its <c>.razor.cs</c>
+    /// excluded, in ordinal name order.
+    /// </summary>
+    public static IEnumerable<string> PartialFilesOf(string razorPath)
+    {
+        var dir = Path.GetDirectoryName(razorPath)!;
+        var name = Path.GetFileNameWithoutExtension(razorPath);
+        return Directory.EnumerateFiles(dir, name + ".*.cs", SearchOption.TopDirectoryOnly)
+            .Where(file => !file.EndsWith(".razor.cs", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal);
+    }
 
     /// <summary>
     /// Every checked-in C# and Razor source file in the client, build output excluded. For the lints
@@ -77,7 +113,10 @@ internal static class ClientSource
         {
             var candidate = Path.Combine(dir, "Odyssey.Client");
             if (Directory.Exists(candidate) && File.Exists(Path.Combine(dir, "Odyssey.sln")))
+            {
                 return candidate;
+            }
+
             dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
         }
 

@@ -229,7 +229,7 @@ public static class MigrationRunner
 
         if (MigrationDriftDetector.Detect(pending, existing) is { } drift)
         {
-            throw new MigrationDriftException(dbContext.GetType().Name, drift);
+            throw new MigrationDriftException(drift);
         }
     }
 

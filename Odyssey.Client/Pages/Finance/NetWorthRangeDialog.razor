@@ -79,14 +79,18 @@
     private void OnPresetChanged(string value)
     {
         if (Enum.TryParse<NetWorthRangePreset>(value, out var preset))
+        {
             _preset = preset;
+        }
     }
 
     private async Task Apply()
     {
         _tried = true;
         if (Draft.Error is not null)
+        {
             return;
+        }
         await OnApply.InvokeAsync(Draft.Normalized);
         await Close();
     }

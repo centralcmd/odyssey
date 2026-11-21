@@ -66,7 +66,10 @@ public class LocationMapTests : IAsyncLifetime
     {
         var create = module.Setup<int>("create", _ => true);
         if (handle is { } h)
+        {
             create.SetResult(h);
+        }
+
         return create;
     }
 

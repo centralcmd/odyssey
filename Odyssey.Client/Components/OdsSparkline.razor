@@ -67,7 +67,10 @@
             _min = Data.Min();
             var max = Data.Max();
             _span = max - _min;
-            if (_span == 0) _span = 1;
+            if (_span == 0)
+            {
+                _span = 1;
+            }
         }
     }
 

@@ -126,7 +126,9 @@ public partial class TasksPage
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -261,10 +263,16 @@ public partial class TasksPage
     private async Task<ExistingJournalTask?> EnsureDetail(Guid id)
     {
         if (_details.TryGetValue(id, out var cached))
+        {
             return cached;
+        }
+
         var task = await Tasks.GetAsync(id);
         if (task is null)
+        {
             return null;
+        }
+
         _details[id] = task;
         await HydrateFilesAsync(task);
         return task;
@@ -273,11 +281,17 @@ public partial class TasksPage
     private async Task HydrateFilesAsync(ExistingJournalTask task)
     {
         if (!_canReadFiles)
+        {
             return;
+        }
+
         foreach (var a in task.Attachments)
         {
             if (_fileMeta.ContainsKey(a.FileId))
+            {
                 continue;
+            }
+
             _fileMeta[a.FileId] = await Files.GetMetadataAsync(a.FileId);
         }
     }
@@ -286,7 +300,11 @@ public partial class TasksPage
     private async Task OnMove(OdsTaskBoard<JournalTaskSummary>.Move move)
     {
         var detail = await EnsureDetail(move.Id);
-        if (detail is null) return;
+        if (detail is null)
+        {
+            return;
+        }
+
         var update = JournalTaskWrite.FromDetail(detail, move.ToStatus, move.ToIndex);
         if ((await Tasks.UpdateAsync(move.Id, update)).Toast(Snackbar, "Unable to move task", null))
         {
@@ -299,9 +317,17 @@ public partial class TasksPage
 
     private async Task SetStatus(JournalTaskSummary t, JournalTaskStatus target)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var detail = await EnsureDetail(t.JournalTaskId);
-        if (detail is null) return;
+        if (detail is null)
+        {
+            return;
+        }
+
         var update = JournalTaskWrite.FromDetail(detail, target);
         if ((await Tasks.UpdateAsync(t.JournalTaskId, update)).Toast(Snackbar, "Unable to update task", $"Task set to {target}."))
         {
@@ -312,9 +338,17 @@ public partial class TasksPage
 
     private async Task ArchiveTask(JournalTaskSummary t)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var detail = await EnsureDetail(t.JournalTaskId);
-        if (detail is null) return;
+        if (detail is null)
+        {
+            return;
+        }
+
         var archiving = t.Status != JournalTaskStatus.Archived;
         var target = archiving ? JournalTaskStatus.Archived : JournalTaskStatus.Backlog;
         var update = JournalTaskWrite.FromDetail(detail, target);
@@ -329,7 +363,11 @@ public partial class TasksPage
 
     private async Task ConfirmDelete(Guid id)
     {
-        if (!_canDelete) return;
+        if (!_canDelete)
+        {
+            return;
+        }
+
         var task = _allTasks.FirstOrDefault(t => t.JournalTaskId == id);
         var confirmed = await _confirm.AskAsync("Delete task", $"Permanently delete '{task?.Title}'? This cannot be undone.", "Delete");
         if (confirmed && (await Tasks.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Task deleted."))
@@ -367,7 +405,11 @@ public partial class TasksPage
     // file itself (DownloadIcsAsync below), never through the WASM heap.
     private async Task ExportTasksAsync(TaskExportScope scope)
     {
-        if (_exporting) return;
+        if (_exporting)
+        {
+            return;
+        }
+
         _exporting = true;
         _announce = "Preparing task export…";
         try
@@ -375,7 +417,10 @@ public partial class TasksPage
             var exported = scope == TaskExportScope.Filtered
                 ? await DownloadIcsAsync("Unable to export tasks", _search, [.. _tagFilter], [.. _statusFilter])
                 : await DownloadIcsAsync("Unable to export tasks", statuses: AllStatuses);
-            if (exported is not { } summary) return;
+            if (exported is not { } summary)
+            {
+                return;
+            }
 
             var message = $"Exporting {Plural(summary.TaskCount, "task")}{AttachedSuffix(summary)} — your browser is downloading the file.";
             _announce = message;
@@ -391,11 +436,18 @@ public partial class TasksPage
     // archived task still exports (the export otherwise hides archived when no status filter is given).
     private async Task ExportTaskAsync(JournalTaskSummary t)
     {
-        if (_exporting) return;
+        if (_exporting)
+        {
+            return;
+        }
+
         _exporting = true;
         try
         {
-            if (await DownloadIcsAsync("Unable to export the task", statuses: AllStatuses, ids: [t.JournalTaskId.ToString()]) is not { } summary) return;
+            if (await DownloadIcsAsync("Unable to export the task", statuses: AllStatuses, ids: [t.JournalTaskId.ToString()]) is not { } summary)
+            {
+                return;
+            }
 
             _announce = $"Exporting {t.Title}.";
             Snackbar.Add($"Exporting {t.Title}{AttachedSuffix(summary)} — your browser is downloading the file.", Severity.Success);
@@ -414,7 +466,10 @@ public partial class TasksPage
         IReadOnlyCollection<string>? statuses = null, IReadOnlyCollection<string>? ids = null)
     {
         var summary = (await Tasks.SummarizeIcsExportAsync(search, tagIds, statuses, ids)).OrToast(Snackbar, failureLead);
-        if (summary is null) return null;
+        if (summary is null)
+        {
+            return null;
+        }
 
         await NativeTransfer.DownloadAsync(Tasks.ExportIcsUrl(search, tagIds, statuses, ids));
         return summary;
@@ -427,7 +482,11 @@ public partial class TasksPage
 
     private void OpenImport()
     {
-        if (!_canImport) return;
+        if (!_canImport)
+        {
+            return;
+        }
+
         _importOpen = true;
     }
 
@@ -444,7 +503,11 @@ public partial class TasksPage
 
     private void AddClicked()
     {
-        if (!_canCreate) return;
+        if (!_canCreate)
+        {
+            return;
+        }
+
         _editTask = null;
         _dialogKey = Guid.NewGuid();
         _dialogOpen = true;
@@ -452,9 +515,17 @@ public partial class TasksPage
 
     private async Task OpenEdit(JournalTaskSummary t)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var detail = await EnsureDetail(t.JournalTaskId);
-        if (detail is null) return;
+        if (detail is null)
+        {
+            return;
+        }
+
         _editTask = detail;
         _dialogKey = Guid.NewGuid();
         _dialogOpen = true;
@@ -471,9 +542,17 @@ public partial class TasksPage
 
     private async Task OpenAttach(JournalTaskSummary t)
     {
-        if (!CanAttachFiles) return;
+        if (!CanAttachFiles)
+        {
+            return;
+        }
+
         var detail = await EnsureDetail(t.JournalTaskId);
-        if (detail is null) return;
+        if (detail is null)
+        {
+            return;
+        }
+
         _attachTask = detail;
         _attachKey = Guid.NewGuid();
         _attachOpen = true;
@@ -484,14 +563,22 @@ public partial class TasksPage
     // closed lost the whole pick on a single failed write, with only a toast to say so.
     private async Task<bool> AttachOne(AttachDocumentItem item)
     {
-        if (_attachTask is not { } task) return false;
+        if (_attachTask is not { } task)
+        {
+            return false;
+        }
+
         var (result, _) = await JournalTaskAttachments.AddAsync(Tasks, task.JournalTaskId, [item.FileId]);
         return result.Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
 
     private async Task OnTaskFilesAttached(IReadOnlyList<AttachDocumentItem> items)
     {
-        if (_attachTask is not { } task) return;
+        if (_attachTask is not { } task)
+        {
+            return;
+        }
+
         Snackbar.Add(items.Count == 1 ? "Document attached." : $"{items.Count} documents attached.", Severity.Success);
         _announce = $"{items.Count} document{(items.Count == 1 ? "" : "s")} attached to {task.Title}.";
         await ReloadTask(task.JournalTaskId);
@@ -499,10 +586,17 @@ public partial class TasksPage
 
     private async Task RemoveFile(JournalTaskSummary t, Guid fileId)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var (result, _) = await JournalTaskAttachments.RemoveAsync(Tasks, t.JournalTaskId, fileId);
         if (result.Toast(Snackbar, "Unable to remove the file", "File removed from task."))
+        {
             _announce = $"File removed from {t.Title}.";
+        }
+
         await ReloadTask(t.JournalTaskId);
     }
 
@@ -510,7 +604,11 @@ public partial class TasksPage
     private async Task<IReadOnlyList<FileMetadataResponse>> LoadFiles(Guid taskId)
     {
         var detail = await EnsureDetail(taskId);
-        if (detail is null) return [];
+        if (detail is null)
+        {
+            return [];
+        }
+
         return [.. detail.Attachments.Select(a => _fileMeta.GetValueOrDefault(a.FileId)).OfType<FileMetadataResponse>()];
     }
 

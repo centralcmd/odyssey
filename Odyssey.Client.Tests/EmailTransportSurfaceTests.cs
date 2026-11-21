@@ -62,7 +62,7 @@ public class EmailTransportSurfaceTests : IDisposable
     [Fact]
     public void TheEmailRows_ContainNoNumericLiteralBound()
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var source = ClientSource.CodeBehind("Pages/Settings.razor.cs");
         var row = Regex.Match(
             source,
             @"new\(""emailSmtpPort"".*?\),\r?\n\s*new\(""emailUseStartTls""",
@@ -325,7 +325,7 @@ public class EmailTransportSurfaceTests : IDisposable
     [Fact]
     public void ThePageRestoresFocusOnEveryWayTheDialogCloses()
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var source = ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
         // Confirm restores it, and does so BEFORE awaiting the save: Save() awaits a network round
         // trip and a confirmation delay, and a reader left with focus on a removed dialog for that

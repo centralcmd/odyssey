@@ -178,7 +178,9 @@ public partial class CalendarPage
         else if (_eventDialogMode == CalendarEventDialogMode.Series && _eventDialogPatternId is { } patternId)
         {
             foreach (var e in _events.Where(e => e.RecurrencePatternId == patternId))
+            {
                 AgendaWeather.Forget(e.CalendarEventId);
+            }
         }
 
         await ReloadEventsAsync();
@@ -251,7 +253,9 @@ public partial class CalendarPage
             return CalendarApi.ListEventsAsync(from, to, Viewer.ViewZoneId, ct);
         }));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
         _events = result.ItemsOrToast(Snackbar, "calendar events");
@@ -337,7 +341,9 @@ public partial class CalendarPage
         if (!forbidden)
         {
             if (included.OrToast(Snackbar, failureLead, requireInteraction: true) is not { } counts)
+            {
                 return false;
+            }
 
             if (counts.AttachmentCount + counts.PhotoCount == 0)
             {
@@ -351,7 +357,9 @@ public partial class CalendarPage
         }
 
         if ((await summarize(IcsAttachmentsMode.Omit)).OrToast(Snackbar, failureLead, requireInteraction: true) is not { } omitted)
+        {
             return false;
+        }
 
         OpenAttachmentExport(new AttachmentExport(title, CalendarIcsExport.WhatFile(noun, omitted), noun, omitted, true, returnFocusToId, url, toast));
         return true;
@@ -371,7 +379,9 @@ public partial class CalendarPage
     internal async Task AttachmentExportChosenAsync(IcsAttachmentsMode mode)
     {
         if (_attachmentExport is not { } export)
+        {
             return;
+        }
 
         await NativeTransfer.DownloadAsync(export.Url(mode));
         CalendarIcsExport.ToastStartedScaled(Snackbar,
@@ -725,20 +735,34 @@ public partial class CalendarPage
         var saved = result.Value;
         var parts = new List<string>();
         if (saved is { Detached: true })
+        {
             parts.Add(CalendarEventCopy.DetachedEdit);
+        }
+
         if (saved is { DetachedCount: > 0 })
+        {
             parts.Add(CalendarEventCopy.DetachedNow(saved.DetachedCount));
+        }
+
         var adjusted = AdjustedAfterMove(update, saved);
         if (adjusted is not null)
+        {
             parts.Add(adjusted);
+        }
 
         if (parts.Count == 0)
+        {
             Snackbar.Add("Event rescheduled.", Severity.Success);
+        }
         else
+        {
             Snackbar.Add(string.Join(' ', parts), Severity.Info, c => c.RequireInteraction = adjusted is not null, Guid.NewGuid().ToString("N"));
+        }
 
         if (existing is { RecurrencePatternId: not null, IsOverride: false } && saved is not { Detached: true })
+        {
             await AnnounceAsync(CalendarEventCopy.MovedOverride);
+        }
 
         AgendaWeather.Forget(existing.CalendarEventId);
         await ReloadEventsAsync();

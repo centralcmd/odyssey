@@ -95,7 +95,9 @@
     {
         var option = TagCreator.Begin(text);
         if (option is not null)
+        {
             _createdTags.Add(option);
+        }
         return option;
     }
 
@@ -109,7 +111,9 @@
     private async Task<bool> SaveAsync()
     {
         if (!_draft.Validate())
+        {
             return false;
+        }
 
         // Let any in-flight inline tag create land, then map staged ids to the real ones; a failed
         // create resolves to null and is dropped rather than posted.

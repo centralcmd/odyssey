@@ -19,7 +19,10 @@ internal static class MinimalPdf
         content.Append("BT /F1 16 Tf 36 150 Td (").Append(Escape(title)).Append(") Tj\n");
         content.Append("/F1 11 Tf\n");
         foreach (var line in bodyLines)
+        {
             content.Append("0 -22 Td (").Append(Escape(line)).Append(") Tj\n");
+        }
+
         content.Append("ET");
         var contentBytes = Latin1.GetBytes(content.ToString());
 
@@ -49,7 +52,9 @@ internal static class MinimalPdf
         Write($"xref\n0 {objects.Length + 1}\n");
         Write("0000000000 65535 f \n");
         for (var i = 1; i <= objects.Length; i++)
+        {
             Write(offsets[i].ToString("D10", CultureInfo.InvariantCulture) + " 00000 n \n");
+        }
 
         Write($"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{xrefOffset}\n%%EOF");
 

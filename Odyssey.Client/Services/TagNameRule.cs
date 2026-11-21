@@ -31,13 +31,17 @@ public static class TagNameRule
     {
         var clean = (text ?? string.Empty).Trim();
         if (clean.Length == 0)
+        {
             return null;
+        }
 
         foreach (var tag in tags)
         {
             var name = (tag.Name ?? string.Empty).Trim();
             if (!string.Equals(name, clean, StringComparison.OrdinalIgnoreCase))
+            {
                 continue;
+            }
 
             return tag.Archived
                 ? $"“{name}” is an archived tag. Restore it on the {page} page to use it."

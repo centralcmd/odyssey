@@ -42,7 +42,9 @@ public sealed class PlaywrightPinLockstepTests
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             if (File.Exists(Path.Combine(dir.FullName, "Directory.Packages.props")))
+            {
                 return dir.FullName;
+            }
         }
 
         throw new DirectoryNotFoundException("Directory.Packages.props not found above " + AppContext.BaseDirectory);

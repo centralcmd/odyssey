@@ -49,7 +49,9 @@
     private async Task UnlinkAsync()
     {
         if (_saving)
+        {
             return;
+        }
         _saving = true;
         _problem = null;
         var result = await Locations.SetWeatherPointAsync(Location.LocationId, null);

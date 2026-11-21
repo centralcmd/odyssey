@@ -636,9 +636,14 @@ public class FileAnalysisServiceTests
         var (service, jobId, accountId, candidates) = await AnalyzeTwoCandidatesAsync(context);
         var account = await context.Accounts.SingleAsync(a => a.AccountId == accountId);
         if (closed)
+        {
             account.Closed = DateTime.UtcNow;
+        }
         else
+        {
             account.Archived = DateTime.UtcNow;
+        }
+
         await context.SaveChangesAsync();
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -906,8 +911,16 @@ public class FileAnalysisServiceTests
                 Currency = "USD",
                 ReviewStatus = rs,
             });
-        for (var i = 0; i < pending; i++) AddCandidate(ContextReviewStatus.Pending);
-        for (var i = 0; i < reviewed; i++) AddCandidate(ContextReviewStatus.Accepted);
+        for (var i = 0; i < pending; i++)
+        {
+            AddCandidate(ContextReviewStatus.Pending);
+        }
+
+        for (var i = 0; i < reviewed; i++)
+        {
+            AddCandidate(ContextReviewStatus.Accepted);
+        }
+
         await context.SaveChangesAsync();
         return job.Id;
     }
@@ -1139,6 +1152,7 @@ public class FileAnalysisServiceTests
         context.FileAnalysisJobs.Add(job);
 
         foreach (var (merchant, category) in candidates)
+        {
             context.FileAnalysisCandidateTransactions.Add(new FileAnalysisCandidateTransaction
             {
                 AnalysisJobId = job.Id,
@@ -1150,15 +1164,27 @@ public class FileAnalysisServiceTests
                 Currency = "USD",
                 ReviewStatus = ContextReviewStatus.Pending,
             });
+        }
 
         foreach (var name in contactNames)
+        {
             journal.Contacts.Add(new Contact { ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = name.ToUpperInvariant(), Type = ContactType.Organization, OrganizationDetails = new() { LegalName = name } });
+        }
+
         foreach (var name in archivedContacts ?? [])
+        {
             journal.Contacts.Add(new Contact { ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = name.ToUpperInvariant(), Type = ContactType.Organization, Archived = DateTime.UtcNow, OrganizationDetails = new() { LegalName = name } });
+        }
+
         foreach (var name in tagNames)
+        {
             context.TransactionTags.Add(new TransactionTag { Name = name });
+        }
+
         foreach (var name in archivedTags ?? [])
+        {
             context.TransactionTags.Add(new TransactionTag { Name = name, Archived = DateTime.UtcNow });
+        }
 
         await journal.SaveChangesAsync();
         await context.SaveChangesAsync();
@@ -1551,7 +1577,10 @@ public class FileAnalysisServiceTests
     {
         var contact = await journal.Contacts.SingleAsync(c => c.OrganizationDetails!.LegalName == contactName);
         foreach (var alias in aliases)
+        {
             journal.ContactAliases.Add(new ContactAlias { ContactId = contact.ContactId, Value = alias, Label = "card" });
+        }
+
         await journal.SaveChangesAsync();
     }
 

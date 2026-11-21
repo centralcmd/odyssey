@@ -180,11 +180,19 @@ public static class PropertyGenerator
         foreach (var property in properties)
         {
             if (property.AcquiredDate is { } acquired)
+            {
                 AddSystem(events, property.Name, PropertyEventType.Acquired, "Property acquired", "Acquired on", acquired, admin);
+            }
+
             if (property.DisposedDate is { } disposed)
+            {
                 AddSystem(events, property.Name, PropertyEventType.Disposed, "Property disposed of", "Disposed of on", disposed, admin);
+            }
+
             if (property.Archived is { } archived)
+            {
                 AddSystem(events, property.Name, PropertyEventType.Archived, "Property archived", "Archived on", archived, owner);
+            }
         }
 
         AddUser(events, Cabin, PropertyEventType.Maintenance, "Chimney swept", null, null, D(2024, 10, 3), owner);

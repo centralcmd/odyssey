@@ -66,7 +66,9 @@ public sealed class FileExportApiClient(IOdysseyApi api) : IFileExportApiClient
     {
         var result = await api.GetFileAsync(url, defaultFileName, ct: ct);
         if (result.IsSuccess && result.Value is { } file)
+        {
             return new FileExportResult(FileExportOutcome.Success, file);
+        }
 
         var outcome = result.Status switch
         {

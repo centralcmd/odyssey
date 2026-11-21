@@ -162,7 +162,7 @@ public class EmailConfirmationTests
         /// (issue #349) — seed the SystemSetting rows this factory's tests need instead. Isolates the
         /// email-confirmation gate from the admin-approval gate (admin-approval always off here) and
         /// pins email-confirmation to this factory's <c>requireConfirmation</c> constructor argument.
-        /// Must run after the host has been built (accessing <see cref="Services"/> triggers that) and
+        /// Must run after the host has been built (accessing <c>Services</c> triggers that) and
         /// before any <c>/register</c> call.
         /// </summary>
         public async Task SeedSystemSettingsAsync()

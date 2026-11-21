@@ -4,9 +4,9 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// <see cref="PartyTerm"/> is ONE formatter for both party surfaces — insurance policies and, since
-/// issue #121, contracts. The rename from <c>InsurancePartyTerm</c> is the point: the two carry the
-/// same <c>FromDate</c>/<c>ToDate</c> pair with the same semantics, and two copies of a format drift.
+/// <see cref="PartyTerm"/> formats a contract party's <c>FromDate</c>/<c>ToDate</c> pair (issue #121).
+/// It was renamed from <c>InsurancePartyTerm</c> when it served the since-removed insurance-policy parties
+/// too; one formatter remains so the format cannot drift between surfaces.
 /// </summary>
 public class PartyTermTests
 {

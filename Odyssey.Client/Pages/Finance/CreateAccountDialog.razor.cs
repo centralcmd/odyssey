@@ -51,7 +51,9 @@ public partial class CreateAccountDialog
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         if (Account is { } account)
         {
@@ -99,7 +101,10 @@ public partial class CreateAccountDialog
     {
         _contacts = _contacts.Where(c => c.ContactId.ToString() != tempId).ToList();
         if (_custodianId == tempId)
+        {
             _custodianId = null;
+        }
+
         StateHasChanged();
     }
 
@@ -152,7 +157,9 @@ public partial class CreateAccountDialog
         _typeError = _accountType == AccountType.Unknown;
         _custodianError = null;
         if (_nameError || _typeError)
+        {
             return false;
+        }
 
         if (string.IsNullOrWhiteSpace(_currencyCode))
         {

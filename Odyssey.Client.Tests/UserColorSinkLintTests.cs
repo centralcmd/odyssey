@@ -158,14 +158,18 @@ public class UserColorSinkLintTests
                 // CalendarVisuals.GlyphStyle is the calendar's one style door, and it routes through UserColor
                 // (Calendar_visuals_route_every_colour_through_UserColor pins that). Nothing else in it is trusted.
                 if (expression.Contains("UserColor.", StringComparison.Ordinal) || expression.StartsWith("CalendarVisuals.GlyphStyle(", StringComparison.Ordinal))
+                {
                     continue;
+                }
 
                 var member = Regex.Match(expression, @"^\(?([A-Za-z_]\w*)").Groups[1].Value;
                 var definition = Regex.Match(code, $@"\b(?:private|public|internal|protected)\b[^;=(]*\b{Regex.Escape(member)}\s*(?:\([^)]*\))?\s*=>[^;]*;", RegexOptions.Singleline);
                 var bindsFromPattern = Regex.IsMatch(markup, $@"is\s*\{{\s*\}}\s*{Regex.Escape(member)}\b")
                     && Regex.IsMatch(markup, $@"(UserColor\.\w+|CaptionDot|CellStyle)\b[^\n]*\bis\s*\{{\s*\}}\s*{Regex.Escape(member)}\b");
                 if (!(definition.Success && definition.Value.Contains("UserColor.", StringComparison.Ordinal)) && !bindsFromPattern)
+                {
                     problems.Add($"{name}: style=\"@{expression}\"");
+                }
             }
         }
 
@@ -181,7 +185,9 @@ public class UserColorSinkLintTests
         {
             var value = local.Groups[2].Value;
             if (tokens.Any(t => Regex.IsMatch(value, t)) && !value.Contains("UserColor.", StringComparison.Ordinal))
+            {
                 tokens.Add($@"\b{Regex.Escape(local.Groups[1].Value)}\b");
+            }
         }
 
         // OdsGlyphInk paints code-constant registry colours (issue #164) — never a tag or calendar colour.
@@ -199,14 +205,18 @@ public class UserColorSinkLintTests
         foreach (Match attribute in Regex.Matches(code, "\\b(style|Style|Bg|Fg)=\"((?:[^\"\\\\]|\\\\.|\"[^\"]*\")*?)\"(?=[\\s/>])"))
         {
             if (IsUserData(attribute.Groups[2].Value))
+            {
                 yield return $"{attribute.Groups[1].Value}=\"{attribute.Groups[2].Value}\"";
+            }
         }
 
         // An option's glyph ink is written into a style by OdsGlyphInk, so the property is a sink too.
         foreach (Match ink in Regex.Matches(code, @"\bIconColor\s*=\s*([^,}\n;]+)"))
         {
             if (IsUserData(ink.Groups[1].Value))
+            {
                 yield return ink.Value.Trim();
+            }
         }
 
         foreach (Match interpolation in Regex.Matches(code, "\\$\"(?:[^\"\\\\]|\\\\.)*\""))
@@ -214,7 +224,9 @@ public class UserColorSinkLintTests
             foreach (Match hole in Regex.Matches(interpolation.Value, @"\{([^{}]+)\}"))
             {
                 if (IsUserData(hole.Groups[1].Value) && !IsInsideUserColorCall(code, interpolation.Index))
+                {
                     yield return interpolation.Value;
+                }
             }
         }
     }
@@ -269,7 +281,9 @@ public class UserColorSinkLintTests
                 var before = line[..read.Index];
                 var insideAlbumVisuals = Regex.IsMatch(before, @"\bAlbumVisuals\.\w+\([^)]*$");
                 if (!insideAlbumVisuals)
+                {
                     yield return line.Trim();
+                }
             }
         }
     }
@@ -300,7 +314,9 @@ public class UserColorSinkLintTests
                     || TagPages.Contains(name)
                     || name.StartsWith("OdsAvatar.", StringComparison.Ordinal)
                     || name.StartsWith("OdsChip.", StringComparison.Ordinal))
+                {
                     return true;
+                }
 
                 var text = File.ReadAllText(path);
                 return ScopeNames.Any(scope => Regex.IsMatch(text, $@"\b{scope}\b"));

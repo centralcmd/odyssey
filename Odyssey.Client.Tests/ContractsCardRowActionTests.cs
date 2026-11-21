@@ -35,8 +35,7 @@ public class ContractsCardRowActionTests
     /// </summary>
     private static string CardSource()
     {
-        var source = File.ReadAllText(
-            Path.Combine(ClientSource.Root, "Pages", "Finance", "ContractsCard.razor.cs"));
+        var source = ClientSource.CodeBehind("Pages/Finance/ContractsCard.razor.cs");
         source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
         return Regex.Replace(source, @"^\s*(///?).*$", string.Empty, RegexOptions.Multiline);
     }

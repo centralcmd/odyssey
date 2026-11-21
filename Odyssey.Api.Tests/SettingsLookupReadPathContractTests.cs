@@ -293,14 +293,27 @@ public class SettingsLookupReadPathContractTests
             for (var i = start + marker.Length; i < source.Length; i++)
             {
                 var c = source[i];
-                if (c is '(' or '[' or '{') depth++;
-                else if (c is ']' or '}') depth--;
-                else if (c == ')')
+                if (c is '(' or '[' or '{')
                 {
-                    if (depth == 0) break;
+                    depth++;
+                }
+                else if (c is ']' or '}')
+                {
                     depth--;
                 }
-                else if (c == ',' && depth == 0) arguments++;
+                else if (c == ')')
+                {
+                    if (depth == 0)
+                    {
+                        break;
+                    }
+
+                    depth--;
+                }
+                else if (c == ',' && depth == 0)
+                {
+                    arguments++;
+                }
             }
 
             yield return arguments;

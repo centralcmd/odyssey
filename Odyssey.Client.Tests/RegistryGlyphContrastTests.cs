@@ -61,10 +61,17 @@ public sealed class RegistryGlyphContrastTests
     {
         var members = new List<(string Name, Type Type, Func<object?> Get)>();
         foreach (var f in typeof(OdsTypeRegistries).GetFields(BindingFlags.Public | BindingFlags.Static))
+        {
             members.Add((f.Name, f.FieldType, () => f.GetValue(null)));
+        }
+
         foreach (var p in typeof(OdsTypeRegistries).GetProperties(BindingFlags.Public | BindingFlags.Static))
+        {
             if (p.GetIndexParameters().Length == 0)
+            {
                 members.Add((p.Name, p.PropertyType, () => p.GetValue(null)));
+            }
+        }
 
         var registryShaped = members.Where(m => MentionsOption(m.Type)).ToList();
 
@@ -89,8 +96,13 @@ public sealed class RegistryGlyphContrastTests
     {
         var data = new TheoryData<string, string>();
         foreach (var (name, items) in Registries)
+        {
             foreach (var item in items)
+            {
                 data.Add(name, item.Key);
+            }
+        }
+
         return data;
     }
 
@@ -164,7 +176,10 @@ public sealed class RegistryGlyphContrastTests
 
         var source = wrap.Groups["src"].Value;
         if (source.StartsWith("var(", StringComparison.Ordinal))
+        {
             source = Declaration(css, source[4..^1]);
+        }
+
         var (l, c, h, _) = Parse(source);
 
         var ground = overPageBackground ? Background(dark: false) : Surface(dark: false);
@@ -175,8 +190,10 @@ public sealed class RegistryGlyphContrastTests
         }
 
         foreach (var (how, fg) in Renderings(Math.Min(l, LightCap(wrap.Groups["token"].Value)), c, h))
+        {
             AssertRatio("css", selector, $"{(isText ? "text" : "glyph")} (light, capped, {how})",
                 fg, ground, isText ? TextContrastMinimum : NonTextContrastMinimum);
+        }
     }
 
     [Theory]
@@ -186,7 +203,9 @@ public sealed class RegistryGlyphContrastTests
         var (l, c, h) = ColourOf(registry, key);
 
         foreach (var (how, glyph) in Renderings(l, c, h))
+        {
             AssertRatio(registry, key, $"glyph (dark, authored, {how})", glyph, Surface(dark: true), NonTextContrastMinimum);
+        }
     }
 
     [Theory]
@@ -270,9 +289,14 @@ public sealed class RegistryGlyphContrastTests
             var (l, c, h, _) = Parse(token.Groups["value"].Value);
 
             foreach (var (how, dark) in Renderings(l, c, h))
+            {
                 AssertRatio("AccountTypeVisuals", name, $"glyph (dark, authored, {how})", dark, Surface(dark: true), NonTextContrastMinimum);
+            }
+
             foreach (var (how, light) in Renderings(Math.Min(l, LightCap("--glyph-l")), c, h))
+            {
                 AssertRatio("AccountTypeVisuals", name, $"glyph (light, --glyph-l, {how})", light, Surface(dark: false), NonTextContrastMinimum);
+            }
         }
     }
 
@@ -530,12 +554,26 @@ public sealed class RegistryGlyphContrastTests
     private static (double R, double G, double B) GamutMapped(double l, double c, double h)
     {
         const double Jnd = 0.02, Epsilon = 0.0001;
-        if (l >= 1.0) return (1.0, 1.0, 1.0);
-        if (l <= 0.0) return (0.0, 0.0, 0.0);
-        if (InGamut(l, c, h)) return Srgb(l, c, h);
+        if (l >= 1.0)
+        {
+            return (1.0, 1.0, 1.0);
+        }
+
+        if (l <= 0.0)
+        {
+            return (0.0, 0.0, 0.0);
+        }
+
+        if (InGamut(l, c, h))
+        {
+            return Srgb(l, c, h);
+        }
 
         var clipped = Clip(l, c, h);
-        if (DeltaEOk(clipped, l, c, h) < Jnd) return Encoded(clipped);
+        if (DeltaEOk(clipped, l, c, h) < Jnd)
+        {
+            return Encoded(clipped);
+        }
 
         double lo = 0.0, hi = c;
         var minInGamut = true;
@@ -552,7 +590,11 @@ public sealed class RegistryGlyphContrastTests
             var e = DeltaEOk(clipped, l, mid, h);
             if (e < Jnd)
             {
-                if (Jnd - e < Epsilon) return Encoded(clipped);
+                if (Jnd - e < Epsilon)
+                {
+                    return Encoded(clipped);
+                }
+
                 minInGamut = false;
                 lo = mid;
             }

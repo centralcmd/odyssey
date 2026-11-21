@@ -39,7 +39,9 @@
     private Task Select(OdsTabItem tab)
     {
         if (tab.Value == Value)
+        {
             return Task.CompletedTask;
+        }
         Value = tab.Value;
         return ValueChanged.InvokeAsync(tab.Value);
     }
@@ -47,7 +49,9 @@
     private Task OnKeyDown(KeyboardEventArgs e)
     {
         if (Tabs.Count == 0)
+        {
             return Task.CompletedTask;
+        }
 
         var index = -1;
         for (var i = 0; i < Tabs.Count; i++)
@@ -55,7 +59,9 @@
             if (Tabs[i].Value == Value) { index = i; break; }
         }
         if (index < 0)
+        {
             return Task.CompletedTask;
+        }
 
         var next = e.Key switch
         {

@@ -333,7 +333,9 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Matches(@"\[Parameter, EditorRequired\] public Func<TRow, string\?> ColorOf", code);
         Assert.Contains("color: ColorOf(tag)", code, StringComparison.Ordinal);
         foreach (var page in new[] { "Finance/TransactionTagsPage.razor", "Journal/JournalTagsPage.razor", "Journal/TaskTagsPage.razor", "Photos/PhotoTagsPage.razor", "Internet/NewsTagsPage.razor" })
+        {
             Assert.Contains("ColorOf=\"@(t => t.Color)\"", File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", page)), StringComparison.Ordinal);
+        }
     }
 
     [Theory]
@@ -362,11 +364,15 @@ public class TagColorSurfaceTests : IAsyncLifetime
         // white and #0E1525 is only 4.27:1 — which is why TextOn uses pure black.
         var worst = double.MaxValue;
         for (var r = 0; r < 256; r += 15)
-        for (var g = 0; g < 256; g += 15)
-        for (var b = 0; b < 256; b += 15)
+        {
+            for (var g = 0; g < 256; g += 15)
+            {
+                for (var b = 0; b < 256; b += 15)
         {
             var hex = $"#{r:X2}{g:X2}{b:X2}";
             worst = Math.Min(worst, HexColor.ContrastRatio(hex, HexColor.TextOn(hex)));
+        }
+            }
         }
 
         for (var v = 0; v < 256; v++)

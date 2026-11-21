@@ -54,7 +54,9 @@
     {
         _open = open;
         if (!open)
+        {
             _answer?.TrySetResult(false);
+        }
     }
 
     public void Dispose() => _answer?.TrySetResult(false);

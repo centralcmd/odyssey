@@ -109,11 +109,15 @@
     private async Task Goto(int target, string dir, bool bound)
     {
         if (Loading || bound)
+        {
             return; // in-flight or aria-disabled: activation is a no-op
+        }
 
         var next = Math.Max(1, Math.Min(TotalPages, target));
         if (next == Page)
+        {
             return;
+        }
 
         _pressed = dir;
         await PageChanged.InvokeAsync(next);
@@ -128,16 +132,24 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (Loading)
+        {
             return;
+        }
 
         var who = _pressed;
         _pressed = null;
         if (who is null)
+        {
             return;
+        }
 
         if (who == "prev" && AtFirst && !AtLast)
+        {
             await _next.FocusAsync();
+        }
         else if (who == "next" && AtLast && !AtFirst)
+        {
             await _prev.FocusAsync();
+        }
     }
 }

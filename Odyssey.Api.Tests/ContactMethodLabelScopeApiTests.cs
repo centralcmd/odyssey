@@ -304,9 +304,13 @@ public class ContactMethodLabelScopeApiTests(ContactMethodLabelScopeApiTests.Hos
         };
 
         if (type == ContactType.Person)
+        {
             contact.PersonDetails = new() { FirstName = "Ada", LastName = "Lovelace" };
+        }
         else
+        {
             contact.OrganizationDetails = new() { LegalName = "Acme" };
+        }
 
         context.Contacts.Add(contact);
         await context.SaveChangesAsync();

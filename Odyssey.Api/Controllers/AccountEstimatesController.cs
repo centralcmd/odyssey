@@ -39,7 +39,9 @@ public sealed class AccountEstimatesController : ControllerBase
     {
         var estimates = await accountEstimateService.GetHistory(accountId, asOf, cancellationToken);
         if (estimates is null)
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         return Ok(estimates);
     }
@@ -58,7 +60,9 @@ public sealed class AccountEstimatesController : ControllerBase
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         if (!await accountService.Exists(accountId, cancellationToken))
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         var estimate = await accountEstimateService.GetCurrent(accountId, asOf, cancellationToken);
 
@@ -98,7 +102,9 @@ public sealed class AccountEstimatesController : ControllerBase
     {
         var updated = await accountEstimateService.Update(accountId, estimateId, putEstimate, cancellationToken);
         if (!updated)
+        {
             return this.NotFoundProblem($"Estimate ID {estimateId} is not attached to account ID {accountId}.");
+        }
 
         return NoContent();
     }
@@ -115,7 +121,9 @@ public sealed class AccountEstimatesController : ControllerBase
     {
         var deleted = await accountEstimateService.Delete(accountId, estimateId, cancellationToken);
         if (!deleted)
+        {
             return this.NotFoundProblem($"Estimate ID {estimateId} is not attached to account ID {accountId}.");
+        }
 
         return NoContent();
     }
