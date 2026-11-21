@@ -134,6 +134,8 @@ public class NewsPageTests
         cut.WaitForElement(".mud-menu-item");
         var labels = cut.FindAll(".mud-menu-item .odc-menu-item-body > span:first-child").Select(e => e.TextContent.Trim()).Where(t => t.Length > 0).ToList();
         cut.Find(trigger).Click();
+        // MudMenu closes asynchronously: wait it out, or the next card's menu read picks up this one's items too.
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open .mud-menu-item")));
         return labels;
     }
 
