@@ -113,16 +113,16 @@ public partial class Account
     {
         _problemsOpen = state.ProblemsOpen;
         _overviewOpen = state.OverviewOpen;
-        _searchOpen   = state.SearchOpen;
-        _search       = state.Search ?? string.Empty;
+        _searchOpen = state.SearchOpen;
+        _search = state.Search ?? string.Empty;
     }
 
     private AccountPageState BuildPageState() => new()
     {
         ProblemsOpen = _problemsOpen,
         OverviewOpen = _overviewOpen,
-        SearchOpen   = _searchOpen,
-        Search       = _search,
+        SearchOpen = _searchOpen,
+        Search = _search,
     };
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());

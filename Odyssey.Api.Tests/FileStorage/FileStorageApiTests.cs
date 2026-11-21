@@ -318,7 +318,9 @@ public class FileStorageGraceSettingApiTests(FileStorageGraceSettingApiTests.Hos
             {
                 context.SystemSettings.Add(new SystemSetting
                 {
-                    Key = SystemSettingsKeys.FileStorageDeletionGraceHours, Value = stored, UpdatedAt = DateTime.UtcNow,
+                    Key = SystemSettingsKeys.FileStorageDeletionGraceHours,
+                    Value = stored,
+                    UpdatedAt = DateTime.UtcNow,
                 });
             }
             else

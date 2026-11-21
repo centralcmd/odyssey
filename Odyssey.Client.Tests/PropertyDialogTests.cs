@@ -39,7 +39,10 @@ public class PropertyDialogTests
         EstimateCount = estimates,
         RealEstateDetails = new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.Apartment, AddressLine = "Storgata 14", City = "Oslo", CountryCode = "NO",
+            Kind = RealEstateKind.Apartment,
+            AddressLine = "Storgata 14",
+            City = "Oslo",
+            CountryCode = "NO",
             HomeownerAssociationId = withAssociation ? AssociationId : null,
         },
         HomeownerAssociation = withAssociation
@@ -58,7 +61,10 @@ public class PropertyDialogTests
         properties.Setup(p => p.CreateAsync(It.IsAny<NewProperty>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((NewProperty body, CancellationToken _) => ApiResult<ExistingProperty>.Success(new ExistingProperty
             {
-                PropertyId = Guid.NewGuid(), Name = body.Name, Description = body.Description, CurrencyCode = body.CurrencyCode,
+                PropertyId = Guid.NewGuid(),
+                Name = body.Name,
+                Description = body.Description,
+                CurrencyCode = body.CurrencyCode,
             }, HttpStatusCode.Created));
         properties.Setup(p => p.UpdateAsync(It.IsAny<Guid>(), It.IsAny<NewProperty>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(updateResult ?? ApiResult.Success(HttpStatusCode.NoContent));
@@ -269,14 +275,14 @@ public class PropertyDialogTests
 
     private static Odyssey.Dtos.Journal.ExistingContact Contact(
         Guid id, Odyssey.Dtos.ContactType type, bool archived = false) => new()
-    {
-        ContactId = id,
-        ResolvedDisplayName = "Contact",
-        NormalizedName = "CONTACT",
-        ExternalUid = string.Empty,
-        Type = type,
-        Archived = archived ? new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc) : null,
-    };
+        {
+            ContactId = id,
+            ResolvedDisplayName = "Contact",
+            NormalizedName = "CONTACT",
+            ExternalUid = string.Empty,
+            Type = type,
+            Archived = archived ? new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc) : null,
+        };
 
     /// <summary>
     /// The client pre-check mirrors the server's R3/R4 on a CHANGED id only, and defers an id the

@@ -283,7 +283,10 @@ public class DropdownConsistencyTests
     {
         var account = new ExistingAccount
         {
-            AccountId = Guid.NewGuid(), Name = "Everyday Checking", Description = "", Opened = DateTime.UtcNow,
+            AccountId = Guid.NewGuid(),
+            Name = "Everyday Checking",
+            Description = "",
+            Opened = DateTime.UtcNow,
             AccountType = AccountType.CheckingAccount,
         };
 
@@ -368,8 +371,14 @@ public class DropdownConsistencyTests
         var journalTag = new Odyssey.Dtos.Journal.ExistingJournalTag { JournalTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
         var journalEntry = new Odyssey.Dtos.Journal.JournalEntrySummary
         {
-            JournalEntryId = Guid.NewGuid(), Title = "t", Content = "c", EntryDate = now, CreatedAt = now, UpdatedAt = now,
-            AttachmentCount = 0, TagIds = [id],
+            JournalEntryId = Guid.NewGuid(),
+            Title = "t",
+            Content = "c",
+            EntryDate = now,
+            CreatedAt = now,
+            UpdatedAt = now,
+            AttachmentCount = 0,
+            TagIds = [id],
         };
         AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.JournalTagRows([journalTag], [journalEntry]).Single(),
             Odyssey.Client.Pages.Journal.JournalOverviews.JournalTagOption(journalTag));
@@ -377,8 +386,12 @@ public class DropdownConsistencyTests
         var taskTag = new Odyssey.Dtos.Journal.ExistingJournalTaskTag { JournalTaskTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
         var task = new Odyssey.Dtos.Journal.JournalTaskSummary
         {
-            JournalTaskId = Guid.NewGuid(), Title = "t", Status = Odyssey.Dtos.Journal.JournalTaskStatus.Backlog, Position = 0,
-            AttachmentCount = 0, TagIds = [id],
+            JournalTaskId = Guid.NewGuid(),
+            Title = "t",
+            Status = Odyssey.Dtos.Journal.JournalTaskStatus.Backlog,
+            Position = 0,
+            AttachmentCount = 0,
+            TagIds = [id],
         };
         AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.TaskTagRows([taskTag], [task]).Single(),
             Odyssey.Client.Pages.Journal.JournalOverviews.TaskTagOption(taskTag));

@@ -1180,7 +1180,11 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             context.Photos.Add(new Photo
             {
                 PhotoId = photoId,
-                StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = new string('a', 64),
+                StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"),
+                FileName = "p.jpg",
+                ContentType = "image/jpeg",
+                SizeBytes = 3,
+                Sha256Hash = new string('a', 64),
                 CreatedByUserId = "integration-user",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -1589,17 +1593,17 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     private static JournalTask NewJournalTaskRow(
         string title, DateTime createdAt, int position,
         DateTime? startedAt = null, DateTime? completedAt = null, DateTime? archived = null) => new()
-    {
-        ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
-        Title = title,
-        CreatedByUserId = "integration-user",
-        CreatedAt = createdAt,
-        UpdatedAt = createdAt,
-        Position = position,
-        StartedAt = startedAt,
-        CompletedAt = completedAt,
-        Archived = archived,
-    };
+        {
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            Title = title,
+            CreatedByUserId = "integration-user",
+            CreatedAt = createdAt,
+            UpdatedAt = createdAt,
+            Position = position,
+            StartedAt = startedAt,
+            CompletedAt = completedAt,
+            Archived = archived,
+        };
 
     private sealed class NoopFileLookup : IFileLookup
     {

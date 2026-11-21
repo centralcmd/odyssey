@@ -54,18 +54,18 @@ public class PropertyEventSurfaceTests
         DateTime? occurredAt = null,
         string? createdBy = "Kari Nordmann",
         ContractEventSource source = ContractEventSource.User) => new()
-    {
-        PropertyEventId = Guid.NewGuid(),
-        PropertyId = PropertyId,
-        Type = type,
-        Source = source,
-        Title = title,
-        Description = description,
-        Notes = notes,
-        OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
-        CreatedBy = createdBy,
-        CreatedAtUtc = new DateTime(2026, 6, 14, 9, 35, 0, DateTimeKind.Utc),
-    };
+        {
+            PropertyEventId = Guid.NewGuid(),
+            PropertyId = PropertyId,
+            Type = type,
+            Source = source,
+            Title = title,
+            Description = description,
+            Notes = notes,
+            OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+            CreatedBy = createdBy,
+            CreatedAtUtc = new DateTime(2026, 6, 14, 9, 35, 0, DateTimeKind.Utc),
+        };
 
     // ── The rail ─────────────────────────────────────────────────────────────
 

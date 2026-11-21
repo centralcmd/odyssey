@@ -66,7 +66,9 @@ public sealed class PageStateService : IPageStateService
     /// </summary>
     internal int PendingSaveCount
     {
-        get { lock (gate)
+        get
+        {
+            lock (gate)
             {
                 return debounce.Count;
             }
@@ -113,7 +115,8 @@ public sealed class PageStateService : IPageStateService
         }
 
         string json;
-        try { json = JsonSerializer.Serialize(state, JsonOptions); }
+        try
+        { json = JsonSerializer.Serialize(state, JsonOptions); }
         catch { return; }
         if (string.IsNullOrWhiteSpace(json))
         {

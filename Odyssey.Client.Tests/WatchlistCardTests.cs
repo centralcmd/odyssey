@@ -189,7 +189,10 @@ public class WatchlistCardTests
 
         var truncated = ApiResult<InstrumentWatchlist>.Success(new InstrumentWatchlist
         {
-            DisplayCurrencyCode = "NOK", Truncated = true, Attributions = ["EODHD"], Items = [Item("A"), Item("B")],
+            DisplayCurrencyCode = "NOK",
+            Truncated = true,
+            Attributions = ["EODHD"],
+            Items = [Item("A"), Item("B")],
         }, HttpStatusCode.OK);
         var (ctx, _) = NewContext(truncated);
         await using var _2 = ctx;

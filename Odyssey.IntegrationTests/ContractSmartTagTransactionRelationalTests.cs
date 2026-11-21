@@ -67,11 +67,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
 
             context.ContractSmartTags.AddRange(tags.Select(t => new ContractSmartTag
             {
-                ContractId = contractId, TransactionTagId = t.TransactionTagId, AddedAt = TermStart,
+                ContractId = contractId,
+                TransactionTagId = t.TransactionTagId,
+                AddedAt = TermStart,
             }));
             context.ContractParties.AddRange(parties.Select(p => new ContractParty
             {
-                ContractId = contractId, ContactId = p.ContactId, Role = ContractPartyRole.Other,
+                ContractId = contractId,
+                ContactId = p.ContactId,
+                Role = ContractPartyRole.Other,
             }));
             await context.SaveChangesAsync();
 
@@ -136,11 +140,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
             await context.SaveChangesAsync();
             context.ContractSmartTags.Add(new ContractSmartTag
             {
-                ContractId = contractId, TransactionTagId = tag.TransactionTagId, AddedAt = TermStart,
+                ContractId = contractId,
+                TransactionTagId = tag.TransactionTagId,
+                AddedAt = TermStart,
             });
             context.ContractParties.Add(new ContractParty
             {
-                ContractId = contractId, ContactId = supplier.ContactId, Role = ContractPartyRole.Other,
+                ContractId = contractId,
+                ContactId = supplier.ContactId,
+                Role = ContractPartyRole.Other,
             });
 
             context.Transactions.AddRange(
@@ -209,11 +217,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
             await context.SaveChangesAsync();
             context.ContractSmartTags.Add(new ContractSmartTag
             {
-                ContractId = contractId, TransactionTagId = tag.TransactionTagId, AddedAt = TermStart,
+                ContractId = contractId,
+                TransactionTagId = tag.TransactionTagId,
+                AddedAt = TermStart,
             });
             context.ContractParties.Add(new ContractParty
             {
-                ContractId = contractId, ContactId = supplier.ContactId, Role = ContractPartyRole.Other,
+                ContractId = contractId,
+                ContactId = supplier.ContactId,
+                Role = ContractPartyRole.Other,
             });
             context.Transactions.AddRange(
                 NewTransaction(account, "before start", -1m, TermStart.AddSeconds(-1), supplier.ContactId, tag),
@@ -281,15 +293,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
     private static Transaction NewTransaction(
         Account account, string description, decimal amount, DateTime timeStamp, Guid contactId,
         params TransactionTag[] tags) => new()
-    {
-        Description = description,
-        Amount = amount,
-        TimeStamp = timeStamp,
-        AccountId = account.AccountId,
-        ContactId = contactId,
-        CurrencyCode = account.CurrencyCode,
-        TransactionTags = [.. tags],
-    };
+        {
+            Description = description,
+            Amount = amount,
+            TimeStamp = timeStamp,
+            AccountId = account.AccountId,
+            ContactId = contactId,
+            CurrencyCode = account.CurrencyCode,
+            TransactionTags = [.. tags],
+        };
 
     private static async Task<Account> SeedAccountAsync(
         OdysseyContext context, string name = "Household", string currency = "NOK")

@@ -34,15 +34,15 @@ public class TermDirectionSurfaceTests
     }
 
     private static ExistingTerm Fee(TermDirection direction = TermDirection.Outgoing) => new()
-        {
-            TermId = Guid.NewGuid(),
-            ContractId = Guid.NewGuid(),
-            Label = "Base salary",
-            ValueUnit = TermValueUnit.Amount,
-            Value = 6200m,
-            CurrencyCode = "USD",
-            Direction = direction,
-        };
+    {
+        TermId = Guid.NewGuid(),
+        ContractId = Guid.NewGuid(),
+        Label = "Base salary",
+        ValueUnit = TermValueUnit.Amount,
+        Value = 6200m,
+        CurrencyCode = "USD",
+        Direction = direction,
+    };
 
     // ── The registry ─────────────────────────────────────────────────────────
 

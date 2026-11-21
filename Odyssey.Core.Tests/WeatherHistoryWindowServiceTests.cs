@@ -21,8 +21,13 @@ public class WeatherHistoryWindowServiceTests
     {
         var point = await h.Admin().CreateAsync(new NewWeatherPoint
         {
-            Name = "Cabin", Latitude = 61.517m, Longitude = 10.165m, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = false, HistoryEnabled = history, IsTracked = false,
+            Name = "Cabin",
+            Latitude = 61.517m,
+            Longitude = 10.165m,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = false,
+            HistoryEnabled = history,
+            IsTracked = false,
             HistoryWindows = windows.Length == 0 ? null : [.. windows],
         }, WeatherTestHarness.AdminId, CancellationToken.None);
         h.Context.ChangeTracker.Clear();
@@ -38,7 +43,10 @@ public class WeatherHistoryWindowServiceTests
         {
             context.WeatherStations.Add(new WeatherStation
             {
-                WeatherPointId = pointId, Group = group, StationId = "SN18700", ResolvedAtUtc = h.Time.GetUtcNow().UtcDateTime,
+                WeatherPointId = pointId,
+                Group = group,
+                StationId = "SN18700",
+                ResolvedAtUtc = h.Time.GetUtcNow().UtcDateTime,
             });
         }
 
@@ -267,7 +275,10 @@ public class WeatherHistoryWindowServiceTests
         {
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 1, FromDate = new DateOnly(2026, 2, 10), ToDate = new DateOnly(2026, 2, 17),
+                WeatherPointId = id,
+                SiteVersion = 1,
+                FromDate = new DateOnly(2026, 2, 10),
+                ToDate = new DateOnly(2026, 2, 17),
             });
             await context.SaveChangesAsync();
         }
@@ -296,7 +307,10 @@ public class WeatherHistoryWindowServiceTests
             // Part of the trip is still unchecked, so the run has work and looks the due group up first.
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 1, FromDate = new DateOnly(2026, 2, 10), ToDate = new DateOnly(2026, 2, 14),
+                WeatherPointId = id,
+                SiteVersion = 1,
+                FromDate = new DateOnly(2026, 2, 10),
+                ToDate = new DateOnly(2026, 2, 14),
             });
             (await context.WeatherPointSchedules.SingleAsync()).ObservationsCheckedThroughDate = new DateOnly(2026, 11, 6);
             await context.SaveChangesAsync();
@@ -331,8 +345,14 @@ public class WeatherHistoryWindowServiceTests
 
         var created = await Admin(h.NewContext()).CreateAsync(new NewWeatherPoint
         {
-            Name = "Cabin", Latitude = 61.5m, Longitude = 10.1m, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = false, HistoryEnabled = true, IsTracked = false, HistoryWindows = [.. sets[0]],
+            Name = "Cabin",
+            Latitude = 61.5m,
+            Longitude = 10.1m,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = false,
+            HistoryEnabled = true,
+            IsTracked = false,
+            HistoryWindows = [.. sets[0]],
         }, WeatherTestHarness.AdminId, CancellationToken.None);
         var id = created.WeatherPointId;
         await ResolveStationsAsync(h, id);

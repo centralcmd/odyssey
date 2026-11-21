@@ -104,7 +104,9 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
             RetryAfter = retryAfter,
             Problem = new ApiProblem
             {
-                Status = (int)status, Code = code, Detail = $"Server said {(int)status}",
+                Status = (int)status,
+                Code = code,
+                Detail = $"Server said {(int)status}",
                 Extensions = extensions?.ToDictionary(e => e.Key, e => JsonSerializer.SerializeToElement(e.Value)),
                 Errors = errors ?? new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase),
             },
@@ -113,7 +115,9 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
     public static ApiResult Fail(HttpStatusCode status, string? code = null, IDictionary<string, object>? extensions = null) =>
         ApiResult.Failure(status, new ApiProblem
         {
-            Status = (int)status, Code = code, Detail = $"Server said {(int)status}",
+            Status = (int)status,
+            Code = code,
+            Detail = $"Server said {(int)status}",
             Extensions = extensions?.ToDictionary(e => e.Key, e => JsonSerializer.SerializeToElement(e.Value)),
         });
 

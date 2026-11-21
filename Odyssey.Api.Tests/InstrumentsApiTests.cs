@@ -86,7 +86,11 @@ public class InstrumentsApiTests(InstrumentsApiTests.Host host) : SharedApiHostT
 
         var response = await client.PostAsJsonAsync("/api/instruments", new NewInstrument
         {
-            Symbol = symbol, Isin = isin, Name = "x", Type = type, CurrencyCode = "NOK",
+            Symbol = symbol,
+            Isin = isin,
+            Name = "x",
+            Type = type,
+            CurrencyCode = "NOK",
         });
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -206,12 +210,23 @@ public class InstrumentsApiTests(InstrumentsApiTests.Host host) : SharedApiHostT
             var id = Guid.NewGuid();
             context.Instruments.Add(new Instrument
             {
-                InstrumentId = id, Symbol = "EQNR", MicCode = "XOSL", Name = "Equinor", Type = InstrumentType.Stock,
-                CurrencyCode = "NOK", ListingKey = "EQNR@XOSL", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
+                InstrumentId = id,
+                Symbol = "EQNR",
+                MicCode = "XOSL",
+                Name = "Equinor",
+                Type = InstrumentType.Stock,
+                CurrencyCode = "NOK",
+                ListingKey = "EQNR@XOSL",
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow,
             });
             context.InstrumentPrices.Add(new InstrumentPrice
             {
-                InstrumentPriceId = Guid.NewGuid(), InstrumentId = id, TradingDate = Day, Close = 10m, CreatedAtUtc = DateTime.UtcNow,
+                InstrumentPriceId = Guid.NewGuid(),
+                InstrumentId = id,
+                TradingDate = Day,
+                Close = 10m,
+                CreatedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -323,8 +338,14 @@ public class InstrumentsApiTests(InstrumentsApiTests.Host host) : SharedApiHostT
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.InstrumentPriceSourceBindings.Add(new InstrumentPriceSourceBinding
             {
-                InstrumentId = instrument.InstrumentId, SourceKey = "fake-primary", SourceSymbol = "EQNR.OL", Priority = 1, Enabled = true,
-                NewestFetched = Day, BackfilledFrom = Day.AddDays(-1), UpdatedAtUtc = DateTime.UtcNow,
+                InstrumentId = instrument.InstrumentId,
+                SourceKey = "fake-primary",
+                SourceSymbol = "EQNR.OL",
+                Priority = 1,
+                Enabled = true,
+                NewestFetched = Day,
+                BackfilledFrom = Day.AddDays(-1),
+                UpdatedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -400,7 +421,12 @@ public class InstrumentsApiTests(InstrumentsApiTests.Host host) : SharedApiHostT
         var id = Guid.NewGuid();
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = id, InstrumentId = instrumentId, TradingDate = date, Close = 9m, SourceKey = "fake-primary", CreatedAtUtc = DateTime.UtcNow,
+            InstrumentPriceId = id,
+            InstrumentId = instrumentId,
+            TradingDate = date,
+            Close = 9m,
+            SourceKey = "fake-primary",
+            CreatedAtUtc = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();
         return id;

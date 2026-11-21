@@ -50,8 +50,12 @@ public class FileStorageMaintenanceJobRunTests : FileStorageTestBase
             var now = Clock.GetUtcNow().UtcDateTime;
             var run = new FileStorageMaintenanceJobRun
             {
-                JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Manual, Status = JobRunStatus.Running,
-                StartedAtUtc = now, LastActivityAtUtc = now, RequestedByUserId = null,
+                JobRunId = Guid.NewGuid(),
+                Trigger = JobRunTrigger.Manual,
+                Status = JobRunStatus.Running,
+                StartedAtUtc = now,
+                LastActivityAtUtc = now,
+                RequestedByUserId = null,
             };
             context.JobRuns.Add(run);
             await context.SaveChangesAsync();

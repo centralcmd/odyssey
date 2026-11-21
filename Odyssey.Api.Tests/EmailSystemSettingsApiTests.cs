@@ -83,10 +83,18 @@ public class EmailSystemSettingsApiTests(EmailSystemSettingsApiTests.Host host) 
         var update = new SystemSettingsUpdate();
         switch (field)
         {
-            case nameof(SystemSettingsUpdate.EmailFromAddress): update.EmailFromAddress = "a@b.test"; break;
-            case nameof(SystemSettingsUpdate.EmailFromName): update.EmailFromName = "Acme"; break;
-            case nameof(SystemSettingsUpdate.EmailPerRecipientLimit): update.EmailPerRecipientLimit = 9; break;
-            default: update.EmailPerRecipientWindowMinutes = 9; break;
+            case nameof(SystemSettingsUpdate.EmailFromAddress):
+                update.EmailFromAddress = "a@b.test";
+                break;
+            case nameof(SystemSettingsUpdate.EmailFromName):
+                update.EmailFromName = "Acme";
+                break;
+            case nameof(SystemSettingsUpdate.EmailPerRecipientLimit):
+                update.EmailPerRecipientLimit = 9;
+                break;
+            default:
+                update.EmailPerRecipientWindowMinutes = 9;
+                break;
         }
 
         var response = await client.PutAsJsonAsync(Path, update);

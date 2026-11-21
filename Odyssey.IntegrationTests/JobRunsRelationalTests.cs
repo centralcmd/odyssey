@@ -136,14 +136,24 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
     private static TRun Running<TRun>(JobRunTrigger trigger)
         where TRun : JobRun, new() => new()
         {
-            JobRunId = Guid.NewGuid(), Trigger = trigger, Status = JobRunStatus.Running,
-            StartedAtUtc = DateTime.UtcNow, LastActivityAtUtc = DateTime.UtcNow, ClaimedAtUtc = DateTime.UtcNow, WorkerId = Guid.NewGuid(),
+            JobRunId = Guid.NewGuid(),
+            Trigger = trigger,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = DateTime.UtcNow,
+            LastActivityAtUtc = DateTime.UtcNow,
+            ClaimedAtUtc = DateTime.UtcNow,
+            WorkerId = Guid.NewGuid(),
         };
 
     private static PhotoThumbnailJobRun Held(Guid worker) => new()
     {
-        JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Held, HeldReason = JobHeldReason.DecoderPaused,
-        StartedAtUtc = DateTime.UtcNow, LastActivityAtUtc = DateTime.UtcNow, WorkerId = worker,
+        JobRunId = Guid.NewGuid(),
+        Trigger = JobRunTrigger.Scheduled,
+        Status = JobRunStatus.Held,
+        HeldReason = JobHeldReason.DecoderPaused,
+        StartedAtUtc = DateTime.UtcNow,
+        LastActivityAtUtc = DateTime.UtcNow,
+        WorkerId = worker,
     };
 
     private async Task AddAsync(JobRun run)

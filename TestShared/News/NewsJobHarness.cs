@@ -58,11 +58,13 @@ public sealed class NewsJobHarness : IAsyncDisposable
                 services.AddNewsFeedFetching();
                 services.AddHttpClient(NewsEgress.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => server);
                 services.Replace(ServiceDescriptor.Singleton(sp => new NewsHostThrottleGate(
-                    sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<TimeProvider>()) { Spacing = throttleSpacing ?? TimeSpan.Zero }));
+                    sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<TimeProvider>())
+                { Spacing = throttleSpacing ?? TimeSpan.Zero }));
                 if (bucketCapacity is { } capacity)
                 {
                     services.Replace(ServiceDescriptor.Scoped(sp => new NewsBucketAllocator(
-                        sp.GetRequiredService<IDbContextFactory<OdysseyContext>>(), sp.GetRequiredService<TimeProvider>()) { Capacity = capacity }));
+                        sp.GetRequiredService<IDbContextFactory<OdysseyContext>>(), sp.GetRequiredService<TimeProvider>())
+                    { Capacity = capacity }));
                 }
 
                 services.AddSingleton<NewsFeedJob>();

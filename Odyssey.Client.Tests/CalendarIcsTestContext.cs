@@ -110,7 +110,10 @@ internal sealed class CalendarIcsTestContext : IAsyncDisposable
         IDictionary<string, object>? extensions = null) =>
         ApiResult<T>.Failure(status, new ApiProblem
         {
-            Status = (int)status, Title = "Problem", Detail = detail, Code = code,
+            Status = (int)status,
+            Title = "Problem",
+            Detail = detail,
+            Code = code,
             Extensions = extensions?.ToDictionary(e => e.Key, e => JsonSerializer.SerializeToElement(e.Value)),
         });
 

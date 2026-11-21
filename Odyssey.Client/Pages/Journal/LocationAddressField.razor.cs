@@ -159,7 +159,8 @@ public partial class LocationAddressField
         }
 
         _focusNext = null;
-        try { await Js.InvokeVoidAsync("odsFocusById", id); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", id); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime (prerender, bUnit) */ }
     }

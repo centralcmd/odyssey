@@ -809,26 +809,26 @@ public class ContractSmartTagSurfaceTests
         IReadOnlyList<ExistingTransaction>? items = null,
         int? totalCount = null,
         IReadOnlyList<ContractSmartTagCurrencyTotal>? byCurrency = null) => new()
-    {
-        Scope = new ContractSmartTagScope
         {
-            From = unbounded ? null : from ?? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            ToExclusive = unbounded ? null : toExclusive ?? new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            SmartTagCount = 2,
-            PartyContactCount = partyContacts,
-            EmptyReason = reason,
-        },
-        Summary = new ContractSmartTagSummary
-        {
-            TransactionCount = totalCount ?? items?.Count ?? 0,
-            ByCurrency = byCurrency ?? [],
-        },
-        Page = new PagedResult<ExistingTransaction>
-        {
-            Items = items ?? [],
-            Offset = 0,
-            Limit = 25,
-            TotalCount = totalCount ?? items?.Count ?? 0,
-        },
-    };
+            Scope = new ContractSmartTagScope
+            {
+                From = unbounded ? null : from ?? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                ToExclusive = unbounded ? null : toExclusive ?? new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                SmartTagCount = 2,
+                PartyContactCount = partyContacts,
+                EmptyReason = reason,
+            },
+            Summary = new ContractSmartTagSummary
+            {
+                TransactionCount = totalCount ?? items?.Count ?? 0,
+                ByCurrency = byCurrency ?? [],
+            },
+            Page = new PagedResult<ExistingTransaction>
+            {
+                Items = items ?? [],
+                Offset = 0,
+                Limit = 25,
+                TotalCount = totalCount ?? items?.Count ?? 0,
+            },
+        };
 }

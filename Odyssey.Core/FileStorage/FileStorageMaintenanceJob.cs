@@ -235,7 +235,10 @@ public sealed class FileStorageMaintenanceJob(
                 // The migration seeds the row; a database created without HasData (EF InMemory) gets it here.
                 context.FileStorageMaintenanceLeases.Add(new FileStorageMaintenanceLease
                 {
-                    Id = FileStorageMaintenanceLease.SingletonId, HolderId = holder, LeaseUntilUtc = now + LeaseDuration, Version = Guid.NewGuid(),
+                    Id = FileStorageMaintenanceLease.SingletonId,
+                    HolderId = holder,
+                    LeaseUntilUtc = now + LeaseDuration,
+                    Version = Guid.NewGuid(),
                 });
                 await context.SaveChangesAsync(cancellationToken);
                 return true;

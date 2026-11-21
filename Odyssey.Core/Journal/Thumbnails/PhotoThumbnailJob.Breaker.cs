@@ -103,7 +103,9 @@ public sealed partial class PhotoThumbnailJob
 
         context.PhotoThumbnailIncidents.Add(new PhotoThumbnailIncident
         {
-            Kind = PhotoThumbnailIncidentKind.Restart, OccurredAtUtc = now, WorkerName = identity.Name,
+            Kind = PhotoThumbnailIncidentKind.Restart,
+            OccurredAtUtc = now,
+            WorkerName = identity.Name,
         });
         await context.SaveChangesAsync(cancellationToken);
         restartRequested = true;

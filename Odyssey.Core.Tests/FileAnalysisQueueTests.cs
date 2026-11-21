@@ -487,17 +487,17 @@ public class FileAnalysisQueueTests
 
     private static FileAnalysisJob NewJob(
         Guid accountFileId, ContextJobStatus status, DateTime? queuedAt, DateTime? startedAt = null, DateTime? leaseUntil = null) => new()
-    {
-        AccountFileId = accountFileId,
-        Status = status,
-        QueuedAt = queuedAt,
-        StartedAt = startedAt,
-        LeaseUntilUtc = leaseUntil,
-        RunId = status == ContextJobStatus.Running ? Guid.NewGuid() : null,
-        AnalyzerProvider = AnalyzerProvider.Claude,
-        RequestedByUserId = FileAnalysisTestHarness.RequesterId,
-        ConsentRecorded = true,
-    };
+        {
+            AccountFileId = accountFileId,
+            Status = status,
+            QueuedAt = queuedAt,
+            StartedAt = startedAt,
+            LeaseUntilUtc = leaseUntil,
+            RunId = status == ContextJobStatus.Running ? Guid.NewGuid() : null,
+            AnalyzerProvider = AnalyzerProvider.Claude,
+            RequestedByUserId = FileAnalysisTestHarness.RequesterId,
+            ConsentRecorded = true,
+        };
 
     private static string Sha256Of(byte[] bytes) => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
 

@@ -275,7 +275,9 @@ public partial class FileAnalysisDialog : IDisposable
         {
             _disclosureChangedNeedsFocus = false;
             _focusedPhase = Phase;
-            try { await _disclosureChangedRef.FocusAsync(); } catch { /* not focusable yet — non-fatal */ }
+            try
+            { await _disclosureChangedRef.FocusAsync(); }
+            catch { /* not focusable yet — non-fatal */ }
             return;
         }
 
@@ -315,7 +317,9 @@ public partial class FileAnalysisDialog : IDisposable
 
     private static async Task TryFocusAsync(ElementReference target)
     {
-        try { await target.FocusAsync(); } catch { /* not focusable yet — non-fatal */ }
+        try
+        { await target.FocusAsync(); }
+        catch { /* not focusable yet — non-fatal */ }
     }
 
     // The disclosure the consent panel renders. Starts as the compiled fallback so the gate can never

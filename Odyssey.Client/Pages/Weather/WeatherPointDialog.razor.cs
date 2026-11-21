@@ -770,7 +770,8 @@ public partial class WeatherPointDialog
     {
         StateHasChanged();
         await Task.Yield();
-        try { await Js.InvokeVoidAsync("odsFocusById", id); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", id); }
         catch (JSException) { }
         catch (InvalidOperationException) { }
     }

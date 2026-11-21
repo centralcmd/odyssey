@@ -74,7 +74,11 @@ public class InstrumentPriceDialogTests
         instruments.Setup(i => i.GetAsync(Equinor, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingInstrument>.Success(new ExistingInstrument
             {
-                InstrumentId = Equinor, Symbol = "EQNR", Name = "Equinor", Type = InstrumentType.Stock, CurrencyCode = "NOK",
+                InstrumentId = Equinor,
+                Symbol = "EQNR",
+                Name = "Equinor",
+                Type = InstrumentType.Stock,
+                CurrencyCode = "NOK",
             }, HttpStatusCode.OK));
         prices.Setup(p => p.CreateAsync(It.IsAny<NewInstrumentPrice>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingInstrumentPrice>.Failure(HttpStatusCode.Conflict, new ApiProblem

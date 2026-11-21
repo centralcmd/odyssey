@@ -600,16 +600,16 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         DateTime opened,
         DateTime? closed = null,
         DateTime? archived = null) => new()
-    {
-        AccountId = id,
-        Name = name,
-        Description = name,
-        Opened = opened,
-        AccountType = type,
-        CurrencyCode = currency,
-        Closed = closed,
-        Archived = archived,
-    };
+        {
+            AccountId = id,
+            Name = name,
+            Description = name,
+            Opened = opened,
+            AccountType = type,
+            CurrencyCode = currency,
+            Closed = closed,
+            Archived = archived,
+        };
 
     private static Transaction NewTransaction(Guid accountId, decimal amount, DateTime at) => new()
     {

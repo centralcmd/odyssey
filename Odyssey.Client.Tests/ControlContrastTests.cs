@@ -678,8 +678,12 @@ public class ControlContrastTests
         {
             switch (selectorList[i])
             {
-                case '(': depth++; break;
-                case ')': depth--; break;
+                case '(':
+                    depth++;
+                    break;
+                case ')':
+                    depth--;
+                    break;
                 case ',' when depth == 0:
                     yield return selectorList[start..i];
                     start = i + 1;

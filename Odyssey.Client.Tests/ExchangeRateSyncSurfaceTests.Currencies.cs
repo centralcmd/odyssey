@@ -35,7 +35,10 @@ public partial class ExchangeRateSyncSurfaceTests
     /// </summary>
     private static ExistingCurrency Row(ExistingExchangeRateSyncCurrency? sync, string? code = null, bool archived = false) => new()
     {
-        CurrencyCode = code ?? sync!.CurrencyCode, Name = (code ?? sync!.CurrencyCode) + " name", Symbol = "¤", MinorUnits = 2,
+        CurrencyCode = code ?? sync!.CurrencyCode,
+        Name = (code ?? sync!.CurrencyCode) + " name",
+        Symbol = "¤",
+        MinorUnits = 2,
         Archived = archived ? Now.UtcDateTime : null,
         Sync = archived ? null : sync,
         Status = CurrencyStatuses.Of(archived, archived ? null : sync),
@@ -487,7 +490,8 @@ public partial class ExchangeRateSyncSurfaceTests
         sync.Setup(c => c.UpdateCurrencyAsync("USD", It.IsAny<ExchangeRateSyncCurrencyUpdate>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingExchangeRateSyncCurrency>.Failure(HttpStatusCode.UnprocessableEntity, new ApiProblem
             {
-                Title = "Unprocessable", Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { ["enabled"] = ["The provider doesn't publish USD."] },
+                Title = "Unprocessable",
+                Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { ["enabled"] = ["The provider doesn't publish USD."] },
             }));
 
         var cut = RenderCurrencies(ctx, "USD");

@@ -354,12 +354,12 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private static Contract Contract(
         Guid id, string name, ContextContractType type = ContextContractType.Insurance) => new()
-    {
-        ContractId = id,
-        Name = name,
-        Type = type,
-        CreatedAtUtc = DateTime.UtcNow,
-    };
+        {
+            ContractId = id,
+            Name = name,
+            Type = type,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
 
     private static Contact Organization(Guid id, string legalName) => new()
     {

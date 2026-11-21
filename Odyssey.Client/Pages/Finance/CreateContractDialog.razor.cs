@@ -109,16 +109,16 @@ public partial class CreateContractDialog
             return;
         }
 
-        _name           = contract.Name;
-        _type           = contract.Type.ToString();
-        _description    = contract.Description;
+        _name = contract.Name;
+        _type = contract.Type.ToString();
+        _description = contract.Description;
         _referenceNumber = contract.ReferenceNumber;
-        _mode           = contract.CompletionDate is not null ? OneOffMode : TermMode;
-        _startDate      = contract.StartDate;
-        _endDate        = contract.EndDate;
+        _mode = contract.CompletionDate is not null ? OneOffMode : TermMode;
+        _startDate = contract.StartDate;
+        _endDate = contract.EndDate;
         _completionDate = contract.CompletionDate;
-        _ready          = contract.Ready;
-        _signed         = contract.Signed;
+        _ready = contract.Ready;
+        _signed = contract.Signed;
     }
 
     /// <summary>

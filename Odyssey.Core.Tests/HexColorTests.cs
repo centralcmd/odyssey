@@ -176,14 +176,14 @@ public class HexColorTests
             for (var g = 0; g < 256; g += 3)
             {
                 for (var b = 0; b < 256; b += 3)
-        {
-            var fill = $"#{r:X2}{g:X2}{b:X2}";
-            var ratio = HexColor.ContrastRatio(fill, HexColor.TextOn(fill));
-            if (ratio < worst)
-            {
-                (worst, worstFill) = (ratio, fill);
-            }
-        }
+                {
+                    var fill = $"#{r:X2}{g:X2}{b:X2}";
+                    var ratio = HexColor.ContrastRatio(fill, HexColor.TextOn(fill));
+                    if (ratio < worst)
+                    {
+                        (worst, worstFill) = (ratio, fill);
+                    }
+                }
             }
         }
 

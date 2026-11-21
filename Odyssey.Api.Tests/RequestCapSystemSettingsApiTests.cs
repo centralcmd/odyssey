@@ -178,11 +178,14 @@ public class RequestCapSystemSettingsApiTests(RequestCapSystemSettingsApiTests.H
         switch (field)
         {
             case nameof(SystemSettingsUpdate.ContractMaxPartiesPerContract):
-                update.ContractMaxPartiesPerContract = 5; break;
+                update.ContractMaxPartiesPerContract = 5;
+                break;
             case nameof(SystemSettingsUpdate.PhotoMaxAlbumMembers):
-                update.PhotoMaxAlbumMembers = 5; break;
+                update.PhotoMaxAlbumMembers = 5;
+                break;
             default:
-                update.JournalTaskMaxLinksPerKind = 5; break;
+                update.JournalTaskMaxLinksPerKind = 5;
+                break;
         }
 
         var response = await client.PutAsJsonAsync(Path, update);

@@ -252,9 +252,14 @@ public class UnifiedLocationsDialogTests
         ctx.Services.AddSingleton(Mock.Of<ITagQuickCreate<ExistingJournalTag>>());
         var entry = new ExistingJournalEntry
         {
-            JournalEntryId = Guid.NewGuid(), Title = "Hike", Content = "Summit.", EntryDate = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-            LocationId = Stored, LocationRef = new LocationRef { LocationId = Stored, Name = "Hytta" },
-            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            JournalEntryId = Guid.NewGuid(),
+            Title = "Hike",
+            Content = "Summit.",
+            EntryDate = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            LocationId = Stored,
+            LocationRef = new LocationRef { LocationId = Stored, Name = "Hytta" },
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         };
         var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<CreateJournalEntryDialog>(d => d.Add(x => x.Open, true).Add(x => x.Entry, entry)));
 

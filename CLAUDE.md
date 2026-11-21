@@ -352,6 +352,10 @@ with comments used sparingly. Two rules the build enforces (`EnforceCodeStyleInB
 - **Doc comments must stay valid**: a stale `cref`/`paramref` or malformed doc XML fails the build. A cref to a type in
   a project this one cannot reference is written as `<c>…</c>`.
 
+**Whitespace is checked in CI** (`dotnet format whitespace Odyssey.sln --verify-no-changes`, `ci.yml`) against
+`.editorconfig` — one member per line in object initializers among it. Run `dotnet format whitespace Odyssey.sln`
+before pushing. It does not cover `.razor` files.
+
 Field naming:
 
 - **Private/protected instance fields:** plain camelCase, **no `_` prefix** (`private readonly AppDbContext db;`) —
@@ -365,7 +369,9 @@ Field naming:
 ## Git & Versioning
 
 **Conventional Commits** — `<type>(<scope>): <description>`:
-- Description lowercase, no trailing period, subject under 72 chars; the body explains *why*.
+- Description lowercase, no trailing period, subject under 80 chars preferred, 120 at most; the body explains *why*.
+- **PR titles are checked** by `.github/workflows/pr-title.yml` (they become the squash-merge subject). Its type and
+  scope lists mirror the ones here: change both together. Dependabot and release-please PRs are exempt.
 - Issue numbers go in the **body**, not the subject.
 - Types: `feat`, `fix`, `chore`, `refactor`, `test`, `docs`, `ci`, `perf`.
 - Scopes (one, or omit for cross-cutting changes):

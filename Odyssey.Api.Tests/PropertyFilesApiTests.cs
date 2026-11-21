@@ -150,8 +150,12 @@ public class PropertyFilesApiTests(PropertyFilesApiTests.Host host) : SharedApiH
         var contactId = await SeedContactAsync(factory);
         var fileId = await AttachAsync(factory, client, propertyId, build: id => new AttachPropertyFileRequest
         {
-            FileMetadataId = id, FileType = PropertyFileType.Deed,
-            ValidFrom = ValidFrom, ValidTo = ValidTo, IssuedAt = IssuedAt, IssuedBy = contactId,
+            FileMetadataId = id,
+            FileType = PropertyFileType.Deed,
+            ValidFrom = ValidFrom,
+            ValidTo = ValidTo,
+            IssuedAt = IssuedAt,
+            IssuedBy = contactId,
         });
 
         var put = await client.PutAsync(FilePath(propertyId, fileId), Json("""{"fileType":3}"""));
@@ -376,7 +380,9 @@ public class PropertyFilesApiTests(PropertyFilesApiTests.Host host) : SharedApiH
 
         var attach = await client.PostAsJsonAsync(FilesPath(propertyId), new AttachPropertyFileRequest
         {
-            FileMetadataId = fileId, ValidFrom = ValidTo, ValidTo = ValidFrom,
+            FileMetadataId = fileId,
+            ValidFrom = ValidTo,
+            ValidTo = ValidFrom,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, attach.StatusCode);
@@ -413,11 +419,13 @@ public class PropertyFilesApiTests(PropertyFilesApiTests.Host host) : SharedApiH
 
         var attach = await client.PostAsJsonAsync(FilesPath(propertyId), new AttachPropertyFileRequest
         {
-            FileMetadataId = unattached, IssuedBy = Guid.NewGuid(),
+            FileMetadataId = unattached,
+            IssuedBy = Guid.NewGuid(),
         });
         var put = await client.PutAsJsonAsync(FilePath(propertyId, attached), new UpdatePropertyFileRequest
         {
-            FileType = PropertyFileType.Deed, IssuedBy = Guid.NewGuid(),
+            FileType = PropertyFileType.Deed,
+            IssuedBy = Guid.NewGuid(),
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, attach.StatusCode);
@@ -500,7 +508,8 @@ public class PropertyFilesApiTests(PropertyFilesApiTests.Host host) : SharedApiH
         var contactId = await SeedContactAsync(factory);
         await AttachAsync(factory, client, propertyId, build: id => new AttachPropertyFileRequest
         {
-            FileMetadataId = id, IssuedBy = contactId,
+            FileMetadataId = id,
+            IssuedBy = contactId,
         });
 
         var body = await client.GetStringAsync(FilesPath(propertyId));

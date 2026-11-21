@@ -77,9 +77,16 @@ public abstract class PhotoThumbnailTestBase : FileStorageTestBase
         var stored = scope.ServiceProvider.GetRequiredService<IObjectStore>().AttachReserved(context, reservation);
         var photo = new Photo
         {
-            PhotoId = Guid.NewGuid(), StoredObjectId = stored.Id, FileName = fileName, ContentType = contentType,
-            SizeBytes = stored.SizeBytes, Sha256Hash = stored.Sha256Hash!, CreatedByUserId = uploader,
-            CreatedAt = now, UpdatedAt = now, Archived = archived ? now : null,
+            PhotoId = Guid.NewGuid(),
+            StoredObjectId = stored.Id,
+            FileName = fileName,
+            ContentType = contentType,
+            SizeBytes = stored.SizeBytes,
+            Sha256Hash = stored.Sha256Hash!,
+            CreatedByUserId = uploader,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Archived = archived ? now : null,
         };
         context.Photos.Add(photo);
         if (withJob)

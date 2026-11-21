@@ -91,7 +91,11 @@ public class WeatherDayHoursTests : IDisposable
         Status = status,
         Day = new WeatherHourlyDay
         {
-            Date = date, IsToday = isToday, FromUtc = DayStartUtc(date), ToUtc = DayStartUtc(date.AddDays(1)), LengthHours = 24,
+            Date = date,
+            IsToday = isToday,
+            FromUtc = DayStartUtc(date),
+            ToUtc = DayStartUtc(date.AddDays(1)),
+            LengthHours = 24,
         },
         Steps = [.. steps],
     };

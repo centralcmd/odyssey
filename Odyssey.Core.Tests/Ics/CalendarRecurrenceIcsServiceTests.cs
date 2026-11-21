@@ -35,16 +35,24 @@ public class CalendarRecurrenceIcsServiceTests : IcsServiceTestBase
         var calendarId = await CreateCalendarAsync("Round trip");
         var seriesId = (await InScopeAsync(sp => sp.GetRequiredService<RecurrencePatternService>().Create(new NewRecurrencePattern
         {
-            CalendarId = calendarId, Title = "Standup",
-            StartDateTime = Wall(2026, 3, 16, 9), EndDateTime = Wall(2026, 3, 16, 10), TimeZoneId = "Europe/Oslo",
-            Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = 4,
+            CalendarId = calendarId,
+            Title = "Standup",
+            StartDateTime = Wall(2026, 3, 16, 9),
+            EndDateTime = Wall(2026, 3, 16, 10),
+            TimeZoneId = "Europe/Oslo",
+            Frequency = DtoFrequency.Weekly,
+            DaysOfWeek = DtoDays.Monday,
+            OccurrenceCount = 4,
         }, ActorUserId))).RecurrencePatternId;
         var rows = await SeriesRowsAsync(seriesId);
         await DeleteAsync(rows[1].CalendarEventId);
         await UpdateEventAsync(rows[2].CalendarEventId, new NewCalendarEvent
         {
-            CalendarId = calendarId, Title = "Moved standup", StartDateTime = Wall(2026, 3, 30, 10),
-            EndDateTime = Wall(2026, 3, 30, 11), TimeZoneId = "Europe/Oslo",
+            CalendarId = calendarId,
+            Title = "Moved standup",
+            StartDateTime = Wall(2026, 3, 30, 10),
+            EndDateTime = Wall(2026, 3, 30, 11),
+            TimeZoneId = "Europe/Oslo",
         });
 
         var body = await ExportAsync(CalendarIcsExportScope.ForPattern(seriesId));
@@ -222,9 +230,13 @@ public class CalendarRecurrenceIcsServiceTests : IcsServiceTestBase
     // A floating weekly Monday 09:00 series from 2 February 2026: every occurrence is after the starting clock.
     private static NewRecurrencePattern Rule(Guid calendarId, int? count) => new()
     {
-        CalendarId = calendarId, Title = "Standup",
-        StartDateTime = Wall(2026, 2, 2, 9), EndDateTime = Wall(2026, 2, 2, 9, 30),
-        Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = count,
+        CalendarId = calendarId,
+        Title = "Standup",
+        StartDateTime = Wall(2026, 2, 2, 9),
+        EndDateTime = Wall(2026, 2, 2, 9, 30),
+        Frequency = DtoFrequency.Weekly,
+        DaysOfWeek = DtoDays.Monday,
+        OccurrenceCount = count,
     };
 
     private static string Master(string uid, params string[] rule) => Vevent(uid,
@@ -277,8 +289,12 @@ public class CalendarRecurrenceIcsServiceTests : IcsServiceTestBase
     {
         var updated = await InScopeAsync(sp => sp.GetRequiredService<CalendarEventService>().Update(row.CalendarEventId, new NewCalendarEvent
         {
-            CalendarId = row.CalendarId, Title = title, StartDateTime = row.StartDateTime, EndDateTime = row.EndDateTime,
-            IsAllDay = row.IsAllDay, TimeZoneId = row.TimeZoneId,
+            CalendarId = row.CalendarId,
+            Title = title,
+            StartDateTime = row.StartDateTime,
+            EndDateTime = row.EndDateTime,
+            IsAllDay = row.IsAllDay,
+            TimeZoneId = row.TimeZoneId,
         }, ActorUserId));
         Assert.True(updated!.IsOverride);
     }

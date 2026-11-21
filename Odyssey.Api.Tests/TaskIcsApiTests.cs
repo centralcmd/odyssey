@@ -278,8 +278,12 @@ public class TaskIcsApiTests(TaskIcsApiTests.Host host) : SharedApiHostTests<Tas
             {
                 context.JournalTasks.Add(new JournalTask
                 {
-                    ExternalUid = $"bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000), Position = i,
-                    CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                    ExternalUid = $"bulk-{i}",
+                    Title = $"Bulk {i}",
+                    Content = new string('x', 4000),
+                    Position = i,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                 });
             }
 

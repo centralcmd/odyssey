@@ -169,7 +169,11 @@ public class ContactConversionAuditTests(ContactConversionAuditTests.Host host) 
         var propertyId = Guid.NewGuid();
         context.Properties.Add(new Property
         {
-            PropertyId = propertyId, Name = PropertyName, Description = "", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
+            PropertyId = propertyId,
+            Name = PropertyName,
+            Description = "",
+            Type = PropertyType.RealEstate,
+            CurrencyCode = "NOK",
             RealEstateDetails = new RealEstateDetails { PropertyId = propertyId, Kind = RealEstateKind.House, HomeownerAssociationId = associationId },
         });
         await context.SaveChangesAsync();

@@ -313,12 +313,22 @@ public class JournalEntriesApiTests(JournalEntriesApiTests.Host host) : SharedAp
             var now = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
             context.JournalEntries.Add(new JournalEntry
             {
-                JournalEntryId = id, ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "A day", Content = "c",
-                EntryDate = now, CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+                JournalEntryId = id,
+                ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+                Title = "A day",
+                Content = "c",
+                EntryDate = now,
+                CreatedByUserId = ActorUserId,
+                CreatedAt = now,
+                UpdatedAt = now,
             });
             context.JournalEntryPhotos.Add(new JournalEntryPhoto
             {
-                JournalEntryPhotoId = Guid.NewGuid(), JournalEntryId = id, PhotoId = photoId, Position = 0, CreatedAt = now,
+                JournalEntryPhotoId = Guid.NewGuid(),
+                JournalEntryId = id,
+                PhotoId = photoId,
+                Position = 0,
+                CreatedAt = now,
             });
             await context.SaveChangesAsync();
         }
@@ -326,7 +336,10 @@ public class JournalEntriesApiTests(JournalEntriesApiTests.Host host) : SharedAp
         using var client = factory.ClientFor(ReadWrite);
         var update = new UpdateJournalEntry
         {
-            Title = "Renamed", Content = "c", EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), PhotoIds = [photoId],
+            Title = "Renamed",
+            Content = "c",
+            EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            PhotoIds = [photoId],
         };
 
         var put = await client.PutAsJsonAsync($"{Path}/{id}", update);
@@ -950,16 +963,16 @@ public class JournalEntriesApiTests(JournalEntriesApiTests.Host host) : SharedAp
         Guid[]? contactIds = null,
         Guid[]? photoIds = null,
         Guid[]? attachmentFileIds = null) => new()
-    {
-        Title = title,
-        Content = content ?? "Dear journal, today was a day.",
-        EntryDate = entryDate ?? new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-        Location = location,
-        TagIds = tagIds ?? [],
-        ContactIds = contactIds ?? [],
-        PhotoIds = photoIds ?? [],
-        AttachmentFileIds = attachmentFileIds ?? [],
-    };
+        {
+            Title = title,
+            Content = content ?? "Dear journal, today was a day.",
+            EntryDate = entryDate ?? new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            Location = location,
+            TagIds = tagIds ?? [],
+            ContactIds = contactIds ?? [],
+            PhotoIds = photoIds ?? [],
+            AttachmentFileIds = attachmentFileIds ?? [],
+        };
 
     private static UpdateJournalEntry UpdateEntry(string title, string? location = null, bool archived = false) => new()
     {

@@ -94,25 +94,25 @@ public static class Contacts
         string key, string firstName, string lastName, string notes,
         DateTime? archived = null, string? middleName = null,
         DateOnly? dateOfBirth = null, DateOnly? dateOfDeath = null) => new()
-    {
-        ContactId = IdFor(key),
-        ExternalUid = ExternalUidFor(key),
-        NormalizedName = Normalize($"{firstName} {lastName}"),
-        Type = ContactType.Person,
-        Notes = notes,
-        Archived = archived,
-        CreatedAt = SeededAt,
-        UpdatedAt = SeededAt,
-        PersonDetails = new PersonDetails
         {
             ContactId = IdFor(key),
-            FirstName = firstName,
-            LastName = lastName,
-            MiddleName = middleName,
-            DateOfBirth = dateOfBirth,
-            DateOfDeath = dateOfDeath,
-        },
-    };
+            ExternalUid = ExternalUidFor(key),
+            NormalizedName = Normalize($"{firstName} {lastName}"),
+            Type = ContactType.Person,
+            Notes = notes,
+            Archived = archived,
+            CreatedAt = SeededAt,
+            UpdatedAt = SeededAt,
+            PersonDetails = new PersonDetails
+            {
+                ContactId = IdFor(key),
+                FirstName = firstName,
+                LastName = lastName,
+                MiddleName = middleName,
+                DateOfBirth = dateOfBirth,
+                DateOfDeath = dateOfDeath,
+            },
+        };
 
     /// <summary>
     /// Aliases for a seeded contact (issue #48). Ids are deterministic like every other seeded key, so

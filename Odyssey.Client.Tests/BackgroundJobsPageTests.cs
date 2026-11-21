@@ -37,7 +37,11 @@ public class BackgroundJobsPageTests
     {
         var job = new BackgroundJobSummary
         {
-            JobType = type, Health = JobHealth.Healthy, CanRunNow = true, CanReadDetail = true, NotTickingAfterSeconds = 300,
+            JobType = type,
+            Health = JobHealth.Healthy,
+            CanRunNow = true,
+            CanReadDetail = true,
+            NotTickingAfterSeconds = 300,
             LastRun = new JobRunReference { Id = Guid.NewGuid(), Status = JobRunStatus.Succeeded, StartedAtUtc = Now.UtcDateTime.AddMinutes(-12), FinishedAtUtc = Now.UtcDateTime.AddMinutes(-11) },
         };
         edit?.Invoke(job);
@@ -52,9 +56,15 @@ public class BackgroundJobsPageTests
 
     private static ExistingJobRun Run(JobType type, JobRunStatus status = JobRunStatus.Succeeded, Guid? id = null) => new()
     {
-        Id = id ?? Guid.NewGuid(), JobType = type, Status = status, Trigger = JobRunTrigger.Scheduled,
-        StartedAtUtc = Now.UtcDateTime.AddMinutes(-30), FinishedAtUtc = status == JobRunStatus.Running ? null : Now.UtcDateTime.AddMinutes(-29),
-        DurationMs = status == JobRunStatus.Running ? null : 1800, ItemsProcessed = 4, ItemsFailed = 0,
+        Id = id ?? Guid.NewGuid(),
+        JobType = type,
+        Status = status,
+        Trigger = JobRunTrigger.Scheduled,
+        StartedAtUtc = Now.UtcDateTime.AddMinutes(-30),
+        FinishedAtUtc = status == JobRunStatus.Running ? null : Now.UtcDateTime.AddMinutes(-29),
+        DurationMs = status == JobRunStatus.Running ? null : 1800,
+        ItemsProcessed = 4,
+        ItemsFailed = 0,
     };
 
     private static ApiResult<PagedResult<ExistingJobRun>> Page(params ExistingJobRun[] runs) =>
@@ -500,8 +510,12 @@ public class BackgroundJobsPageTests
     private static ApiResult<JobRunDetail> Detail(Guid id, JobType job, JobRunStatus status, int processed = 4) =>
         ApiResult<JobRunDetail>.Success(new WeatherJobRunDetail
         {
-            Id = id, JobType = job, Status = status, StartedAtUtc = Now.UtcDateTime.AddMinutes(-30),
-            ItemsProcessed = processed, PointsAttempted = processed,
+            Id = id,
+            JobType = job,
+            Status = status,
+            StartedAtUtc = Now.UtcDateTime.AddMinutes(-30),
+            ItemsProcessed = processed,
+            PointsAttempted = processed,
         }, HttpStatusCode.OK);
 
     private static async Task<IRenderedComponent<BackgroundJobs>> RenderLoaded(Fixture f, FollowSteps? steps = null)
@@ -947,9 +961,16 @@ public class BackgroundJobsPageTests
 
     private static Odyssey.Dtos.Internet.NewsStatus TextFull() => new()
     {
-        Storage = Odyssey.Dtos.Internet.NewsStorageState.Ready, Volume = "news", ArticleCount = 1200, FeedCount = 18,
-        ImageBytes = 3L << 30, ImageQuotaBytes = 50L << 30, TextAndSourceBytes = 21L << 30, TextAndSourceQuotaBytes = 20L << 30,
-        TextAndSourceQuotaReached = true, VolumeFreeBytes = 100L << 30,
+        Storage = Odyssey.Dtos.Internet.NewsStorageState.Ready,
+        Volume = "news",
+        ArticleCount = 1200,
+        FeedCount = 18,
+        ImageBytes = 3L << 30,
+        ImageQuotaBytes = 50L << 30,
+        TextAndSourceBytes = 21L << 30,
+        TextAndSourceQuotaBytes = 20L << 30,
+        TextAndSourceQuotaReached = true,
+        VolumeFreeBytes = 100L << 30,
     };
 
     [Fact]

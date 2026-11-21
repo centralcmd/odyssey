@@ -31,7 +31,8 @@ public partial class OdsLineChart : IAsyncDisposable
     [Parameter] public RenderFragment? Sub { get; set; }
 
     /// <summary>Formats the headline figure + (by default) the y-axis ticks.</summary>
-    [Parameter] public Func<decimal, string> Format { get; set; } =
+    [Parameter]
+    public Func<decimal, string> Format { get; set; } =
         static n => n.ToString("#,##0.##", CultureInfo.InvariantCulture);
 
     /// <summary>Compact y-axis tick formatter; falls back to <see cref="Format"/>.</summary>

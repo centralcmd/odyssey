@@ -461,7 +461,10 @@ public class CalendarIcsStreamingApiTests(CalendarIcsStreamingApiTests.Host host
         var start = new DateTime(2030, 6, 1, 9, 0, 0, DateTimeKind.Utc);
         var post = await client.PostAsJsonAsync(EventsPath, new NewCalendarEvent
         {
-            CalendarId = calendarId, Title = title, StartDateTime = start, EndDateTime = start.AddHours(1),
+            CalendarId = calendarId,
+            Title = title,
+            StartDateTime = start,
+            EndDateTime = start.AddHours(1),
         });
         post.EnsureSuccessStatusCode();
         return (await post.Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
@@ -504,18 +507,32 @@ public class CalendarIcsStreamingApiTests(CalendarIcsStreamingApiTests.Host host
         var stamp = new DateTime(2029, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var pattern = new RecurrencePattern
         {
-            CalendarId = calendarId, Title = "Bulky", Description = new string('x', 2000), StartDateTime = start,
-            EndDateTime = start.AddHours(1), Frequency = Odyssey.Context.RecurrenceFrequency.Daily, Interval = 1, OccurrenceCount = rows,
-            CreatedByUserId = ActorUserId, CreatedAt = stamp, UpdatedAt = stamp,
+            CalendarId = calendarId,
+            Title = "Bulky",
+            Description = new string('x', 2000),
+            StartDateTime = start,
+            EndDateTime = start.AddHours(1),
+            Frequency = Odyssey.Context.RecurrenceFrequency.Daily,
+            Interval = 1,
+            OccurrenceCount = rows,
+            CreatedByUserId = ActorUserId,
+            CreatedAt = stamp,
+            UpdatedAt = stamp,
         };
         db.RecurrencePatterns.Add(pattern);
         for (var i = 0; i < rows; i++)
         {
             db.CalendarEvents.Add(new ContextCalendarEvent
             {
-                CalendarId = calendarId, Title = i == 0 ? "Edited" : "Bulky", Description = new string('x', 2000),
-                StartDateTime = start.AddDays(i), EndDateTime = start.AddDays(i).AddHours(1), RecurrencePattern = pattern,
-                CreatedByUserId = ActorUserId, CreatedAt = stamp, UpdatedAt = stamp,
+                CalendarId = calendarId,
+                Title = i == 0 ? "Edited" : "Bulky",
+                Description = new string('x', 2000),
+                StartDateTime = start.AddDays(i),
+                EndDateTime = start.AddDays(i).AddHours(1),
+                RecurrencePattern = pattern,
+                CreatedByUserId = ActorUserId,
+                CreatedAt = stamp,
+                UpdatedAt = stamp,
             });
         }
 

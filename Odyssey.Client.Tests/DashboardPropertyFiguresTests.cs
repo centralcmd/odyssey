@@ -38,20 +38,20 @@ public class DashboardPropertyFiguresTests
         int propertyUnconverted = 0,
         int propertyRevalued = 0,
         int propertyUnvalued = 0) => new()
-    {
-        Date = new DateOnly(2026, 5, 1),
-        TotalAssets = netWorth,
-        TotalLiabilities = 0m,
-        NetWorth = netWorth,
-        UnconvertedAccountCount = accountUnconverted,
-        RevaluedAccountCount = accountRevalued,
-        ContributingAccountCount = accountContributing,
-        PropertyValue = propertyValue,
-        ContributingPropertyCount = propertyContributing,
-        UnconvertedPropertyCount = propertyUnconverted,
-        RevaluedPropertyCount = propertyRevalued,
-        UnvaluedPropertyCount = propertyUnvalued,
-    };
+        {
+            Date = new DateOnly(2026, 5, 1),
+            TotalAssets = netWorth,
+            TotalLiabilities = 0m,
+            NetWorth = netWorth,
+            UnconvertedAccountCount = accountUnconverted,
+            RevaluedAccountCount = accountRevalued,
+            ContributingAccountCount = accountContributing,
+            PropertyValue = propertyValue,
+            ContributingPropertyCount = propertyContributing,
+            UnconvertedPropertyCount = propertyUnconverted,
+            RevaluedPropertyCount = propertyRevalued,
+            UnvaluedPropertyCount = propertyUnvalued,
+        };
 
     private static NetWorthHistory History(bool included, params NetWorthHistoryPoint[] points) => new()
     {
@@ -68,17 +68,17 @@ public class DashboardPropertyFiguresTests
         int contributing = 0,
         int unvalued = 0,
         params UnconvertedProperty[] unconverted) => new()
-    {
-        MainCurrencyCode = "NOK",
-        TotalAssets = 1m,
-        TotalLiabilities = 0m,
-        NetWorth = 1m,
-        PropertiesIncluded = included,
-        PropertyValue = included ? 1m : null,
-        ContributingPropertyCount = contributing,
-        UnvaluedPropertyCount = unvalued,
-        UnconvertedProperties = [.. unconverted],
-    };
+        {
+            MainCurrencyCode = "NOK",
+            TotalAssets = 1m,
+            TotalLiabilities = 0m,
+            NetWorth = 1m,
+            PropertiesIncluded = included,
+            PropertyValue = included ? 1m : null,
+            ContributingPropertyCount = contributing,
+            UnvaluedPropertyCount = unvalued,
+            UnconvertedProperties = [.. unconverted],
+        };
 
     private static UnconvertedProperty Property(string name, string currency = "EUR") =>
         new() { PropertyId = Guid.NewGuid(), Name = name, CurrencyCode = currency };
@@ -182,9 +182,15 @@ public class DashboardPropertyFiguresTests
 
         var totals = new AccountTotals
         {
-            MainCurrencyCode = "NOK", TotalAssets = 1m, TotalLiabilities = 0m, NetWorth = 1m,
-            PropertiesIncluded = false, PropertyValue = 5m, ContributingPropertyCount = 2,
-            UnvaluedPropertyCount = 1, UnconvertedProperties = [Property("Boat")],
+            MainCurrencyCode = "NOK",
+            TotalAssets = 1m,
+            TotalLiabilities = 0m,
+            NetWorth = 1m,
+            PropertiesIncluded = false,
+            PropertyValue = 5m,
+            ContributingPropertyCount = 2,
+            UnvaluedPropertyCount = 1,
+            UnconvertedProperties = [Property("Boat")],
         };
 
         Assert.Equal(OdsLinePointKind.Normal, DashboardFigures.KindOf(leakingPoint, history.PropertiesIncluded));

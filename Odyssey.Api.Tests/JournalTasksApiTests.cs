@@ -601,13 +601,13 @@ public class JournalTasksApiTests(JournalTasksApiTests.Host host) : SharedApiHos
         JournalTaskStatus status = JournalTaskStatus.Backlog,
         Guid[]? tagIds = null,
         Guid[]? attachmentFileIds = null) => new()
-    {
-        Title = title,
-        Content = content,
-        Status = status,
-        TagIds = tagIds ?? [],
-        AttachmentFileIds = attachmentFileIds ?? [],
-    };
+        {
+            Title = title,
+            Content = content,
+            Status = status,
+            TagIds = tagIds ?? [],
+            AttachmentFileIds = attachmentFileIds ?? [],
+        };
 
     private static UpdateJournalTask UpdateTask(string title) => new()
     {

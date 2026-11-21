@@ -179,14 +179,24 @@ public sealed class CalendarAttachmentReflowTests(StackFixture fixture) : IAsync
             var today = DateTime.UtcNow.Date;
             eventId = (await SendAsync(api, "POST", "/api/calendar-events", new
             {
-                calendarId, title = EventTitle, startDateTime = today.AddHours(9), endDateTime = today.AddHours(10),
-                attachmentFileIds = new[] { fileId }, photoIds = new[] { photoId },
+                calendarId,
+                title = EventTitle,
+                startDateTime = today.AddHours(9),
+                endDateTime = today.AddHours(10),
+                attachmentFileIds = new[] { fileId },
+                photoIds = new[] { photoId },
             })).GetProperty("calendarEventId").GetGuid();
             seriesId = (await SendAsync(api, "POST", "/api/recurrence-patterns", new
             {
-                calendarId, title = SeriesTitle, startDateTime = today.AddHours(18), endDateTime = today.AddHours(19),
-                frequency = 0, interval = 1, occurrenceCount = 3,
-                attachmentFileIds = new[] { fileId }, photoIds = new[] { photoId },
+                calendarId,
+                title = SeriesTitle,
+                startDateTime = today.AddHours(18),
+                endDateTime = today.AddHours(19),
+                frequency = 0,
+                interval = 1,
+                occurrenceCount = 3,
+                attachmentFileIds = new[] { fileId },
+                photoIds = new[] { photoId },
             })).GetProperty("recurrencePatternId").GetGuid();
 
             await page.GotoAsync("/calendar");

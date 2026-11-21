@@ -212,7 +212,11 @@ public class InstrumentPricesPageTests
         h.Instruments.Setup(i => i.GetAsync(Equinor, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingInstrument>.Success(new ExistingInstrument
             {
-                InstrumentId = Equinor, Symbol = "EQNR", Name = "Equinor", Type = InstrumentType.Stock, CurrencyCode = "NOK",
+                InstrumentId = Equinor,
+                Symbol = "EQNR",
+                Name = "Equinor",
+                Type = InstrumentType.Stock,
+                CurrencyCode = "NOK",
             }, HttpStatusCode.OK));
         h.Ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"/instrument-prices?instrument={Equinor}&add=1");
 

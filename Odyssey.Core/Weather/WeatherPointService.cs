@@ -808,16 +808,16 @@ public sealed class WeatherPointService
 
     private static WeatherPointSite NewSite(
         Guid pointId, int version, decimal latitude, decimal longitude, int? altitude, string zone, DateTime now, string userId) => new()
-    {
-        WeatherPointId = pointId,
-        SiteVersion = version,
-        Latitude = WeatherCoordinates.Round(latitude),
-        Longitude = WeatherCoordinates.Round(longitude),
-        AltitudeMeters = altitude,
-        TimeZoneId = zone,
-        AppliedAt = now,
-        AppliedByUserId = userId,
-    };
+        {
+            WeatherPointId = pointId,
+            SiteVersion = version,
+            Latitude = WeatherCoordinates.Round(latitude),
+            Longitude = WeatherCoordinates.Round(longitude),
+            AltitudeMeters = altitude,
+            TimeZoneId = zone,
+            AppliedAt = now,
+            AppliedByUserId = userId,
+        };
 
     private static DateTime Utc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
 

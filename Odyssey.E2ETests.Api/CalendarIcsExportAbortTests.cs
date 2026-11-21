@@ -42,14 +42,23 @@ public class CalendarIcsExportAbortTests(ApiStackFixture fixture)
             var start = new DateTime(2031, 1, 1, 9, 0, 0, DateTimeKind.Utc);
             var series = (await (await fixture.PostWithAntiforgeryAsync(client, "/api/recurrence-patterns", new NewRecurrencePattern
             {
-                CalendarId = calendar.CalendarId, Title = "Bulky", Description = new string('x', 2000), StartDateTime = start,
-                EndDateTime = start.AddHours(1), Frequency = RecurrenceFrequency.Daily, Interval = 1, OccurrenceCount = 600,
+                CalendarId = calendar.CalendarId,
+                Title = "Bulky",
+                Description = new string('x', 2000),
+                StartDateTime = start,
+                EndDateTime = start.AddHours(1),
+                Frequency = RecurrenceFrequency.Daily,
+                Interval = 1,
+                OccurrenceCount = 600,
             })).EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ExistingRecurrencePattern>())!;
             var first = (await client.GetFromJsonAsync<PagedResult<ExistingCalendarEvent>>(
                 $"/api/recurrence-patterns/{series.RecurrencePatternId}/events?limit=1"))!.Items.Single();
             (await client.PutAsJsonAsync($"/api/calendar-events/{first.CalendarEventId}", new NewCalendarEvent
             {
-                CalendarId = calendar.CalendarId, Title = "Edited", StartDateTime = first.StartDateTime, EndDateTime = first.EndDateTime,
+                CalendarId = calendar.CalendarId,
+                Title = "Edited",
+                StartDateTime = first.StartDateTime,
+                EndDateTime = first.EndDateTime,
             })).EnsureSuccessStatusCode();
 
             var summary = await client.GetAsync($"/api/recurrence-patterns/{series.RecurrencePatternId}/ics/summary");

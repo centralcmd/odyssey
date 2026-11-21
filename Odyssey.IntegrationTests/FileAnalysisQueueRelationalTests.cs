@@ -132,7 +132,9 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
         context.UserRoles.Add(new IdentityUserRole<string> { UserId = UserId, RoleId = roleId });
         context.RoleClaims.Add(new IdentityRoleClaim<string>
         {
-            RoleId = roleId, ClaimType = PermissionClaims.Type, ClaimValue = PermissionClaims.FileAnalysisCreate,
+            RoleId = roleId,
+            ClaimType = PermissionClaims.Type,
+            ClaimValue = PermissionClaims.FileAnalysisCreate,
         });
         await context.SaveChangesAsync();
 

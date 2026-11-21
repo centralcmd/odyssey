@@ -94,7 +94,8 @@ internal sealed class TileRemovalFocus : IAsyncDisposable
         var index = -1;
         for (var i = 0; i < keys.Count; i++)
         {
-            if (string.Equals(keys[i], key, StringComparison.Ordinal)) { index = i; break; }
+            if (string.Equals(keys[i], key, StringComparison.Ordinal))
+            { index = i; break; }
         }
 
         if (index < 0)
@@ -114,7 +115,9 @@ internal sealed class TileRemovalFocus : IAsyncDisposable
     {
         if (focusJs is not null)
         {
-            try { await focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await focusJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

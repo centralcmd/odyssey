@@ -862,7 +862,10 @@ public class TransactionServiceTests
 
         var results = (await service.ListAsync(new TransactionsQueryParams
         {
-            AccountIds = [matching.AccountId], TagIds = [wanted.TransactionTagId], From = from, To = to,
+            AccountIds = [matching.AccountId],
+            TagIds = [wanted.TransactionTagId],
+            From = from,
+            To = to,
         })).Items;
 
         var only = Assert.Single(results);

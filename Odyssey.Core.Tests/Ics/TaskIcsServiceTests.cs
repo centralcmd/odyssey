@@ -212,8 +212,12 @@ public class TaskIcsServiceTests : IcsServiceTestBase
         {
             context.JournalTasks.AddRange(Enumerable.Range(0, 400).Select(i => new JournalTask
             {
-                ExternalUid = $"bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000), Position = i,
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                ExternalUid = $"bulk-{i}",
+                Title = $"Bulk {i}",
+                Content = new string('x', 4000),
+                Position = i,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
             }));
             await context.SaveChangesAsync();
         });

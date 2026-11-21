@@ -101,7 +101,9 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var geocoded = await host.Client.PutAsJsonAsync($"{LocationsPath}/{id}", Update("Converted place", LocationSource.Kartverket) with
         {
-            Latitude = 59.9m, Longitude = 10.7m, TimeZoneId = "Europe/Oslo",
+            Latitude = 59.9m,
+            Longitude = 10.7m,
+            TimeZoneId = "Europe/Oslo",
         });
         Assert.Equal(HttpStatusCode.OK, geocoded.StatusCode);
         Assert.Equal(LocationSource.Kartverket, (await geocoded.Content.ReadFromJsonAsync<ExistingLocation>())!.Source);
@@ -128,7 +130,9 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var response = await host.Client.PutAsJsonAsync($"{LocationsPath}/{other.LocationId}", Update(other.Name, LocationSource.Manual) with
         {
-            Line1 = "STORGATA  1", City = "oslo", CountryCode = "no",
+            Line1 = "STORGATA  1",
+            City = "oslo",
+            CountryCode = "no",
         });
 
         await AssertProblem(response, HttpStatusCode.Conflict, "line1");
@@ -143,7 +147,9 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var response = await host.Client.PutAsJsonAsync($"{LocationsPath}/{address.LocationId}", Update("Edited", LocationSource.ContactAddress) with
         {
-            Line1 = "Storgata 1", City = null, CountryCode = null,
+            Line1 = "Storgata 1",
+            City = null,
+            CountryCode = null,
         });
 
         await AssertProblem(response, HttpStatusCode.UnprocessableEntity, "city");
@@ -263,14 +269,24 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
         var id = await host.SeedLocationAsync("In use", line1: "Storgata 1", city: "Oslo", country: "NO");
         switch (reference)
         {
-            case "event": await host.SeedEventAsync(id); break;
-            case "series": await host.SeedSeriesAsync(id); break;
-            case "entry": await host.SeedEntryAsync(id); break;
+            case "event":
+                await host.SeedEventAsync(id);
+                break;
+            case "series":
+                await host.SeedSeriesAsync(id);
+                break;
+            case "entry":
+                await host.SeedEntryAsync(id);
+                break;
             case "address":
                 await host.PostAddressAsync(await host.PostContactAsync("Acme"), new NewAddress { Label = AddressLabel.Visiting, LocationId = id });
                 break;
-            case "property": await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = id }); break;
-            case "forwarder": await host.SeedLocationAsync("Forwarder", mergedInto: id, archived: true); break;
+            case "property":
+                await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = id });
+                break;
+            case "forwarder":
+                await host.SeedLocationAsync("Forwarder", mergedInto: id, archived: true);
+                break;
         }
 
         var response = await host.Client.DeleteAsync($"{LocationsPath}/{id}");
@@ -297,14 +313,24 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
             var id = await host.SeedLocationAsync($"In use by {reference}", line1: $"Storgata {bodies.Count + 1}", city: "Oslo", country: "NO");
             switch (reference)
             {
-                case "event": await host.SeedEventAsync(id); break;
-                case "series": await host.SeedSeriesAsync(id); break;
-                case "entry": await host.SeedEntryAsync(id); break;
+                case "event":
+                    await host.SeedEventAsync(id);
+                    break;
+                case "series":
+                    await host.SeedSeriesAsync(id);
+                    break;
+                case "entry":
+                    await host.SeedEntryAsync(id);
+                    break;
                 case "address":
                     await host.PostAddressAsync(await host.PostContactAsync("Acme"), new NewAddress { Label = AddressLabel.Visiting, LocationId = id });
                     break;
-                case "property": await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = id }); break;
-                case "forwarder": await host.SeedLocationAsync("Forwarder", mergedInto: id, archived: true); break;
+                case "property":
+                    await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = id });
+                    break;
+                case "forwarder":
+                    await host.SeedLocationAsync("Forwarder", mergedInto: id, archived: true);
+                    break;
             }
 
             var response = await host.Client.DeleteAsync($"{LocationsPath}/{id}");
@@ -530,7 +556,9 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var body = new Dictionary<string, object?>
         {
-            ["title"] = "Trip", ["content"] = "Nice", ["entryDate"] = "2026-01-10T00:00:00Z",
+            ["title"] = "Trip",
+            ["content"] = "Nice",
+            ["entryDate"] = "2026-01-10T00:00:00Z",
             ["locationId"] = place,
             ["locationRef"] = new { locationId = place, name = "Hijacked", archived = true },
             ["location"] = "by the lake",
@@ -851,7 +879,8 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var response = await host.Client.PutAsJsonAsync($"{PropertiesPath}/{cityOnly}", PropertyBody(new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.House, CountryCode = "no",
+            Kind = RealEstateKind.House,
+            CountryCode = "no",
         }));
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
@@ -873,9 +902,18 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = original });
         RealEstateDetailsDto Geocoded(string line1) => new()
         {
-            Kind = RealEstateKind.House, AddressLine = line1, PostalCode = null, City = "Oslo", CountryCode = "NO",
-            Latitude = 59.912734m, Longitude = 10.746094m, TimeZoneId = "Europe/Oslo", Source = LocationSource.Kartverket,
-            SourceReference = "0301-12345-1", ApplyTo = AddressApplyTo.ThisRecord, ExpectedOtherUses = 0,
+            Kind = RealEstateKind.House,
+            AddressLine = line1,
+            PostalCode = null,
+            City = "Oslo",
+            CountryCode = "NO",
+            Latitude = 59.912734m,
+            Longitude = 10.746094m,
+            TimeZoneId = "Europe/Oslo",
+            Source = LocationSource.Kartverket,
+            SourceReference = "0301-12345-1",
+            ApplyTo = AddressApplyTo.ThisRecord,
+            ExpectedOtherUses = 0,
         };
         Task<Guid?> Linked() => host.ReadAsync(c => c.RealEstateDetails.Where(d => d.PropertyId == property).Select(d => d.LocationId).SingleAsync());
 
@@ -909,8 +947,12 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var response = await host.Client.PutAsJsonAsync($"{PropertiesPath}/{property}", PropertyBody(new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.House, AddressLine = "Storgata 5", City = "Oslo", CountryCode = "NO",
-            ApplyTo = AddressApplyTo.AllUses, ExpectedOtherUses = 0,
+            Kind = RealEstateKind.House,
+            AddressLine = "Storgata 5",
+            City = "Oslo",
+            CountryCode = "NO",
+            ApplyTo = AddressApplyTo.AllUses,
+            ExpectedOtherUses = 0,
         }));
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
@@ -931,8 +973,11 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var response = await host.Client.PutAsJsonAsync($"{PropertiesPath}/{property}", PropertyBody(new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo",
-            ApplyTo = AddressApplyTo.AllUses, ExpectedOtherUses = 1,
+            Kind = RealEstateKind.House,
+            AddressLine = "Storgata 1",
+            City = "Oslo",
+            ApplyTo = AddressApplyTo.AllUses,
+            ExpectedOtherUses = 1,
         }));
 
         await AssertProblem(response, HttpStatusCode.UnprocessableEntity, "countryCode");
@@ -1279,7 +1324,8 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var edited = await host.Client.PutAsJsonAsync(path, Geocoded(Address("Storgata 3", "Oslo")) with
         {
-            ApplyTo = AddressApplyTo.AllUses, ExpectedOtherUses = 0,
+            ApplyTo = AddressApplyTo.AllUses,
+            ExpectedOtherUses = 0,
         });
         Assert.Equal(HttpStatusCode.NoContent, edited.StatusCode);
         var inPlace = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == address.LocationId));
@@ -1302,8 +1348,15 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
         await using var host = await Host.StartAsync(Factory, Everything);
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.House, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo", CountryCode = "NO",
-            Latitude = 59.912734m, Longitude = 10.746094m, TimeZoneId = "Europe/Oslo", Source = LocationSource.Kartverket,
+            Kind = RealEstateKind.House,
+            AddressLine = "Storgata 1",
+            PostalCode = "0155",
+            City = "Oslo",
+            CountryCode = "NO",
+            Latitude = 59.912734m,
+            Longitude = 10.746094m,
+            TimeZoneId = "Europe/Oslo",
+            Source = LocationSource.Kartverket,
             SourceReference = "0301-12345-1",
         });
 
@@ -1329,8 +1382,14 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         var property = await host.PostPropertyAsync(new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO",
-            Latitude = 59.9m, Longitude = 10.7m, TimeZoneId = "Europe/Oslo", Source = LocationSource.Kartverket,
+            Kind = RealEstateKind.House,
+            AddressLine = "Storgata 1",
+            City = "Oslo",
+            CountryCode = "NO",
+            Latitude = 59.9m,
+            Longitude = 10.7m,
+            TimeZoneId = "Europe/Oslo",
+            Source = LocationSource.Kartverket,
         });
 
         Assert.Equal(existing, await host.ReadAsync(c => c.RealEstateDetails.Where(d => d.PropertyId == property).Select(d => d.LocationId).SingleAsync()));
@@ -1381,8 +1440,13 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
         await using var host = await Host.StartAsync(Factory, Everything);
         var details = new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO",
-            Latitude = 59.9m, Longitude = key == "latitude" ? null : 10.7m, TimeZoneId = "Europe/Oslo",
+            Kind = RealEstateKind.House,
+            AddressLine = "Storgata 1",
+            City = "Oslo",
+            CountryCode = "NO",
+            Latitude = 59.9m,
+            Longitude = key == "latitude" ? null : 10.7m,
+            TimeZoneId = "Europe/Oslo",
             Source = key == "source" ? LocationSource.PropertyAddress : LocationSource.Kartverket,
         };
 
@@ -1439,7 +1503,10 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
     private static NewAddress Address(string line1, string city) => new()
     {
-        Label = AddressLabel.Visiting, Line1 = line1, City = city, CountryCode = "NO",
+        Label = AddressLabel.Visiting,
+        Line1 = line1,
+        City = city,
+        CountryCode = "NO",
     };
 
     private static NewCalendarEvent NewEvent(Guid calendarId, Guid? locationId, string? detail = null) => new()
@@ -1700,8 +1767,12 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
                 });
                 c.WeatherPointSites.Add(new WeatherPointSite
                 {
-                    WeatherPointId = id, SiteVersion = 1, Latitude = place.Latitude ?? 59.9m, Longitude = place.Longitude ?? 10.7m,
-                    TimeZoneId = place.TimeZoneId ?? "Europe/Oslo", AppliedAt = DateTime.UtcNow,
+                    WeatherPointId = id,
+                    SiteVersion = 1,
+                    Latitude = place.Latitude ?? 59.9m,
+                    Longitude = place.Longitude ?? 10.7m,
+                    TimeZoneId = place.TimeZoneId ?? "Europe/Oslo",
+                    AppliedAt = DateTime.UtcNow,
                 });
                 place.WeatherPointId = id;
                 await c.SaveChangesAsync();
