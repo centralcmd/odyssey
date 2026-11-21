@@ -112,6 +112,13 @@ public class NewsFeedFetchState
 
     public DateTime? ValidatorsResetRequestedAtUtc { get; set; }
 
+    /// <summary>
+    /// The <see cref="NewsFeed.KindChangedAtUtc"/> the purge loop last finished rewriting <see cref="NewsArticle.FeedKind"/>
+    /// for (issue #556 §4.8), worker-written. While it is older than the feed's change, the feed's articles may carry the
+    /// old kind, so readers add the feed to their kind predicate explicitly; once it catches up, <c>FeedKind</c> is exact.
+    /// </summary>
+    public DateTime? FeedKindRewrittenAtUtc { get; set; }
+
     /// <summary>A same-host permanent redirect target; only an API <c>PUT</c> applies it (§3.3).</summary>
     [StringLength(NewsLimits.MaxUrlLength)]
     public string? SuggestedUrl { get; set; }

@@ -3655,16 +3655,16 @@ namespace Odyssey.Context.Migrations
                         .IsDescending(true, false)
                         .HasDatabaseName("IX_NewsArticles_Sort");
 
+                    b.HasIndex("FeedKind", "SortAtUtc", "NewsArticleId")
+                        .IsDescending(false, true, false)
+                        .HasDatabaseName("IX_NewsArticles_Kind_Sort");
+
                     b.HasIndex("NewsFeedId", "IsRead", "FirstSeenAtUtc")
                         .HasDatabaseName("IX_NewsArticles_Feed_Read_FirstSeen");
 
                     b.HasIndex("Title", "Author", "Excerpt")
                         .HasDatabaseName("FT_NewsArticles_Title_Author_Excerpt")
                         .HasAnnotation("MySql:FullTextIndex", true);
-
-                    b.HasIndex("FeedKind", "FeedVisible", "SortAtUtc", "NewsArticleId")
-                        .IsDescending(false, false, true, false)
-                        .HasDatabaseName("IX_NewsArticles_Kind_Visible_Sort");
 
                     b.HasIndex("IsRead", "FeedVisible", "SortAtUtc", "NewsArticleId")
                         .IsDescending(false, false, true, false)
@@ -4106,6 +4106,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(256)
                         .IsUnicode(false)
                         .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("FeedKindRewrittenAtUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int?>("FeedTtlMinutes")
                         .HasColumnType("int");

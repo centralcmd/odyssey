@@ -280,46 +280,80 @@ public sealed class NewsFeedPurger(
     public const int AudioCleanupChunk = 100;
 
     /// <summary>
-    /// Rewrites <c>FeedKind</c> to match each live feed's type, a chunk at a time (§4.8). A switch to <c>Podcast</c>
-    /// also marks the feed's unread articles read, with <c>ReadAtUtc</c> so the read-state CHECK holds, and takes them
-    /// off the feed's unread count in the same transaction. A switch back leaves them read.
+    /// Rewrites <c>FeedKind</c> for the feeds whose type changed (§4.8), a chunk at a time and only for those feeds — never
+    /// a scan of every article. A switch to <c>Podcast</c> also marks the feed's unread articles read, with
+    /// <c>ReadAtUtc</c> so the read-state CHECK holds, and takes them off the feed's unread count in the same
+    /// transaction; a switch back leaves them read. When a feed has no article left with the old kind, the change it
+    /// caught up with is recorded in <see cref="NewsFeedFetchState.FeedKindRewrittenAtUtc"/>, and readers stop treating it
+    /// as pending. A second type change made meanwhile carries a later <c>KindChangedAtUtc</c>, so it stays pending.
     /// </summary>
     public async Task RewriteFeedKindAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var stale = await (from article in context.NewsArticles
-                           join feed in context.NewsFeeds on article.NewsFeedId equals feed.NewsFeedId
-                           where feed.DeletionRequestedAtUtc == null && article.FeedKind != feed.Kind
-                           select new { Article = article, feed.Kind })
-            .Take(VisibilityChunk)
-            .ToListAsync(cancellationToken);
-        if (stale.Count == 0)
+        var pending = await (from feed in context.NewsFeeds.AsNoTracking()
+                             where NewsFeedKindRewrite.PendingFeeds(context).Contains(feed.NewsFeedId)
+                             select new { feed.NewsFeedId, feed.Kind, feed.KindChangedAtUtc })
+            .Take(VisibilityChunk).ToListAsync(cancellationToken);
+        var budget = VisibilityChunk;
+        foreach (var feed in pending)
         {
+            if (budget <= 0)
+            {
+                return;
+            }
+
+            var stale = await context.NewsArticles
+                .Where(a => a.NewsFeedId == feed.NewsFeedId && a.FeedKind != feed.Kind)
+                .Take(budget)
+                .ToListAsync(cancellationToken);
+            if (stale.Count == 0)
+            {
+                await MarkRewrittenAsync(context, feed.NewsFeedId, feed.KindChangedAtUtc!.Value, cancellationToken);
+                continue;
+            }
+
+            budget -= stale.Count;
+            var now = Now;
+            var markedRead = 0;
+            foreach (var article in stale)
+            {
+                article.FeedKind = feed.Kind;
+                if (feed.Kind == NewsFeedKind.Podcast && !article.IsRead)
+                {
+                    article.IsRead = true;
+                    article.ReadAtUtc = now;
+                    markedRead++;
+                }
+            }
+
+            await NewsTransactions.RunAsync(context, async () =>
+            {
+                await context.SaveChangesAsync(cancellationToken);
+                if (markedRead > 0)
+                {
+                    await counters.AddToFeedAsync(context, feed.NewsFeedId, 0, -markedRead, cancellationToken);
+                }
+            }, cancellationToken);
+            context.ChangeTracker.Clear();
+        }
+    }
+
+    /// <summary>The worker-owned completion mark, one column, never touching the fetch fence.</summary>
+    private static async Task MarkRewrittenAsync(OdysseyContext context, Guid feedId, DateTime changedAtUtc, CancellationToken cancellationToken)
+    {
+        if (context.Database.IsRelational())
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE `NewsFeedFetchStates` SET `FeedKindRewrittenAtUtc` = {changedAtUtc} WHERE `NewsFeedId` = {feedId}", cancellationToken);
             return;
         }
 
-        var now = Now;
-        var markedRead = new Dictionary<Guid, int>();
-        foreach (var row in stale)
+        if (await context.NewsFeedFetchStates.FirstOrDefaultAsync(s => s.NewsFeedId == feedId, cancellationToken) is { } state)
         {
-            row.Article.FeedKind = row.Kind;
-            if (row.Kind == NewsFeedKind.Podcast && !row.Article.IsRead)
-            {
-                row.Article.IsRead = true;
-                row.Article.ReadAtUtc = now;
-                markedRead[row.Article.NewsFeedId] = markedRead.GetValueOrDefault(row.Article.NewsFeedId) + 1;
-            }
-        }
-
-        await NewsTransactions.RunAsync(context, async () =>
-        {
+            state.FeedKindRewrittenAtUtc = changedAtUtc;
             await context.SaveChangesAsync(cancellationToken);
-            foreach (var (feedId, count) in markedRead)
-            {
-                await counters.AddToFeedAsync(context, feedId, 0, -count, cancellationToken);
-            }
-        }, cancellationToken);
+        }
     }
 
     /// <summary>

@@ -497,7 +497,7 @@ public sealed class NewsArticleService(
     // ── Shared rules ──────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>The resolved scope of one list or mark-read request: the feeds to exclude and an inherited-tag expansion.</summary>
-    private sealed record NewsScope(IReadOnlyList<Guid> ExcludedFeeds, IReadOnlyList<Guid> ExpandedFeeds);
+    private sealed record NewsScope(IReadOnlyList<Guid> ExcludedFeeds, IReadOnlyList<Guid> ExpandedFeeds, IReadOnlyList<Guid> KindOpenFeeds);
 
     /// <summary>
     /// The id rules (§5.2): an unknown id — a feed pending deletion included — is a <c>422</c> keyed by its list. A named
@@ -547,13 +547,18 @@ public sealed class NewsArticleService(
                 .News().ToListAsync(cancellationToken);
         }
 
-        return new NewsScope(excluded, expanded);
+        // The FeedKind predicate (§4.8): exact once a feed's rewrite caught up; a feed still being rewritten, or one the
+        // request names (a named podcast feed is included on purpose), is let through by id instead.
+        var pending = await NewsFeedKindRewrite.PendingFeeds(context).News().ToListAsync(cancellationToken);
+        IReadOnlyList<Guid> open = [.. pending.Concat(filter.FeedIds).Distinct()];
+        return new NewsScope(excluded, expanded, open);
     }
 
     /// <summary>Every filter but the id lists and the search: visibility, read state, dates and the <c>asOfUtc</c> edge.</summary>
     private IQueryable<NewsArticle> Filtered(NewsScope scope, DateTime asOf, NewsArticleFilter filter)
     {
-        var articles = context.NewsArticles.AsNoTracking().Where(a => a.FirstSeenAtUtc <= asOf);
+        var articles = NewsFeedKindRewrite.OfKind(
+            context.NewsArticles.AsNoTracking().Where(a => a.FirstSeenAtUtc <= asOf), NewsFeedKind.Article, scope.KindOpenFeeds);
         if (scope.ExcludedFeeds.Count > 0)
         {
             var excluded = scope.ExcludedFeeds;

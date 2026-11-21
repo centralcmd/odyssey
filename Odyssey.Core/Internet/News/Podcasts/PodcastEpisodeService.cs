@@ -60,22 +60,21 @@ public sealed class PodcastEpisodeService(
             var asOf = position?.AsOfUtc ?? Now;
             await EnsureFeedsAsync(filter.FeedIds, cancellationToken);
 
-            var matching = Matching(filter, terms, asOf);
+            var matching = await MatchingAsync(filter, terms, asOf, cancellationToken);
             var newest = filter.SortBy == PodcastEpisodeSortBy.Newest;
             var keyed = matching;
             if (position is { } p)
             {
                 var (s, id) = (p.SortAtUtc, p.Id);
                 keyed = newest
-                    ? keyed.Where(e => e.SortAtUtc < s || (e.SortAtUtc == s && e.NewsArticleId.CompareTo(id) < 0))
-                    : keyed.Where(e => e.SortAtUtc > s || (e.SortAtUtc == s && e.NewsArticleId.CompareTo(id) > 0));
+                    ? keyed.Where(e => e.SortAtUtc < s || (e.SortAtUtc == s && e.Id.CompareTo(id) < 0))
+                    : keyed.Where(e => e.SortAtUtc > s || (e.SortAtUtc == s && e.Id.CompareTo(id) > 0));
             }
 
             var ordered = newest
-                ? keyed.OrderByDescending(e => e.SortAtUtc).ThenByDescending(e => e.NewsArticleId)
-                : keyed.OrderBy(e => e.SortAtUtc).ThenBy(e => e.NewsArticleId);
-            var keys = await ordered.Skip(position is null ? query.Offset : 0).Take(limit + 1)
-                .Select(e => new { e.NewsArticleId, e.SortAtUtc }).News().ToListAsync(cancellationToken);
+                ? keyed.OrderByDescending(e => e.SortAtUtc).ThenByDescending(e => e.Id)
+                : keyed.OrderBy(e => e.SortAtUtc).ThenBy(e => e.Id);
+            var keys = await ordered.Skip(position is null ? query.Offset : 0).Take(limit + 1).News().ToListAsync(cancellationToken);
 
             var page = new PodcastEpisodePage { AsOfUtc = asOf };
             var hasMore = keys.Count > limit;
@@ -93,10 +92,10 @@ public sealed class PodcastEpisodeService(
 
             if (hasMore && keys.Count > 0)
             {
-                page.NextCursor = cursors.Issue(filter, new NewsCursorPosition(keys[^1].SortAtUtc, keys[^1].NewsArticleId, 0, asOf));
+                page.NextCursor = cursors.Issue(filter, new NewsCursorPosition(keys[^1].SortAtUtc, keys[^1].Id, 0, asOf));
             }
 
-            page.Items = [.. await SummariesAsync([.. keys.Select(k => k.NewsArticleId)], cancellationToken)];
+            page.Items = [.. await SummariesAsync([.. keys.Select(k => k.Id)], cancellationToken)];
             return page;
         });
 
@@ -116,33 +115,51 @@ public sealed class PodcastEpisodeService(
         }
     }
 
-    private IQueryable<PodcastEpisode> Matching(PodcastEpisodeFilter filter, IReadOnlyList<string> terms, DateTime asOf)
+    /// <summary>
+    /// The matching episodes as sort keys (§5.2 #6 query plan). With named feeds the keys are the episode's own copy of the
+    /// sort key, read on <c>IX_PodcastEpisodes_Feed_Sort</c>; with none they are the article's, read on the kind-aware
+    /// <c>IX_NewsArticles_Kind_Sort</c> through <c>FeedKind = Podcast</c> (plus any feed whose copy is still being
+    /// rewritten). The two are the same value — both are written once, at insert — and the join to the feed row stays the
+    /// authoritative filter either way.
+    /// </summary>
+    private async Task<IQueryable<NewsArticleKey>> MatchingAsync(
+        PodcastEpisodeFilter filter, IReadOnlyList<string> terms, DateTime asOf, CancellationToken cancellationToken)
     {
         var feedIds = filter.FeedIds;
         var feeds = context.NewsFeeds.AsNoTracking().Where(f => f.Kind == NewsFeedKind.Podcast && f.DeletionRequestedAtUtc == null
             && (filter.IncludeArchivedFeeds || f.ArchivedAtUtc == null || feedIds.Contains(f.NewsFeedId)));
+        var stream = context.NewsArticles.AsNoTracking().Where(a => a.FirstSeenAtUtc <= asOf);
         if (feedIds.Count > 0)
         {
             feeds = feeds.Where(f => feedIds.Contains(f.NewsFeedId));
         }
+        else
+        {
+            var pending = await NewsFeedKindRewrite.PendingFeeds(context).News().ToListAsync(cancellationToken);
+            stream = NewsFeedKindRewrite.OfKind(stream, NewsFeedKind.Podcast, pending);
+        }
 
-        var stream = context.NewsArticles.AsNoTracking().Where(a => a.FirstSeenAtUtc <= asOf);
         if (terms.Count > 0)
         {
             stream = search.Apply(stream, terms);
         }
 
-        var episodes = from episode in context.PodcastEpisodes.AsNoTracking()
-                       join feed in feeds on episode.NewsFeedId equals feed.NewsFeedId
-                       join article in stream on episode.NewsArticleId equals article.NewsArticleId
-                       select episode;
+        var episodes = context.PodcastEpisodes.AsNoTracking();
         if (filter.AudioStates.Count > 0)
         {
             var states = filter.AudioStates;
             episodes = episodes.Where(e => context.PodcastEpisodeAudio.Any(a => a.NewsArticleId == e.NewsArticleId && states.Contains(a.State)));
         }
 
-        return episodes;
+        return feedIds.Count > 0
+            ? from episode in episodes
+              join feed in feeds on episode.NewsFeedId equals feed.NewsFeedId
+              join article in stream on episode.NewsArticleId equals article.NewsArticleId
+              select new NewsArticleKey { Id = episode.NewsArticleId, SortAtUtc = episode.SortAtUtc }
+            : from article in stream
+              join episode in episodes on article.NewsArticleId equals episode.NewsArticleId
+              join feed in feeds on article.NewsFeedId equals feed.NewsFeedId
+              select new NewsArticleKey { Id = article.NewsArticleId, SortAtUtc = article.SortAtUtc };
     }
 
     // ── Summaries and the detail ──────────────────────────────────────────────────────────────────────
