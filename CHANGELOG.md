@@ -5,6 +5,27 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.49.0](https://github.com/centralcmd/odyssey/compare/v0.48.0...v0.49.0) (2026-11-21)
+
+
+### Features
+
+* **migrations:** make journal and task tag names unique ([#574](https://github.com/centralcmd/odyssey/issues/574)) ([b73ae90](https://github.com/centralcmd/odyssey/commit/b73ae90758f6ed5fd9df0164f44afc76b9ca3011))
+* sync the client with the design system at 1795262817-2dbb ([#570](https://github.com/centralcmd/odyssey/issues/570)) ([5ed3c0a](https://github.com/centralcmd/odyssey/commit/5ed3c0a71757dd9d707a9a4350040669a790ce6a))
+
+
+### Refactoring
+
+* apply the november 2026 maintainability review ([#555](https://github.com/centralcmd/odyssey/issues/555)) ([977f175](https://github.com/centralcmd/odyssey/commit/977f17509e72a673ae2df651aa9b19a128a5b92b))
+* **client:** maintainability clean-up from the frontend review ([#542](https://github.com/centralcmd/odyssey/issues/542)) ([484999c](https://github.com/centralcmd/odyssey/commit/484999c4263c104ed9264315cf7793f1c7bc4a4b))
+* **migrations:** drop the legacy file blob storage ([#550](https://github.com/centralcmd/odyssey/issues/550)) ([5b224ff](https://github.com/centralcmd/odyssey/commit/5b224ff66d173caef8910c435bce8429f8ca6a66))
+* remove dead code found by the maintainability review ([#540](https://github.com/centralcmd/odyssey/issues/540)) ([cb7c211](https://github.com/centralcmd/odyssey/commit/cb7c211b33941f842dd3094ace6e3f577fd8883f))
+
+
+### CI/CD
+
+* parse the release pr output in the perf dispatch script ([#553](https://github.com/centralcmd/odyssey/issues/553)) ([8832038](https://github.com/centralcmd/odyssey/commit/8832038245e87378c8acdc2b72c2185ab852d865))
+
 ## [0.48.0](https://github.com/centralcmd/odyssey/compare/v0.47.0...v0.48.0) (2026-11-19)
 
 
