@@ -21,7 +21,7 @@ Procedure:
    - On findings: a comment listing EACH problem as its own entry, every entry including (a) a clear description of the gap, (b) the relevant WCAG 2.2 success criterion as `<number> <Name> – Level <A|AA>` (e.g. `1.4.3 Contrast (Minimum) – Level AA`), and (c) a concrete, actionable suggestion for improvement.
 
 ## Mode 2 — PR Review
-Trigger: any pull request (all PRs).
+Trigger: a pull request — dispatched by the `pr-review` skill (which sends all five reviewers at every PR), or on explicit request. Nothing runs this agent automatically on PR open.
 
 Procedure:
 1. FIRST determine whether the PR contains frontend changes. Treat as frontend any changes under `Odyssey.Client` (`.razor`, `.razor.cs`, `.razor.css`, `.css`, `.js`, wwwroot assets, MudBlazor/Ods* components, layouts, pages, navigation), or any markup/styling that affects the rendered UI. DTO/enum changes that drive UI labels or states count as frontend-relevant when they change what the user sees. Pure backend (services, controllers, migrations, contexts, infra/config without UI impact) does NOT count.

@@ -34,7 +34,7 @@ Either way the output is the same: a complete, root-caused report, followed by a
 Establish the facts. Ask the user only for what you can't determine yourself:
 1. What did you observe (symptom)? What did you expect instead?
 2. Exact steps that trigger it — and is it reliably reproducible?
-3. Where? (Affected area — see the list in Step 3.)
+3. Where? (Affected area — one of the `affected_area` options in `.github/ISSUE_TEMPLATE/bug_report.yml`.)
 4. How are you running it? (Docker Compose / Aspire / bare `dotnet run`.)
 5. Any error output? (browser console, API logs, stack trace.)
 6. Which commit/branch?
@@ -59,8 +59,8 @@ This is what makes an Odyssey bug report valuable. Do not stop at the symptom.
 ### Investigation toolkit (Odyssey-specific)
 - **API directly:** `curl -i http://localhost:5188/<path>` (bypasses NGINX). Via the client origin: `http://localhost:5199/api/<path>`.
 - **API logs:** `docker compose logs api --tail 100`.
-- **DB:** `docker exec odyssey-mariadb mariadb -uroot -p"<MARIADB_ROOT_PASSWORD from .env>" odyssey -e "<sql>"` (the three logical DBs share one `odyssey` schema).
-- **UI repro:** log in with the seeded/test user in `.env`; enter via `/` — a direct GET to `/login`, `/register`, `/manage/*`, `/auth/*` returns 405 (see #157), so don't navigate to them directly.
+- **DB:** `docker exec odyssey-mariadb mariadb -uroot -p"<MARIADB_ROOT_PASSWORD from .env, else the Compose default root_password>" odyssey -e "<sql>"` (one database, `odyssey`, holds the whole schema — identity and domain alike).
+- **UI repro:** log in as a seeded demo user — `admin@`, `owner@`, `user@` or `guest@demo.example.com`, shared password `Odyssey!Demo1` (`Odyssey.TestData/DemoUsers.cs`); enter via `/` — a direct GET to `/login`, `/register`, `/manage/*`, `/auth/*` returns 405 (see #157), so don't navigate to them directly.
 - **Tests:** `dotnet test Odyssey.sln` (EF InMemory; no database needed).
 
 ---
@@ -82,7 +82,7 @@ Follow `references/bug-template.md` (modeled on #157/#158). Sections, in order:
 
 Rules:
 - `## Section` headings; fenced code blocks for snippets, config, logs, and `file:line` references.
-- **Affected area** must be one of the official `bug_report.yml` values: API · Client / Frontend · Finance · Auth · File Storage · User Preferences · Database / EF Core Migrations · Docker / Infrastructure · Other / Unknown.
+- **Affected area** must be one of the `affected_area` dropdown options in [`.github/ISSUE_TEMPLATE/bug_report.yml`](../../../.github/ISSUE_TEMPLATE/bug_report.yml) — read the file rather than recalling the list; its options get renamed.
 - Be specific and reproducible — no vague "it doesn't work."
 - Mark uncertain claims with `> Note:` or "needs verification"; never present a guess as confirmed.
 - Title: `bug: <concise symptom>` — lowercase after the prefix, present tense, under ~72 chars.
@@ -141,7 +141,7 @@ EOF
 - **Always:** `claude` (AI-generated) + `bug`. Mirrors the spec-writer skills' `claude,feature`.
 - **Add one secondary label when it fits:** `security` (security-relevant), `build` (CI / pipeline / release), `test` (test-only), `doc` (docs). Do **not** use `fix` — that label is for non-bug changes.
 - **Assignee:** `centralcmd` (repo convention).
-- **Milestone:** always check, per [`.claude/issue-milestones.md`](../../issue-milestones.md) — set one when the bug falls inside an open milestone's scope, leave it unset and say so when none does, and never create a milestone. (The earlier advice here named "Quality of Life Update" and "MVP" as the standing choices; neither exists. Look them up at filing time rather than trusting a name written down months ago.)
+- **Milestone:** always check, per [`.claude/issue-milestones.md`](../../issue-milestones.md) — set one when the bug falls inside an open milestone's scope, leave it unset and say so when none does, and never create a milestone. Look them up at filing time rather than trusting a name written down here — milestones are added and renamed as releases are planned.
 - **Project:** none configured in this repo — skip.
 
 ---

@@ -57,7 +57,7 @@ children, `RESTRICT` where a link must block deletion.
 - `Id`
 - `FileId` (FK → `FileMetadata`, CASCADE)
 - `RequestedByUserId` (FK → `AspNetUsers`, SET NULL — the job outlives its requester)
-- `Status` (required enum; `0=Queued`, `1=Running`, `2=Completed`, `3=Failed`)
+- `Status` (required enum; `0=New`, `1=Queued`, `2=Running`, `3=Completed`, `4=Failed`, `5=Cancelled`)
 
 > Note: MVP does not include a separate ImportedTransactionLink table.
 ```
@@ -118,8 +118,9 @@ Walk `security-review-checklist.md` here. Numbered list covering at minimum:
 7. **Audit trail** — needed, or explicitly why not
 8. **Error-message disclosure** — what identifiers 4xx bodies echo
 
-A new claim must note the `RolePermissions` mapping **and** that existing sessions only pick it up
-after a sign-out/sign-in — claims are baked into the auth cookie at login.
+A new claim must note the `RolePermissions` mapping **and** that existing sessions pick it up at their
+next security-stamp revalidation — within one minute (`ValidationInterval`, `Odyssey.Api/Program.cs`),
+with no sign-out needed; until then a session keeps the claims it was issued with.
 
 ---
 

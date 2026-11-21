@@ -52,6 +52,7 @@ type, not to Odyssey.
 | `project/templates/<slug>/` | Page templates (they load `templates/kit-app.js`) |
 | `project/handoff/OdysseyTheme.cs`, `README.md` | The MudBlazor theme hand-off |
 | `project/github.md` | The designer's sync notes and screen map |
+| `project/_ds_manifest.json` | The manifest of the system's components — a new entry is a component the client may owe an `Ods*` wrapper for |
 
 Naming contract: design-system `Foo.jsx` ⇄ Blazor `Odyssey.Client/Components/OdsFoo.razor`; each
 `tokens.css` token ⇄ its `wwwroot/css/app.css` / `Theme/OdysseyTheme.cs` counterpart.
@@ -75,7 +76,8 @@ Naming contract: design-system `Foo.jsx` ⇄ Blazor `Odyssey.Client/Components/O
 `action: "list", scope: "files"`. Small text files come back inline; larger ones are saved to the
 scratchpad, and the result says where.
 
-**The whole system** (a sync, a parity run, a broad comparison): about 930 files and 9 MB. Small files
+**The whole system** (a sync, a parity run, a broad comparison): over a thousand files (the
+`files` map in `.claude/design-system-sync.json` lists every one as of the last sync). Small files
 come back inline, so one context reading all of them fills up. Fan the download out to parallel
 subagents, each told to save its share and report only a file count:
 
@@ -117,7 +119,7 @@ anyway.
 
 ## Parity check
 
-Eleven tests in `Odyssey.Client.Tests` compare the client with design-system files. They cover:
+The tests in `Odyssey.Client.Tests` that read through `DesignSystemSource` compare the client with design-system files. They cover:
 
 - the palette contrast-text tokens, `--control-border` and `--error-cta-text`;
 - the chart tokens and the chart stroke geometry;

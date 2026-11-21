@@ -99,7 +99,9 @@ BODY
    when you report the issue number. **Both halves of a pair take the same milestone, or neither does.**
 
 The labels are **taxonomy, not triggers** — no workflow fires on a label (`claude.yml` runs on
-comments and issue open/assign; `claude-code-review.yml` only on an `@claude review` comment). They
+an `@claude` mention in an issue or PR comment, a PR review comment, a submitted PR review, or an
+issue that is opened or assigned — see its `on:` block; `claude-code-review.yml` only on an
+`@claude review` comment). They
 mark what the issue is in scope for; the review loop below does the actual dispatching.
 
 ## Cross-linking the pair

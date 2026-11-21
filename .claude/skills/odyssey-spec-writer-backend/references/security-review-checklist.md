@@ -66,8 +66,9 @@ Echoing identifiers in 4xx bodies can be an existence oracle.
   claim's boundary (ties back to #2 and #3). State which claim gates each endpoint.
 - **New** claim: add the constant to `PermissionClaims`, then to `RolePermissions.AllClaims` and every
   role that should hold it. **No migration** — `RoleClaimSeeder` reconciles the rows at runtime. Note
-  in the spec that **users must sign out and back in**; claims are baked into the auth cookie at
-  login, so a refresh is not enough.
+  in the spec that live sessions gain or lose it at their next **security-stamp revalidation** —
+  within one minute (`ValidationInterval`, `Odyssey.Api/Program.cs`), no sign-out needed — and that
+  until then a session keeps the claims it was issued with.
 - A claim that would be granted to every role still buys something: it is a **revocation lever that
   exists before release**, and retrofitting one later de-authorizes live sessions.
 
