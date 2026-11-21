@@ -1033,6 +1033,7 @@ public class AuthorizationPolicyTests
         Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.NewsFeedFetch]);
         Assert.Equal([PermissionClaims.CalendarUpdate], claims[Dtos.Application.JobType.RecurrenceKeyBackfill]);
         Assert.Empty(claims[Dtos.Application.JobType.PodcastAudioDownload]);
+        Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.PodcastAudioRetention]);
         Assert.Equal(PermissionClaims.SystemSettingsUpdate, Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim);
         Assert.DoesNotContain(DeclaredClaims(), claim => claim.StartsWith("file-storage.", StringComparison.Ordinal)
             && claim != PermissionClaims.FileStorageRead);
@@ -1051,6 +1052,7 @@ public class AuthorizationPolicyTests
         Assert.Equal(PermissionClaims.NewsFeedsUpdate, claims[Dtos.Application.JobType.NewsFeedFetch]);
         Assert.Equal(PermissionClaims.CalendarRead, claims[Dtos.Application.JobType.RecurrenceKeyBackfill]);
         Assert.Equal(PermissionClaims.NewsRead, claims[Dtos.Application.JobType.PodcastAudioDownload]);
+        Assert.Equal(PermissionClaims.NewsRead, claims[Dtos.Application.JobType.PodcastAudioRetention]);
     }
 
     /// <summary>

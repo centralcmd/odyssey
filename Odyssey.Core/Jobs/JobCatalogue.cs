@@ -143,6 +143,14 @@ public static class JobCatalogue
             ManualRunClaims: [],
             DetailReadClaim: PermissionClaims.NewsRead,
             ManualRunSupported: false),
+        // Podcast audio retention (issue #556 §3.7): a daily pass per process, recorded only when it released audio, so
+        // it is work-driven here. A manual run releases only what the next pass would, under the claim that sets the
+        // auto-delete rule; its counts follow news.read.
+        new(JobType.PodcastAudioRetention, typeof(Odyssey.Core.Internet.News.Podcasts.PodcastAudioRetentionJob), Odyssey.Core.Internet.News.Podcasts.PodcastAudioRetentionJob.Poll,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: Odyssey.Core.Internet.News.Podcasts.PodcastTiming.RetentionStaleAfter,
+            ManualRunClaims: [PermissionClaims.NewsFeedsUpdate],
+            DetailReadClaim: PermissionClaims.NewsRead),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>
