@@ -345,7 +345,14 @@ per-page UI-state key is `<route>-page` (e.g. `contracts-page`).
 ## Code Style
 
 [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions),
-with comments used sparingly. Field naming:
+with comments used sparingly. Two rules the build enforces (`EnforceCodeStyleInBuild`, `Directory.Build.props`):
+
+- **Braces on every `if`/`else`/`for`/`foreach`/`while` body** (`csharp_prefer_braces`, IDE0011 at warning, which fails
+  the build). Analyzers don't see `.razor` `@code` blocks, so review covers those.
+- **Doc comments must stay valid**: a stale `cref`/`paramref` or malformed doc XML fails the build. A cref to a type in
+  a project this one cannot reference is written as `<c>…</c>`.
+
+Field naming:
 
 - **Private/protected instance fields:** plain camelCase, **no `_` prefix** (`private readonly AppDbContext db;`) —
   **except in Blazor components**.
