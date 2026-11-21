@@ -73,8 +73,8 @@ image is never served from a stale cache.")]
         CancellationToken cancellationToken = default)
     {
         // Metadata only — never the stored bytes. no-cache makes revalidation the hot path, so
-        // materialising the LONGBLOB to answer a conditional request would make every return visit pay
-        // for a response that carries no body.
+        // opening the stored object (ContactAvatars area) to answer a conditional request would make every
+        // return visit pay for a response that carries no body.
         var descriptor = await avatarService.GetDescriptorAsync(id, cancellationToken);
         if (descriptor is null)
         {

@@ -14,7 +14,9 @@ The tests need a **running, seeded stack** (seeding is on by default in Developm
 downloads its Chromium build automatically on first run.
 
 ```bash
-# Option A — bring the stack up yourself, then test, then tear down
+# Option A — bring the stack up yourself (the worker included: it seeds the demo files), then test,
+# then tear down. `down -v` deletes the database volume — never run it against a stack someone else
+# is using; see docs/running-locally-alongside-a-live-stack.md.
 docker compose up -d --build
 dotnet test Odyssey.E2ETests
 docker compose down -v
@@ -32,6 +34,7 @@ E2E_BASE_URL=http://localhost:5199 dotnet test Odyssey.E2ETests
 |---|---|---|
 | `E2E_BASE_URL` | `http://localhost:5199` | Base URL of the client to drive |
 | `E2E_MANAGE_STACK` | unset | When `true`, the fixture runs `docker compose up -d --build` and `down` |
+| `E2E_API_BASE_URL` | the client origin, then `http://localhost:5188` | API address for the tests that set up their own data over HTTP with the browser's cookies (`CalendarAttachmentReflowTests`) |
 | `ODYSSEY_REQUIRE_TIER` | unset | Comma-separated tiers that must run: `e2e` here (also `integration`, `e2e-api`, `design-system`, `perf`, `all`). A required tier **fails** instead of skipping when its stack is absent |
 | `E2E_READY_TIMEOUT_SECONDS` | 10 s, 120 s when required, 180 s when managed | How long to wait for the stack to answer |
 
@@ -59,6 +62,16 @@ A stack that **answers but is broken always fails**, whatever the variable says:
 Other stack-internal breakage (for example the stale dev server below) still surfaces as test
 timeouts; the fixture checks reachability and the API route, not every asset.
 
+## Writing a test
+
+- **Sign in through `E2ESignIn.SignInAsync`**, never a hand-rolled sequence. The sign-in surface is
+  rate-limited by network, not by account, so every class spends from one budget and the last one is
+  refused — on the page, not as an error. The helper polls `IPage.Url` (a Blazor route change may raise
+  no navigation), waits the window out and retries.
+- **Wait for seeded files with `DemoFileWait`** (`TestShared/`). The worker's `DemoFileSeeder` writes the
+  demo files, photos, contact images and albums shortly *after* the stack reports healthy, so a test
+  that needs one polls for it, bounded at 3 minutes.
+
 ## Notes
 
 - The Chromium download requires network access on first run.
@@ -67,7 +80,7 @@ timeouts; the fixture checks reachability and the API route, not every asset.
   Odyssey.AppHost`) and use Option C with the Aspire client URL.
 - **A Release client can't reach the API under Aspire or a bare `dotnet run`.** Build those Debug —
   which is the default, so this bites only when `-c Release` is passed explicitly (easy to do by
-  reflex, since the build command in CLAUDE.md is `-c Release`). `Odyssey.Client/Program.cs` picks
+  reflex after a Release build of the solution). `Odyssey.Client/Program.cs` picks
   the API address at **compile time**: `#if DEBUG` hardcodes `http://localhost:5188`, while Release
   falls back to same-origin `/api/`, which is correct **only** under Docker Compose, where NGINX
   proxies it. Under Aspire nothing serves that path, so every API call lands on the SPA fallback and
