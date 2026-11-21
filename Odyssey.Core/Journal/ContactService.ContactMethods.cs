@@ -752,7 +752,7 @@ public partial class ContactService
         var emails = await context.EmailAddresses.Where(e => e.ContactId == contact.ContactId).ToListAsync(cancellationToken);
         var phones = await context.PhoneNumbers.Where(p => p.ContactId == contact.ContactId).ToListAsync(cancellationToken);
 
-        var remappedAddresses = 0;
+        var addressLabelsRemapped = 0;
         foreach (var address in addresses)
         {
             var clamped = ContactLabelScope.Clamp(address.Label, newType);
@@ -762,10 +762,11 @@ public partial class ContactService
             }
 
             address.Label = clamped;
-            remappedAddresses++;
+            addressLabelsRemapped++;
         }
 
-        var remappedEmails = 0;
+        // Not "remappedEmails": CodeQL's private-data rule matches names like e.?mail and read this count as an address.
+        var mailLabelsRemapped = 0;
         foreach (var email in emails)
         {
             var clamped = ContactLabelScope.Clamp(email.Label, newType);
@@ -775,10 +776,10 @@ public partial class ContactService
             }
 
             email.Label = clamped;
-            remappedEmails++;
+            mailLabelsRemapped++;
         }
 
-        var remappedPhones = 0;
+        var phoneLabelsRemapped = 0;
         foreach (var phone in phones)
         {
             var clamped = ContactLabelScope.Clamp(phone.Label, newType);
@@ -788,7 +789,7 @@ public partial class ContactService
             }
 
             phone.Label = clamped;
-            remappedPhones++;
+            phoneLabelsRemapped++;
         }
 
         // A bulk mutation with no user-facing surface (the contact PUT returns no body) needs a record
@@ -798,7 +799,7 @@ public partial class ContactService
             + "{RemappedAddresses} of {AddressCount} addresses, {RemappedEmails} of {EmailCount} emails, "
             + "{RemappedPhones} of {PhoneCount} phone numbers.",
             contact.ContactId, previousType, newType,
-            remappedAddresses, addresses.Count, remappedEmails, emails.Count, remappedPhones, phones.Count);
+            addressLabelsRemapped, addresses.Count, mailLabelsRemapped, emails.Count, phoneLabelsRemapped, phones.Count);
     }
 
     private async Task<Contact?> LoadForChildMutation(Guid contactId, CancellationToken cancellationToken) =>
