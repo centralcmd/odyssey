@@ -1,6 +1,6 @@
 {
  "artifact": "https://claude.ai/artifact/VkrcragM9HGn1cXKkANizr",
- "version": "1795262817-2dbb",
+ "version": "1795264587-4838",
  "syncedOn": "2026-11-21",
  "files": {
   "SKILL.md": "cb8f87330968f6adefa8735b1cefdc9fc78742472c44fb5eeb3a138218a5a9af",
@@ -803,7 +803,7 @@
   "project/components/bundle.css": "d636a426571db46110dd5997c0d12da16cb1ab4fd92cdc520d4032235ff7c95c",
   "project/components/bundle.js": "5f5c4cb58ce75739334f759d112e8643b9a629b3e0bb2496cf3e16bc03cef6bc",
   "project/components/index.d.ts": "dba7b14ea46bbd6a5dd9a0e3209e985a364fb22753672e0224bb9b5f796e00e4",
-  "project/design-system.json": "eed102a218d657b85400178b821d3d59e16da519aa25e24cd42e9551557accc1",
+  "project/design-system.json": "e5a3e4cab3678b2dea6c1c235e311ac2134a21ded18d3d6cff3972c29d5380fe",
   "project/docs/components-accounts.md": "34f52c929f12a9b3d48e20f4ae7282cba6852f292d8a644b8ae3d5af96c156b7",
   "project/docs/components-authentication-and-users.md": "01e8be88396dc9b379a4b32265ed1e642a0d7c4f746fa72c938e21900358a5d5",
   "project/docs/components-background-jobs.md": "f3d31b36f81be4daa7e14eb6b269f05230f4a3e520bd665ae57c83df9e8bff09",
@@ -979,7 +979,7 @@
   "project/ui_kits/web/Locations.jsx": "31e69d5b9c1dd7df4396dd1a2b0c98db447b89991e6fa6d249c89c9be1ba0cb9",
   "project/ui_kits/web/Login.jsx": "0e7d36b93126dd4dde3266c1898b58c87c49aad60e6ddcb248f0b09362770a5e",
   "project/ui_kits/web/ManageCalendarsModal.jsx": "18c529584c7a3043a923521abc810fc7b5056883cecb6fab488254d66b0ab758",
-  "project/ui_kits/web/News.jsx": "af884f8c1df5f5f559a2b71ab7e84793af5a2b43400e345ce019e983ec4b664b",
+  "project/ui_kits/web/News.jsx": "547e6276b68b432802f225bc5c901c41c9a3cd959b6f186c2d44a0c376f53323",
   "project/ui_kits/web/NewsFeeds.jsx": "6ce5b91a5e7ac54e27a8120cd2d70182d0f1ec6c8d78f62325ccff140d4a6fee",
   "project/ui_kits/web/NewsTags.jsx": "7ff8c68f39e330f0dea09cb87c96066745cf4700c730dcd6ec4d5e28ab6d5e63",
   "project/ui_kits/web/Onboarding.jsx": "872353d26fbed7e792bab4fefba81dcd9eff66d874790299387ca9bccff19f8b",
@@ -1017,7 +1017,7 @@
   "project/ui_kits/web/contract-events.css": "7eeed1466dd1381c7535bba14d0257ca6ed9ee85a87fc5c5272489ff08bfa797",
   "project/ui_kits/web/contracts-data.js": "0bcc63c391dde8b8ca7126eb65e7e64c533efb551cee57e396c4b5231d858eff",
   "project/ui_kits/web/contracts.css": "ef93167ffb5be91a4d8265293f32c1805305f2ac359e8ccde6af59c4da98916b",
-  "project/ui_kits/web/data.js": "110943b8ae8e4037cab141a654a3a8e20177a8468f3a1a4a12554e9e030a3dec",
+  "project/ui_kits/web/data.js": "e56ecc3ed266ea8e8c5e2dd6db6139a08e3d72c883f2310bfa5e6b947380ba51",
   "project/ui_kits/web/exchange-rate-sync-data.js": "f70b35ac7c9303b66421e0cfc4e0b1f659fe72c10c4efb16cab8084fc2dc7356",
   "project/ui_kits/web/exchange-rate-sync.css": "1c8173b8d919e8241b8ca1a371117954a78a9695ac84374378eb9487c1303ff1",
   "project/ui_kits/web/index.html": "eda1f415faa83e48cd9fa3a3dc35aee4f737f9398046aaa94c4c419062fa2b81",
@@ -1054,5 +1054,5 @@
   "project/ui_kits/web/InstrumentPriceSources.jsx",
   "project/ui_kits/web/instruments-data.js"
  ],
- "pendingReason": "Left by the 1795121522-cc6f sync and still open at 1795262817-2dbb. Instruments: the provider note, symbol example, hourly limit, next-try date and the Tiingo API token row need the #447 provider backend, which does not exist yet. (The settings and journal/task items left with it were closed by the 1795262817-2dbb sync: the settings kit data was corrected to the server's bounds and wording, and journal and task tags now refuse an archived tag's name like every other vocabulary.)"
+ "pendingReason": "Left by the 1795121522-cc6f sync and still open at 1795264587-4838. Instruments: the provider note, symbol example, hourly limit, next-try date and the Tiingo API token row need the #447 provider backend, which does not exist yet. (The settings and journal/task items left with it were closed by the 1795262817-2dbb sync: the settings kit data was corrected to the server's bounds and wording, and journal and task tags now refuse an archived tag's name like every other vocabulary.)"
 }
