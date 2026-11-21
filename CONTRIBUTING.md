@@ -28,10 +28,10 @@ docker compose up --build
 
 That brings up the client on `http://localhost:5199`, the API on `http://localhost:5188`,
 and MariaDB on host port `3307`. The stack seeds a deterministic demo dataset; sign in
-with any of the seeded users listed in the README's *Demo data seeding* section.
+with any of the seeded users listed in the README's *Demo logins* section.
 
-Full setup detail — Aspire, SMTP, the bootstrap administrator — is in the
-[README](README.md).
+Full setup detail — Aspire, SMTP, the bootstrap administrator — is in
+[`docs/getting-started.md`](docs/getting-started.md).
 
 ## Building and testing
 
