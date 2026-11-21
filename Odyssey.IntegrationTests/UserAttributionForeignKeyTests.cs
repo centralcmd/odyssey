@@ -41,6 +41,8 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("JournalTasks", "CreatedByUserId"), ("JournalTasks", "UpdatedByUserId"),
         ("Photos", "CreatedByUserId"), ("Photos", "UpdatedByUserId"),
         ("PhotoAlbums", "CreatedByUserId"), ("PhotoAlbums", "UpdatedByUserId"),
+        // Recipes (issue #525): shared household data that outlives its author.
+        ("Recipes", "CreatedByUserId"), ("Recipes", "UpdatedByUserId"),
         ("RecurrencePatterns", "CreatedByUserId"), ("RecurrencePatterns", "UpdatedByUserId"),
         // Who deleted an occurrence of a series (issue #519 §4): shared calendar data, like the rows themselves.
         ("RecurrenceExclusions", "CreatedByUserId"),

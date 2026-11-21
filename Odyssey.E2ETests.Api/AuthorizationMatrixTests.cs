@@ -31,6 +31,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/photos", PermissionClaims.PhotosRead),
         ("/api/albums", PermissionClaims.PhotoAlbumsRead),
         ("/api/photo-tags", PermissionClaims.PhotoTagsRead),
+        // Recipes (issue #525) — every role holds both reads, Guest included.
+        ("/api/recipes", PermissionClaims.RecipesRead),
+        ("/api/recipe-tags", PermissionClaims.RecipeTagsRead),
         // Admin-only via the dedicated file-analysis.audit claim, granted to the Admin role by
         // RoleClaimSeeder's reconciliation. Exercises that seeding over real login (the injected-claim
         // API tier can't) — Admin → 200, Owner/User/Guest → 403. (#264)
@@ -91,6 +94,8 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // Issue #470: a random id is a 404 once authorized.
         ($"/api/news-feeds/{Guid.NewGuid()}", PermissionClaims.NewsRead),
         ($"/api/news-articles/{Guid.NewGuid()}", PermissionClaims.NewsRead),
+        // Issue #525: a random recipe id is a 404 once authorized.
+        ($"/api/recipes/{Guid.NewGuid()}", PermissionClaims.RecipesRead),
     ];
 
     // Write-gated endpoints and the write claim each requires. Probed with DELETE against a random,
@@ -114,6 +119,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/photos/{Guid.NewGuid()}", PermissionClaims.PhotosDelete),
         ($"/api/albums/{Guid.NewGuid()}", PermissionClaims.PhotoAlbumsDelete),
         ($"/api/photo-tags/{Guid.NewGuid()}", PermissionClaims.PhotoTagsDelete),
+        // Recipes (issue #525): Admin/Owner/User delete; Guest holds no recipe write claim.
+        ($"/api/recipes/{Guid.NewGuid()}", PermissionClaims.RecipesDelete),
+        ($"/api/recipe-tags/{Guid.NewGuid()}", PermissionClaims.RecipeTagsDelete),
         ($"/api/users/{Guid.NewGuid()}", PermissionClaims.UsersDelete), // Admin-only discriminator.
         ($"/api/instruments/{Guid.NewGuid()}", PermissionClaims.InstrumentsDelete),
         ($"/api/instrument-prices/{Guid.NewGuid()}", PermissionClaims.InstrumentPricesDelete),

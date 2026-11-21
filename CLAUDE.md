@@ -982,6 +982,26 @@ backwards:
   per planned zone. A moved override is an `EXDATE` in its series' calendar and a standalone event in its own; the
   aggregate stays flat for any series with an exception.
 
+**Recipes are shared household data that link library photos by id** (issue #525; `Odyssey.Core/Recipes/`,
+`Odyssey.Dtos/Recipes/`). Rules that are easy to get backwards:
+
+- **Claim before existence.** Adding a photo link needs `photos.read` and adding a tag link `recipes.tags.read`, both
+  checked before any lookup, so a missing claim and a missing id give the same `403`. `JournalEntryService` validates
+  existence first; don't copy that order here.
+- **Photos are absent, not hidden.** Without `photos.read` the service skips every photo lookup and returns
+  `photos`/`coverPhotoId` as `null`; `hasPhotos` is a `403`. On `PUT`, `photoIds: null` leaves the links alone and
+  any array from such a caller is a `403`, because it cannot see what it would replace.
+- **Ingredient and step positions are not unique; photo and tag pairs are.** Children are replaced wholesale in one
+  save, which a unique position index would break on MariaDB (EF does not order a delete before an insert); links
+  are diffed in place so their unique pairs never see a delete and re-insert. Only `Odyssey.IntegrationTests` shows
+  this — InMemory enforces no unique index.
+- **`Version` is the concurrency token**, required on `PUT`; a stale one is `409` with code `recipe-version-conflict`.
+- **Scaling is read-only** (`GET …?servings=`, `RecipeServingsScaler`): it never writes, never changes a unit, and
+  leaves `Pinch`/`ToTaste` alone. `IngredientUnit` ordinals are a wire contract.
+- **Every bound is a `RecipeLimits` constant**, named by the entity, the DTO annotations and the client alike.
+- **Author ids never reach the wire**: the controller resolves them to names (`NameForOptional`), because Guest holds
+  `profile-images.read`. **Finance must not reference `Odyssey.Core.Recipes`** (`RecipeModuleSourceLintTests`).
+
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
 version, source and re-check procedure); `wwwroot/js/location-map.js` is the only importer, and only on the
@@ -1395,7 +1415,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 123 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 131 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`

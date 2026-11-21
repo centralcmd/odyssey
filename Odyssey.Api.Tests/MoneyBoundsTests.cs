@@ -92,6 +92,10 @@ public class MoneyBoundsTests(MoneyBoundsTests.Host host) : SharedApiHostTests<M
         // and by CHECK constraints in the database (issue #350).
         (typeof(Context.Location), nameof(Context.Location.Latitude)),
         (typeof(Context.Location), nameof(Context.Location.Longitude)),
+        // Ingredient quantities, decimal(12,3) — not money; bounded by [Range(RecipeLimits.MinAmount/MaxAmount)] on
+        // RecipeIngredientRequest and a 3-decimal check in RecipeService (issue #525 §8.1).
+        (typeof(Context.RecipeIngredient), nameof(Context.RecipeIngredient.Amount)),
+        (typeof(Context.RecipeIngredient), nameof(Context.RecipeIngredient.AmountMax)),
         // Weather (issue #348): never written from a request body. Site coordinates are the rounded copies a
         // weather-point write (issue #387, range-checked on NewWeatherPoint/UpdateWeatherPoint) produces; the run, step, observation and day values are parsed from MET/Frost responses and
         // range-checked by the parsers (WeatherHttp.InRange) before they are stored.
@@ -256,6 +260,10 @@ public class MoneyBoundsTests(MoneyBoundsTests.Host host) : SharedApiHostTests<M
     // request can carry as a decimal that is not here must name the MoneyBounds [Range].
     private static readonly Dictionary<string, string> DecimalMembersOutsideMoneyBounds = new(StringComparer.Ordinal)
     {
+        [$"{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest)}.{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest.Amount)}"] =
+            "An ingredient quantity, decimal(12,3); bounded by [Range(RecipeLimits.MinAmount, RecipeLimits.MaxAmount)] (issue #525).",
+        [$"{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest)}.{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest.AmountMax)}"] =
+            "An ingredient range end, decimal(12,3); bounded by [Range(RecipeLimits.MinAmount, RecipeLimits.MaxAmount)] (issue #525).",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.LivingAreaSqm)}"] =
             "An area in square metres, decimal(18,2); bounded by its own [Range(0, 1_000_000)].",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.PlotAreaSqm)}"] =
