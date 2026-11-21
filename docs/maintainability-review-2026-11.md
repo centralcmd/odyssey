@@ -138,7 +138,21 @@ Phase 2 is done, on the branch for this PR.
 | M7 | Remove if unused | `WeatherDayObserved.DayDefinition`/`PrecipitationDayDefinition` and the `WeatherDayDefinition` enum removed. They also leave the weather API's JSON; the client never read them. |
 | U1 | — | Smaller than reported: only one Core test file builds its own contract services. The real duplication was an identical `ServerContext()` in 22 integration test files; it is now `MariaDbFixture.CreateOdysseyContext()`. The unused `DropAsync` is gone. |
 
-Still open: the file splits.
+| Largest files | Split into partials (C# only) | Nine files split by whole members, verbatim; a sorted line comparison of each original against its partials shows only `namespace`/`partial class`/brace wrappers (and, in the registry, 18 group factory signatures) added. No static field whose initializer depends on another moved away from it. Results below. Source lints that read a file by path now read the whole class: `ContactAvatarPipelineSourceTests`, and in `Odyssey.Client.Tests` a new `ClientSource.CodeBehind(...)` used by the Settings and ContractsCard lints and `ListPageContractTests`. `odyssey-components.css` was **not** split: 19 tests and the design-system parity checks read it by name. |
+
+| Original | Lines | Now |
+|---|---|---|
+| `CalendarIcsService.cs` | 3,430 | main 327 + `Export` 886, `Import` 882, `ImportClassification` 422, `ImportApply` 960 |
+| `Settings.razor.cs` | 3,450 | main 345 + `Catalogue` 1,074, `Drafts` 681, `Advisories` 364, `Credentials` 652, `Save` 379 |
+| `ContactVCardService.cs` | 1,920 | main 365 + `Export` 442, `Import` 1,135 |
+| `ContactService.cs` | 1,889 | main 258 + `Mutation` 533, `Conversion` 274, `ContactMethods` 861 |
+| `NewsPage.razor.cs` | 1,680 | main 576 + `Loading` 372, `Cards` 445, `Dialogs` 323 |
+| `NewsHtmlPrescan.cs` | 1,672 | main 343 + `Tokenizer` 274, `TreeBuilder` 373, `TableModes` 703 |
+| `PhotoThumbnailJob.cs` | 1,496 | main 416 + `Queue` 307, `Rendering` 506, `Breaker` 305 |
+| `ContractsCard.razor.cs` | 1,373 | main 291 + `Summary` 315, `RowActions` 467, `Presentation` 322 |
+| `SystemSettingsRegistry.cs` | 1,254 | main 124 (`All` in order) + `Security` 308, `Tuning` 351, `Features` 574 |
+
+All review items are now done except P2, which was kept by decision.
 
 ## Implementation plan
 
