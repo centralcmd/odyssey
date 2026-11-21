@@ -291,9 +291,8 @@ public sealed record SystemSettingsUpdate
     /// bounds the per-upload memory extraction materialises — see <c>docs/deployment.md</c>.
     /// </summary>
     [Range(1, 16, ErrorMessage =
-        "Metadata read size must be between 1 and 16 MB. Extraction materialises a full byte array of "
-        + "this size per photo, and 16 MB is MariaDB's default max_allowed_packet — the real wall on "
-        + "the prefix read, whatever a larger value here claimed.")]
+        "Metadata read size must be between 1 and 16 MB. Extraction holds a full byte array of this "
+        + "size in memory for every photo uploaded, so the maximum bounds per-upload memory.")]
     public int? PhotoMetadataReadMegabytes { get; set; }
 
     [Range(1, 120, ErrorMessage =

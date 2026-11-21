@@ -54,13 +54,13 @@ public class PhotoMetadataReadCapTests
     /// stored by the caller regardless.
     /// </summary>
     [Fact]
-    public async Task WhenTheServerCannotServeThePrefix_ExtractionIsSkippedRatherThanFailing()
+    public async Task WhenThePrefixReadFails_ExtractionIsSkippedRatherThanFailing()
     {
         var service = new PhotoMetadataService(
             new StubExtractor(PhotoMetadata.Empty),
             new StubLimits(readMegabytes: 16), NullLogger<PhotoMetadataService>.Instance);
 
-        var metadata = await service.ExtractAsync(_ => throw new InvalidOperationException("max_allowed_packet exceeded"));
+        var metadata = await service.ExtractAsync(_ => throw new InvalidOperationException("upload stream unreadable"));
 
         Assert.Equal(PhotoMetadata.Empty, metadata);
     }

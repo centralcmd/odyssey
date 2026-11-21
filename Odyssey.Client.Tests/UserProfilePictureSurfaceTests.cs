@@ -283,9 +283,12 @@ public class UserProfilePictureSurfaceTests
         Assert.Contains("ImageControlsDisabled => !CanReadProfileImages", code, StringComparison.Ordinal);
         Assert.Contains("Disabled=\"@ImageControlsDisabled\"", markup, StringComparison.Ordinal);
 
-        // Self-healing in one sign-out, and the message says so rather than reading as a failure the
-        // user caused.
-        Assert.Contains("Sign out and back in", code, StringComparison.Ordinal);
+        // Self-healing within a minute and a reload (the client re-reads auth/claims on every app load,
+        // and security-stamp revalidation re-issues the cookie with the role's current claims), and the
+        // message says so rather than reading as a failure the user caused — or asking for a sign-out
+        // that is not needed.
+        Assert.Contains("Reload the page in a minute", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("Sign out", code, StringComparison.Ordinal);
 
         // WCAG 2.2 1.3.1. The reason has to reach the FIELD, which renders it beside the mark — an
         // earlier revision passed no reason at all and put the text in a page-level paragraph several
