@@ -5130,6 +5130,236 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("RealEstateDetails");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Recipe", b =>
+                {
+                    b.Property<Guid>("RecipeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("Archived")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CookMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(8000)
+                        .HasColumnType("varchar(8000)");
+
+                    b.Property<int?>("PrepMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Servings")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServingsLabel")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("RecipeId");
+
+                    b.HasIndex("Archived");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Title");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("Recipes");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeIngredient", b =>
+                {
+                    b.Property<Guid>("RecipeIngredientId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("decimal(12,3)");
+
+                    b.Property<decimal?>("AmountMax")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("decimal(12,3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<bool>("Optional")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Preparation")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Section")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("Unit")
+                        .HasColumnType("int");
+
+                    b.HasKey("RecipeIngredientId");
+
+                    b.HasIndex("RecipeId", "Position");
+
+                    b.ToTable("RecipeIngredients");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipePhoto", b =>
+                {
+                    b.Property<Guid>("RecipePhotoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("RecipePhotoId");
+
+                    b.HasIndex("PhotoId");
+
+                    b.HasIndex("RecipeId", "PhotoId")
+                        .IsUnique();
+
+                    b.HasIndex("RecipeId", "Position");
+
+                    b.ToTable("RecipePhotos");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeStep", b =>
+                {
+                    b.Property<Guid>("RecipeStepId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Section")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.HasKey("RecipeStepId");
+
+                    b.HasIndex("RecipeId", "Position");
+
+                    b.ToTable("RecipeSteps");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeTag", b =>
+                {
+                    b.Property<Guid>("RecipeTagId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("Archived")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("RecipeTagId");
+
+                    b.HasIndex("Archived");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("RecipeTags");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeTagLink", b =>
+                {
+                    b.Property<Guid>("RecipeTagLinkId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("RecipeTagId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("RecipeTagLinkId");
+
+                    b.HasIndex("RecipeTagId");
+
+                    b.HasIndex("RecipeId", "RecipeTagId")
+                        .IsUnique();
+
+                    b.ToTable("RecipeTagLinks");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecurrenceExclusion", b =>
                 {
                     b.Property<Guid>("RecurrenceExclusionId")
@@ -8664,6 +8894,77 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Property");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Recipe", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeIngredient", b =>
+                {
+                    b.HasOne("Odyssey.Context.Recipe", "Recipe")
+                        .WithMany("Ingredients")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipePhoto", b =>
+                {
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.Recipe", "Recipe")
+                        .WithMany("Photos")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeStep", b =>
+                {
+                    b.HasOne("Odyssey.Context.Recipe", "Recipe")
+                        .WithMany("Steps")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeTagLink", b =>
+                {
+                    b.HasOne("Odyssey.Context.Recipe", "Recipe")
+                        .WithMany("Tags")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.RecipeTag", "RecipeTag")
+                        .WithMany("Recipes")
+                        .HasForeignKey("RecipeTagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+
+                    b.Navigation("RecipeTag");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecurrenceExclusion", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
@@ -9186,6 +9487,22 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("SmartTags");
 
                     b.Navigation("VehicleDetails");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.Recipe", b =>
+                {
+                    b.Navigation("Ingredients");
+
+                    b.Navigation("Photos");
+
+                    b.Navigation("Steps");
+
+                    b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeTag", b =>
+                {
+                    b.Navigation("Recipes");
                 });
 
             modelBuilder.Entity("Odyssey.Context.RecurrencePattern", b =>

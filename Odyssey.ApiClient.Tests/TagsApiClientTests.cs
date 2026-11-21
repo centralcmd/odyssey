@@ -132,6 +132,7 @@ public class TagsApiClientTests
     [InlineData(typeof(ExistingJournalTaskTag), "/api/task-tags")]
     [InlineData(typeof(ExistingPhotoTag), "/api/photo-tags")]
     [InlineData(typeof(ExistingNewsTag), "/api/news-tags")]
+    [InlineData(typeof(Odyssey.Dtos.Recipes.ExistingRecipeTag), "/api/recipe-tags")]
     public async Task The_registered_client_for_each_tag_type_targets_that_type_s_route(Type tagType, string expectedPath)
     {
         var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");

@@ -77,11 +77,11 @@ public class AuthorizationPolicyTests
     /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
     /// deliberately left out. 107 once the whole-database JSON export was removed with its
     /// <c>data.export</c> claim. 115 once issue #446 added the eight instrument claims, and 123 once issue
-    /// #470 added the eight news-reader claims.
+    /// #470 added the eight news-reader claims, and 131 once issue #525 added the eight recipe claims.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(123, DeclaredClaims().Count());
+        Assert.Equal(131, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -555,6 +555,7 @@ public class AuthorizationPolicyTests
         { PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate, PermissionClaims.JournalTagsRead },
         { PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate, PermissionClaims.TaskTagsRead },
         { PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate, PermissionClaims.PhotoTagsRead },
+        { PermissionClaims.RecipesRead, PermissionClaims.RecipesCreate, PermissionClaims.RecipesUpdate, PermissionClaims.RecipeTagsRead },
     };
 
     /// <summary>
@@ -597,6 +598,8 @@ public class AuthorizationPolicyTests
             [typeof(Odyssey.Dtos.Journal.JournalTaskSummary)] = [PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate],
             [typeof(Odyssey.Dtos.Journal.ExistingPhoto)] = [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate],
             [typeof(Odyssey.Dtos.Journal.PhotoSummary)] = [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate],
+            [typeof(Odyssey.Dtos.Recipes.ExistingRecipe)] = [PermissionClaims.RecipesRead, PermissionClaims.RecipesCreate, PermissionClaims.RecipesUpdate],
+            [typeof(Odyssey.Dtos.Recipes.RecipeSummary)] = [PermissionClaims.RecipesRead, PermissionClaims.RecipesCreate, PermissionClaims.RecipesUpdate],
         };
 
         var controllers = typeof(Program).Assembly.GetTypes()
@@ -639,7 +642,7 @@ public class AuthorizationPolicyTests
         }
 
         // A reflection lint whose scan set silently empties keeps passing after a rename.
-        Assert.True(found >= 6, $"Expected the journal, task and photo read/write actions; found {found}.");
+        Assert.True(found >= 10, $"Expected the journal, task, photo and recipe read/write actions; found {found}.");
         Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
 
         static IEnumerable<Type> Unwrap(Type? type)

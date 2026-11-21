@@ -41,6 +41,22 @@ public static class RolePermissions
         PhotoAlbumsDelete,
     ];
 
+    /// <summary>
+    /// The Recipes module (issue #525). Every role holding a record claim also holds <c>recipes.tags.read</c>,
+    /// which the tag-icon pin in <c>AuthorizationPolicyTests</c> relies on (issue #345).
+    /// </summary>
+    public static readonly string[] RecipesModuleClaims =
+    [
+        RecipesCreate,
+        RecipesRead,
+        RecipesUpdate,
+        RecipesDelete,
+        RecipeTagsCreate,
+        RecipeTagsRead,
+        RecipeTagsUpdate,
+        RecipeTagsDelete,
+    ];
+
     public static readonly string[] JournalModuleClaims =
     [
         JournalCreate,
@@ -171,6 +187,7 @@ public static class RolePermissions
         FileAnalysisAudit,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..RecipesModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         WeatherPointsRead,
@@ -256,6 +273,7 @@ public static class RolePermissions
         ContractsDelete,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..RecipesModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
@@ -294,6 +312,7 @@ public static class RolePermissions
         ContractsRead,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..RecipesModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
@@ -333,6 +352,10 @@ public static class RolePermissions
         ProfileImagesRead,
         // News (issue #470 §7.2): the household's shared feeds, read only.
         NewsRead,
+        // Recipes (issue #525 §7.2): the household's recipes and their tags, read only. Photos stay withheld,
+        // since Guest holds no photos.read.
+        RecipesRead,
+        RecipeTagsRead,
     ];
 
     /// <summary>

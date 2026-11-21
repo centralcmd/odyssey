@@ -120,7 +120,7 @@ The lookup services (`IContactLookup`, `IFileLookup`, `IPhotoLookup`, `IContactR
 
 Columns across the model name the user who created, updated, attached, uploaded, requested or reviewed
 a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`, `JournalEntry`,
-`JournalTask`, `Photo`, `PhotoAlbum` and `RecurrencePattern`; `Contract.CreatedByUserId`; `AttachedByUserId` on the file-link
+`JournalTask`, `Photo`, `PhotoAlbum`, `Recipe` (issue #525) and `RecurrencePattern`; `Contract.CreatedByUserId`; `AttachedByUserId` on the file-link
 tables (`AccountFiles`, `ContractFiles`, `PropertyFiles`, `TransactionFiles`, `TaxStatementFiles`); `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
 `FileAnalysisCandidateTransaction.ReviewedByUserId`; and, for the exchange-rate sync (issue #349),
 `ExchangeRateSyncCurrency.UpdatedByUserId`; and `JobRun.RequestedByUserId` on the shared background-job run
