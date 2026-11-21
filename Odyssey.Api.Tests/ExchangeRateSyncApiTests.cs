@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Core.Finance.ExchangeRateSync;
@@ -364,14 +365,9 @@ public class ExchangeRateSyncApiTests(ExchangeRateSyncApiTests.Host host) : Shar
             {
                 services.AddHttpClient(nameof(NorgesBankClient)).ConfigurePrimaryHttpMessageHandler(() => new StubProvider());
                 services.AddSingleton(ExchangeRateSyncPacing.None);
-                services.AddSingleton<TimeProvider>(new FixedClock());
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(new DateTimeOffset(FixedNow, TimeSpan.Zero)));
             },
             sharingStoreWith: sharingStoreWith);
-
-    private sealed class FixedClock : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(FixedNow, TimeSpan.Zero);
-    }
 
     /// <summary>
     /// Norges Bank in-process: USD and EUR published as of today, from 1999; a data request gets one

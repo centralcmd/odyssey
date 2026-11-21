@@ -23,15 +23,8 @@ namespace Odyssey.Client.Tests;
 /// The exchange-rate sync frontend (issue #351): the eight vocabularies, the status panel's polling,
 /// the currency rows' save behaviour, and the source rules the spec's acceptance criteria name.
 /// </summary>
-[Collection(ExchangeRateSyncCollection.Name)]
-public partial class ExchangeRateSyncSurfaceTests : IDisposable
+public partial class ExchangeRateSyncSurfaceTests
 {
-    public void Dispose()
-    {
-        CurrenciesCard.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-        ExchangeRatesCard.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-    }
-
     private static readonly DateTimeOffset Now = new(2026, 10, 23, 8, 40, 0, TimeSpan.Zero);
 
     // ── Vocabularies (AC 9, 15) ──────────────────────────────────────────────────────────────────
@@ -354,7 +347,7 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IClipboardService>().Object);
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims));
-        ExchangeRatesCard.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         ctx.Render<MudPopoverProvider>();
         _dialogs = ctx.Render<MudDialogProvider>();
         var cut = ctx.Render<ExchangeRatesCard>();

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
 using Odyssey.Context.Legal;
@@ -513,7 +514,7 @@ public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, Demo
 
         var service = new ContractSummaryService(
             context,
-            new FixedTimeProvider(DemoDataDefaults.AnchorDate),
+            new FakeTimeProvider(DemoDataDefaults.AnchorDate),
             new AnchorSettingsLookup());
 
         var summary = await service.GetSummary("USD");
@@ -531,11 +532,6 @@ public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, Demo
         // direction were a rename of the existing figure.
         Assert.NotNull(summary.RunRate.Monthly);
         Assert.NotNull(summary.RunRate.NetMonthly);
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     /// <summary>

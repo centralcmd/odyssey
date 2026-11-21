@@ -1,6 +1,7 @@
 using System.Reflection;
 using Odyssey.Dtos.Application;
 using Odyssey.Client.Pages;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -262,7 +263,7 @@ public class SettingsCatalogueTests
         for (var i = text.IndexOf(needle, StringComparison.Ordinal); i >= 0;
              i = text.IndexOf(needle, i + 1, StringComparison.Ordinal))
         {
-            offenders.Add($"Settings.razor:{ClientSource.LineAt(text, i)}");
+            offenders.Add($"Settings.razor:{SourceLint.LineAt(text, i)}");
         }
 
         Assert.True(offenders.Count == 0,
@@ -337,7 +338,7 @@ public class SettingsCatalogueTests
         for (var i = text.IndexOf(needle, StringComparison.Ordinal); i >= 0;
              i = text.IndexOf(needle, i + 1, StringComparison.Ordinal))
         {
-            offenders.Add($"Settings.razor:{ClientSource.LineAt(text, i)}");
+            offenders.Add($"Settings.razor:{SourceLint.LineAt(text, i)}");
         }
 
         Assert.True(offenders.Count == 0,

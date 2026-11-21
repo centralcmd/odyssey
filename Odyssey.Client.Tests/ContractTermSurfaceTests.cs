@@ -560,7 +560,7 @@ public class ContractTermSurfaceTests
                 value.ToString("#,##0.##", CultureInfo.InvariantCulture) + " " + (currency ?? "NOK")));
 
         // The section loads on OnInitializedAsync, which early-returns outside the browser (the
-        // component has no InteractiveCheck seam and neither does the account one), so the load is
+        // component does not read IRenderInteractivity and neither does the account one), so the load is
         // driven through the section's own public reload — the same entry point the host uses.
         cut.InvokeAsync(() => cut.Instance.ReloadAsync()).GetAwaiter().GetResult();
 

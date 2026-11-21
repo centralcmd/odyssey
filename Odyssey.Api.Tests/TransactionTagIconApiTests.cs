@@ -10,6 +10,7 @@ using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -87,7 +88,7 @@ public class TransactionTagIconApiTests(TransactionTagIconApiTests.Host host) : 
     [MemberData(nameof(InvalidIcons))]
     public async Task An_invalid_icon_is_a_400_keyed_on_Icon_that_echoes_nothing_and_persists_nothing(string icon)
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new OdysseyApiFactory(
             TagAdmin, configureServices: services => services.AddSingleton<ILoggerProvider>(logs));
         var existingId = await SeedTagAsync(factory, "Existing", "home");

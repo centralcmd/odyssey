@@ -16,6 +16,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -135,7 +136,7 @@ public class PasswordResetTokenProviderTests
     {
         private readonly string databaseName = $"PasswordResetTokenProviderTests-{Guid.NewGuid()}";
 
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         /// <summary>
         /// The client base URL is a settings row now, not configuration (issue #8), and it has to be

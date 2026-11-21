@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance.Instruments;
 using Odyssey.Dtos.Finance;
@@ -120,7 +121,7 @@ public class InstrumentVisualsTests
     [Fact]
     public void Europe_Oslo_resolves_in_the_client_test_host()
     {
-        var clock = new FixedClock(new DateTimeOffset(2026, 11, 8, 23, 30, 0, TimeSpan.Zero));
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 11, 8, 23, 30, 0, TimeSpan.Zero));
 
         // 23:30 UTC on 8 November is already 9 November in Oslo (UTC+1) — a UTC fallback would be a day off.
         Assert.Equal(new DateOnly(2026, 11, 9), InstrumentVisuals.TryOsloToday(clock));
@@ -145,10 +146,5 @@ public class InstrumentVisualsTests
         Assert.Equal(("Fund", "savings"), (InstrumentVisuals.TypeOf(InstrumentType.Fund).Label, InstrumentVisuals.TypeOf(InstrumentType.Fund).Icon));
         Assert.Equal("Other", InstrumentVisuals.TypeOf((InstrumentType)5).Label);
         Assert.Same(OdsTypeRegistries.InstrumentTypes[^1], OdsTypeRegistries.InstrumentTypeOf((InstrumentType)5));
-    }
-
-    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
     }
 }

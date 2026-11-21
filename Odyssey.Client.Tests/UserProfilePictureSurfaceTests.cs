@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -19,13 +20,6 @@ public class UserProfilePictureSurfaceTests
     private static string Read(params string[] parts) =>
         File.ReadAllText(Path.Combine([ClientSource.Root, .. parts]));
 
-    private static string WithoutComments(string source)
-    {
-        source = Regex.Replace(source, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
-        source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-        return Regex.Replace(source, @"^\s*///?.*$", string.Empty, RegexOptions.Multiline);
-    }
-
     // ── AC 33: alt text follows what the image IS ─────────────────────────────────────────────────
 
     /// <summary>
@@ -38,9 +32,9 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void Each_surface_names_its_image_according_to_what_sits_beside_it()
     {
-        var account = WithoutComments(Read("Pages", "AccountProfileSection.razor"));
-        var rows = WithoutComments(Read("Pages", "Users.razor"));
-        var detail = WithoutComments(Read("Pages", "UserDetailPanel.razor"));
+        var account = SourceLint.StripComments(Read("Pages", "AccountProfileSection.razor"));
+        var rows = SourceLint.StripComments(Read("Pages", "Users.razor"));
+        var detail = SourceLint.StripComments(Read("Pages", "UserDetailPanel.razor"));
 
         // The subject of its own controls — never decorative.
         Assert.Contains("Alt=\"Your profile picture\"", account, StringComparison.Ordinal);
@@ -64,7 +58,7 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void The_account_page_header_mark_stays_decorative()
     {
-        var markup = WithoutComments(Read("Pages", "Account.razor"));
+        var markup = SourceLint.StripComments(Read("Pages", "Account.razor"));
         var leading = markup[markup.IndexOf("<Leading>", StringComparison.Ordinal)..];
         leading = leading[..leading.IndexOf("</Leading>", StringComparison.Ordinal)];
 
@@ -91,7 +85,7 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void The_account_header_keeps_its_own_tone_and_its_rule_stays_live()
     {
-        var markup = WithoutComments(Read("Pages", "Account.razor"));
+        var markup = SourceLint.StripComments(Read("Pages", "Account.razor"));
         var css = Read("Pages", "Account.razor.css");
 
         // The rule is still USED — so it is not dead, and the tint it carries is still the one in force.
@@ -135,7 +129,7 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void The_users_row_tint_travels_as_values_and_the_dead_rules_are_removed()
     {
-        var mark = WithoutComments(Read("Pages", "UserProfileMark.razor"));
+        var mark = SourceLint.StripComments(Read("Pages", "UserProfileMark.razor"));
         var css = Read("Pages", "Users.razor.css");
 
         Assert.Contains("Bg=\"@UserDisplay.AvatarBg(User.Role)\"", mark, StringComparison.Ordinal);
@@ -150,7 +144,7 @@ public class UserProfilePictureSurfaceTests
         // Comments stripped: the doc comment on the replacement legitimately NAMES the removed helper
         // to say why it is gone, and a lint a doc comment can fail is a lint that gets the doc deleted.
         Assert.DoesNotContain(
-            "AvatarClass", WithoutComments(Read("Pages", "UserDisplay.cs")), StringComparison.Ordinal);
+            "AvatarClass", SourceLint.StripComments(Read("Pages", "UserDisplay.cs")), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -199,7 +193,7 @@ public class UserProfilePictureSurfaceTests
             ("the /account control", Read("Pages", "AccountProfileSection.razor.cs")),
         })
         {
-            var text = WithoutComments(source);
+            var text = SourceLint.StripComments(source);
 
             // The SUBJECT half — the server nulls this for a subject the read would refuse.
             Assert.True(
@@ -222,7 +216,7 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void The_failed_image_state_is_per_mark_and_reset_when_the_token_changes()
     {
-        var mark = WithoutComments(Read("Pages", "UserProfileMark.razor"));
+        var mark = SourceLint.StripComments(Read("Pages", "UserProfileMark.razor"));
 
         Assert.Contains("private bool _imageFailed;", mark, StringComparison.Ordinal);
         Assert.Contains("_failedFor != User.ProfileImageVersion", mark, StringComparison.Ordinal);
@@ -236,8 +230,8 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void A_failed_image_surfaces_nothing_to_the_user()
     {
-        var mark = WithoutComments(Read("Pages", "UserProfileMark.razor"));
-        var field = WithoutComments(Read("Components", "OdsProfilePictureField.razor"));
+        var mark = SourceLint.StripComments(Read("Pages", "UserProfileMark.razor"));
+        var field = SourceLint.StripComments(Read("Components", "OdsProfilePictureField.razor"));
 
         foreach (var text in new[] { mark, field })
         {
@@ -308,7 +302,7 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void The_overlay_variant_explains_its_disabled_state_at_the_mark()
     {
-        var field = WithoutComments(Read("Components", "OdsProfilePictureField.razor"));
+        var field = SourceLint.StripComments(Read("Components", "OdsProfilePictureField.razor"));
 
         Assert.Contains("odc-picedit-note", field, StringComparison.Ordinal);
         Assert.Contains("id=\"@DisabledReasonId\"", field, StringComparison.Ordinal);
@@ -335,7 +329,7 @@ public class UserProfilePictureSurfaceTests
     {
         var markup = Read("Pages", "AccountProfileSection.razor");
         var code = Read("Pages", "AccountProfileSection.razor.cs");
-        var field = WithoutComments(Read("Components", "OdsProfilePictureField.razor"));
+        var field = SourceLint.StripComments(Read("Components", "OdsProfilePictureField.razor"));
 
         Assert.Contains("_removeOpen", markup, StringComparison.Ordinal);
         Assert.Contains("OdsButtonVariant.Danger", markup, StringComparison.Ordinal);
@@ -384,7 +378,7 @@ public class UserProfilePictureSurfaceTests
     [Fact]
     public void The_profile_picture_field_pins_the_lg_size_step()
     {
-        var field = WithoutComments(Read("Components", "OdsProfilePictureField.razor"));
+        var field = SourceLint.StripComments(Read("Components", "OdsProfilePictureField.razor"));
 
         Assert.Equal(2, Regex.Matches(field, @"Size=""OdsSize\.Lg""").Count);
         Assert.DoesNotContain("public OdsSize Size", field, StringComparison.Ordinal);

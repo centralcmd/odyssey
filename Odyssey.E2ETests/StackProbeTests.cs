@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Odyssey.Testing;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.E2ETests;
@@ -210,17 +211,11 @@ public sealed class StackProbeTests
     }
 
     private static HttpClient Client(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
-        new(new StubHandler(respond));
+        new(new RecordingHttpHandler(respond));
 
     private static HttpResponseMessage Json(HttpStatusCode status) =>
         new(status) { Content = new StringContent("{\"status\":\"ok\"}", Encoding.UTF8, "application/json") };
 
     private static HttpResponseMessage Html(HttpStatusCode status = HttpStatusCode.OK) =>
         new(status) { Content = new StringContent("<!DOCTYPE html>", Encoding.UTF8, "text/html") };
-
-    private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(respond(request));
-    }
 }

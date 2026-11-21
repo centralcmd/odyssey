@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
@@ -29,11 +30,6 @@ public class NetWorthHistoryApiTests(NetWorthHistoryApiTests.Host host) : Shared
     // their own would make the agreement below a flaky test rather than a contract.
     private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(
             permissions,
@@ -41,7 +37,7 @@ public class NetWorthHistoryApiTests(NetWorthHistoryApiTests.Host host) : Shared
             configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedNow));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedNow));
             });
 
     private static readonly string[] ReadAccounts = [PermissionClaims.AccountsRead];

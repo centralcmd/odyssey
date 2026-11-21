@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -18,7 +19,7 @@ namespace Odyssey.Client.Tests;
 /// branch written against the old signature compiles the moment the type comes back, and nothing else
 /// would notice. It lives in this project because this is where the repository's source-lints live —
 /// the subject is the whole solution, not the client, so it reads through
-/// <see cref="ClientSource.Sibling"/>.
+/// <see cref="SourceTree"/>.
 /// </para>
 /// </remarks>
 public class ContactMutationLockRetiredTests
@@ -69,15 +70,9 @@ public class ContactMutationLockRetiredTests
 
     private static IEnumerable<string> ApplicationSourceFiles() =>
         ProjectsThatCouldHostIt
-            .Select(ClientSource.Sibling)
-            .Where(Directory.Exists)
-            .SelectMany(dir => Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
-            .Where(file => !IsBuildOutput(file));
-
-    private static bool IsBuildOutput(string file) =>
-        file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-        || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+            .Where(project => Directory.Exists(SourceTree.File(project)))
+            .SelectMany(project => SourceTree.Files(project));
 
     private static string RelativeToRepo(string file) =>
-        Path.GetRelativePath(Path.GetDirectoryName(ClientSource.Root)!, file);
+        Path.GetRelativePath(SourceTree.Root, file);
 }

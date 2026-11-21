@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Xunit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -116,7 +117,7 @@ public class PlaceholderConfigurationGuardTests
     [Fact]
     public void ShippedProductionExample_LeavesEveryGuardedSecretEmpty()
     {
-        var values = ParseEnvFile(RepositoryRoot.ReadAllText(".env.prod.example"));
+        var values = ParseEnvFile(SourceTree.ReadAllText(".env.prod.example"));
 
         Assert.NotEmpty(values);
         Assert.All(

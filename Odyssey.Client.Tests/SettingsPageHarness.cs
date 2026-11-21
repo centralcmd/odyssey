@@ -16,9 +16,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// The one bUnit harness for rendering the System settings page: every service the page and its
-/// panels inject, faked, plus the interactivity seam. A class using it must join
-/// <see cref="SettingsPageCollection"/>, since the seam is process-wide. Keeping a single copy is the
-/// point — a new injection on the page is registered here once instead of hand-patched into each
+/// panels inject, faked, rendering interactively. Keeping a single copy is the point — a new injection on the page is registered here once instead of hand-patched into each
 /// suite (the <c>AuthApiClient</c> registration was patched into four copies separately).
 /// </summary>
 internal static class SettingsPageHarness
@@ -81,7 +79,7 @@ internal static class SettingsPageHarness
             new HttpClient(), new Odyssey.ApiClient.Auth.AntiforgeryTokenStore(sp)));
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new PermissionsAuthenticationStateProvider(claims ?? AdminClaims));
 
-        Settings.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         return ctx;
     }
 

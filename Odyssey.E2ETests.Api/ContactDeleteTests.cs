@@ -11,10 +11,12 @@ namespace Odyssey.E2ETests.Api;
 /// <summary>
 /// Exercises <c>DELETE /api/contacts/{id}</c> end to end over real HTTP → <c>ContactsController</c> →
 /// the DI-resolved <c>ContactService</c>/<c>IContactReferenceGuard</c> → real MariaDB. The guard runs in
-/// front of the database's own cross-module foreign keys (RESTRICT an in-use insurer, SET NULL the
-/// nullable links) so the caller gets an explained 409 rather than a constraint violation — behaviour
-/// that EF InMemory cannot run (the guard uses ExecuteUpdate/ExecuteDelete) and that the direct-service
-/// integration tests exercise without the controller/DI wiring. These fill that gap.
+/// front of the database's own cross-module foreign keys (SET NULL for the optional contact links,
+/// CASCADE for contract parties). No key to a contact is RESTRICT any more; the one rule that still
+/// blocks a delete — a <c>Beneficiary</c> contract party — is the guard's alone, and it answers with an
+/// explained 409. That is behaviour EF InMemory cannot run (the guard uses ExecuteUpdate/ExecuteDelete)
+/// and that the direct-service integration tests exercise without the controller/DI wiring. These fill
+/// that gap.
 ///
 /// Each test creates its own contact (and any referencing entity) with fresh ids and cleans up after
 /// itself, so it stays safe against the shared seeded database.
@@ -50,16 +52,23 @@ public class ContactDeleteTests(ApiStackFixture fixture)
         var custodianId = await CreateOrganizationContactAsync(client, "E2E Custodian");
         var accountId = await CreateAccountAsync(client, custodianId, "E2E Brokerage");
 
-        // Former ON DELETE SET NULL FK, now reconstructed by the guard: the account survives with its
-        // custodian link cleared.
-        var delete = await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contacts/{custodianId}");
-        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        try
+        {
+            // Account.CustodianId is a real FK with ON DELETE SET NULL; the guard nulls the link first on
+            // the service path, so either way the account survives with its custodian link cleared.
+            var delete = await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contacts/{custodianId}");
+            Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
 
-        using var account = await client.GetFromJsonAsync<JsonDocument>($"/api/accounts/{accountId}");
-        Assert.Equal(JsonValueKind.Null, account!.RootElement.GetProperty("custodianId").ValueKind);
-
-        // Cleanup: the account we created (the contact is already gone).
-        await fixture.DeleteWithAntiforgeryAsync(client, $"/api/accounts/{accountId}");
+            using var account = await client.GetFromJsonAsync<JsonDocument>($"/api/accounts/{accountId}");
+            Assert.Equal(JsonValueKind.Null, account!.RootElement.GetProperty("custodianId").ValueKind);
+        }
+        finally
+        {
+            // Cleanup even when an assertion failed: the account, then the contact if it survived (a
+            // repeated delete of a gone contact is a harmless 404).
+            await fixture.DeleteWithAntiforgeryAsync(client, $"/api/accounts/{accountId}");
+            await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contacts/{custodianId}");
+        }
     }
 
     private async Task<Guid> CreateOrganizationContactAsync(HttpClient client, string legalName)

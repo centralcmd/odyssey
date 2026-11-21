@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -29,7 +30,7 @@ public class SettingFieldTests
         var markup = Component(name);
         var code = markup.IndexOf("@code {", StringComparison.Ordinal);
         var body = code < 0 ? markup : markup[..code];
-        return Regex.Replace(body, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+        return SourceLint.StripComments(body);
     }
 
     /// <summary>Each rendered <c>.odc-sfield-advisory</c> element, opening tag through closing div.</summary>

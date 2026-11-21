@@ -10,6 +10,7 @@ using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -273,7 +274,7 @@ public class CalendarAttachmentsTests
     [Fact]
     public void Only_CalendarLinkService_writes_the_four_calendar_link_tables()
     {
-        var root = SolutionRoot();
+        var root = SourceTree.Root;
         // The DbSets' writers, the generic Set<T>() route to them, and any construction of a link row. A context-level
         // Remove(row) is caught where the row comes from: a row can only be had from these sets or by construction.
         var writer = new Regex(
@@ -285,14 +286,8 @@ public class CalendarAttachmentsTests
         var offenders = new List<string>();
         foreach (var project in new[] { "Odyssey.Core", "Odyssey.Api", "Odyssey.Worker" })
         {
-            foreach (var path in Directory.EnumerateFiles(Path.Combine(root, project), "*.cs", SearchOption.AllDirectories))
+            foreach (var path in SourceTree.Files(project))
             {
-                if (path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                    || path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
                 scanned++;
                 if (Path.GetFileName(path) != "CalendarLinkService.cs" && writer.IsMatch(File.ReadAllText(path)))
                 {
@@ -303,16 +298,5 @@ public class CalendarAttachmentsTests
 
         Assert.True(scanned > 100, "The lint scanned almost nothing: its paths are wrong.");
         Assert.True(offenders.Count == 0, "Write the calendar link tables through CalendarLinkService: " + string.Join(", ", offenders));
-    }
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Could not locate the solution root.");
     }
 }

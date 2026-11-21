@@ -22,12 +22,8 @@ namespace Odyssey.Client.Tests;
 /// The four Email transport rows on <c>/settings</c>, the destructive save gate in front of them, and
 /// the two signals beside them (issue #8 — ACs 18, 19, 20, 21, 22, 23, 24, 25).
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class EmailTransportSurfaceTests : IDisposable
+public class EmailTransportSurfaceTests
 {
-    /// <summary>Restores the page's browser-check seam — it is <c>internal static</c>, so a test that moved it and did not put it back would change what every later test sees.</summary>
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private const string SecurityClaim = PermissionClaims.SystemSettingsSecurityUpdate;
 
     // ── AC 16's client half, and AC 22 ───────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ using Odyssey.Api.SystemSettings;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -313,11 +314,11 @@ public class TuningLookupDegradationTests
         var context = CreateContext(Guid.NewGuid().ToString());
         await SeedAsync(context, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
 
-        // A CapturingLogger rather than NullLogger: the warning is the OTHER half of the behaviour
+        // A RecordingLogger rather than NullLogger: the warning is the OTHER half of the behaviour
         // this test names, and the reason a clamp is not silent — without an assertion on it the log
         // call could be deleted, downgraded to Debug or emptied of its numbers and nothing would fail.
         // (Raised by the test reviewer on this PR.)
-        var logger = new CapturingLogger<AccountLimitsLookup>();
+        var logger = new RecordingLogger<AccountLimitsLookup>();
 
         var limits = await new AccountLimitsLookup(context, cache, logger).GetAsync();
 
@@ -352,7 +353,7 @@ public class TuningLookupDegradationTests
         var context = CreateContext(Guid.NewGuid().ToString());
         await SeedAsync(context, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "40"));
 
-        var logger = new CapturingLogger<AccountLimitsLookup>();
+        var logger = new RecordingLogger<AccountLimitsLookup>();
         var limits = await new AccountLimitsLookup(context, cache, logger).GetAsync();
 
         Assert.Equal(40, limits.MaxSmartTagsPerAccount);

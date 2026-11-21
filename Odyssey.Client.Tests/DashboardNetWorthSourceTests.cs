@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -54,7 +55,7 @@ public class DashboardNetWorthSourceTests
         var match = Regex.Match(CodeBehind(), pattern);
         Assert.False(
             match.Success,
-            $"Home.razor.cs:{ClientSource.LineAt(CodeBehind(), match.Index)} sums account balances "
+            $"Home.razor.cs:{SourceLint.LineAt(CodeBehind(), match.Index)} sums account balances "
             + "client-side. Net worth is server-computed by AccountTotalsService — a local sum "
             + "skips FX conversion and the estimate replace policy.");
     }
@@ -350,7 +351,7 @@ public class DashboardNetWorthSourceTests
 
         var match = Regex.Match(text, $@"(?<![\w.]){literal}(?![\w])");
         Assert.False(match.Success,
-            $"Home.razor.cs:{ClientSource.LineAt(text, match.Index)} writes {literal} in. The point caps "
+            $"Home.razor.cs:{SourceLint.LineAt(text, match.Index)} writes {literal} in. The point caps "
             + "and the default window live on NetWorthHistoryQuery in Odyssey.Dtos, which the client can "
             + "reference — name the constant rather than copying the number.");
     }

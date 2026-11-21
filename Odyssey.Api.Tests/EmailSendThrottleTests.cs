@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.Email;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -169,11 +170,11 @@ public class EmailSendThrottleTests
     /// the three read states now.
     /// </para>
     /// </summary>
-    private static (EmailSendThrottle Throttle, FakeTimeProvider Time, CapturingLogger<EmailSendThrottle> Logger)
+    private static (EmailSendThrottle Throttle, FakeTimeProvider Time, RecordingLogger<EmailSendThrottle> Logger)
         CreateThrottle()
     {
         var time = new FakeTimeProvider();
-        var logger = new CapturingLogger<EmailSendThrottle>();
+        var logger = new RecordingLogger<EmailSendThrottle>();
 
         return (new EmailSendThrottle(time, logger), time, logger);
     }

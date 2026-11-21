@@ -4,6 +4,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 
@@ -37,7 +38,7 @@ public class SmtpEmailSenderConfirmationTests
     [Fact]
     public async Task WithConfirmationDisabled_TheSendIsSkippedBeforeTheTransportIsConsulted()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
 
         // A host IS set, so a sender that did not short-circuit would attempt a real connection and
         // log a delivery failure. That is what makes the absence of those lines meaningful.
@@ -58,7 +59,7 @@ public class SmtpEmailSenderConfirmationTests
     [Fact]
     public async Task WithConfirmationEnabled_TheSendIsAttempted()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(
             logger, requireConfirmation: true, host: SmtpEmailSenderTestHarness.UnreachableHost);
 
@@ -76,7 +77,7 @@ public class SmtpEmailSenderConfirmationTests
     [Fact]
     public async Task WithNoStoredRow_ConfirmationIsOnByDefault()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(
             logger, requireConfirmation: null, host: SmtpEmailSenderTestHarness.UnreachableHost);
 
@@ -89,7 +90,7 @@ public class SmtpEmailSenderConfirmationTests
     // that delegate per scope, so a Guid.NewGuid() inside it would hand each scope its own unrelated
     // InMemory store and the seed would land in none of them.
     private static SmtpEmailSender CreateSender(
-        CapturingLogger<SmtpEmailSender> logger, bool? requireConfirmation, string host)
+        RecordingLogger<SmtpEmailSender> logger, bool? requireConfirmation, string host)
     {
         var databaseName = $"SmtpEmailSenderConfirmationTests_{Guid.NewGuid()}";
         var services = new ServiceCollection();

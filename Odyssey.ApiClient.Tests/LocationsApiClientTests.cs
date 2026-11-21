@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -10,27 +11,13 @@ namespace Odyssey.ApiClient.Tests;
 /// <summary><see cref="LocationsApiClient"/>'s routes, verbs and query assembly (issue #350 AC 21).</summary>
 public class LocationsApiClientTests
 {
-    private sealed class RecordingHandler(string body = "{}") : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
-        }
-    }
-
-    private static LocationsApiClient CreateClient(RecordingHandler handler) =>
+    private static LocationsApiClient CreateClient(RecordingHttpHandler handler) =>
         new(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
 
     [Fact]
     public async Task Search_is_a_POST_with_the_text_in_the_body_never_the_url()
     {
-        var handler = new RecordingHandler("""{"region":1,"candidates":[],"partial":false,"attribution":{"text":"© Kartverket","license":"CC BY 4.0","url":"https://www.kartverket.no/"}}""");
+        var handler = new RecordingHttpHandler("""{"region":1,"candidates":[],"partial":false,"attribution":{"text":"© Kartverket","license":"CC BY 4.0","url":"https://www.kartverket.no/"}}""");
         var client = CreateClient(handler);
 
         var result = await client.SearchAsync(new LocationSearchRequest { Query = "Storgata 1", Region = LocationSearchRegion.Norway });
@@ -49,7 +36,7 @@ public class LocationsApiClientTests
     public async Task List_sends_status_when_exactly_one_is_selected(string status, string expected)
     {
         string[] statuses = [status];
-        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
 
         await CreateClient(handler).ListAsync(1, 25, statuses: statuses);
 
@@ -62,7 +49,7 @@ public class LocationsApiClientTests
     public async Task List_omits_status_when_none_or_both_are_selected(string csv)
     {
         var statuses = csv.Split(',', StringSplitOptions.RemoveEmptyEntries);
-        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
 
         await CreateClient(handler).ListAsync(1, 25, statuses: statuses);
 
@@ -72,7 +59,7 @@ public class LocationsApiClientTests
     [Fact]
     public async Task List_carries_the_window_search_and_sort()
     {
-        var handler = new RecordingHandler("""{"items":[],"offset":25,"limit":25,"totalCount":0}""");
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":25,"limit":25,"totalCount":0}""");
 
         await CreateClient(handler).ListAsync(2, 25, search: "ringebu", sortBy: "UpdatedAt", sortDir: "desc");
 
@@ -89,7 +76,7 @@ public class LocationsApiClientTests
     public async Task ListAll_carries_the_same_filters_as_one_page()
     {
         string[] statuses = ["Archived"];
-        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":100,"totalCount":0}""");
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":100,"totalCount":0}""");
 
         var result = await CreateClient(handler).ListAllAsync(search: "cabin", statuses: statuses, sortBy: "Name", sortDir: "asc");
 
@@ -104,7 +91,7 @@ public class LocationsApiClientTests
     [Fact]
     public async Task Update_is_a_PUT_to_the_location_route()
     {
-        var handler = new RecordingHandler("""{"locationId":"00000000-0000-0000-0000-000000000001","name":"Cabin","timeZoneId":"Europe/Oslo"}""");
+        var handler = new RecordingHttpHandler("""{"locationId":"00000000-0000-0000-0000-000000000001","name":"Cabin","timeZoneId":"Europe/Oslo"}""");
         var id = Guid.NewGuid();
 
         await CreateClient(handler).UpdateAsync(id, new UpdateLocation
@@ -121,7 +108,7 @@ public class LocationsApiClientTests
     [Fact]
     public async Task Create_posts_to_the_collection()
     {
-        var handler = new RecordingHandler("""{"locationId":"00000000-0000-0000-0000-000000000001","name":"Cabin","timeZoneId":"Europe/Oslo"}""");
+        var handler = new RecordingHttpHandler("""{"locationId":"00000000-0000-0000-0000-000000000001","name":"Cabin","timeZoneId":"Europe/Oslo"}""");
 
         var result = await CreateClient(handler).CreateAsync(new NewLocation
         {
@@ -142,7 +129,7 @@ public class LocationsApiClientTests
     [InlineData(null, false, "referenced=false")]
     public async Task List_sends_a_filter_only_when_it_is_set(bool? hasCoordinates, bool? referenced, string expected)
     {
-        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
 
         await CreateClient(handler).ListAsync(1, 25, hasCoordinates: hasCoordinates, referenced: referenced);
 
@@ -162,7 +149,7 @@ public class LocationsApiClientTests
     [Fact]
     public async Task ListAll_carries_both_filters()
     {
-        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":100,"totalCount":0}""");
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":100,"totalCount":0}""");
 
         await CreateClient(handler).ListAllAsync(hasCoordinates: false, referenced: false);
 
@@ -175,7 +162,7 @@ public class LocationsApiClientTests
     public async Task Merge_posts_the_target_to_the_source_route_and_returns_the_target()
     {
         var target = Guid.NewGuid();
-        var handler = new RecordingHandler($$"""{"locationId":"{{target}}","name":"Hytta"}""");
+        var handler = new RecordingHttpHandler($$"""{"locationId":"{{target}}","name":"Hytta"}""");
         var source = Guid.NewGuid();
 
         var result = await CreateClient(handler).MergeAsync(source, target);
@@ -190,7 +177,7 @@ public class LocationsApiClientTests
     [Fact]
     public async Task Delete_is_a_DELETE_to_the_location_route()
     {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("{}");
         var id = Guid.NewGuid();
 
         var result = await CreateClient(handler).DeleteAsync(id);

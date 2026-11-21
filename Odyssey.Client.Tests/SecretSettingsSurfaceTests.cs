@@ -12,6 +12,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Pages;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -20,36 +21,13 @@ namespace Odyssey.Client.Tests;
 /// The Credentials group on <c>/settings</c> (issue #444 §16 ACs 16, 35, 39–41), plus the source-lints
 /// that pin the two properties no render can prove.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class SecretSettingsSurfaceTests : IDisposable
+public class SecretSettingsSurfaceTests
 {
-    /// <summary>
-    /// Restores the page's browser-check seam after every test. It is <c>internal static</c>, so a
-    /// test that moved it and did not put it back would change what every later test sees — the
-    /// process-wide-versus-per-instance hazard CLAUDE.md records for <c>RequestCapCeilings</c>.
-    /// </summary>
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static string PageMarkup() =>
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
 
     private static string PageCode() =>
         ClientSource.CodeBehind("Pages/Settings.razor.cs");
-
-    /// <summary>
-    /// Strips <c>//</c>, <c>/* … */</c> and Razor's <c>@* … *@</c> comments before a lint reads the
-    /// text. Without it these lints are unusable in this codebase: the comment explaining WHY a
-    /// construct is forbidden necessarily names the construct, so the lint would fail on its own
-    /// rationale and the only way to keep it green would be to stop writing the rationale down.
-    /// </summary>
-    private static string WithoutComments(string source)
-    {
-        source = System.Text.RegularExpressions.Regex.Replace(
-            source, @"@\*.*?\*@", string.Empty, System.Text.RegularExpressions.RegexOptions.Singleline);
-        source = System.Text.RegularExpressions.Regex.Replace(
-            source, @"/\*.*?\*/", string.Empty, System.Text.RegularExpressions.RegexOptions.Singleline);
-        return System.Text.RegularExpressions.Regex.Replace(source, @"//[^\n]*", string.Empty);
-    }
 
     // ── AC 16 — the persisted payload ───────────────────────────────────────────────────────────
 
@@ -97,7 +75,7 @@ public class SecretSettingsSurfaceTests : IDisposable
     [Fact]
     public void TheSearchString_IsNotPersisted()
     {
-        var code = WithoutComments(PageCode());
+        var code = SourceLint.StripComments(PageCode());
 
         Assert.DoesNotContain("Search = _search", code, StringComparison.Ordinal);
         Assert.DoesNotContain("state.Search;", code, StringComparison.Ordinal);
@@ -309,7 +287,6 @@ public class SecretSettingsSurfaceTests : IDisposable
         Assert.Equal(SecretSettingKeys.EmailPassword, field.Instance.SecretKey);
         Assert.DoesNotContain("No settings match", page.Markup, StringComparison.Ordinal);
     }
-
 
     /// <summary>
     /// The five migrated credentials render as rows, each with the title, description, consequence and
@@ -547,7 +524,7 @@ public class SecretSettingsSurfaceTests : IDisposable
     [Fact]
     public void TheSecretField_AdvisesOnlyWhileUnset_AndNeverFromItsFaultState()
     {
-        var source = WithoutComments(File.ReadAllText(
+        var source = SourceLint.StripComments(File.ReadAllText(
             Path.Combine(ClientSource.Root, "Components", "OdsSecretSettingField.razor.cs")));
 
         Assert.Contains(
@@ -570,7 +547,7 @@ public class SecretSettingsSurfaceTests : IDisposable
     {
         foreach (var file in new[] { "OdsSecretSettingField.razor", "OdsSecretSettingField.razor.cs" })
         {
-            var text = WithoutComments(
+            var text = SourceLint.StripComments(
                 File.ReadAllText(Path.Combine(ClientSource.Root, "Components", file)));
             Assert.DoesNotContain("OdsLiveAnnouncer", text, StringComparison.Ordinal);
             Assert.DoesNotContain("aria-live", text, StringComparison.Ordinal);
@@ -608,7 +585,7 @@ public class SecretSettingsSurfaceTests : IDisposable
     {
         foreach (var source in new[] { PageMarkup(), PageCode() })
         {
-            var text = WithoutComments(source);
+            var text = SourceLint.StripComments(source);
             Assert.DoesNotContain("HostEnvironment", text, StringComparison.Ordinal);
             Assert.DoesNotContain("IsProduction", text, StringComparison.Ordinal);
             Assert.DoesNotContain("blazor-environment", text, StringComparison.Ordinal);

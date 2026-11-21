@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -76,7 +77,7 @@ public class RequiredMarkerConventionTests
             var text = LineComment.Replace(HtmlComment.Replace(RazorComment.Replace(raw, Blank), Blank), Blank);
             foreach (Match match in pattern.Matches(text))
             {
-                violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} — {describe(match)}");
+                violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} — {describe(match)}");
             }
         }
         return violations;

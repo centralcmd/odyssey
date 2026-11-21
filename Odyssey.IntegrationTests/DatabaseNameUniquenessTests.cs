@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.IntegrationTests;
@@ -78,22 +79,6 @@ public sealed class DatabaseNameUniquenessTests
 
     // Every source file of this project but this one, whose own comments quote example names and spellings.
     private static IEnumerable<string> SourceFiles() =>
-        Directory.EnumerateFiles(Path.Combine(RepositoryRoot(), "Odyssey.IntegrationTests"), "*.cs", SearchOption.AllDirectories)
-            .Where(path => !IsBuildOutput(path))
+        SourceTree.Files("Odyssey.IntegrationTests")
             .Where(path => Path.GetFileName(path) != nameof(DatabaseNameUniquenessTests) + ".cs");
-
-    private static bool IsBuildOutput(string path) =>
-        path.Split(Path.DirectorySeparatorChar).Any(segment => segment is "bin" or "obj");
-
-    private static string RepositoryRoot()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return dir;
-    }
 }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Auth;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -50,9 +51,9 @@ public class AuthApiClientResendConfirmationTests
         Assert.Null(error);
     }
 
-    private static (ServiceProvider Provider, StubHandler Handler) Build(HttpStatusCode status, string? body)
+    private static (ServiceProvider Provider, RecordingHttpHandler Handler) Build(HttpStatusCode status, string? body)
     {
-        var handler = new StubHandler(status, body);
+        var handler = new RecordingHttpHandler(status, body, RecordingHttpHandler.ProblemMediaType) { AnswersAntiforgeryToken = true };
         var services = new ServiceCollection();
         services.AddOdysseyApiClient();
         services.AddScoped(sp =>
@@ -62,29 +63,5 @@ public class AuthApiClientResendConfirmationTests
             return new HttpClient(antiforgery) { BaseAddress = new Uri("http://localhost/") };
         });
         return (services.BuildServiceProvider(), handler);
-    }
-
-    private sealed class StubHandler(HttpStatusCode status, string? body) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            // The antiforgery handler fetches a token ahead of the POST; answer it so the request
-            // under test reaches this handler.
-            if (request.RequestUri!.AbsolutePath.EndsWith("/api/antiforgery/token", StringComparison.Ordinal))
-            {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("""{"token":"token"}""", Encoding.UTF8, "application/json"),
-                });
-            }
-
-            var response = new HttpResponseMessage(status);
-            if (body is not null)
-            {
-                response.Content = new StringContent(body, Encoding.UTF8, "application/problem+json");
-            }
-
-            return Task.FromResult(response);
-        }
     }
 }

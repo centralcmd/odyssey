@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -18,11 +19,6 @@ public class ClientDateHandlingTests
     internal static readonly DateTime Now = new(2026, 9, 30, 12, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime Opened2019 = new(2019, 3, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    internal sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     internal sealed class StubJournalLimits : IJournalLimitsLookup
     {
         public Task<JournalLimits> GetAsync(CancellationToken cancellationToken = default) =>
@@ -40,7 +36,7 @@ public class ClientDateHandlingTests
     }
 
     internal static AccountService NewAccountService(Context.OdysseyContext context) =>
-        new(context, TestContextFactory.EmptyContactLookup(), new FixedTimeProvider(Now));
+        new(context, TestContextFactory.EmptyContactLookup(), new FakeTimeProvider(Now));
 
     internal static NewAccount AccountRequest(DateTime? opened, DateTime? closed = null) => new()
     {
@@ -179,7 +175,7 @@ public class ClientDateHandlingTests
     public async Task TaxStatementCreateAndUpdate_LabelEveryUnspecifiedDateAsUtc()
     {
         await using var context = TestContextFactory.Create();
-        var service = new TaxStatementService(context, new FixedTimeProvider(Now));
+        var service = new TaxStatementService(context, new FakeTimeProvider(Now));
         var start = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
         var end = new DateTime(2024, 12, 31, 0, 0, 0, DateTimeKind.Unspecified);
         var settled = new DateTime(2025, 8, 1, 10, 0, 0, DateTimeKind.Unspecified);
@@ -239,7 +235,7 @@ public class ClientDateHandlingTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new CalendarEventService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new CalendarEventService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
         var start = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Unspecified);
         var end = new DateTime(2026, 10, 1, 10, 0, 0, DateTimeKind.Unspecified);
 
@@ -266,7 +262,7 @@ public class ClientDateHandlingTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
         var start = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Unspecified);
         var until = new DateTime(2026, 10, 10, 0, 0, 0, DateTimeKind.Unspecified);
 
@@ -292,7 +288,7 @@ public class ClientDateHandlingTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
         var created = await service.Create(new NewRecurrencePattern
         {
             CalendarId = calendar.CalendarId,
@@ -334,7 +330,7 @@ public class ClientDateHandlingTests
         };
         context.Accounts.Add(account);
         await context.SaveChangesAsync();
-        return (new TransactionService(context, TestContextFactory.EmptyContactLookup(), new FixedTimeProvider(Now)),
+        return (new TransactionService(context, TestContextFactory.EmptyContactLookup(), new FakeTimeProvider(Now)),
             account.AccountId);
     }
 

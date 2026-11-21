@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -19,38 +20,11 @@ namespace Odyssey.ApiClient.Tests;
 /// </remarks>
 public class CalendarApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        /// <summary>
-        /// Media types of a multipart request's parts, snapshotted during the send. The client disposes
-        /// the <see cref="MultipartFormDataContent"/> once the response is read, so the parts cannot be
-        /// inspected after the call returns.
-        /// </summary>
-        public List<string?> LastPartMediaTypes { get; } = [];
-
-        public HttpResponseMessage Response { get; set; } =
-            new(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) };
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastRequest = request;
-            LastPartMediaTypes.Clear();
-            if (request.Content is MultipartFormDataContent multipart)
-            {
-                LastPartMediaTypes.AddRange(multipart.Select(part => part.Headers.ContentType?.MediaType));
-            }
-
-            return Task.FromResult(Response);
-        }
-    }
-
-    private static CalendarApiClient CreateClient(RecordingHandler handler) =>
+    private static CalendarApiClient CreateClient(RecordingHttpHandler handler) =>
         new(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
 
     private static CalendarApiClient CreateClient() =>
-        new(new OdysseyApi(new HttpClient(new RecordingHandler()) { BaseAddress = new Uri("http://localhost/") }));
+        new(new OdysseyApi(new HttpClient(new RecordingHttpHandler()) { BaseAddress = new Uri("http://localhost/") }));
 
     private static string AggregateQuery(DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search) =>
         new Uri(CreateClient().ExportAggregateUrl(from, to, calendarIds, search)).Query;
@@ -113,7 +87,7 @@ public class CalendarApiClientTests
     [Fact]
     public async Task ImportAsync_PostsMultipartAsTextCalendar()
     {
-        var handler = new RecordingHandler
+        var handler = new RecordingHttpHandler
         {
             Response = new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -129,7 +103,7 @@ public class CalendarApiClientTests
         Assert.Equal("text/calendar", Assert.Single(handler.LastPartMediaTypes));
     }
 
-    private static RecordingHandler SummaryHandler() => new()
+    private static RecordingHttpHandler SummaryHandler() => new()
     {
         Response = new HttpResponseMessage(HttpStatusCode.OK)
         {

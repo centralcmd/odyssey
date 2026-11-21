@@ -5,6 +5,7 @@ using Moq;
 using Odyssey.Client.Pages.Internet;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
+using Odyssey.Testing;
 using Xunit;
 using static Odyssey.Client.Tests.NewsPageTestContext;
 
@@ -36,7 +37,7 @@ public class NewsSourceLintTests
     {
         var pattern = new Regex(@"MarkupString|AddMarkupContent|innerHTML", RegexOptions.Compiled);
         var offenders = NewsFiles()
-            .Where(f => pattern.IsMatch(ClientSource.WithoutComments(File.ReadAllText(f))))
+            .Where(f => pattern.IsMatch(SourceLint.StripComments(File.ReadAllText(f))))
             .Select(ClientSource.Relative)
             .ToList();
 
@@ -66,7 +67,7 @@ public class NewsSourceLintTests
         var offenders = new List<string>();
         foreach (var file in NewsFiles().Where(f => f.Contains($"{Path.DirectorySeparatorChar}Internet{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))
         {
-            var source = ClientSource.WithoutComments(File.ReadAllText(file));
+            var source = SourceLint.StripComments(File.ReadAllText(file));
             foreach (var (name, value) in RestatableLimits)
             {
                 if (Regex.IsMatch(source, $@"(?<![\w.#-]){value}(?![\w.%-]|px)"))
@@ -84,7 +85,7 @@ public class NewsSourceLintTests
     {
         var caps = new[] { "NewsTextStoreMaxGiB", "NewsImageStoreMaxGiB", "NewsMaxFeeds", "NewsFeedMaxArticlesPerDay", "NewsFeedMaxImageMbPerDay" };
         var offenders = NewsFiles()
-            .Where(f => caps.Any(c => ClientSource.WithoutComments(File.ReadAllText(f)).Contains(c, StringComparison.Ordinal)))
+            .Where(f => caps.Any(c => SourceLint.StripComments(File.ReadAllText(f)).Contains(c, StringComparison.Ordinal)))
             .Select(ClientSource.Relative)
             .ToList();
 

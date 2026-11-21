@@ -13,6 +13,8 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Testing.FileStorage;
+using Odyssey.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests.FileStorage;
@@ -223,7 +225,7 @@ public class FileStorageApiTests(FileStorageApiTests.Host host) : SharedApiHostT
     [Fact]
     public void The_api_source_names_no_file_storage_job()
     {
-        var program = File.ReadAllText(Path.Combine(RepositoryRoot.Path, "Odyssey.Api", "Program.cs"));
+        var program = File.ReadAllText(Path.Combine(SourceTree.Root, "Odyssey.Api", "Program.cs"));
 
         Assert.DoesNotContain("FileStorageMaintenanceJob", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AddPeriodicJob", program, StringComparison.Ordinal);
@@ -338,15 +340,15 @@ public class FileStorageGraceSettingApiTests(FileStorageGraceSettingApiTests.Hos
     public class LoggingFactory : OdysseyApiFactory
     {
         public LoggingFactory(IReadOnlyCollection<string> permissions)
-            : this(permissions, new CapturingLoggerProvider())
+            : this(permissions, new RecordingLoggerProvider())
         {
         }
 
-        private LoggingFactory(IReadOnlyCollection<string> permissions, CapturingLoggerProvider logs)
+        private LoggingFactory(IReadOnlyCollection<string> permissions, RecordingLoggerProvider logs)
             : base(permissions, configureServices: services => services.AddSingleton<ILoggerProvider>(logs)) =>
             Logs = logs;
 
-        public CapturingLoggerProvider Logs { get; }
+        public RecordingLoggerProvider Logs { get; }
 
         /// <summary>A shared host forgets the previous test's audit lines.</summary>
         public override async Task ResetStoreAsync()

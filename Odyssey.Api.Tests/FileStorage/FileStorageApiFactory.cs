@@ -8,6 +8,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage;
 using Odyssey.Testing.FileStorage;
+using Odyssey.Testing.Logging;
 
 namespace Odyssey.Api.Tests.FileStorage;
 
@@ -29,11 +30,11 @@ public class FileStorageApiFactory : OdysseyApiFactory
 
     /// <summary>A host on fresh temp volumes, for a test class to derive its shared host from.</summary>
     protected FileStorageApiFactory(IReadOnlyCollection<string>? permissions)
-        : this(permissions, NewVolumes(), new CapturingLoggerProvider(), new TestSpaceProbe())
+        : this(permissions, NewVolumes(), new RecordingLoggerProvider(), new TestSpaceProbe())
     {
     }
 
-    private FileStorageApiFactory(IReadOnlyCollection<string>? permissions, DirectoryInfo volumes, CapturingLoggerProvider logs, TestSpaceProbe space)
+    private FileStorageApiFactory(IReadOnlyCollection<string>? permissions, DirectoryInfo volumes, RecordingLoggerProvider logs, TestSpaceProbe space)
         : base(
             permissions,
             configuration: new Dictionary<string, string?>
@@ -71,14 +72,14 @@ public class FileStorageApiFactory : OdysseyApiFactory
         Space = space;
     }
 
-    public CapturingLoggerProvider Logs { get; }
+    public RecordingLoggerProvider Logs { get; }
 
     public TestSpaceProbe Space { get; }
 
     public string VolumeRoot(string name) => Path.Combine(volumes.FullName, name);
 
     public static FileStorageApiFactory Create(IReadOnlyCollection<string>? permissions) =>
-        new(permissions, NewVolumes(), new CapturingLoggerProvider(), new TestSpaceProbe());
+        new(permissions, NewVolumes(), new RecordingLoggerProvider(), new TestSpaceProbe());
 
     /// <summary>A shared host starts each test as a fresh one would: empty volumes, no captured log, the probe's default.</summary>
     public override async Task ResetStoreAsync()

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -34,8 +35,6 @@ public class ContactAvatarSurfaceTests
     /// </summary>
     private static string CropDialog(string name) =>
         File.ReadAllText(Path.Combine(ClientSource.Root, "Components", name));
-
-    private static string WithoutComments(string source) => ClientSource.WithoutComments(source);
 
     // ── OdsAvatar renders an <img>, not MudImage (AC 33) ──────────────────────────────────────────
 
@@ -93,7 +92,7 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_record_cards_image_mark_is_decorative_and_lazy()
     {
-        var markup = WithoutComments(Component("OdsRecordCard.razor"));
+        var markup = SourceLint.StripComments(Component("OdsRecordCard.razor"));
         var imgTag = markup[markup.IndexOf("<img src=\"@image.Src\"", StringComparison.Ordinal)..];
         imgTag = imgTag[..imgTag.IndexOf("/>", StringComparison.Ordinal)];
 
@@ -137,7 +136,7 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_crop_dialog_composes_the_form_dialog_rather_than_hand_rolling_a_dialog()
     {
-        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
+        var markup = SourceLint.StripComments(CropDialog("OdsImageCropDialog.razor"));
 
         // overlay-focus.js already owns focus trapping and focus return, and OdsModal owns the Escape
         // handling — so Escape closing and returning focus to the invoking control comes for free, and
@@ -149,7 +148,7 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_crop_controls_are_native_range_inputs_each_labelled_and_value_texted()
     {
-        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
+        var markup = SourceLint.StripComments(CropDialog("OdsImageCropDialog.razor"));
 
         // The ids are now GENERATED PER INSTANCE (AC 32) rather than the hardcoded cav-zoom / cav-x /
         // cav-y this grew from — a shared component mounted twice would otherwise emit duplicate ids
@@ -176,8 +175,8 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_crop_dialogs_element_ids_are_generated_per_instance()
     {
-        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
-        var code = WithoutComments(CropDialog("OdsImageCropDialog.razor.cs"));
+        var markup = SourceLint.StripComments(CropDialog("OdsImageCropDialog.razor"));
+        var code = SourceLint.StripComments(CropDialog("OdsImageCropDialog.razor.cs"));
 
         foreach (var id in new[] { "cav-file", "cav-zoom", "cav-x", "cav-y" })
         {
@@ -235,8 +234,8 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_crop_dialog_names_no_limit_as_a_literal()
     {
-        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
-        var code = WithoutComments(CropDialog("OdsImageCropDialog.razor.cs"));
+        var markup = SourceLint.StripComments(CropDialog("OdsImageCropDialog.razor"));
+        var code = SourceLint.StripComments(CropDialog("OdsImageCropDialog.razor.cs"));
 
         foreach (var (name, text) in new[] { ("markup", markup), ("code-behind", code) })
         {

@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Application;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -20,7 +21,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task CurrentTermsOfService_withNoVersionPublished_isASuccessCarryingNull()
     {
-        var handler = new StubHandler(HttpStatusCode.OK, "null");
+        var handler = new RecordingHttpHandler(HttpStatusCode.OK, "null");
         var client = ClientFor(handler);
 
         var result = await client.GetCurrentTermsOfServiceAsync();
@@ -33,7 +34,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task CurrentTermsOfService_whenTheCallFails_isAFailure()
     {
-        var client = ClientFor(new StubHandler(HttpStatusCode.InternalServerError, "{}"));
+        var client = ClientFor(new RecordingHttpHandler(HttpStatusCode.InternalServerError, "{}"));
 
         var result = await client.GetCurrentTermsOfServiceAsync();
 
@@ -43,7 +44,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task CurrentTermsOfService_withAPublishedVersion_carriesIt()
     {
-        var client = ClientFor(new StubHandler(
+        var client = ClientFor(new RecordingHttpHandler(
             HttpStatusCode.OK,
             """{"id":7,"content":"Terms v7","publishedAt":"2026-05-01T12:00:00Z"}"""));
 
@@ -57,7 +58,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task License_readsTheContentAndDigest()
     {
-        var handler = new StubHandler(HttpStatusCode.OK, """{"content":"BSD 2-Clause","sha256":"abc123"}""");
+        var handler = new RecordingHttpHandler(HttpStatusCode.OK, """{"content":"BSD 2-Clause","sha256":"abc123"}""");
         var client = ClientFor(handler);
 
         var result = await client.GetLicenseAsync();
@@ -74,7 +75,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task Respond_sendsTheDocumentTypeByName()
     {
-        var handler = new StubHandler(HttpStatusCode.NoContent, "");
+        var handler = new RecordingHttpHandler(HttpStatusCode.NoContent, "");
         var client = ClientFor(handler);
 
         await client.RespondAsync(new LegalDocumentResponse
@@ -94,7 +95,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task Respond_withAStaleVersion_surfacesTheConflictStatus()
     {
-        var client = ClientFor(new StubHandler(HttpStatusCode.Conflict, """{"detail":"The Terms of Service changed."}"""));
+        var client = ClientFor(new RecordingHttpHandler(HttpStatusCode.Conflict, """{"detail":"The Terms of Service changed."}"""));
 
         var result = await client.RespondAsync(new LegalDocumentResponse
         {
@@ -110,7 +111,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task Versions_readTheMetadataList()
     {
-        var handler = new StubHandler(
+        var handler = new RecordingHttpHandler(
             HttpStatusCode.OK,
             """
             [{"id":2,"publishedAt":"2026-05-02T09:00:00Z","publishedByUserId":"u1","publishedByDisplayName":"Ada L."},
@@ -131,7 +132,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task Version_readsOneVersionsFullTextOnDemand()
     {
-        var handler = new StubHandler(
+        var handler = new RecordingHttpHandler(
             HttpStatusCode.OK,
             """{"id":3,"content":"Terms v3","publishedAt":"2026-05-03T09:00:00Z","publishedByUserId":"u1","publishedByDisplayName":"Ada L."}""");
         var client = ClientFor(handler);
@@ -145,7 +146,7 @@ public class LegalApiClientTests
     [Fact]
     public async Task PublishVersion_postsTheContentToTheVersionsCollection()
     {
-        var handler = new StubHandler(
+        var handler = new RecordingHttpHandler(
             HttpStatusCode.Created,
             """{"id":8,"content":"Terms v8","publishedAt":"2026-05-08T09:00:00Z","publishedByUserId":"u1","publishedByDisplayName":"Ada L."}""");
         var client = ClientFor(handler);
@@ -158,29 +159,9 @@ public class LegalApiClientTests
         Assert.Equal(8, result.Value!.Id);
     }
 
-    private static ILegalApiClient ClientFor(StubHandler handler) =>
+    private static ILegalApiClient ClientFor(RecordingHttpHandler handler) =>
         new LegalApiClient(new OdysseyApi(new HttpClient(handler)
         {
             BaseAddress = new Uri("https://api.odyssey.test/"),
         }));
-
-    private sealed class StubHandler(HttpStatusCode status, string body) : HttpMessageHandler
-    {
-        public string LastPath { get; private set; } = "";
-        public string LastBody { get; private set; } = "";
-        public HttpMethod LastMethod { get; private set; } = HttpMethod.Get;
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastPath = request.RequestUri!.AbsolutePath;
-            LastMethod = request.Method;
-            LastBody = request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
-
-            return new HttpResponseMessage(status)
-            {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
-            };
-        }
-    }
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Odyssey.Api;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -52,7 +53,7 @@ public class IdentityMailEndpointConventionTests
     {
         // The failure mode this guards: a future ASP.NET version renames the route, the metadata is
         // never applied, and the tighter limit silently stops covering the endpoint.
-        var logger = new CapturingLogger<IdentityMailEndpointConventionTests>();
+        var logger = new RecordingLogger<IdentityMailEndpointConventionTests>();
         var builder = new FakeConventionBuilder();
         builder.RequireMailEndpointRateLimiting();
 
@@ -72,7 +73,7 @@ public class IdentityMailEndpointConventionTests
     [Fact]
     public void WithBothRoutesPresent_NothingIsReported()
     {
-        var logger = new CapturingLogger<IdentityMailEndpointConventionTests>();
+        var logger = new RecordingLogger<IdentityMailEndpointConventionTests>();
         var builder = new FakeConventionBuilder();
         builder.RequireMailEndpointRateLimiting();
 

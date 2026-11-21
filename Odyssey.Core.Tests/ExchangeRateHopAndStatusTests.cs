@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -236,10 +237,7 @@ public class ExchangeRateHopAndStatusTests
     [Fact]
     public void No_file_in_Odyssey_Core_restates_the_exchange_rate_ordering()
     {
-        var root = Path.Combine(SolutionRoot(), "Odyssey.Core");
-        var files = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
-            .ToList();
+        var files = SourceTree.Files("Odyssey.Core").ToList();
         Assert.Contains(files, path => path.EndsWith("ExchangeRateOrdering.cs", StringComparison.Ordinal));
 
         var pattern = new Regex(@"(OrderByDescending|ThenByDescending)\(\s*\w+\s*=>\s*\w+\.(AsOf|UpdatedAt \?\? \w+\.CreatedAt)\s*\)");
@@ -251,17 +249,5 @@ public class ExchangeRateHopAndStatusTests
 
         Assert.True(offenders.Count == 0,
             "Use ExchangeRateOrdering instead of restating the newest-rate ordering: " + string.Join(", ", offenders));
-    }
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution root from the test binary.");
     }
 }

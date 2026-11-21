@@ -3,9 +3,11 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 using ContextInterval = Odyssey.Context.Interval;
@@ -33,14 +35,14 @@ public class TermTextDateTimeServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var log = new RecordingLogger<TermService>();
-        var service = new TermService(context, new FixedTimeProvider(FixedToday), logger: log);
+        var service = new TermService(context, new FakeTimeProvider(FixedToday), logger: log);
 
         var created = await service.CreateForContract(contractId, Text(SecretText), userId: "u1");
         await service.UpdateForContract(contractId, created.TermId, Text(SecretText + " (revised)"), userId: "u1");
         await service.DeleteForContract(contractId, created.TermId, userId: "u1");
 
-        Assert.Equal(3, log.Lines.Count);
-        Assert.All(log.Lines, line =>
+        Assert.Equal(3, log.Messages.Count);
+        Assert.All(log.Messages, line =>
         {
             Assert.Contains("(text)", line, StringComparison.Ordinal);
             Assert.DoesNotContain("SECRET-CLAUSE", line, StringComparison.Ordinal);
@@ -53,12 +55,12 @@ public class TermTextDateTimeServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var log = new RecordingLogger<TermService>();
-        var service = new TermService(context, new FixedTimeProvider(FixedToday), logger: log);
+        var service = new TermService(context, new FakeTimeProvider(FixedToday), logger: log);
         var instant = new DateTime(2027, 3, 31, 10, 0, 0, DateTimeKind.Utc);
 
         await service.CreateForContract(contractId, DateTimeTerm(instant), userId: "u1");
 
-        Assert.Contains(instant.ToString("O"), Assert.Single(log.Lines), StringComparison.Ordinal);
+        Assert.Contains(instant.ToString("O"), Assert.Single(log.Messages), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -71,13 +73,13 @@ public class TermTextDateTimeServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var log = new RecordingLogger<TermService>();
-        var service = new TermService(context, new FixedTimeProvider(FixedToday), logger: log);
+        var service = new TermService(context, new FakeTimeProvider(FixedToday), logger: log);
 
         var created = await service.CreateForContract(contractId, Amount(45m), userId: "u1");
-        log.Lines.Clear();
+        log.Clear();
         await service.UpdateForContract(contractId, created.TermId, Text(SecretText, label: "Service charge"), userId: "u1");
 
-        var line = Assert.Single(log.Lines);
+        var line = Assert.Single(log.Messages);
         Assert.Contains("45 EUR from", line, StringComparison.Ordinal);
         Assert.Contains("-> (text) (none) from", line, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET-CLAUSE", line, StringComparison.Ordinal);
@@ -220,19 +222,19 @@ public class TermTextDateTimeServiceTests
     };
 
     private ContractService Summary(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
 
     private ContractFileService Files(OdysseyContext context) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new FakeSystemSettingsLookup());
 
     private ContractSummaryService Summaries(OdysseyContext context) =>
-        new(context, new FixedTimeProvider(FixedToday), new FakeSystemSettingsLookup());
+        new(context, new FakeTimeProvider(FixedToday), new FakeSystemSettingsLookup());
 
     private static Guid SeedActiveContract(OdysseyContext context)
     {
@@ -289,23 +291,5 @@ public class TermTextDateTimeServiceTests
         context.Contracts.Add(contract);
         await context.SaveChangesAsync();
         return contract.ContractId;
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
-    private sealed class RecordingLogger<T> : ILogger<T>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 }

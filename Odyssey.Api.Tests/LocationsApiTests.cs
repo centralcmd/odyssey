@@ -11,6 +11,7 @@ using Odyssey.Core.Journal.Geocoding;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -574,7 +575,7 @@ public class LocationsApiTests(LocationsApiTests.Host host) : SharedApiHostTests
     [Fact]
     public async Task No_log_line_anywhere_in_the_host_contains_the_query_or_the_stored_values()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, new FakeSources(), new Dictionary<string, string?>
         {
             ["Logging:LogLevel:Default"] = "Trace",
@@ -621,7 +622,7 @@ public class LocationsApiTests(LocationsApiTests.Host host) : SharedApiHostTests
     [Fact]
     public async Task The_geocoding_clients_write_no_HttpClient_log_lines_while_an_ordinary_client_does()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, configuration: new Dictionary<string, string?>
         {
             ["Logging:LogLevel:Default"] = "Trace",

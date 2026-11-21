@@ -3,6 +3,7 @@ using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -18,21 +19,9 @@ namespace Odyssey.ApiClient.Tests;
 /// </remarks>
 public class ScopedWriteRouteTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (IOdysseyApi Api, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-        public HttpStatusCode Status { get; set; } = HttpStatusCode.NoContent;
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(Status));
-        }
-    }
-
-    private static (IOdysseyApi Api, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler(HttpStatusCode.NoContent);
         return (new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }), handler);
     }
 

@@ -11,6 +11,7 @@ using Odyssey.Api;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -87,7 +88,7 @@ public class IdentityStartupGuardTests
     private static IEnumerable<RouteEndpoint> RouteEndpoints(ApiFactory factory) =>
         factory.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>();
 
-    private static IEnumerable<CapturingLoggerProvider.Entry> GuardErrors(ApiFactory factory) =>
+    private static IEnumerable<LogEntry> GuardErrors(ApiFactory factory) =>
         factory.Logs.Entries.Where(entry =>
             entry.Level >= LogLevel.Error
             && (entry.Category == typeof(IdentityRateLimiting).FullName
@@ -97,7 +98,7 @@ public class IdentityStartupGuardTests
     {
         private readonly string databaseName = $"IdentityStartupGuardTests-{Guid.NewGuid()}";
 
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

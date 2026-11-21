@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
@@ -368,13 +369,8 @@ public class ContractTermTextDateTimeApiTests(ContractTermTextDateTimeApiTests.H
         : OdysseyApiFactory(permissions, ActorUserId, configuration: null, configureServices: services =>
         {
             services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+            services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
         });
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
 
     /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
     public sealed class Host() : ApiFactory([]);

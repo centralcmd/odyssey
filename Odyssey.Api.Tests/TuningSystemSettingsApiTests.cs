@@ -10,6 +10,8 @@ using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -502,7 +504,7 @@ public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host
     [InlineData("SystemSettingsDefaults.EmailMaxTrackedRecipients")]
     public void ASingleDirectionKeys_RangeAttribute_NamesTheSharedConstant(string expression)
     {
-        var source = File.ReadAllText(SolutionFile("Odyssey.Dtos", "Application", "SystemSettingsUpdate.cs"));
+        var source = File.ReadAllText(SourceTree.File("Odyssey.Dtos", "Application", "SystemSettingsUpdate.cs"));
 
         // Matched inside the BOUNDS — the first two arguments of [Range(...)] — and nowhere else.
         //
@@ -537,7 +539,7 @@ public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host
     [Fact]
     public void SharedDtos_HasNoProjectReferences()
     {
-        var project = File.ReadAllText(SolutionFile("Odyssey.Dtos", "Odyssey.Dtos.csproj"));
+        var project = File.ReadAllText(SourceTree.File("Odyssey.Dtos", "Odyssey.Dtos.csproj"));
         Assert.DoesNotContain("ProjectReference", project, StringComparison.Ordinal);
     }
 
@@ -882,19 +884,11 @@ public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host
     [Fact]
     public void NoLinkCapConstant_SurvivesInTheJournalProject()
     {
-        var root = System.IO.Path.GetDirectoryName(SolutionFile("Odyssey.sln"))!;
-        var journal = System.IO.Path.Combine(root, "Odyssey.Core", "Journal");
-
-        var offenders = Directory
-            .EnumerateFiles(journal, "*.cs", SearchOption.AllDirectories)
-            .Where(file => !file.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}",
-                StringComparison.Ordinal))
-            .Where(file => !file.Contains($"{System.IO.Path.DirectorySeparatorChar}bin{System.IO.Path.DirectorySeparatorChar}",
-                StringComparison.Ordinal))
+        var offenders = SourceTree.Files(System.IO.Path.Combine("Odyssey.Core", "Journal"))
             .Select(file => (File: file, Text: File.ReadAllText(file)))
             .Where(pair => System.Text.RegularExpressions.Regex.IsMatch(
                 pair.Text, @"const\s+int\s+MaxLinksPerKind\s*="))
-            .Select(pair => System.IO.Path.GetRelativePath(root, pair.File))
+            .Select(pair => SourceTree.Relative(pair.File))
             .ToList();
 
         Assert.True(offenders.Count == 0,
@@ -921,29 +915,11 @@ public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host
     [InlineData("AdminActionRateLimiting.cs")]
     public void BothRateLimitPartitioners_RecordWhyTheyAreNotAdminEditable(string file)
     {
-        var source = File.ReadAllText(SolutionFile("Odyssey.Api", file));
+        var source = File.ReadAllText(SourceTree.File("Odyssey.Api", file));
 
         Assert.Contains("NOT admin-editable", source, StringComparison.Ordinal);
         Assert.Contains("only the first time", source, StringComparison.Ordinal);
         Assert.Contains("never reach a live one", source, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Resolves a solution-relative file, for the two lints above whose subject is a cross-project
-    /// contract (a <c>[Range]</c> naming a constant in another assembly, and the project references that
-    /// make naming it possible) — reading only the compiled side would let those drift apart with the
-    /// test still green.
-    /// </summary>
-    private static string SolutionFile(params string[] parts)
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(System.IO.Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = System.IO.Path.GetDirectoryName(dir.TrimEnd(System.IO.Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return System.IO.Path.Combine([dir!, .. parts]);
     }
 
     public class ApiFactory(IReadOnlyCollection<string>? permissions)
@@ -953,7 +929,7 @@ public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host
     private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {

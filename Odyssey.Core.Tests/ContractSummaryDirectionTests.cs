@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -26,11 +27,6 @@ public class ContractSummaryDirectionTests
     private static readonly DateTime FixedToday = new(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc);
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
 
     // ── The compatibility guarantee ──────────────────────────────────────────
 
@@ -332,19 +328,19 @@ public class ContractSummaryDirectionTests
     private enum Signature { Signed, Draft, Ready }
 
     private ContractService CreateService(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             lookup ?? new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
 
     private ContractFileService Files(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             lookup ?? new FakeSystemSettingsLookup());
 
     private ContractSummaryService Summaries(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
-        new(context, new FixedTimeProvider(FixedToday), lookup ?? new FakeSystemSettingsLookup());
+        new(context, new FakeTimeProvider(FixedToday), lookup ?? new FakeSystemSettingsLookup());
 
     private Task<ContractSummary> Summarise(OdysseyContext context) =>
         Summaries(context).GetSummary("USD");

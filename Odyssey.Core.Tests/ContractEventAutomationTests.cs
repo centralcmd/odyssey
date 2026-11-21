@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Context = Odyssey.Context;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
@@ -35,47 +37,28 @@ public class ContractEventAutomationTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
-    /// <summary>Captures the formatted line so the no-free-text assertions can read it back.</summary>
-    private sealed class RecordingLogger<T> : ILogger<T>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
-    }
-
     private ContractService Contracts(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             logger ?? NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new FakeSystemSettingsLookup(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
 
     private ContractFileService Files(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new FakeSystemSettingsLookup());
 
     private ContractSummaryService Summaries(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, new FixedTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup());
+        new(context, new FakeTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup());
 
     private static TermService Terms(
         OdysseyContext context, ILogger<TermService>? logger = null, ISystemSettingsLookup? caps = null) =>
-        new(context, new FixedTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup(),
+        new(context, new FakeTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup(),
             logger ?? NullLogger<TermService>.Instance);
 
     private static NewContract New(
@@ -361,7 +344,7 @@ public class ContractEventAutomationTests
         // later timezone produces, and one NormalizeSignature accepts because the DATE is not future.
         var at9am = FixedToday.AddHours(9);
         var service = new ContractService(
-            context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(at9am),
+            context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(at9am),
             NullLogger<ContractService>.Instance);
 
         var sameDay = await service.Create(
@@ -587,7 +570,7 @@ public class ContractEventAutomationTests
             created.ContractId, Rent(1m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), "First"),
             TestUserId);
         ClearEvents(context, created.ContractId);
-        log.Lines.Clear();
+        log.Clear();
 
         await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
             terms.CreateForContract(
@@ -595,7 +578,7 @@ public class ContractEventAutomationTests
                 TestUserId));
 
         Assert.Empty(EventsOf(context, created.ContractId));
-        Assert.Empty(log.Lines);
+        Assert.Empty(log.Messages);
     }
 
     /// <summary>
@@ -662,19 +645,19 @@ public class ContractEventAutomationTests
         var service = Contracts(context, log);
         var created = await service.Create(
             New(ready: FixedToday.AddDays(-20), signed: FixedToday.AddDays(-19)), TestUserId);
-        log.Lines.Clear();
+        log.Clear();
 
         await service.Update(created.ContractId,
             Write(created, isPaused: true, ready: created.Ready, signed: created.Signed), TestUserId);
         await service.Update(created.ContractId,
             Write(created, isPaused: false, ready: created.Ready, signed: created.Signed), TestUserId);
 
-        Assert.Equal(2, log.Lines.Count);
-        Assert.Contains("Paused set", log.Lines[0], StringComparison.Ordinal);
-        Assert.Contains("(none) ->", log.Lines[0], StringComparison.Ordinal);
-        Assert.Contains("Paused cleared", log.Lines[1], StringComparison.Ordinal);
-        Assert.Contains("-> (none)", log.Lines[1], StringComparison.Ordinal);
-        Assert.All(log.Lines, line =>
+        Assert.Equal(2, log.Messages.Count);
+        Assert.Contains("Paused set", log.Messages[0], StringComparison.Ordinal);
+        Assert.Contains("(none) ->", log.Messages[0], StringComparison.Ordinal);
+        Assert.Contains("Paused cleared", log.Messages[1], StringComparison.Ordinal);
+        Assert.Contains("-> (none)", log.Messages[1], StringComparison.Ordinal);
+        Assert.All(log.Messages, line =>
         {
             Assert.Contains(created.ContractId.ToString(), line, StringComparison.OrdinalIgnoreCase);
             Assert.Contains(TestUserId, line, StringComparison.Ordinal);
@@ -702,24 +685,24 @@ public class ContractEventAutomationTests
 
         var term = await terms.CreateForContract(
             created.ContractId, Rent(14500m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)), TestUserId);
-        var addedLine = Assert.Single(log.Lines);
+        var addedLine = Assert.Single(log.Messages);
         Assert.Contains("Contract term added", addedLine, StringComparison.Ordinal);
         Assert.Contains("(none) (none) from (none) ->", addedLine, StringComparison.Ordinal);
         Assert.Contains("14500 USD", addedLine, StringComparison.Ordinal);
 
-        log.Lines.Clear();
+        log.Clear();
         Assert.True(await terms.UpdateForContract(
             created.ContractId, term.TermId,
             Rent(15000m, new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc)), TestUserId));
-        var changedLine = Assert.Single(log.Lines);
+        var changedLine = Assert.Single(log.Messages);
         Assert.Contains("Contract term changed", changedLine, StringComparison.Ordinal);
         // BOTH halves, and they must differ — the whole point of reading OriginalValues.
         Assert.Contains("14500 USD from 2026-01-01", changedLine, StringComparison.Ordinal);
         Assert.Contains("15000 USD from 2026-02-01", changedLine, StringComparison.Ordinal);
 
-        log.Lines.Clear();
+        log.Clear();
         Assert.True(await terms.DeleteForContract(created.ContractId, term.TermId, TestUserId));
-        var removedLine = Assert.Single(log.Lines);
+        var removedLine = Assert.Single(log.Messages);
         Assert.Contains("Contract term removed", removedLine, StringComparison.Ordinal);
         Assert.Contains("15000 USD from 2026-02-01", removedLine, StringComparison.Ordinal);
         Assert.Contains("-> (none) (none) from (none)", removedLine, StringComparison.Ordinal);
@@ -762,7 +745,7 @@ public class ContractEventAutomationTests
             Rent(15000m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), TermLabelText), TestUserId);
         await terms.DeleteForContract(created.ContractId, term.TermId, TestUserId);
 
-        var lines = contractLog.Lines.Concat(termLog.Lines).ToList();
+        var lines = contractLog.Messages.Concat(termLog.Messages).ToList();
         Assert.NotEmpty(lines);
         Assert.All(lines, line =>
         {
@@ -800,11 +783,11 @@ public class ContractEventAutomationTests
         var stored = await context.Terms.FirstAsync(t => t.TermId == term.TermId);
         stored.CurrencyCode = "U\r\nS";
         await context.SaveChangesAsync();
-        log.Lines.Clear();
+        log.Clear();
 
         Assert.True(await terms.DeleteForContract(created.ContractId, term.TermId, TestUserId));
 
-        var line = Assert.Single(log.Lines);
+        var line = Assert.Single(log.Messages);
         Assert.DoesNotContain("\r", line, StringComparison.Ordinal);
         Assert.DoesNotContain("\n", line, StringComparison.Ordinal);
         Assert.Contains("(none)", line, StringComparison.Ordinal);

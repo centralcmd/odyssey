@@ -25,9 +25,14 @@
   </ItemGroup>
   <ItemGroup>
     <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
+    <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
+    <Compile Include="..\TestShared\SourceLint.cs" Link="TestShared\SourceLint.cs" />
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
+    <Compile Include="..\TestShared\Lookups\*.cs" Link="TestShared\Lookups\%(Filename)%(Extension)" />
+    <Compile Include="..\TestShared\Http\*.cs" Link="TestShared\Http\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\PerfTier.cs" Link="TestShared\PerfTier.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
+    <Compile Include="..\TestShared\Logging\*.cs" Link="TestShared\Logging\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\News\*.cs" Link="TestShared\News\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\HexColorNegativeCorpus.cs" Link="TestShared\HexColorNegativeCorpus.cs" />
     <Compile Include="..\TestShared\Fixtures\ContactImageFixtures.cs" Link="TestShared\Fixtures\ContactImageFixtures.cs" />
@@ -49,6 +54,10 @@
          untrusted input. Strip-then-verify only means something when the verifier shares no code with
          the stripper. -->
     <PackageReference Include="MetadataExtractor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Odyssey.Testing" />
   </ItemGroup>
 
 </Project>
