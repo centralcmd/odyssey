@@ -26,19 +26,53 @@ Do not force one. Three outcomes, in order of preference:
 When a feature is filed as a backend/frontend pair, both halves get the **same** milestone or neither
 does — a split pair silently drops half a feature out of the release.
 
+## `gh` in a web session: use the REST form
+
+The same `gh` command does not work everywhere. In a Claude Code on the web session `gh` is installed,
+but every **GraphQL-backed** subcommand is refused with
+`HTTP 403: GitHub GraphQL is not available from Claude Code sessions; use the REST API` — that covers
+`gh issue create/list/view/edit`, `gh pr view`, `gh pr checks`, `gh label list`, `gh repo view`,
+`gh search` and `gh api graphql`. `gh api` **REST** calls go through, and so does `gh pr diff`. The
+`claude-code-action` runner and a local terminal have no such restriction.
+
+So every skill and agent that touches GitHub gives the `gh api` REST form as the **portable** path, and may
+keep the friendlier subcommand as the local-terminal alternative. The `mcp__github__*` tools are a third
+route where they are loaded.
+
+Three things about `gh api` that are easy to get wrong:
+
+- **`{owner}/{repo}` is filled in from the git remote only inside the endpoint path**, never inside a
+  field value. Resolve the repo once and reuse it:
+  `repo=$(gh api 'repos/{owner}/{repo}' --jq .full_name)`.
+- **`-f` sends a literal string; `-F` converts `true`/`false`/`null`/integers and reads `@file`, or
+  `@-` for stdin.** So a body from a file or heredoc is `-F body=@-` (with `-f` it would post the literal
+  text `@-`), a milestone is `-F milestone=<number>`, and a title stays `-f` so a numeric one is not
+  converted.
+- **Arrays take `[]`**: `-f 'labels[]=claude' -f 'labels[]=bug'`, `-f 'assignees[]=centralcmd'`.
+
+| Task | Portable (`gh api`, REST) | Local-terminal alternative |
+|---|---|---|
+| Resolve the repo | `gh api 'repos/{owner}/{repo}' --jq .full_name` | `gh repo view --json nameWithOwner -q .nameWithOwner` |
+| Search open issues | `gh api -X GET search/issues -f q="repo:$repo is:issue is:open <terms>" --jq '.items[].html_url'` | `gh issue list --state open --search "<terms>"` |
+| List labels | `gh api "repos/$repo/labels" --paginate --jq '.[].name'` | `gh label list` |
+| Create a label | `gh api "repos/$repo/labels" -f name=<name> -f color=<hex> -f description="<text>"` | `gh label create <name> --color <hex> --description "<text>"` |
+| Create an issue | `gh api "repos/$repo/issues" -f title="<title>" -F body=@- -f 'labels[]=<label>' -f 'assignees[]=<login>' -F milestone=<number> --jq .html_url <<'BODY'` … `BODY` | `gh issue create --title … --body-file - --label … --assignee … --milestone "<exact title>"` |
+| Replace an issue body | `gh api -X PATCH "repos/$repo/issues/<n>" -F body=@<file> -f title="<title>"` | `gh issue edit <n> --body-file <file> --title "<title>"` |
+| Comment on an issue or PR | `gh api "repos/$repo/issues/<n>/comments" -F body=@<file>` | `gh issue comment` / `gh pr comment <n> --body-file <file>` |
+| View a PR | `gh api "repos/$repo/pulls/<n>" --jq '{number,title,url:.html_url,head:.head.ref}'` | `gh pr view <n> --json number,title,url,headRefName` |
+| The current branch's open PR | `gh api "repos/$repo/pulls?head=${repo%%/*}:<branch>&state=open" --jq '.[].html_url'` | `gh pr view --json number,title,url` |
+| Files a PR touches | `gh pr diff <n> --name-only` (REST-backed — works everywhere) | the same |
+
+Leave `milestone` out of the create call when none fits; there is no "unset" value to send.
+
 ## Discovering the open milestones
 
-With `gh` — the `claude-code-action` runner and a Claude Code on the web session both have it:
-
 ```bash
-gh api repos/<owner>/<repo>/milestones --jq '.[] | "\(.number)\t\(.title)\t\(.open_issues) open"'
+gh api "repos/$repo/milestones" --jq '.[] | "\(.number)\t\(.title)\t\(.open_issues) open"'
 ```
 
-In a web session only the **REST** half of `gh` works: `gh api repos/...` goes through, while every
-GraphQL-backed subcommand (`gh issue list/create/edit`, `gh pr view`, `gh api graphql`) is refused with
-`HTTP 403: GitHub GraphQL is not available from Claude Code sessions`. Use `gh api` for REST calls
-there, or the `mcp__github__*` tools. No MCP tool lists milestones directly; if `gh` is unavailable,
-read them off sibling issues — `search_issues` returns the field:
+If `gh` is unavailable altogether, use the MCP tools. No MCP tool lists milestones directly, so read them
+off sibling issues — `search_issues` returns the field:
 
 ```
 mcp__github__search_issues(owner, repo, query: "<area> issues", fields: ["number","title","milestone"])
@@ -51,9 +85,8 @@ ask the user rather than assuming none exists.
 
 | Tool | How |
 |---|---|
-| `gh issue create` | `--milestone "<exact title>"` — the title must match exactly (GraphQL-backed: not in a web session) |
-| `gh issue edit <n>` | `--milestone "<exact title>"` to add one after the fact (same caveat) |
-| `gh api` (REST) | `gh api repos/<owner>/<repo>/issues -f title=… -f body=… -F milestone=<number>` to create, or `gh api -X PATCH repos/<owner>/<repo>/issues/<n> -F milestone=<number>` to add one — works in a web session |
+| `gh api` (REST) — portable | `-F milestone=<number>` on the create call, or `gh api -X PATCH "repos/$repo/issues/<n>" -F milestone=<number>` to add one after the fact |
+| `gh issue create` / `gh issue edit <n>` — local terminal only | `--milestone "<exact title>"` — the title must match exactly |
 | `mcp__github__issue_write` | `milestone: <number>` — the **number**, not the title (e.g. `1`) |
 
 There is deliberately no list of current milestones here: look them up at filing time.

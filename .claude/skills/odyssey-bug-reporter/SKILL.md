@@ -101,38 +101,51 @@ Iterate until approved, then Step 5.
 
 ## Step 5 — Create the GitHub Issue
 
-1. Resolve the repo (don't hardcode):
+The commands below are the portable `gh api` (REST) form. In a Claude Code on the web session
+`gh issue …`, `gh label …` and `gh repo view` are refused (they are GraphQL-backed); `gh api` works
+everywhere. Why, the `-f`/`-F` rules and the local-terminal equivalents:
+[`.claude/issue-milestones.md`](../../issue-milestones.md#gh-in-a-web-session-use-the-rest-form).
+
+1. Resolve the repo from the git remote (don't hardcode):
 ```bash
-gh repo view --json nameWithOwner -q .nameWithOwner
+repo=$(gh api 'repos/{owner}/{repo}' --jq .full_name)
 ```
 
 2. Duplicate check (the template asks reporters to confirm this):
 ```bash
-gh issue list --state open --search "<key terms>"
+gh api -X GET search/issues -f q="repo:$repo is:issue is:open <key terms>" --jq '.items[].html_url'
 ```
 If a clear duplicate exists, link it instead of filing a new one.
 
 3. Label pre-check — verify labels exist, create any that are missing:
 ```bash
-gh label list
+gh api "repos/$repo/labels" --paginate --jq '.[].name'
 # expected to exist: bug (#600f25), claude (#63c7ed)
-# gh label create claude --color 63c7ed --description "Issues related to Claude."
+# gh api "repos/$repo/labels" -f name=claude -f color=63c7ed -f description="Issues related to Claude."
 ```
 
-4. Create the issue (heredoc avoids shell-escaping):
+4. Check the open milestones and pick one if the bug belongs to it, per
+   [`.claude/issue-milestones.md`](../../issue-milestones.md):
 ```bash
-gh issue create \
-  --title "bug: {{ SHORT_SYMPTOM }}" \
-  --body-file - \
-  --label "claude,bug" \
-  --assignee "centralcmd" <<'EOF'
-{{ BUG_REPORT_CONTENT }}
-EOF
+gh api "repos/$repo/milestones" --jq '.[] | "\(.number)\t\(.title)"'
 ```
 
-5. Set the milestone — check the open milestones and set one if the bug belongs to it, per
-   [`.claude/issue-milestones.md`](../../issue-milestones.md). Add `--milestone "<exact title>"` to the
-   command above, or set it afterwards with `gh issue edit <n> --milestone "<exact title>"`.
+5. Create the issue. The body goes in through a heredoc (`-F body=@-`, never `-f`, which would post
+   the literal text `@-`) to avoid shell escaping. Drop the `-F milestone=` line when none fits:
+```bash
+gh api "repos/$repo/issues" \
+  -f title="bug: {{ SHORT_SYMPTOM }}" \
+  -F body=@- \
+  -f 'labels[]=claude' -f 'labels[]=bug' \
+  -f 'assignees[]=centralcmd' \
+  -F milestone={{ MILESTONE_NUMBER }} \
+  --jq .html_url <<'BODY'
+{{ BUG_REPORT_CONTENT }}
+BODY
+```
+   To set a milestone afterwards: `gh api -X PATCH "repos/$repo/issues/<n>" -F milestone=<number>`.
+   In a local terminal, `gh issue create --label "claude,bug" --assignee centralcmd
+   --milestone "<exact title>" --body-file -` does the same.
 
 6. Report the issue URL back to the user — and, when you filed it without a milestone, say so in the
    same line so triage is a decision rather than an omission.
