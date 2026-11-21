@@ -6,7 +6,7 @@ Running the Aspire AppHost on Linux shows a banner in the dashboard:
 > information.
 
 This document explains what the banner actually means, why it appears even though
-[the README](../README.md#aspire-orchestration) says Aspire runs the app over HTTP, and gives
+[the getting-started guide](getting-started.md#net-aspire) says Aspire runs the app over HTTP, and gives
 the complete command sequence to clear it.
 
 None of this applies to the Docker Compose stack, which is HTTP end to end.

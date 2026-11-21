@@ -144,6 +144,44 @@ counterparty, custodian or contract party.
 </tr>
 </table>
 
+## Quick start
+
+**Docker Compose** — the whole stack in containers:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+**.NET Aspire** — the same stack with the Aspire dashboard; needs the .NET 10 SDK and Docker. Run
+it in Debug (never `-c Release`):
+
+```bash
+dotnet run --project Odyssey.AppHost
+```
+
+Either way the API is on `http://localhost:5188` (Swagger at `/swagger`) and MariaDB on host port
+`3307`. Under Compose the client is on `http://localhost:5199`; under Aspire it gets a port shown
+on the dashboard. Prerequisites, configuration and everything past the first sign-in are in
+[`docs/getting-started.md`](docs/getting-started.md).
+
+### Demo logins
+
+In Development the stack seeds a deterministic synthetic dataset. Sign in as any of these users;
+they share the password `Odyssey!Demo1`:
+
+| Email | Role |
+|---|---|
+| `admin@demo.example.com` | Admin |
+| `owner@demo.example.com` | Owner |
+| `user@demo.example.com` | User |
+| `guest@demo.example.com` | Guest |
+
+> The default `docker-compose.yml` is a **development** stack: weak database passwords, Swagger
+> on, demo data seeded, MariaDB published to the host. To deploy for real, layer
+> `docker-compose.prod.yml` on top and copy `.env.prod.example` instead — see
+> [`docs/deployment.md`](docs/deployment.md).
+
 ## Architecture
 
 | Project | Role |
@@ -164,326 +202,29 @@ preferences alongside finance, journal, tasks, photos, calendars and contacts, i
 database. Keeping them in one model is what makes every cross-module reference, and every
 "who created this" column, a real foreign key.
 
-## Quick start
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-Then open `http://localhost:5199` and sign in with one of the seeded demo users listed under
-[Demo data seeding](#demo-data-seeding).
-
-> The default `docker-compose.yml` is a **development** stack: weak database passwords, Swagger
-> on, demo data seeded, MariaDB published to the host. To deploy for real, layer
-> `docker-compose.prod.yml` on top and copy `.env.prod.example` instead — see
-> [`docs/deployment.md`](docs/deployment.md).
-
-## Docker setup
-
-The full stack runs in containers:
-
-- `Odyssey.Client/Dockerfile` builds and serves the Blazor WebAssembly client with NGINX.
-- `Odyssey.Api/Dockerfile` builds and runs the ASP.NET Core API.
-- `docker-compose.yml` orchestrates:
-  - `client` (frontend) on `http://localhost:5199`
-  - `api` (backend) on `http://localhost:5188`
-  - `migrations`, a one-shot job that applies migrations and seeds before the API starts
-  - `worker`, the background-job host (no published port)
-  - `mariadb` (database) on `localhost:3307`
-
-### Start everything
-
-```bash
-docker compose up --build
-```
-
-### Run migrations (if needed)
-
-When running via Docker Compose, the stack includes an explicit migration step.
-The migrations service runs once, then exits successfully before the API starts.
-
-If you need to rerun migrations (e.g., after changing migrations), run:
-
-```bash
-docker compose run --rm migrations
-```
-
-> Note: `docker compose up` will automatically run the migrations service and will not start the API until migrations complete.
-
-### Environment configuration (`.env`)
-
-`docker compose` automatically reads a `.env` file in the repository root.
-
-1. Copy the template:
-
-```bash
-cp .env.example .env
-```
-
-2. Set runtime flags:
-
-- `ASPNETCORE_ENVIRONMENT=Development` to run the API in development mode.
-- `SWAGGER_ENABLED=true` to expose Swagger/OpenAPI outside Development (never in Production).
-
-### The first administrator (bootstrap)
-
-The initial administrator is created **out of band**, by the `migrations` job, from two configuration
-values. Registration order confers no privilege at all: whoever registers first is an ordinary account
-like everyone else.
-
-```bash
-BOOTSTRAP_ADMIN_EMAIL=admin@demo.example.com
-BOOTSTRAP_ADMIN_PASSWORD=<16+ chars, upper + lower + digit + symbol>
-```
-
-| Variable | Purpose |
-|---|---|
-| `BOOTSTRAP_ADMIN_EMAIL` | Email/username of the seeded administrator. |
-| `BOOTSTRAP_ADMIN_PASSWORD` | One-time password; must satisfy the password policy and must be changed at first sign-in. |
-
-Four things to know about it:
-
-- **It fires only on a completely empty user table.** On any later deploy the values are read and
-  ignored, so a redeploy can never revert a password changed in the app — and this is *not* a way to
-  recover a lost administrator (use the forgot-password flow for that).
-- **The password is a one-time secret.** The account is created with `MustChangePassword` set, so
-  signing in with it lands on `/change-password-required` and the API refuses every endpoint bar the
-  handful needed to escape until a new password is set. After that come the ordinary first-run gates:
-  `/accept-terms`, then `/onboarding`.
-- **Booting with no administrator is impossible.** After seeding, the migrations job asserts that at
-  least one enabled `Admin` exists and exits non-zero if not — and the API does not start behind a
-  failed migrations job.
-- **Locally you need neither variable.** The demo seed (`SEED_DEMO_DATA=true`, the dev default) already
-  creates an `Admin`, which satisfies that assertion. Set them only if you run with
-  `SEED_DEMO_DATA=false` against an empty database.
-
-### Registration (admin approval)
-
-By default, a newly registered account is created **disabled** and cannot sign in until an
-administrator enables it (Users admin page → enable). This is the email-confirmation flow's
-companion gate and is independent of it, and it now applies to every account without exception.
-
-> Configured at runtime in **System Settings**, not `appsettings.json`: the registration-approval and
-> email-confirmation gates, the Contracts summary knobs, the import/export volume caps, the
-> AI-analysis processor disclosure and policy, the whole email transport and sender identity with the
-> per-recipient send throttle, the per-request caps on contracts, photos and journal links, and the
-> maximum upload size. Credentials (the SMTP login, the AI-analysis key and similar) are entered at
-> **System settings → Credentials** and encrypted at rest. Connection strings and a few deploy-time
-> values stay in environment configuration — see issue #421's Non-Goals for why each one does. A
-> value is not carried over from configuration when a setting moves into the store: the migration
-> seeds the shipped default and an administrator sets the real value in the UI.
->
-> Two of these are **tighten-only**, because a raised value would be silently overridden by a limit
-> compiled or configured somewhere earlier in the request: the photo link/album caps (request-model
-> validation) and the upload size (the startup transport ceiling — see
-> [`docs/deployment.md`](docs/deployment.md), "Upload size"). Both publish that ceiling to the settings
-> UI so the control bounds itself, and reject a larger value with a `400` naming it.
-
-The gate is admin-editable at runtime (System Settings → require admin approval); turning it off
-enables new accounts immediately. A user blocked by it sees a sign-in error indicating the account is
-not active.
-
-### Email (account confirmation and password reset)
-
-Registration uses ASP.NET Core Identity's built-in email-confirmation flow: a new account
-stays unconfirmed (and cannot sign in) until the user clicks the link sent to their address.
-The same SMTP setup delivers the self-service password-reset link (issue #405), so a user who
-forgets their password can get back in without an administrator.
-
-**Mail is configured entirely at runtime — there are no email environment variables.** Every part of
-it is edited at **System settings → Email** by an administrator holding
-`system-settings.security.update`, is stored in the database, and takes effect on the **next send**
-with no restart and no cache wait:
-
-| Setting | Notes |
-|---|---|
-| SMTP host | The relay. Empty means *mail is not configured*: every send is logged and skipped. |
-| SMTP port | `587` for STARTTLS submission, `465` for implicit TLS, `25` for an unauthenticated internal relay. |
-| Use STARTTLS | On for 587; off for implicit TLS on 465. |
-| Client base URL | The public origin every confirmation and reset link is composed against. |
-| From address / From name | The envelope sender. Must be an address the relay is authorised to send as. |
-| Messages per recipient / window / tracked addresses | The anti-mailbomb throttle on the anonymous mail path. |
-| Require email confirmation | Off means users can sign in immediately after registering. **On by default.** |
-| SMTP username / SMTP password | Entered at **System settings → Credentials**, encrypted at rest. |
-
-The transport moved into the store in issue #8; the sender identity and throttle in #421; the relay
-credential in #445. What made the transport the last to move is worth knowing, because it shows up as
-behaviour you will meet:
-
-> **Changing the SMTP host or port — or turning STARTTLS off — clears the stored SMTP username and
-> password**, in the same transaction as the change itself. The SMTP client connects *first* and
-> authenticates *second*, so whatever relay is set receives the stored credential — and host and port
-> together are what identify a relay, so a port change moves it to a different listener just as a host
-> change does. A credential entered for an encrypted transport must likewise not be replayed over a
-> cleartext one. Clearing it means there is nothing left to hand over. You will be asked to confirm,
-> and you will have to re-enter the credential afterwards. That is the control working, not a fault.
-
-Until an SMTP host is set, no email is sent — the link is written to the API log instead, which is
-fine for local testing but means users cannot self-confirm or reset. One limit on that fallback,
-because a reset link is a working credential rather than a mere convenience: **the link is only ever
-logged in Development and Testing.** Any other environment logs that the mail could not be sent and
-nothing else.
-
-> **On a fresh production deployment mail starts switched off**, and the API no longer refuses to
-> start without it — a value entered through the settings UI cannot be a precondition for that UI
-> coming up. Configure SMTP immediately after your first sign-in, *before* you blank
-> `BOOTSTRAP_ADMIN_PASSWORD`: if that one-time password is lost while mail is unconfigured there is no
-> self-service recovery, because the forgot-password flow is exactly the thing that needs working
-> mail. The System settings page says so in its header while the host is empty. See
-> [`docs/deployment.md`](docs/deployment.md).
-
-Nothing proves mail actually arrives except sending some, so **send yourself a password reset after
-configuring** — that is the only check covering the whole path, relay credential included.
-
-#### Using a Gmail account
-
-Gmail works with the settings above, but **not** with your normal account password —
-Google retired password ("less secure app") access. Use a Gmail **App Password** instead:
-
-1. Enable **2-Step Verification** on the Google account (App Passwords are unavailable until
-   it is on).
-2. Go to **Google Account → Security → App passwords**, generate one (e.g. named "Odyssey"),
-   and copy the 16-character code.
-3. At **System settings → Email**, set the SMTP host to `smtp.gmail.com`, the port to `587` and
-   STARTTLS on, and the from address to your Gmail address. Then, at **System settings →
-   Credentials**, enter the Gmail address as the **SMTP username** and the 16-character App Password
-   as the **SMTP password**.
-
-Notes specific to Gmail:
-
-- Gmail forces the `From` address to match the authenticated account, so confirmation emails
-  will come from your Gmail address regardless of the from address you set.
-- A personal Gmail account is limited to roughly 500 recipients/day and may throttle bursts —
-  fine for development and low volume, but use a dedicated transactional email provider for
-  production-scale sending.
-- The App Password grants access to the mailbox; revoke it from the same Google settings page
-  if it leaks.
-
-## Client
-
-- The Blazor WebAssembly client uses `ApiBaseAddress` from `Odyssey.Client/wwwroot/appsettings.json`, which the browser fetches as a static file. Host-process environment variables are not visible to the WASM runtime, so that file is the only place to set it. Left blank (the default), a Release build requests relative to the current origin at `/api/` — which is what nginx proxies under Docker — while a Debug build falls back to the fixed local API port `http://localhost:5188`.
-
-### API and Swagger endpoints
-
-- API base URL (from Docker): `http://localhost:5188`
-- CORS allowed origins are configured in `Odyssey.Api/appsettings.json` under `Cors:AllowedOrigins`.
-- Swagger UI: `http://localhost:5188/swagger`
-- OpenAPI JSON: `http://localhost:5188/swagger/v1/swagger.json`
-
-> Swagger is enabled when `ASPNETCORE_ENVIRONMENT=Development`, or when `SWAGGER_ENABLED=true` in any
-> environment other than `Production` — it is never served in Production (issue #451).
-
-### Networking notes
-
-- The client container proxies `/api/*` requests to the API container (`api:8080`) via `Odyssey.Client/nginx/templates/default.conf.template`.
-- The API container connects to MariaDB using internal Docker DNS (`mariadb:3306`).
-- There is a **single MariaDB database named `odyssey`** (created by `docker/mariadb/init/01-init.sql`), named by `ODYSSEY_DATABASE`. It cannot be split: one EF context owns the whole schema, with foreign keys throughout.
-
-### Stop and clean up
-
-```bash
-docker compose down
-```
-
-To also remove database data:
-
-```bash
-docker compose down -v
-```
-
-## Aspire orchestration
-
-The Aspire AppHost project at `Odyssey.AppHost` orchestrates the local development stack:
-
-- `client` (`Odyssey.Client`)
-- `api` (`Odyssey.Api`)
-- `migrations` (`Odyssey.MigrationService`), which completes before the API starts
-- `worker` (`Odyssey.Worker`)
-- `mariadb` (a MariaDB container; the image version is `Aspire:MariaDb:Version` in `Odyssey.AppHost/appsettings.json`)
-
-### Run with Aspire
-
-```bash
-dotnet run --project Odyssey.AppHost
-```
-
-This starts the Aspire dashboard and launches all required resources. The AppHost configures:
-
-- MariaDB initialization using `docker/mariadb/init`
-- Aspire settings (DB credentials, ports, URLs, and DB names) are read from `Odyssey.AppHost/appsettings.json` and passed into resources at startup. The committed database credentials are the same throwaway local-development defaults Docker Compose falls back to, so a fresh clone runs with nothing configured; override them with user secrets (`dotnet user-secrets set "Aspire:MariaDb:Password" <value> --project Odyssey.AppHost`) rather than editing the tracked file
-- The API connection string pointing at the single `odyssey` database (overridable in the `Aspire` settings)
-- HTTP-only URLs for API/client in Aspire to avoid requiring local HTTPS dev certificates
-
-### Notes
-
-- Aspire binds MariaDB to host port `3307`, so ensure that port is available.
-- Aspire runs the API/client on HTTP, so no local HTTPS development certificate is required for them. The API endpoint is fixed at `http://localhost:5188` (hardcoded in `Odyssey.AppHost/AppHost.cs`, matching Docker Compose and the client's Debug fallback); the client gets a dynamic port. The **dashboard** is a separate matter: its default launch profile is HTTPS, so on Linux it shows a `No trusted development certificate was found` banner until the certificate is trusted in all three of the .NET, OpenSSL and NSS stores — see [`docs/https-dev-certificate-on-linux.md`](docs/https-dev-certificate-on-linux.md), or run `--launch-profile http` to skip it.
-- If you already have the Docker Compose stack running, stop it first to avoid port conflicts.
-- MariaDB is a container with a persistent volume, so a credential you change after the first run does not re-initialise the existing database — remove the `mariadb-data` volume to start over.
-- For full containerized deployment scenarios, `docker-compose.yml` remains available.
-- If you need to customize Aspire startup values, edit the `Aspire` section in `Odyssey.AppHost/appsettings.json`.
-
 ## Testing
 
-The full strategy and rationale live in [`docs/test-environment-and-e2e-spec.md`](docs/test-environment-and-e2e-spec.md). The tiers:
-
-| Project | What it covers | Prerequisite |
-|---|---|---|
-| `Odyssey.Core.Tests` | Unit / service logic | none (EF InMemory) |
-| `Odyssey.Api.Tests` | API integration via `WebApplicationFactory` + the shared `OdysseyApiFactory` fixture | none (EF InMemory) |
-| `Odyssey.MigrationService.Tests` | The demo-data seeder | none (EF InMemory) |
-| `Odyssey.Worker.Tests` | The worker host: the job loop, its service graph, its read-only key ring | none |
-| `Odyssey.ApiClient.Tests` | The shared typed API client | none |
-| `Odyssey.Client.Tests` | The Blazor client: components and client-side source lints | none |
-| `Odyssey.IntegrationTests` | Real-engine behaviour InMemory can't model — actual migrations, FK `ON DELETE CASCADE`, decimal/datetime fidelity | **Docker** (Testcontainers-MariaDB) |
-| `Odyssey.E2ETests` | Playwright browser smoke: sign in as a seeded user and see seeded data | a **running, seeded stack** |
-| `Odyssey.E2ETests.Api` | API security/permissions/contracts over real HTTP + real login cookie (permission matrix across the seeded role users) | a **running, seeded stack** |
-| *perf* (`Category=Perf` in `Odyssey.Core.Tests` and `Odyssey.IntegrationTests`) | Volume, memory and time-budget checks | `ODYSSEY_REQUIRE_TIER` naming `perf` — skipped otherwise |
-
 ```bash
-# Everything. The Docker and browser tiers self-skip when their prerequisites
-# are missing, so this never fails for lack of Docker or a running stack.
 dotnet test Odyssey.sln
-
-# A single tier, e.g. the real-engine integration tests (needs Docker):
-dotnet test Odyssey.IntegrationTests
 ```
 
-The integration and E2E tiers **skip cleanly** (reported as skipped, not failed) when Docker or a
-reachable stack is absent, so they're safe in any `dotnet test` run. The E2E project has its own
-[README](Odyssey.E2ETests/README.md) covering how to point it at a running stack
-(`E2E_BASE_URL`) or have it manage Compose for you (`E2E_MANAGE_STACK=true`).
+The suite is tiered: unit, API-integration and client tiers that need nothing but the SDK; a
+real-MariaDB tier that needs Docker; Playwright and HTTP end-to-end tiers that need a running,
+seeded stack; and a perf tier that runs only when asked for. A tier whose prerequisite is absent
+reports as skipped, not failed, so the command above is safe anywhere. The tiers and their rules
+are in [`CLAUDE.md`](CLAUDE.md) (*Testing & Demo Data*) and [`CONTRIBUTING.md`](CONTRIBUTING.md);
+the full strategy is [`docs/test-environment-and-e2e-spec.md`](docs/test-environment-and-e2e-spec.md).
 
-## Demo data seeding
+## Documentation
 
-In the Development and Testing environments the stack seeds a **deterministic synthetic dataset** so the app is
-immediately usable and the E2E tests have data to assert on.
-
-- **What's seeded:** four role-based login users, plus tags, contacts, a 19-account
-  portfolio (~10 years of history), per-year budgets, recurring transactions, and exchange
-  rates covering every currency pair in use (so multi-currency accounts convert without
-  warnings). Currencies, roles, and permission claims are reference data (already created by
-  migrations) and are referenced, never recreated.
-- **Login users** (all share the password `Odyssey!Demo1`, all confirmed + enabled):
-
-  | Email | Role |
-  |---|---|
-  | `admin@demo.example.com` | Admin |
-  | `owner@demo.example.com` | Owner |
-  | `user@demo.example.com` | User |
-  | `guest@demo.example.com` | Guest |
-
-- **How it works:** generators live in `Odyssey.TestData` (the single source of truth, reused by
-  the tests); `Odyssey.MigrationService` runs the `DemoDataSeeder` right after migrations, and
-  `Odyssey.Worker` then seeds the demo files, photos and contact images onto the file volumes — so
-  those appear shortly *after* the stack is healthy. Seeding
-  is **gated** (only Development and Testing ever seed — every other environment refuses, and an
-  explicit `Seed:DemoData=true` cannot override that; inside those two the flag still turns
-  seeding off) and **idempotent** (skips if already present).
-- **Toggle it:** Compose reads `SEED_DEMO_DATA` (default `true` for the dev stack); Aspire reads
-  `Aspire:Seed:DemoData`. The data is identical on every fresh database because the generator seed
-  is fixed — wipe the DB volume (`docker compose down -v`) to reseed from scratch.
+| Guide | Covers |
+|---|---|
+| [`docs/getting-started.md`](docs/getting-started.md) | Running it yourself: Compose and Aspire in detail, the first administrator, registration approval, mail (Gmail included), Swagger, the demo data |
+| [`docs/deployment.md`](docs/deployment.md) | Production on a single host: the overlay, TLS, backups, the key ring, file storage, release notes, the security checklist |
+| [`docs/running-locally-alongside-a-live-stack.md`](docs/running-locally-alongside-a-live-stack.md) | Running your own copy while another stack holds ports 3307 / 5188 / 5199 |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Building, the test tiers, commit conventions, code style |
+| [`docs/architecture/`](docs/architecture/) | One page per subsystem: background jobs, calendars, contracts, file storage, maps, settings and more |
+| [`CLAUDE.md`](CLAUDE.md) | The architecture and the rules behind it, in depth |
 
 ## Contributing
 
