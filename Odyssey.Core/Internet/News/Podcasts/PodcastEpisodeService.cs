@@ -358,8 +358,14 @@ public sealed class PodcastEpisodeService(
                                  && feed.Kind == NewsFeedKind.Podcast && feed.DeletionRequestedAtUtc == null
                              select new
                              {
-                                 audio.StoredObjectId, audio.ContentType, audio.Sha256, audio.SizeBytes, article.Title,
-                                 feed.CustomTitle, FetchedTitle = state == null ? null : state.Title, SiteUrl = state == null ? null : state.SiteUrl,
+                                 audio.StoredObjectId,
+                                 audio.ContentType,
+                                 audio.Sha256,
+                                 audio.SizeBytes,
+                                 article.Title,
+                                 feed.CustomTitle,
+                                 FetchedTitle = state == null ? null : state.Title,
+                                 SiteUrl = state == null ? null : state.SiteUrl,
                              })
                 .News().FirstOrDefaultAsync(cancellationToken);
             if (row is not { StoredObjectId: { } objectId, ContentType: { } type, Sha256: { } hash })
@@ -444,9 +450,9 @@ public sealed class PodcastEpisodeService(
     public async Task<PodcastAudioRequestOutcome?> RequestAsync(Guid id, string userId, CancellationToken cancellationToken)
     {
         var row = await NewsQueryGuard.RunAsync(() => (from audio in context.PodcastEpisodeAudio.AsNoTracking()
-                                                         join feed in context.NewsFeeds.AsNoTracking() on audio.NewsFeedId equals feed.NewsFeedId
-                                                         where audio.NewsArticleId == id && feed.Kind == NewsFeedKind.Podcast && feed.DeletionRequestedAtUtc == null
-                                                         select new { Audio = audio, feed.NewsFeedId, feed.ArchivedAtUtc }).News().FirstOrDefaultAsync(cancellationToken));
+                                                       join feed in context.NewsFeeds.AsNoTracking() on audio.NewsFeedId equals feed.NewsFeedId
+                                                       where audio.NewsArticleId == id && feed.Kind == NewsFeedKind.Podcast && feed.DeletionRequestedAtUtc == null
+                                                       select new { Audio = audio, feed.NewsFeedId, feed.ArchivedAtUtc }).News().FirstOrDefaultAsync(cancellationToken));
         if (row is null)
         {
             return null;

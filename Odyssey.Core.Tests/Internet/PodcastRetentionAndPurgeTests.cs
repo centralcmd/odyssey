@@ -254,9 +254,18 @@ public sealed class PodcastRetentionAndPurgeTests : IAsyncLifetime
         {
             c.NewsArticles.Add(new NewsArticle
             {
-                NewsArticleId = late, NewsFeedId = feedId, Bucket = 1, Title = "Late", Excerpt = "Late", ContentHash = new byte[32],
-                IdentityHash = new byte[32], FirstSeenAtUtc = changedAt, LastSeenAtUtc = changedAt, SortAtUtc = changedAt,
-                FeedVisible = true, FeedKind = NewsFeedKind.Article,
+                NewsArticleId = late,
+                NewsFeedId = feedId,
+                Bucket = 1,
+                Title = "Late",
+                Excerpt = "Late",
+                ContentHash = new byte[32],
+                IdentityHash = new byte[32],
+                FirstSeenAtUtc = changedAt,
+                LastSeenAtUtc = changedAt,
+                SortAtUtc = changedAt,
+                FeedVisible = true,
+                FeedKind = NewsFeedKind.Article,
             });
             await c.SaveChangesAsync();
         });
@@ -354,7 +363,11 @@ public sealed class PodcastRetentionAndPurgeTests : IAsyncLifetime
         {
             c.JobRuns.Add(new PodcastAudioRetentionJobRun
             {
-                JobRunId = runId, Trigger = JobRunTrigger.Manual, Status = JobRunStatus.Running, StartedAtUtc = Now, LastActivityAtUtc = Now,
+                JobRunId = runId,
+                Trigger = JobRunTrigger.Manual,
+                Status = JobRunStatus.Running,
+                StartedAtUtc = Now,
+                LastActivityAtUtc = Now,
             });
             await c.SaveChangesAsync();
         });

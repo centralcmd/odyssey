@@ -17,13 +17,24 @@ public class PodcastFeedsApiTests(PodcastFeedsApiTests.Host host) : SharedApiHos
 
     private static NewNewsFeed Podcast(string url) => new()
     {
-        Url = url, DownloadImages = false, Kind = NewsFeedKind.Podcast, AutoDownload = true, AutoDeleteEnabled = true, AutoDeleteAfterDays = 14,
+        Url = url,
+        DownloadImages = false,
+        Kind = NewsFeedKind.Podcast,
+        AutoDownload = true,
+        AutoDeleteEnabled = true,
+        AutoDeleteAfterDays = 14,
     };
 
     private static UpdateNewsFeed Put(ExistingNewsFeed feed, NewsFeedKind kind, bool autoDownload = false, bool autoDelete = false, int days = 30) => new()
     {
-        Version = feed.Version, Url = feed.Management!.Url, DownloadImages = feed.DownloadImages, IsActive = feed.IsActive,
-        Kind = kind, AutoDownload = autoDownload, AutoDeleteEnabled = autoDelete, AutoDeleteAfterDays = days,
+        Version = feed.Version,
+        Url = feed.Management!.Url,
+        DownloadImages = feed.DownloadImages,
+        IsActive = feed.IsActive,
+        Kind = kind,
+        AutoDownload = autoDownload,
+        AutoDeleteEnabled = autoDelete,
+        AutoDeleteAfterDays = days,
     };
 
     [Fact]
@@ -55,7 +66,9 @@ public class PodcastFeedsApiTests(PodcastFeedsApiTests.Host host) : SharedApiHos
 
         var response = await client.PostAsJsonAsync(Feeds, new NewNewsFeed
         {
-            Url = $"https://auto-{field}.example.org/rss", AutoDownload = autoDownload, AutoDeleteEnabled = autoDelete,
+            Url = $"https://auto-{field}.example.org/rss",
+            AutoDownload = autoDownload,
+            AutoDeleteEnabled = autoDelete,
         });
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -85,7 +98,10 @@ public class PodcastFeedsApiTests(PodcastFeedsApiTests.Host host) : SharedApiHos
 
         var response = await client.PutAsync($"{Feeds}/{feed.Id}", JsonBody(new
         {
-            version = feed.Version, url = feed.Management!.Url, downloadImages = true, isActive = true,
+            version = feed.Version,
+            url = feed.Management!.Url,
+            downloadImages = true,
+            isActive = true,
         }));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -267,17 +283,35 @@ public class PodcastFeedsApiTests(PodcastFeedsApiTests.Host host) : SharedApiHos
             var id = Guid.NewGuid();
             context.NewsArticles.Add(new NewsArticle
             {
-                NewsArticleId = id, NewsFeedId = feedId, Bucket = 1, Title = "Episode", Excerpt = "Excerpt",
-                ContentHash = new byte[32], IdentityHash = new byte[32], FirstSeenAtUtc = Base, LastSeenAtUtc = Base,
-                SortAtUtc = Base, IsRead = true, ReadAtUtc = Base, FeedKind = NewsFeedKind.Podcast,
+                NewsArticleId = id,
+                NewsFeedId = feedId,
+                Bucket = 1,
+                Title = "Episode",
+                Excerpt = "Excerpt",
+                ContentHash = new byte[32],
+                IdentityHash = new byte[32],
+                FirstSeenAtUtc = Base,
+                LastSeenAtUtc = Base,
+                SortAtUtc = Base,
+                IsRead = true,
+                ReadAtUtc = Base,
+                FeedKind = NewsFeedKind.Podcast,
             });
             context.PodcastEpisodes.Add(new PodcastEpisode
             {
-                NewsArticleId = id, NewsFeedId = feedId, EnclosureUrl = "https://cdn.example.org/a.mp3", EpisodeHash = new byte[32], SortAtUtc = Base,
+                NewsArticleId = id,
+                NewsFeedId = feedId,
+                EnclosureUrl = "https://cdn.example.org/a.mp3",
+                EpisodeHash = new byte[32],
+                SortAtUtc = Base,
             });
             context.PodcastEpisodeAudio.Add(new PodcastEpisodeAudio
             {
-                NewsArticleId = id, NewsFeedId = feedId, EnclosureHostKeyHash = new byte[32], State = state, AudioFence = Guid.NewGuid(),
+                NewsArticleId = id,
+                NewsFeedId = feedId,
+                EnclosureHostKeyHash = new byte[32],
+                State = state,
+                AudioFence = Guid.NewGuid(),
                 RequestedBy = state == PodcastAudioState.None ? null : PodcastAudioRequestedBy.User,
             });
             await context.SaveChangesAsync();

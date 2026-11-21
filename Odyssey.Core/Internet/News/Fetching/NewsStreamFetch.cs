@@ -217,12 +217,16 @@ public static class NewsStreamFetch
 
     private static NewsStreamResult From(NewsHttpResult failure) => new()
     {
-        Outcome = NewsHttpOutcome.Failed, ErrorKind = failure.ErrorKind, HttpStatus = failure.HttpStatus,
+        Outcome = NewsHttpOutcome.Failed,
+        ErrorKind = failure.ErrorKind,
+        HttpStatus = failure.HttpStatus,
     };
 
     private static NewsStreamResult Failed(NewsFeedErrorKind kind, HttpResponseMessage response) => new()
     {
-        Outcome = NewsHttpOutcome.Failed, ErrorKind = kind, HttpStatus = (int)response.StatusCode,
+        Outcome = NewsHttpOutcome.Failed,
+        ErrorKind = kind,
+        HttpStatus = (int)response.StatusCode,
     };
 
     private static TimeSpan? RetryAfterOf(HttpResponseMessage response, TimeProvider time) =>

@@ -125,8 +125,12 @@ public sealed class PodcastArtworkPhaseTests : IAsyncLifetime
             artwork.LeaseExpiresAtUtc = now.AddMinutes(1);
             c.PodcastArtwork.Add(new PodcastArtwork
             {
-                PodcastArtworkId = second, NewsFeedId = feedId, SourceUrl = "https://show.example.org/other.jpg",
-                SourceUrlKeyHash = new byte[32], State = PodcastArtworkState.Pending, CreatedAtUtc = now,
+                PodcastArtworkId = second,
+                NewsFeedId = feedId,
+                SourceUrl = "https://show.example.org/other.jpg",
+                SourceUrlKeyHash = new byte[32],
+                State = PodcastArtworkState.Pending,
+                CreatedAtUtc = now,
             });
             await c.SaveChangesAsync();
         });
@@ -223,8 +227,12 @@ public sealed class PodcastArtworkPhaseTests : IAsyncLifetime
                 BitConverter.GetBytes(i).CopyTo(key, 0);
                 c.PodcastArtwork.Add(new PodcastArtwork
                 {
-                    PodcastArtworkId = Guid.NewGuid(), NewsFeedId = feedId, SourceUrl = $"https://show.example.org/{i}.jpg",
-                    SourceUrlKeyHash = key, State = PodcastArtworkState.Rejected, CreatedAtUtc = now,
+                    PodcastArtworkId = Guid.NewGuid(),
+                    NewsFeedId = feedId,
+                    SourceUrl = $"https://show.example.org/{i}.jpg",
+                    SourceUrlKeyHash = key,
+                    State = PodcastArtworkState.Rejected,
+                    CreatedAtUtc = now,
                 });
             }
 

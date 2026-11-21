@@ -508,8 +508,13 @@ public class PodcastEpisodesApiTests(PodcastEpisodesApiTests.Host host) : Shared
             var file = await store.PutAsync(PodcastArtworkStorage.FeatureKey, new PodcastArtworkLayout(feed), null, "s", "image/webp", new MemoryStream(small), 4, CancellationToken.None);
             context.PodcastArtworkFiles.Add(new PodcastArtworkFile
             {
-                PodcastArtworkFileId = Guid.NewGuid(), PodcastArtworkId = stored, Kind = PodcastArtworkFileKind.Small, StoredObjectId = file.Id,
-                ContentType = "image/webp", SizeBytes = small.Length, Sha256 = System.Security.Cryptography.SHA256.HashData(small),
+                PodcastArtworkFileId = Guid.NewGuid(),
+                PodcastArtworkId = stored,
+                Kind = PodcastArtworkFileKind.Small,
+                StoredObjectId = file.Id,
+                ContentType = "image/webp",
+                SizeBytes = small.Length,
+                Sha256 = System.Security.Cryptography.SHA256.HashData(small),
             });
             await context.SaveChangesAsync();
         });
