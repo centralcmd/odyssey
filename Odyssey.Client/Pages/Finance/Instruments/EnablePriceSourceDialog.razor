@@ -15,6 +15,11 @@
                SubmitLabel="Turn on" SubmitIcon="cloud_download"
                OnSubmit="ConfirmAsync">
     <p class="ins-dialog-body">@Disclosure(ProviderName, SourceSymbol)</p>
+    @if (!string.IsNullOrWhiteSpace(DataProcessingNote))
+    {
+        @* The provider's own note (issue #447), declared by the source and served as plain text. *@
+        <p class="ins-dialog-body">@DataProcessingNote</p>
+    }
 </OdsFormDialog>
 
 @code {
@@ -23,6 +28,9 @@
     [Parameter, EditorRequired] public string ProviderName { get; set; } = string.Empty;
 
     [Parameter, EditorRequired] public string SourceSymbol { get; set; } = string.Empty;
+
+    /// <summary>The provider's data-processing note, when its source declares one; plain text.</summary>
+    [Parameter] public string? DataProcessingNote { get; set; }
 
     /// <summary>The switch's host, so focus returns to the switch on every way out.</summary>
     [Parameter] public string? ReturnFocusToId { get; set; }
