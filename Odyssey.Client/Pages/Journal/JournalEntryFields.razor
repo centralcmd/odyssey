@@ -99,6 +99,13 @@
     /// <summary>Active journal-tag options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
 
+    /// <summary>
+    /// Names of the archived journal tags. A tag name is unique archived tags included, and an archived tag is
+    /// not among <see cref="TagOptions"/>, so without these the picker would offer its name as new and the
+    /// server would refuse it. The picker says why instead: "“X” is an archived tag. Restore it on the Journal tags page".
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<string> ArchivedTagNames { get; set; } = [];
+
     /// <summary>Active contact options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> ContactOptions { get; set; } = [];
 

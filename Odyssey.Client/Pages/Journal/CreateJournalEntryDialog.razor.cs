@@ -17,6 +17,9 @@ public partial class CreateJournalEntryDialog
     /// <summary>Active journal-tag options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
 
+    /// <summary>Names of the archived journal tags, which a new tag may not reuse.</summary>
+    [Parameter] public IReadOnlyCollection<string> ArchivedTagNames { get; set; } = [];
+
     /// <summary>Active contact options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> ContactOptions { get; set; } = [];
 
