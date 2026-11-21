@@ -193,7 +193,7 @@ not the copyright line. `LICENSE` is owned by the maintainers via
 ## Git and versioning
 
 Commits follow **Conventional Commits** (`<type>(<scope>): <description>`): a lowercase subject
-under 72 characters with no trailing period, the *why* in the body, and any issue number in the
+under 80 characters where possible (120 at most) with no trailing period, the *why* in the body, and any issue number in the
 body rather than the subject. Release automation reads these messages, so the type matters:
 `fix:` makes a patch release and `feat:` a minor one. CI checks the PR title against these rules,
 because it becomes the commit subject when the PR is squash-merged.

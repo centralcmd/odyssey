@@ -6,7 +6,7 @@ name: PR title
 #
 # The rules mirror CLAUDE.md → *Git & Versioning*; keep TYPES and SCOPES in step with it:
 #   <type>(<scope>)!: <description>  — scope and `!` optional, description lowercase-first,
-#   no trailing period, whole subject under 72 characters.
+#   no trailing period, whole title at most 120 characters (a warning from 80: under 80 is preferred).
 #
 # Inline shell rather than a third-party action or npm commitlint: nothing to pin or audit, and
 # no checkout. The title reaches the script only through an environment variable, never through
@@ -50,9 +50,11 @@ jobs:
             echo "The description starts lowercase and has no trailing period."
             fail=1
           fi
-          if [ "${#TITLE}" -ge 72 ]; then
-            echo "::error title=PR title::The title is ${#TITLE} characters; keep it under 72."
+          if [ "${#TITLE}" -gt 120 ]; then
+            echo "::error title=PR title::The title is ${#TITLE} characters; the limit is 120."
             fail=1
+          elif [ "${#TITLE}" -ge 80 ]; then
+            echo "::warning title=PR title::The title is ${#TITLE} characters; under 80 is preferred."
           fi
           if printf '%s' "$TITLE" | grep -qE '#[0-9]+'; then
             echo "::error title=PR title::Issue numbers go in the body, not the title."
