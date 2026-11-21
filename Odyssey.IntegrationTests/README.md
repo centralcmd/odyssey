@@ -7,7 +7,9 @@ InMemory cannot represent:
 - the actual EF migrations apply cleanly (the one context into a single `odyssey` database,
   mirroring how the app runs under Aspire);
 - the demo seeder persists with referential integrity (no orphan currency references);
-- foreign-key `ON DELETE CASCADE` is enforced at the database;
+- foreign keys (`CASCADE`, `SET NULL`, `RESTRICT`) and `CHECK` constraints are enforced at the database;
+- whatever else needs the real engine — the object store, `.ics` streaming, the news reader, weather,
+  locking and concurrency races;
 - `decimal(18,6)` and `datetime(6)` columns round-trip at full precision.
 
 ## Running
@@ -97,7 +99,8 @@ which uses an intermediate migration only as a fidelity sample, and the half-app
 Only tests whose point is that the chain applies from nothing still migrate for real: the **seeder
 test**, `MigrationDriftIntegrationTests`, the drift-guard tests in `TermRenameMigrationTests` and the
 fresh-database tests that drive `MigrationRunner` or the migrations job, which need an empty database a copy
-cannot give them.
+cannot give them, and the data-migration seam test `RemoveLegacyFileBlobStorageMigrationTests`, which migrates a
+fresh database to the migration before its target (`MigrationSeam.MigrateToAsync`).
 
 `MigratedSchemaTemplateTests` compares a copy with a database migrated the slow way, at head and at one
 intermediate migration: every column, index, constraint, foreign key and table option, and every row
@@ -124,5 +127,6 @@ release containing it reaches production. Removing them follows two rules:
 
 Two rounds of this have happened. The tests for migrations up to `v0.35.0`
 (`20260924202453_AddTextAndDateTimeTermKinds`) went first. The rest went once production had applied
-`v0.48.0`, whose newest migration is `20261119224858_StoreFetchedRatesInPublishedDirectionOnly`: no seam test
-for a data migration remains in this project.
+`v0.48.0`, whose newest migration is `20261119224858_StoreFetchedRatesInPublishedDirectionOnly`. The one data
+migration since, `RemoveLegacyFileBlobStorage`, ships with its seam tests
+(`RemoveLegacyFileBlobStorageMigrationTests`) and they follow the rule above.

@@ -19,7 +19,7 @@ namespace Odyssey.Context;
 /// principal lives in another model, so every reference across a context boundary was a bare key
 /// validated by a lookup service and swept by a guard on delete, with nothing stopping a write path
 /// that skipped both. Folding finance and journal together turned ten such columns into real foreign
-/// keys (see <c>ConfigureCrossModuleForeignKeys</c>); folding identity in turned the twenty-three
+/// keys (see <c>ConfigureCrossModuleForeignKeys</c>); folding identity in turned the
 /// user-attribution columns into real foreign keys too (see <c>ConfigureUserAttribution</c>),
 /// which is what finally lets a user deletion resolve them inside the transaction that deletes the
 /// account.
@@ -153,7 +153,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(modelBuilder);
 
-        // One IEntityTypeConfiguration per entity, under ModelConfiguration/ (issue #287 L5). The three
+        // One IEntityTypeConfiguration per entity, under ModelConfiguration/ (issue #287 L5). The
         // key sets below stay here instead: each spans many entities and is reviewed as a set, so
         // scattering it across the per-entity files would hide the one rule each set exists to state.
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OdysseyContext).Assembly);
@@ -331,8 +331,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>
     private static void ConfigureUserAttribution(ModelBuilder modelBuilder)
     {
-        // Twenty-eight columns across twenty entities, naming the user who created, updated,
-        // attached, uploaded, requested or reviewed a row. They were bare strings for as long as identity lived in its own context, so
+        // The columns naming the user who created, updated, applied, attached, uploaded, requested or
+        // reviewed a row; UserAttributionForeignKeyTests (Odyssey.IntegrationTests) holds the full set. They were bare strings for as long as identity lived in its own context, so
         // deleting a user left every one of them pointing at an account that no longer existed — the
         // gap UserAdministrationService.DeleteAsync used to record as "data in the other contexts".
         //
@@ -389,10 +389,10 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// navigation-less foreign keys to <c>AspNetUsers</c> that null out when the account is deleted.
     /// </summary>
     /// <remarks>
-    /// A helper rather than twenty-two hand-written declarations because the on-delete behaviour is
+    /// A helper rather than dozens of hand-written declarations because the on-delete behaviour is
     /// the whole point of the block: one of them silently written as <c>Cascade</c> would delete a
     /// household's shared records the next time somebody removed a user, and a reviewer comparing
-    /// twenty-two near-identical statements is exactly who misses that.
+    /// a long run of near-identical statements is exactly who misses that.
     /// </remarks>
     private static void DeclareUserAttribution<TEntity>(
         ModelBuilder modelBuilder,

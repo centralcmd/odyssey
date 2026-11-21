@@ -22,7 +22,7 @@ a labelled GitHub issue, then drives it through frontend, accessibility and secu
 Goals sections, formatting rules, issue creation, cross-linking and the review loop — all shared with
 `odyssey-spec-writer-backend` and not repeated here.
 
-**This spec does not define the API.** The backend spec owns the contract; §4 here lists which
+**This spec does not define the API.** The backend spec owns the contract; §5 here lists which
 endpoints the client *consumes* and what it does with each, referencing the backend issue rather than
 restating shapes. If the endpoints don't exist yet, the backend spec is written **first**.
 

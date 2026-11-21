@@ -34,7 +34,7 @@ Either way the output is the same: a complete, root-caused report, followed by a
 Establish the facts. Ask the user only for what you can't determine yourself:
 1. What did you observe (symptom)? What did you expect instead?
 2. Exact steps that trigger it — and is it reliably reproducible?
-3. Where? (Affected area — see the list in Step 3.)
+3. Where? (Affected area — one of the `affected_area` options in `.github/ISSUE_TEMPLATE/bug_report.yml`.)
 4. How are you running it? (Docker Compose / Aspire / bare `dotnet run`.)
 5. Any error output? (browser console, API logs, stack trace.)
 6. Which commit/branch?
@@ -59,8 +59,8 @@ This is what makes an Odyssey bug report valuable. Do not stop at the symptom.
 ### Investigation toolkit (Odyssey-specific)
 - **API directly:** `curl -i http://localhost:5188/<path>` (bypasses NGINX). Via the client origin: `http://localhost:5199/api/<path>`.
 - **API logs:** `docker compose logs api --tail 100`.
-- **DB:** `docker exec odyssey-mariadb mariadb -uroot -p"<MARIADB_ROOT_PASSWORD from .env>" odyssey -e "<sql>"` (the three logical DBs share one `odyssey` schema).
-- **UI repro:** log in with the seeded/test user in `.env`; enter via `/` — a direct GET to `/login`, `/register`, `/manage/*`, `/auth/*` returns 405 (see #157), so don't navigate to them directly.
+- **DB:** `docker exec odyssey-mariadb mariadb -uroot -p"<MARIADB_ROOT_PASSWORD from .env, else the Compose default root_password>" odyssey -e "<sql>"` (one database, `odyssey`, holds the whole schema — identity and domain alike).
+- **UI repro:** log in as a seeded demo user — `admin@`, `owner@`, `user@` or `guest@demo.example.com`, shared password `Odyssey!Demo1` (`Odyssey.TestData/DemoUsers.cs`); enter via `/` — a direct GET to `/login`, `/register`, `/manage/*`, `/auth/*` returns 405 (see #157), so don't navigate to them directly.
 - **Tests:** `dotnet test Odyssey.sln` (EF InMemory; no database needed).
 
 ---
@@ -82,7 +82,7 @@ Follow `references/bug-template.md` (modeled on #157/#158). Sections, in order:
 
 Rules:
 - `## Section` headings; fenced code blocks for snippets, config, logs, and `file:line` references.
-- **Affected area** must be one of the official `bug_report.yml` values: API · Client / Frontend · Finance · Auth · File Storage · User Preferences · Database / EF Core Migrations · Docker / Infrastructure · Other / Unknown.
+- **Affected area** must be one of the `affected_area` dropdown options in [`.github/ISSUE_TEMPLATE/bug_report.yml`](../../../.github/ISSUE_TEMPLATE/bug_report.yml) — read the file rather than recalling the list; its options get renamed.
 - Be specific and reproducible — no vague "it doesn't work."
 - Mark uncertain claims with `> Note:` or "needs verification"; never present a guess as confirmed.
 - Title: `bug: <concise symptom>` — lowercase after the prefix, present tense, under ~72 chars.
@@ -101,38 +101,51 @@ Iterate until approved, then Step 5.
 
 ## Step 5 — Create the GitHub Issue
 
-1. Resolve the repo (don't hardcode):
+The commands below are the portable `gh api` (REST) form. In a Claude Code on the web session
+`gh issue …`, `gh label …` and `gh repo view` are refused (they are GraphQL-backed); `gh api` works
+everywhere. Why, the `-f`/`-F` rules and the local-terminal equivalents:
+[`.claude/issue-milestones.md`](../../issue-milestones.md#gh-in-a-web-session-use-the-rest-form).
+
+1. Resolve the repo from the git remote (don't hardcode):
 ```bash
-gh repo view --json nameWithOwner -q .nameWithOwner
+repo=$(gh api 'repos/{owner}/{repo}' --jq .full_name)
 ```
 
 2. Duplicate check (the template asks reporters to confirm this):
 ```bash
-gh issue list --state open --search "<key terms>"
+gh api -X GET search/issues -f q="repo:$repo is:issue is:open <key terms>" --jq '.items[].html_url'
 ```
 If a clear duplicate exists, link it instead of filing a new one.
 
 3. Label pre-check — verify labels exist, create any that are missing:
 ```bash
-gh label list
+gh api "repos/$repo/labels" --paginate --jq '.[].name'
 # expected to exist: bug (#600f25), claude (#63c7ed)
-# gh label create claude --color 63c7ed --description "Issues related to Claude."
+# gh api "repos/$repo/labels" -f name=claude -f color=63c7ed -f description="Issues related to Claude."
 ```
 
-4. Create the issue (heredoc avoids shell-escaping):
+4. Check the open milestones and pick one if the bug belongs to it, per
+   [`.claude/issue-milestones.md`](../../issue-milestones.md):
 ```bash
-gh issue create \
-  --title "bug: {{ SHORT_SYMPTOM }}" \
-  --body-file - \
-  --label "claude,bug" \
-  --assignee "centralcmd" <<'EOF'
-{{ BUG_REPORT_CONTENT }}
-EOF
+gh api "repos/$repo/milestones" --jq '.[] | "\(.number)\t\(.title)"'
 ```
 
-5. Set the milestone — check the open milestones and set one if the bug belongs to it, per
-   [`.claude/issue-milestones.md`](../../issue-milestones.md). Add `--milestone "<exact title>"` to the
-   command above, or set it afterwards with `gh issue edit <n> --milestone "<exact title>"`.
+5. Create the issue. The body goes in through a heredoc (`-F body=@-`, never `-f`, which would post
+   the literal text `@-`) to avoid shell escaping. Drop the `-F milestone=` line when none fits:
+```bash
+gh api "repos/$repo/issues" \
+  -f title="bug: {{ SHORT_SYMPTOM }}" \
+  -F body=@- \
+  -f 'labels[]=claude' -f 'labels[]=bug' \
+  -f 'assignees[]=centralcmd' \
+  -F milestone={{ MILESTONE_NUMBER }} \
+  --jq .html_url <<'BODY'
+{{ BUG_REPORT_CONTENT }}
+BODY
+```
+   To set a milestone afterwards: `gh api -X PATCH "repos/$repo/issues/<n>" -F milestone=<number>`.
+   In a local terminal, `gh issue create --label "claude,bug" --assignee centralcmd
+   --milestone "<exact title>" --body-file -` does the same.
 
 6. Report the issue URL back to the user — and, when you filed it without a milestone, say so in the
    same line so triage is a decision rather than an omission.
@@ -141,7 +154,7 @@ EOF
 - **Always:** `claude` (AI-generated) + `bug`. Mirrors the spec-writer skills' `claude,feature`.
 - **Add one secondary label when it fits:** `security` (security-relevant), `build` (CI / pipeline / release), `test` (test-only), `doc` (docs). Do **not** use `fix` — that label is for non-bug changes.
 - **Assignee:** `centralcmd` (repo convention).
-- **Milestone:** always check, per [`.claude/issue-milestones.md`](../../issue-milestones.md) — set one when the bug falls inside an open milestone's scope, leave it unset and say so when none does, and never create a milestone. (The earlier advice here named "Quality of Life Update" and "MVP" as the standing choices; neither exists. Look them up at filing time rather than trusting a name written down months ago.)
+- **Milestone:** always check, per [`.claude/issue-milestones.md`](../../issue-milestones.md) — set one when the bug falls inside an open milestone's scope, leave it unset and say so when none does, and never create a milestone. Look them up at filing time rather than trusting a name written down here — milestones are added and renamed as releases are planned.
 - **Project:** none configured in this repo — skip.
 
 ---

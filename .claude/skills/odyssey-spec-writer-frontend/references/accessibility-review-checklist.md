@@ -20,7 +20,7 @@ components).
 
 Prefer reusing an existing accessible `Ods*` / design-system component. A **new interactive widget** —
 for instance a custom searchable combobox rather than reusing one; note `OdsMultiSelect` is a checkbox
-`MudMenu`, **not** a combobox — must specify all of the following as MVP:
+list in an `OdsPopupMenu` (a trigger button beside a `MudPopover`), **not** a combobox — must specify all of the following as MVP:
 
 - **Accessible name** — a visible, persistent, programmatically-associated label;
   `aria-label` / `aria-labelledby`. Optionality is conveyed **in text**, never by placeholder alone.

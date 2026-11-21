@@ -5,6 +5,9 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Entries start at 0.16.0; releases before it are recorded only in the
+[GitHub tags](https://github.com/centralcmd/odyssey/tags).
+
 ## [0.48.0](https://github.com/centralcmd/odyssey/compare/v0.47.0...v0.48.0) (2026-11-19)
 
 

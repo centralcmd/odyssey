@@ -62,7 +62,7 @@ public partial class AccountProfileSection
     /// </summary>
     private bool ImageControlsDisabled => !CanReadProfileImages;
 
-    private const string ClaimStaleReason = "Sign out and back in to manage your profile picture.";
+    private const string ClaimStaleReason = "Your access is still updating. Reload the page in a minute to manage your profile picture.";
 
     protected override void OnParametersSet()
     {

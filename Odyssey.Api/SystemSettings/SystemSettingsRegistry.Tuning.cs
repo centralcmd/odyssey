@@ -208,9 +208,8 @@ internal static partial class SystemSettingsRegistry
             Write = (dto, v) => dto.PhotoMetadataReadMegabytes = v,
             Advise = SettingAdvisories.AboveDefault(
                 dto => dto.PhotoMetadataReadMegabytes, SystemSettingsDefaults.PhotoMetadataReadMegabytes,
-                "Metadata extraction materialises a full byte array of this size for every photo "
-                + "uploaded, so this is a per-upload memory multiplier. 16 MB is also MariaDB's default "
-                + "max_allowed_packet — beyond it the prefix read simply returns less."),
+                "Metadata extraction holds a full byte array of this size in memory for every photo "
+                + "uploaded, so this multiplies per-upload memory across concurrent uploads."),
         },
         new IntSetting
         {
