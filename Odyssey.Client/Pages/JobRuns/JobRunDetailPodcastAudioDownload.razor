@@ -1,0 +1,20 @@
+@*
+    A podcast audio download burst's detail (issue #556 §3.6): downloads stored, failed, deferred and recovered, refused
+    reservations and the bytes stored, each a labelled number. Counts only — never an episode, a feed or a host; a nulled
+    count (no news.read) reads "Not shown" through N.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Downloads stored")">@N(Downloads.DownloadsStored)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Downloads failed")">@N(Downloads.DownloadsFailed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Downloads put off")">@N(Downloads.DownloadsDeferred)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Downloads resumed")">@N(Downloads.DownloadsRecovered)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Space not available")">@N(Downloads.ReservationsRefused)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Audio stored")">@Size(Downloads.AudioBytesStored)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private PodcastAudioDownloadJobRunDetail Downloads => (PodcastAudioDownloadJobRunDetail)Run;
+}

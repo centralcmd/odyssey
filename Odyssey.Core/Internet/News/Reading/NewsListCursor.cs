@@ -49,7 +49,7 @@ public readonly record struct NewsCursorPosition(DateTime SortAtUtc, Guid Id, in
 /// hash of the filter set it was issued for. A tampered or foreign cursor, one sent with other filters and one that no
 /// longer decrypts (a revoked or rotated-out key) are all <c>400</c> keyed <c>cursor</c>; its value is never echoed.
 /// </summary>
-public sealed class NewsListCursor(IDataProtectionProvider protection)
+public class NewsListCursor
 {
     public const string Purpose = "Odyssey.News.ListCursor.v1";
 
@@ -60,11 +60,36 @@ public sealed class NewsListCursor(IDataProtectionProvider protection)
     // version, sortAt ticks, id, offset, asOf ticks, filter hash.
     private const int PayloadLength = 1 + 8 + 16 + 4 + 8 + FilterHashLength;
 
-    private readonly IDataProtector protector = protection.CreateProtector(Purpose);
+    private readonly IDataProtector protector;
+
+    public NewsListCursor(IDataProtectionProvider protection)
+        : this(protection, Purpose)
+    {
+    }
+
+    /// <summary>The same payload under another purpose (the podcast episode list, issue #556 §5.2 #6).</summary>
+    protected NewsListCursor(IDataProtectionProvider protection, string purpose)
+    {
+        ArgumentNullException.ThrowIfNull(protection);
+        protector = protection.CreateProtector(purpose);
+    }
 
     public string Issue(NewsArticleFilter filter, NewsCursorPosition position)
     {
         ArgumentNullException.ThrowIfNull(filter);
+        return Issue(filter.Hash(), position);
+    }
+
+    /// <summary>The position a cursor names, or a <c>400</c> keyed <c>cursor</c>.</summary>
+    public NewsCursorPosition Read(string cursor, NewsArticleFilter filter)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        return Read(cursor, filter.Hash());
+    }
+
+    protected string Issue(byte[] filterHash, NewsCursorPosition position)
+    {
+        ArgumentNullException.ThrowIfNull(filterHash);
         var payload = new byte[PayloadLength];
         var span = payload.AsSpan();
         span[0] = Version;
@@ -72,14 +97,13 @@ public sealed class NewsListCursor(IDataProtectionProvider protection)
         position.Id.TryWriteBytes(span[9..]);
         BinaryPrimitives.WriteInt32LittleEndian(span[25..], position.Offset);
         BinaryPrimitives.WriteInt64LittleEndian(span[29..], position.AsOfUtc.Ticks);
-        filter.Hash().CopyTo(span[37..]);
+        filterHash.CopyTo(span[37..]);
         return Base64Url.EncodeToString(protector.Protect(payload));
     }
 
-    /// <summary>The position a cursor names, or a <c>400</c> keyed <c>cursor</c>.</summary>
-    public NewsCursorPosition Read(string cursor, NewsArticleFilter filter)
+    protected NewsCursorPosition Read(string cursor, byte[] filterHash)
     {
-        ArgumentNullException.ThrowIfNull(filter);
+        ArgumentNullException.ThrowIfNull(filterHash);
         byte[] payload;
         try
         {
@@ -91,7 +115,7 @@ public sealed class NewsListCursor(IDataProtectionProvider protection)
         }
 
         if (payload.Length != PayloadLength || payload[0] != Version
-            || !CryptographicOperations.FixedTimeEquals(payload.AsSpan(37), filter.Hash()))
+            || !CryptographicOperations.FixedTimeEquals(payload.AsSpan(37), filterHash))
         {
             throw NewsErrors.CursorInvalid();
         }
@@ -107,5 +131,44 @@ public sealed class NewsListCursor(IDataProtectionProvider protection)
 
         return new NewsCursorPosition(
             new DateTime(sortTicks, DateTimeKind.Utc), new Guid(span.Slice(9, 16)), offset, new DateTime(asOfTicks, DateTimeKind.Utc));
+    }
+}
+
+/// <summary>The podcast episode list's normalised filter set (issue #556 §5.2 #6): what its cursor is bound to.</summary>
+public sealed record PodcastEpisodeFilter(
+    IReadOnlyList<Guid> FeedIds,
+    IReadOnlyList<PodcastAudioState> AudioStates,
+    string? Search,
+    bool IncludeArchivedFeeds,
+    PodcastEpisodeSortBy SortBy)
+{
+    public byte[] Hash()
+    {
+        var canonical = new StringBuilder()
+            .Append("podcast|f:").AppendJoin(',', FeedIds.Order().Select(id => id.ToString("N")))
+            .Append("|a:").AppendJoin(',', AudioStates.Order().Select(s => ((byte)s).ToString(CultureInfo.InvariantCulture)))
+            .Append("|s:").Append(Search ?? string.Empty)
+            .Append("|ar:").Append(IncludeArchivedFeeds ? '1' : '0')
+            .Append("|o:").Append((int)SortBy)
+            .ToString();
+        return SHA256.HashData(Encoding.UTF8.GetBytes(canonical))[..NewsListCursor.FilterHashLength];
+    }
+}
+
+/// <summary>The episode list's cursor: <see cref="NewsListCursor"/>'s payload under its own purpose.</summary>
+public sealed class PodcastEpisodeCursor(IDataProtectionProvider protection) : NewsListCursor(protection, EpisodePurpose)
+{
+    public const string EpisodePurpose = "Odyssey.Podcasts.EpisodeCursor.v1";
+
+    public string Issue(PodcastEpisodeFilter filter, NewsCursorPosition position)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        return Issue(filter.Hash(), position);
+    }
+
+    public NewsCursorPosition Read(string cursor, PodcastEpisodeFilter filter)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        return Read(cursor, filter.Hash());
     }
 }

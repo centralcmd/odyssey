@@ -1,0 +1,84 @@
+using Odyssey.Dtos.Internet;
+
+namespace Odyssey.ApiClient.Resources;
+
+/// <summary>The episode list's filters (issue #556 §5.2 #6); the cursor binds to every one of them.</summary>
+public sealed record PodcastEpisodeListFilter
+{
+    public IReadOnlyCollection<Guid>? FeedIds { get; init; }
+
+    public IReadOnlyCollection<PodcastAudioState>? AudioStates { get; init; }
+
+    public string? Search { get; init; }
+
+    public bool IncludeArchivedFeeds { get; init; }
+
+    public PodcastEpisodeSortBy SortBy { get; init; } = PodcastEpisodeSortBy.Newest;
+}
+
+/// <summary>
+/// The podcast endpoints (issue #556 §5.1–§5.4): the podcast feed catalogue, episodes, the server download and its
+/// removal, and the content URLs the browser loads itself. Feed writes stay on <see cref="INewsApiClient"/>.
+/// </summary>
+public interface IPodcastsApiClient
+{
+    /// <summary>The feed catalogue narrowed to podcast feeds (<c>GET /api/news-feeds/catalogue?kind=Podcast</c>).</summary>
+    Task<ApiResult<List<NewsFeedCatalogueEntry>>> GetCatalogueAsync(CancellationToken ct = default);
+
+    Task<ApiResult<PodcastEpisodePage>> ListEpisodesAsync(PodcastEpisodeListFilter filter, int limit, string? cursor = null, CancellationToken ct = default);
+
+    Task<ApiResult<PodcastEpisodeDetail>> GetEpisodeAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Queues a server download. <c>202</c> when queued or already in flight, <c>200</c> when already stored; a
+    /// <c>429 podcast-audio-cooldown</c> carries <c>Retry-After</c>, and a full store is <c>507 podcast-audio-quota-reached</c>.
+    /// </summary>
+    Task<ApiResult<PodcastEpisodeAudioInfo>> RequestAudioAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Removes stored audio or cancels a pending download; <c>409 podcast-audio-busy</c> while it downloads.</summary>
+    Task<ApiResult> RemoveAudioAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>The audio content URL, loaded by the browser as a download (it carries the session cookie itself).</summary>
+    string AudioUrl(Guid episodeId);
+
+    string ArtworkUrl(Guid artworkId, PodcastArtworkSize size = PodcastArtworkSize.Medium);
+}
+
+/// <inheritdoc cref="IPodcastsApiClient" />
+public sealed class PodcastsApiClient(IOdysseyApi api) : IPodcastsApiClient
+{
+    private const string Episodes = "api/podcast-episodes";
+    private const string Artwork = "api/podcast-artwork";
+
+    public Task<ApiResult<List<NewsFeedCatalogueEntry>>> GetCatalogueAsync(CancellationToken ct = default) =>
+        api.GetAsync<List<NewsFeedCatalogueEntry>>($"api/news-feeds/catalogue?kind={NewsFeedKindFilter.Podcast}", ct);
+
+    public Task<ApiResult<PodcastEpisodePage>> ListEpisodesAsync(PodcastEpisodeListFilter filter, int limit, string? cursor = null, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        // Window(1, limit) keeps offset at 0, which the server accepts beside a cursor.
+        var query = PagedQuery.For(Episodes)
+            .Window(1, limit)
+            .AddMany("feedIds", filter.FeedIds?.Select(id => id.ToString()))
+            .AddMany("audioState", filter.AudioStates?.Select(s => s.ToString()))
+            .Add("search", filter.Search)
+            .AddBool("includeArchivedFeeds", filter.IncludeArchivedFeeds ? true : null)
+            .Add("sortBy", filter.SortBy.ToString())
+            .Add("cursor", cursor);
+        return api.GetAsync<PodcastEpisodePage>(query.Build(), ct);
+    }
+
+    public Task<ApiResult<PodcastEpisodeDetail>> GetEpisodeAsync(Guid id, CancellationToken ct = default) =>
+        api.GetAsync<PodcastEpisodeDetail>($"{Episodes}/{id}", ct);
+
+    public Task<ApiResult<PodcastEpisodeAudioInfo>> RequestAudioAsync(Guid id, CancellationToken ct = default) =>
+        api.SendAsync<PodcastEpisodeAudioInfo>(HttpMethod.Post, $"{Episodes}/{id}/audio", null, ct);
+
+    public Task<ApiResult> RemoveAudioAsync(Guid id, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Episodes}/{id}/audio", null, ct);
+
+    public string AudioUrl(Guid episodeId) => new Uri(api.BaseAddress!, $"{Episodes}/{episodeId}/audio/content").ToString();
+
+    public string ArtworkUrl(Guid artworkId, PodcastArtworkSize size = PodcastArtworkSize.Medium) =>
+        new Uri(api.BaseAddress!, $"{Artwork}/{artworkId}/content?size={size}").ToString();
+}

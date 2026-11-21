@@ -375,6 +375,8 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.InstrumentPriceSync)] = typeof(InstrumentPriceSyncJobRunDetail),
         [nameof(Application.JobType.NewsFeedFetch)] = typeof(NewsFeedJobRunDetail),
         [nameof(Application.JobType.RecurrenceKeyBackfill)] = typeof(RecurrenceKeyBackfillJobRunDetail),
+        [nameof(Application.JobType.PodcastAudioDownload)] = typeof(PodcastAudioDownloadJobRunDetail),
+        [nameof(Application.JobType.PodcastAudioRetention)] = typeof(PodcastAudioRetentionJobRunDetail),
     };
 
     public override JobRunDetail? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -716,6 +718,43 @@ public sealed record NewsFeedJobRunDetail : JobRunDetail
 
     /// <summary>The manual run's counter: feeds it marked due.</summary>
     public int? FeedsMarked { get; set; }
+
+    /// <summary>Podcast artwork stored with its renditions (issue #556 §3.8).</summary>
+    public int? ArtworkStored { get; set; }
+
+    public int? ArtworkFailed { get; set; }
+
+    /// <summary>Podcasting 2.0 chapter files read.</summary>
+    public int? ChaptersFetched { get; set; }
+}
+
+/// <summary>
+/// A burst of podcast audio downloads (issue #556 §3.6). Counts only — never an episode, a feed or a host; <c>null</c>
+/// without <c>news.read</c>.
+/// </summary>
+public sealed record PodcastAudioDownloadJobRunDetail : JobRunDetail
+{
+    public int? DownloadsStored { get; set; }
+
+    public int? DownloadsFailed { get; set; }
+
+    /// <summary>Downloads put off by the audio quota or the disk headroom.</summary>
+    public int? DownloadsDeferred { get; set; }
+
+    /// <summary>Downloads a stopped process left, returned to the queue.</summary>
+    public int? DownloadsRecovered { get; set; }
+
+    public int? ReservationsRefused { get; set; }
+
+    public long? AudioBytesStored { get; set; }
+}
+
+/// <summary>A podcast audio retention pass (issue #556 §3.7). Counts only; <c>null</c> without <c>news.read</c>.</summary>
+public sealed record PodcastAudioRetentionJobRunDetail : JobRunDetail
+{
+    public int? AudioReleased { get; set; }
+
+    public long? AudioBytesReleased { get; set; }
 }
 
 /// <summary>
