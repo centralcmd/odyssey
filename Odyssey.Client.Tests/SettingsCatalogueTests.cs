@@ -135,7 +135,7 @@ public class SettingsCatalogueTests
     [Fact]
     public void A_successful_save_invalidates_every_client_side_limit_cache()
     {
-        var codeBehind = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var codeBehind = ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
         Assert.Contains("ImportLimits.Invalidate();", codeBehind, StringComparison.Ordinal);
         Assert.Contains("UploadLimits.Invalidate();", codeBehind, StringComparison.Ordinal);
@@ -271,7 +271,7 @@ public class SettingsCatalogueTests
 
         // And the page's own range check must resolve through MinFor too, or the control and the error
         // message next to it would disagree.
-        var codeBehind = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var codeBehind = ClientSource.CodeBehind("Pages/Settings.razor.cs");
         Assert.DoesNotContain("value < item.Min", codeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("cap.Value < item.Min", codeBehind, StringComparison.Ordinal);
     }

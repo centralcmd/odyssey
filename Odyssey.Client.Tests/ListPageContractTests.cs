@@ -621,14 +621,15 @@ public class ListPageContractTests
         return -1;
     }
 
-    /// <summary>A page's markup plus its code-behind, if it has one.</summary>
+    /// <summary>A page's markup plus its code-behind, if it has one, and every further partial file of it.</summary>
     private static string SourceFor(string clientRoot, string page)
     {
         var razor = Path.Combine(clientRoot, page.Replace('/', Path.DirectorySeparatorChar));
         Assert.True(File.Exists(razor), $"Registered list page not found: {page}");
 
         var codeBehind = razor + ".cs";
-        return File.ReadAllText(razor) + (File.Exists(codeBehind) ? File.ReadAllText(codeBehind) : string.Empty);
+        return File.ReadAllText(razor) + (File.Exists(codeBehind) ? File.ReadAllText(codeBehind) : string.Empty)
+            + string.Concat(ClientSource.PartialFilesOf(razor).Select(File.ReadAllText));
     }
 
     /// <summary>

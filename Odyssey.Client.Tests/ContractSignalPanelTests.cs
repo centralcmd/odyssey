@@ -280,7 +280,7 @@ public class ContractSignalPanelTests
     {
         var finance = Path.Combine(ClientSource.Root, "Pages", "Finance");
         var markup = File.ReadAllText(Path.Combine(finance, "ContractsCard.razor"));
-        var code = File.ReadAllText(Path.Combine(finance, "ContractsCard.razor.cs"));
+        var code = ClientSource.CodeBehind("Pages/Finance/ContractsCard.razor.cs");
 
         Assert.Contains("ProblemsLabel=\"Attention\"", markup, StringComparison.Ordinal);
         var problems = code[code.IndexOf("private List<PageHeaderProblem> HeaderProblems", StringComparison.Ordinal)..];
