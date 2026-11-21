@@ -49,7 +49,12 @@ public sealed class NewsJobHarness : IAsyncDisposable
         var host = FileStorageTestHost.Create(
             useDatabase,
             new Dictionary<string, string> { ["primary"] = volumeRoot },
-            new Dictionary<string, string> { [NewsArticleStorage.FeatureKey] = "primary" },
+            new Dictionary<string, string>
+            {
+                [NewsArticleStorage.FeatureKey] = "primary",
+                [Odyssey.Core.Internet.News.Podcasts.Files.PodcastAudioStorage.FeatureKey] = "primary",
+                [Odyssey.Core.Internet.News.Podcasts.Files.PodcastArtworkStorage.FeatureKey] = "primary",
+            },
             features: [],
             clock: clock,
             configureServices: services =>

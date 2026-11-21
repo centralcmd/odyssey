@@ -167,6 +167,9 @@ public class OdysseyApiFactory(
                 settings["FileStorage:Bindings:ContactAvatars"] = "photos";
                 // News reader (issue #470): the NewsArticles feature is registered by every API host.
                 settings["FileStorage:Bindings:NewsArticles"] = "photos";
+                // Podcasts (issue #556): two more features every API host registers.
+                settings["FileStorage:Bindings:PodcastAudio"] = "photos";
+                settings["FileStorage:Bindings:PodcastArtwork"] = "photos";
             }
 
             if (sharedAcrossTests)

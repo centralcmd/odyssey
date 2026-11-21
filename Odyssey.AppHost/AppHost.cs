@@ -85,6 +85,8 @@ var fileStorageSettings = new Dictionary<string, string>
     ["FileStorage__Bindings__JournalFiles"] = "primary",
     ["FileStorage__Bindings__ContactAvatars"] = "primary",
     ["FileStorage__Bindings__NewsArticles"] = "primary",
+    ["FileStorage__Bindings__PodcastAudio"] = "primary",
+    ["FileStorage__Bindings__PodcastArtwork"] = "primary",
 };
 
 var migrations = builder

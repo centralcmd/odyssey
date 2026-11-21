@@ -27,10 +27,11 @@ public sealed record JobChip(string Label, OdsChipTone Tone, string Icon);
 /// </summary>
 public static class BackgroundJobPresentation
 {
-    /// <summary>Every catalogued job (eight today), in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
+    /// <summary>Every catalogued job (ten today), in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
     public static readonly IReadOnlyList<JobType> Jobs =
         [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
-            JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill];
+            JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload,
+            JobType.PodcastAudioRetention];
 
     public static readonly IReadOnlyDictionary<JobType, JobVisual> JobVisuals = new Dictionary<JobType, JobVisual>
     {
@@ -46,6 +47,10 @@ public static class BackgroundJobPresentation
         [JobType.NewsFeedFetch] = new("News feeds", "news feeds", "rss_feed", "news feed", "Run news feeds", MudBlazor.Icons.Material.Filled.RssFeed),
         // The recurrence key backfill (issue #519 §11): idle for good once every pre-#519 series is keyed.
         [JobType.RecurrenceKeyBackfill] = new("Recurrence keys", "recurrence keys", "event_repeat", "calendar", "Run recurrence keys", MudBlazor.Icons.Material.Filled.EventRepeat),
+        // Podcasts (issue #556, #559 §3.6). The download queue has no Run item: it only downloads what a user or the
+        // podcast's automation asked for, and the server refuses a manual run.
+        [JobType.PodcastAudioDownload] = new("Podcast downloads", "podcast downloads", "cloud_download", "episode", null, null),
+        [JobType.PodcastAudioRetention] = new("Podcast audio clean-up", "podcast audio clean-up", "auto_delete", "episode", "Run podcast audio clean-up", MudBlazor.Icons.Material.Filled.AutoDelete),
     };
 
     public static readonly JobVisual OtherJob = new("Other job", "other job", "work_outline", null, null, null);

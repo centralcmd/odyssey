@@ -37,6 +37,12 @@ public enum JobType : byte
     /// <summary>The one-off keying of every pre-#519 recurring series (issue #519 §11): work-driven, idle once done.</summary>
     RecurrenceKeyBackfill = 10,
 
+    /// <summary>The podcast audio download queue (issue #556 §3.6): work-driven, never run by hand.</summary>
+    PodcastAudioDownload = 11,
+
+    /// <summary>The daily podcast audio auto-delete (issue #556 §3.7).</summary>
+    PodcastAudioRetention = 12,
+
     Unknown = byte.MaxValue,
 }
 

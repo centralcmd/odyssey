@@ -306,6 +306,8 @@ public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : Shared
                     ["FileStorage:Bindings:JournalFiles"] = "primary",
                     ["FileStorage:Bindings:ContactAvatars"] = "primary",
                     ["FileStorage:Bindings:NewsArticles"] = "primary",
+                    ["FileStorage:Bindings:PodcastAudio"] = "primary",
+                    ["FileStorage:Bindings:PodcastArtwork"] = "primary",
                     ["FileStorage:Bindings:PhotoOriginals"] = "primary",
                     ["FileStorage:Bindings:PhotoThumbnails"] = "primary",
                 },

@@ -183,6 +183,8 @@ services:
       FileStorage__Bindings__JournalFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
+      FileStorage__Bindings__PodcastAudio: primary
+      FileStorage__Bindings__PodcastArtwork: primary
       # The location map's basemap (issue #370) — deploy-time, because the client's CSP below is rendered
       # from the same MAP_ALLOWED_ORIGINS at container start. SINGLE-dash ${VAR-default}: the default
       # applies only when the variable is UNSET, so an explicit MAP_ALLOWED_ORIGINS= (the off-switch)
@@ -243,6 +245,8 @@ services:
       FileStorage__Bindings__JournalFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
+      FileStorage__Bindings__PodcastAudio: primary
+      FileStorage__Bindings__PodcastArtwork: primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
       - files_primary:/var/odyssey/files/primary
