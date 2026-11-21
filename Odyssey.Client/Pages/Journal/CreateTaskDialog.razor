@@ -50,10 +50,13 @@
 </OdsFormDialog>
 
 @code {
-    // Task tag names are unique among ACTIVE tags only (JournalTaskTagService.EnsureNameAvailable), so only
-    // the listed tags block a name; an archived tag's name stays creatable.
+    // A task tag name is unique archived tags included (JournalTaskTagService.EnsureNameAvailable): an active
+    // match reads "already exists", an archived one names the page that restores it.
     private string? BlockedTagName(string text) =>
-        TagNameRule.Blocked(_tagOpts.Select(o => new TagNameEntry(o.Label, Archived: false)), text, TagNameRule.Pages.Task);
+        TagNameRule.Blocked(
+            _tagOpts.Select(o => new TagNameEntry(o.Label, Archived: false))
+                .Concat(ArchivedTagNames.Select(n => new TagNameEntry(n, Archived: true))),
+            text, TagNameRule.Pages.Task);
 
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
@@ -63,6 +66,13 @@
 
     /// <summary>Active task-tag options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
+
+    /// <summary>
+    /// Names of the archived task tags. A tag name is unique archived tags included, and an archived tag is
+    /// not among <see cref="TagOptions"/>, so without these the picker would offer its name as new and the
+    /// server would refuse it. The picker says why instead: "“X” is an archived tag. Restore it on the Task tags page".
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<string> ArchivedTagNames { get; set; } = [];
 
     /// <summary>Raised after a successful create/update so the host can refresh.</summary>
     [Parameter] public EventCallback OnSaved { get; set; }

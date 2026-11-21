@@ -27,6 +27,7 @@ public partial class TasksPage
     private List<ExistingJournalTaskTag> _tags = [];
     private Dictionary<Guid, ExistingJournalTaskTag> _tagById = new();
     private IReadOnlyList<OdsOption> _tagOptions = [];
+    private IReadOnlyCollection<string> _archivedTagNames = [];
 
     // ── UI / permissions ──────────────────────────────────────────────────────
     private bool _isLoading = true;
@@ -151,6 +152,7 @@ public partial class TasksPage
         _tags = (await TaskTags.ListAllAsync()).ItemsOrToast(Snackbar, "task tags");
         _tagById = _tags.ToDictionary(t => t.JournalTaskTagId);
         RefreshOverview();
+        _archivedTagNames = [.. _tags.Where(t => t.Archived is not null).Select(t => t.Name)];
         _tagOptions =
         [
             .. _tags.Where(t => t.Archived is null)
