@@ -62,6 +62,7 @@ public sealed class NewsJobHarness : IAsyncDisposable
                 services.AddNewsReader();
                 services.AddNewsFeedFetching();
                 services.AddHttpClient(NewsEgress.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => server);
+                services.AddHttpClient(NewsEgress.AudioHttpClientName).ConfigurePrimaryHttpMessageHandler(() => server);
                 services.Replace(ServiceDescriptor.Singleton(sp => new NewsHostThrottleGate(
                     sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<TimeProvider>())
                 { Spacing = throttleSpacing ?? TimeSpan.Zero }));

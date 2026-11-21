@@ -96,7 +96,7 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
     {
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
-                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill],
+                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload],
             JobCatalogue.Entries.Select(entry => entry.JobType));
         Assert.Equal(JobCatalogue.Entries.Count, JobCatalogue.Entries.Select(entry => entry.JobClass).Distinct().Count());
         Assert.All(JobCatalogue.Entries, entry => Assert.Equal(300, entry.NotTickingAfterSeconds));

@@ -39,6 +39,13 @@ public static class NewsServiceCollectionExtensions
             })
             .ConfigurePrimaryHttpMessageHandler(provider => NewsEgress.CreateHandler(provider.GetRequiredService<NewsConnectGuard>()))
             .RemoveAllLoggers();
+        services.AddHttpClient(NewsEgress.AudioHttpClientName, client =>
+            {
+                client.Timeout = Timeout.InfiniteTimeSpan;
+                client.DefaultRequestHeaders.ConnectionClose = true;
+            })
+            .ConfigurePrimaryHttpMessageHandler(provider => NewsEgress.CreateHandler(provider.GetRequiredService<NewsConnectGuard>()))
+            .RemoveAllLoggers();
         return services;
     }
 

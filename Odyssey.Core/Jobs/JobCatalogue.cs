@@ -134,6 +134,15 @@ public static class JobCatalogue
             StaleAfter: Odyssey.Core.Journal.RecurrenceKeyBackfillJob.RunBudget + TimeSpan.FromMinutes(5),
             ManualRunClaims: [PermissionClaims.CalendarUpdate],
             DetailReadClaim: PermissionClaims.CalendarRead),
+        // Podcast audio downloads (issue #556 §3.6): work-driven, two per process, one per feed and per host across
+        // replicas. Only work a user or the feed's auto-download asked for, so there is no manual run; its counts are
+        // news operations data and follow news.read. The stale window covers the longest download's total deadline.
+        new(JobType.PodcastAudioDownload, typeof(Odyssey.Core.Internet.News.Podcasts.PodcastAudioDownloadJob), Odyssey.Core.Internet.News.Podcasts.PodcastTiming.DownloadTick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: Odyssey.Core.Internet.News.Podcasts.PodcastTiming.DownloadStaleAfter,
+            ManualRunClaims: [],
+            DetailReadClaim: PermissionClaims.NewsRead,
+            ManualRunSupported: false),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>
