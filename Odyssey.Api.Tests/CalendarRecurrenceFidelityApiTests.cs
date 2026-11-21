@@ -56,9 +56,14 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
 
         var series = await CreatePatternAsync(client, new NewRecurrencePattern
         {
-            CalendarId = calendar.CalendarId, Title = "Standup",
-            StartDateTime = Wall(2026, 3, 16, 9), EndDateTime = Wall(2026, 3, 16, 10), TimeZoneId = "Europe/Oslo",
-            Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = 4,
+            CalendarId = calendar.CalendarId,
+            Title = "Standup",
+            StartDateTime = Wall(2026, 3, 16, 9),
+            EndDateTime = Wall(2026, 3, 16, 10),
+            TimeZoneId = "Europe/Oslo",
+            Frequency = DtoFrequency.Weekly,
+            DaysOfWeek = DtoDays.Monday,
+            OccurrenceCount = 4,
         });
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
 
@@ -82,9 +87,14 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
 
         var series = await CreatePatternAsync(client, new NewRecurrencePattern
         {
-            CalendarId = calendar.CalendarId, Title = "Late call",
-            StartDateTime = Wall(2026, 3, 2, 23, 30), EndDateTime = Wall(2026, 3, 3, 0, 15), TimeZoneId = "America/Los_Angeles",
-            Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = 4,
+            CalendarId = calendar.CalendarId,
+            Title = "Late call",
+            StartDateTime = Wall(2026, 3, 2, 23, 30),
+            EndDateTime = Wall(2026, 3, 3, 0, 15),
+            TimeZoneId = "America/Los_Angeles",
+            Frequency = DtoFrequency.Weekly,
+            DaysOfWeek = DtoDays.Monday,
+            OccurrenceCount = 4,
         });
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
 
@@ -155,7 +165,8 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
 
         var result = await UpdatePatternAsync(client, series.RecurrencePatternId, Rule(calendar.CalendarId, count: 5) with
         {
-            Description = "New agenda", ExpectedVersion = current.Version,
+            Description = "New agenda",
+            ExpectedVersion = current.Version,
             ConfirmedDrops = new RecurrenceConfirmedDrops(),
         });
 
@@ -301,7 +312,9 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
         var response = await client.PutAsJsonAsync($"{PatternsPath}/{series.RecurrencePatternId}",
             Rule(calendar.CalendarId, count: 3) with
             {
-                DaysOfWeek = DtoDays.Friday, ExpectedVersion = series.Version, ConfirmedDrops = new RecurrenceConfirmedDrops(),
+                DaysOfWeek = DtoDays.Friday,
+                ExpectedVersion = series.Version,
+                ConfirmedDrops = new RecurrenceConfirmedDrops(),
             });
 
         var problem = await AssertConflictAsync(response, CalendarSeriesConflictException.DropsChanged);
@@ -400,7 +413,10 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
         var created = await CreateEventAsync(client, calendar.CalendarId, "E", Wall(2030, 6, 1, 9), Wall(2030, 6, 1, 10), null);
         var evt = new NewCalendarEvent
         {
-            CalendarId = calendar.CalendarId, Title = "E", StartDateTime = Wall(2030, 6, 1, 9), EndDateTime = Wall(2030, 6, 1, 10),
+            CalendarId = calendar.CalendarId,
+            Title = "E",
+            StartDateTime = Wall(2030, 6, 1, 9),
+            EndDateTime = Wall(2030, 6, 1, 10),
             TimeZoneId = zone,
         };
 
@@ -452,15 +468,22 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
 
         var allDay = (await (await client.PostAsJsonAsync(EventsPath, new NewCalendarEvent
         {
-            CalendarId = calendar.CalendarId, Title = "Holiday", StartDateTime = Utc(2030, 6, 1, 0), EndDateTime = Utc(2030, 6, 2, 0),
-            IsAllDay = true, TimeZoneId = "Europe/Oslo",
+            CalendarId = calendar.CalendarId,
+            Title = "Holiday",
+            StartDateTime = Utc(2030, 6, 1, 0),
+            EndDateTime = Utc(2030, 6, 2, 0),
+            IsAllDay = true,
+            TimeZoneId = "Europe/Oslo",
         })).Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
         Assert.Null(allDay.TimeZoneId);
 
         var zoned = await CreateEventAsync(client, calendar.CalendarId, "Zoned", Wall(2030, 6, 1, 9), Wall(2030, 6, 1, 10), "Asia/Tokyo");
         var put = await client.PutAsJsonAsync($"{EventsPath}/{zoned.CalendarEventId}", new NewCalendarEvent
         {
-            CalendarId = calendar.CalendarId, Title = "Zoned", StartDateTime = Wall(2030, 6, 1, 11), EndDateTime = Wall(2030, 6, 1, 12),
+            CalendarId = calendar.CalendarId,
+            Title = "Zoned",
+            StartDateTime = Wall(2030, 6, 1, 11),
+            EndDateTime = Wall(2030, 6, 1, 12),
         });
         var updated = (await put.Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
 
@@ -606,9 +629,13 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
     // A floating weekly Monday 09:00 series from 2 February 2026: every occurrence is after the fixed clock.
     private static NewRecurrencePattern Rule(Guid calendarId, int? count) => new()
     {
-        CalendarId = calendarId, Title = "Standup",
-        StartDateTime = Wall(2026, 2, 2, 9), EndDateTime = Wall(2026, 2, 2, 9, 30),
-        Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = count,
+        CalendarId = calendarId,
+        Title = "Standup",
+        StartDateTime = Wall(2026, 2, 2, 9),
+        EndDateTime = Wall(2026, 2, 2, 9, 30),
+        Frequency = DtoFrequency.Weekly,
+        DaysOfWeek = DtoDays.Monday,
+        OccurrenceCount = count,
     };
 
     private static Task<ExistingRecurrencePattern> WeeklyMondaysAsync(HttpClient client, Guid calendarId, int count) =>
@@ -646,8 +673,12 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
     {
         var put = await client.PutAsJsonAsync($"{EventsPath}/{row.CalendarEventId}", new NewCalendarEvent
         {
-            CalendarId = row.CalendarId, Title = title, StartDateTime = row.StartDateTime, EndDateTime = row.EndDateTime,
-            IsAllDay = row.IsAllDay, TimeZoneId = row.TimeZoneId,
+            CalendarId = row.CalendarId,
+            Title = title,
+            StartDateTime = row.StartDateTime,
+            EndDateTime = row.EndDateTime,
+            IsAllDay = row.IsAllDay,
+            TimeZoneId = row.TimeZoneId,
         });
         Assert.True(put.IsSuccessStatusCode, await put.Content.ReadAsStringAsync());
         Assert.True((await put.Content.ReadFromJsonAsync<ExistingCalendarEvent>())!.IsOverride);
@@ -676,7 +707,11 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
     {
         var post = await client.PostAsJsonAsync(EventsPath, new NewCalendarEvent
         {
-            CalendarId = calendarId, Title = title, StartDateTime = start, EndDateTime = end, TimeZoneId = zone,
+            CalendarId = calendarId,
+            Title = title,
+            StartDateTime = start,
+            EndDateTime = end,
+            TimeZoneId = zone,
         });
         Assert.True(post.IsSuccessStatusCode, await post.Content.ReadAsStringAsync());
         return (await post.Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
@@ -690,10 +725,17 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var pattern = new ContextRecurrencePattern
         {
-            RecurrencePatternId = Guid.NewGuid(), CalendarId = calendarId, Title = "Legacy",
-            StartDateTime = Wall(2026, 2, 2, 9), EndDateTime = Wall(2026, 2, 2, 10),
-            Frequency = Odyssey.Context.RecurrenceFrequency.Weekly, DaysOfWeek = Odyssey.Context.DaysOfWeekFlags.Monday,
-            OccurrenceCount = 3, CreatedAt = Now.UtcDateTime, UpdatedAt = Now.UtcDateTime, Version = Guid.NewGuid(),
+            RecurrencePatternId = Guid.NewGuid(),
+            CalendarId = calendarId,
+            Title = "Legacy",
+            StartDateTime = Wall(2026, 2, 2, 9),
+            EndDateTime = Wall(2026, 2, 2, 10),
+            Frequency = Odyssey.Context.RecurrenceFrequency.Weekly,
+            DaysOfWeek = Odyssey.Context.DaysOfWeekFlags.Monday,
+            OccurrenceCount = 3,
+            CreatedAt = Now.UtcDateTime,
+            UpdatedAt = Now.UtcDateTime,
+            Version = Guid.NewGuid(),
         };
         db.RecurrencePatterns.Add(pattern);
         var ids = new List<Guid>();
@@ -702,9 +744,14 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
             var start = Wall(2026, 2, 2, 9).AddDays(7 * i).AddHours(rescheduleThird && i == 2 ? 3 : 0);
             var row = new ContextCalendarEvent
             {
-                CalendarEventId = Guid.NewGuid(), CalendarId = calendarId, Title = "Legacy", StartDateTime = start,
-                EndDateTime = start.AddHours(1), RecurrencePatternId = pattern.RecurrencePatternId,
-                CreatedAt = Now.UtcDateTime.AddMinutes(i), UpdatedAt = Now.UtcDateTime,
+                CalendarEventId = Guid.NewGuid(),
+                CalendarId = calendarId,
+                Title = "Legacy",
+                StartDateTime = start,
+                EndDateTime = start.AddHours(1),
+                RecurrencePatternId = pattern.RecurrencePatternId,
+                CreatedAt = Now.UtcDateTime.AddMinutes(i),
+                UpdatedAt = Now.UtcDateTime,
             };
             db.CalendarEvents.Add(row);
             ids.Add(row.CalendarEventId);
@@ -727,8 +774,13 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
             var start = zoned ? CalendarTimeZones.ToUtc(wall, oslo) : wall;
             db.CalendarEvents.Add(new ContextCalendarEvent
             {
-                CalendarId = calendarId, Title = $"Row {i}", StartDateTime = start, EndDateTime = start.AddMinutes(30),
-                TimeZoneId = zoned ? "Europe/Oslo" : null, CreatedAt = Now.UtcDateTime, UpdatedAt = Now.UtcDateTime,
+                CalendarId = calendarId,
+                Title = $"Row {i}",
+                StartDateTime = start,
+                EndDateTime = start.AddMinutes(30),
+                TimeZoneId = zoned ? "Europe/Oslo" : null,
+                CreatedAt = Now.UtcDateTime,
+                UpdatedAt = Now.UtcDateTime,
             });
         }
 

@@ -240,7 +240,8 @@ public partial class PurgeInstrumentPricesDialog
         }
 
         _focusField = false;
-        try { await Js.InvokeVoidAsync("odsFocusById", FieldId); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", FieldId); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime under bUnit */ }
     }

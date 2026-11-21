@@ -29,12 +29,23 @@ public static class OdsReferenceNumberRules
     /// </summary>
     private static readonly IReadOnlyDictionary<int, string> Names = new Dictionary<int, string>
     {
-        [0x09] = "tab", [0x0A] = "line break", [0x0D] = "carriage return", [0x00] = "null character",
-        [0x200B] = "zero-width space", [0x200C] = "zero-width non-joiner", [0x200D] = "zero-width joiner",
-        [0x200E] = "left-to-right mark", [0x200F] = "right-to-left mark", [0x2060] = "word joiner",
-        [0xFEFF] = "byte-order mark", [0x202A] = "left-to-right embedding", [0x202B] = "right-to-left embedding",
-        [0x202C] = "directional formatting end", [0x202D] = "left-to-right override",
-        [0x202E] = "right-to-left override", [0x00AD] = "soft hyphen",
+        [0x09] = "tab",
+        [0x0A] = "line break",
+        [0x0D] = "carriage return",
+        [0x00] = "null character",
+        [0x200B] = "zero-width space",
+        [0x200C] = "zero-width non-joiner",
+        [0x200D] = "zero-width joiner",
+        [0x200E] = "left-to-right mark",
+        [0x200F] = "right-to-left mark",
+        [0x2060] = "word joiner",
+        [0xFEFF] = "byte-order mark",
+        [0x202A] = "left-to-right embedding",
+        [0x202B] = "right-to-left embedding",
+        [0x202C] = "directional formatting end",
+        [0x202D] = "left-to-right override",
+        [0x202E] = "right-to-left override",
+        [0x00AD] = "soft hyphen",
     };
 
     /// <summary>A denied character, described without the value around it.</summary>

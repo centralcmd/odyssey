@@ -39,7 +39,11 @@ public class ContactApiTests(ContactApiTests.Host host) : SharedApiHostTests<Con
 
     private static NewAddress Address(bool primary = false) => new()
     {
-        Label = AddressLabel.Visiting, IsPrimary = primary, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+        Label = AddressLabel.Visiting,
+        IsPrimary = primary,
+        Line1 = "Storgata 55",
+        City = "Oslo",
+        CountryCode = "NO",
     };
 
     // ── Claim matrix on the sub-resource routes ───────────────────────────────

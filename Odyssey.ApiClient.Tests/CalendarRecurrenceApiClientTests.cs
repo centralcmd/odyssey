@@ -26,9 +26,14 @@ public class CalendarRecurrenceApiClientTests
 
     private static NewRecurrencePattern Pattern() => new()
     {
-        CalendarId = Id, Title = "Standup", StartDateTime = new DateTime(2026, 3, 16, 9, 0, 0),
-        EndDateTime = new DateTime(2026, 3, 16, 10, 0, 0), Frequency = RecurrenceFrequency.Weekly,
-        DaysOfWeek = DaysOfWeekFlags.Monday, OccurrenceCount = 4, TimeZoneId = "Europe/Oslo",
+        CalendarId = Id,
+        Title = "Standup",
+        StartDateTime = new DateTime(2026, 3, 16, 9, 0, 0),
+        EndDateTime = new DateTime(2026, 3, 16, 10, 0, 0),
+        Frequency = RecurrenceFrequency.Weekly,
+        DaysOfWeek = DaysOfWeekFlags.Monday,
+        OccurrenceCount = 4,
+        TimeZoneId = "Europe/Oslo",
         ExpectedVersion = Guid.Parse("00000000-0000-0000-0000-0000000000aa"),
         ConfirmedDrops = new RecurrenceConfirmedDrops { Overrides = 1, Exclusions = 0 },
     };
@@ -171,8 +176,11 @@ public class CalendarRecurrenceApiClientTests
             """);
         var body = new NewCalendarEvent
         {
-            CalendarId = Id, Title = "Standup", StartDateTime = new DateTime(2026, 3, 29, 2, 30, 0),
-            EndDateTime = new DateTime(2026, 3, 29, 3, 30, 0), TimeZoneId = "Europe/Oslo",
+            CalendarId = Id,
+            Title = "Standup",
+            StartDateTime = new DateTime(2026, 3, 29, 2, 30, 0),
+            EndDateTime = new DateTime(2026, 3, 29, 3, 30, 0),
+            TimeZoneId = "Europe/Oslo",
         };
 
         var result = await client.UpdateEventWithResultAsync(Id, body);
@@ -193,7 +201,10 @@ public class CalendarRecurrenceApiClientTests
         var (events, eventHandler) = Create(HttpStatusCode.Created, $$"""{"calendarEventId":"{{Id}}","calendarId":"{{Id}}","title":"A","startDateTime":"2026-06-04T09:00:00"}""");
         var created = await events.CreateEventWithResultAsync(new NewCalendarEvent
         {
-            CalendarId = Id, Title = "A", StartDateTime = new DateTime(2026, 6, 4, 9, 0, 0), EndDateTime = new DateTime(2026, 6, 4, 10, 0, 0),
+            CalendarId = Id,
+            Title = "A",
+            StartDateTime = new DateTime(2026, 6, 4, 9, 0, 0),
+            EndDateTime = new DateTime(2026, 6, 4, 10, 0, 0),
         });
         Assert.Equal(HttpMethod.Post, eventHandler.LastRequest!.Method);
         Assert.Equal(Id, created.Value!.CalendarEventId);

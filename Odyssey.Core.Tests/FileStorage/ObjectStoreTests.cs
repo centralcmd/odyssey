@@ -516,7 +516,12 @@ public class ObjectStoreTests : FileStorageTestBase
 
     private static StoredObject Committed(Guid volumeId, string path) => new()
     {
-        Id = Guid.NewGuid(), VolumeId = volumeId, FeatureKey = "TestFiles", RelativePath = path, State = StoredObjectState.Committed,
-        Sha256Hash = new string('0', 64), CreatedAtUtc = DateTime.UtcNow,
+        Id = Guid.NewGuid(),
+        VolumeId = volumeId,
+        FeatureKey = "TestFiles",
+        RelativePath = path,
+        State = StoredObjectState.Committed,
+        Sha256Hash = new string('0', 64),
+        CreatedAtUtc = DateTime.UtcNow,
     };
 }

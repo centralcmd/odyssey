@@ -452,8 +452,13 @@ public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests
         async Task<ExistingNewsFeed> Current() => await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
         UpdateNewsFeed Body(ExistingNewsFeed f, List<Guid>? tags) => new()
         {
-            Version = f.Version, Url = f.Management!.Url, CustomTitle = "Renamed", FetchIntervalMinutes = null,
-            DownloadImages = f.DownloadImages, IsActive = f.IsActive, TagIds = tags,
+            Version = f.Version,
+            Url = f.Management!.Url,
+            CustomTitle = "Renamed",
+            FetchIntervalMinutes = null,
+            DownloadImages = f.DownloadImages,
+            IsActive = f.IsActive,
+            TagIds = tags,
         };
 
         var kept = await (await client.PutAsJsonAsync($"{Feeds}/{id}", Body(await Current(), null))).ReadAsync<ExistingNewsFeed>();
@@ -527,8 +532,13 @@ public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests
 
     private static UpdateNewsFeed Body(ExistingNewsFeed f, string title, List<Guid>? tags) => new()
     {
-        Version = f.Version, Url = f.Management!.Url, CustomTitle = title, FetchIntervalMinutes = null,
-        DownloadImages = f.DownloadImages, IsActive = f.IsActive, TagIds = tags,
+        Version = f.Version,
+        Url = f.Management!.Url,
+        CustomTitle = title,
+        FetchIntervalMinutes = null,
+        DownloadImages = f.DownloadImages,
+        IsActive = f.IsActive,
+        TagIds = tags,
     };
 
     [Fact]

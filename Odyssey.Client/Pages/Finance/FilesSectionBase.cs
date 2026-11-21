@@ -159,7 +159,8 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
                     continue;
                 }
 
-                try { await AttachAsync(result.Value!.Id); uploaded++; }
+                try
+                { await AttachAsync(result.Value!.Id); uploaded++; }
                 catch (Exception ex) { perFile.Add(UploadFailureText.Clean(ex.Message)); }
             }
 
@@ -189,7 +190,8 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
         try
         {
             var content = await Files.GetContentAsync(meta.Id);
-            if (content is null) { Snackbar.Add("Preview failed.", Severity.Error); return; }
+            if (content is null)
+            { Snackbar.Add("Preview failed.", Severity.Error); return; }
 
             var contentType = content.ContentType ?? meta.ContentType;
             var blobUrl = await JsRuntime.InvokeAsync<string>("createBlobUrl", content.Bytes, contentType);
@@ -211,7 +213,8 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
         try
         {
             var content = await Files.GetContentAsync(meta.Id);
-            if (content is null) { Snackbar.Add("Download failed.", Severity.Error); return; }
+            if (content is null)
+            { Snackbar.Add("Download failed.", Severity.Error); return; }
 
             await JsRuntime.SaveFileAsync(content, meta.FileName);
         }

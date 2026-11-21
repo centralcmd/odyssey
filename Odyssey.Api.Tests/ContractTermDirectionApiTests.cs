@@ -368,16 +368,16 @@ public class ContractTermDirectionApiTests(ContractTermDirectionApiTests.Host ho
 
     private static NewTerm MonthlyFee(
         string label, decimal value, string currency, TermDirection direction = TermDirection.Outgoing) => new()
-    {
-        Label = label,
-        ValueUnit = TermValueUnit.Amount,
-        Value = value,
-        CurrencyCode = currency,
-        Interval = Interval.Monthly,
-        IntervalCount = 1,
-        Direction = direction,
-        EffectiveFrom = FixedToday.AddDays(-30),
-    };
+        {
+            Label = label,
+            ValueUnit = TermValueUnit.Amount,
+            Value = value,
+            CurrencyCode = currency,
+            Interval = Interval.Monthly,
+            IntervalCount = 1,
+            Direction = direction,
+            EffectiveFrom = FixedToday.AddDays(-30),
+        };
 
     private static async Task<ExistingTerm> PostTermAsync(HttpClient client, Guid contractId, NewTerm term)
     {

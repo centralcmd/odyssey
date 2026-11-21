@@ -147,7 +147,9 @@ public partial class AlbumsPage
 
     // ── Selection (only meaningful inside an open album) ──
     private void ToggleSelecting() { _selecting = !_selecting; _selected.Clear(); }
-    private void ToggleSelect(Guid id) { if (!_selected.Add(id))
+    private void ToggleSelect(Guid id)
+    {
+        if (!_selected.Add(id))
         {
             _selected.Remove(id);
         }
@@ -162,7 +164,9 @@ public partial class AlbumsPage
             _selected.Clear();
         }
         else
-        { _selected.Clear(); foreach (var p in _albumPhotos)
+        {
+            _selected.Clear();
+            foreach (var p in _albumPhotos)
             {
                 _selected.Add(p.PhotoId);
             }

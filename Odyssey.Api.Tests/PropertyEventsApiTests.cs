@@ -43,13 +43,13 @@ public class PropertyEventsApiTests(PropertyEventsApiTests.Host host) : SharedAp
         DateTime? occurredAt = null,
         string? description = null,
         string? notes = null) => new
-    {
-        type,
-        title,
-        description,
-        notes,
-        occurredAt = occurredAt ?? FixedNow.AddDays(-1),
-    };
+        {
+            type,
+            title,
+            description,
+            notes,
+            occurredAt = occurredAt ?? FixedNow.AddDays(-1),
+        };
 
     // ── Create ───────────────────────────────────────────────────────────────
 

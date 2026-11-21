@@ -172,7 +172,10 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
             // A former site's checked range, which the purge removes too (§3.4: all site versions).
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 7, FromDate = D("2025-01-01"), ToDate = D("2025-01-31"),
+                WeatherPointId = id,
+                SiteVersion = 7,
+                FromDate = D("2025-01-01"),
+                ToDate = D("2025-01-31"),
             });
             await context.SaveChangesAsync();
         }
@@ -202,7 +205,10 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
         {
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 1, FromDate = D("2026-02-10"), ToDate = D("2026-02-17"),
+                WeatherPointId = id,
+                SiteVersion = 1,
+                FromDate = D("2026-02-10"),
+                ToDate = D("2026-02-17"),
             });
             await context.SaveChangesAsync();
         }
@@ -230,7 +236,10 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
         {
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 1, FromDate = D("2025-06-01"), ToDate = D("2026-11-06"),
+                WeatherPointId = id,
+                SiteVersion = 1,
+                FromDate = D("2025-06-01"),
+                ToDate = D("2026-11-06"),
             });
             await context.SaveChangesAsync();
         }
@@ -254,7 +263,10 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
         {
             context.WeatherPointHistoryWindows.Add(new WeatherPointHistoryWindow
             {
-                WeatherPointHistoryWindowId = Guid.NewGuid(), WeatherPointId = id, FromDate = D("2026-06-10"), ToDate = D("2026-06-17"),
+                WeatherPointHistoryWindowId = Guid.NewGuid(),
+                WeatherPointId = id,
+                FromDate = D("2026-06-10"),
+                ToDate = D("2026-06-17"),
             });
             await context.SaveChangesAsync();
         }
@@ -267,7 +279,10 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
             context.WeatherPointHistoryWindows.Remove(ongoing);
             context.WeatherPointHistoryWindows.Add(new WeatherPointHistoryWindow
             {
-                WeatherPointHistoryWindowId = Guid.NewGuid(), WeatherPointId = id, FromDate = D("2026-07-01"), ToDate = null,
+                WeatherPointHistoryWindowId = Guid.NewGuid(),
+                WeatherPointId = id,
+                FromDate = D("2026-07-01"),
+                ToDate = null,
             });
             await context.SaveChangesAsync();
         }
@@ -292,8 +307,12 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
         var point = await Admin(context).CreateAsync(new NewWeatherPoint
         {
             Name = "Cabin " + Guid.NewGuid().ToString("N")[..6],
-            Latitude = 61.517m, Longitude = 10.165m, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = false, HistoryEnabled = true, IsTracked = false,
+            Latitude = 61.517m,
+            Longitude = 10.165m,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = false,
+            HistoryEnabled = true,
+            IsTracked = false,
             HistoryWindows = [.. windows],
         }, AdminId, CancellationToken.None);
         return point.WeatherPointId;

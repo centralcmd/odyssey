@@ -128,8 +128,11 @@ public class ContractSmartTagScopeServiceTests
     private Task<ExistingContract> Create(DateTime? start, DateTime? end, DateTime? completion = null) =>
         Service().Create(new NewContract
         {
-            Name = "Employment", Type = DtoContractType.Employment,
-            StartDate = start, EndDate = end, CompletionDate = completion,
+            Name = "Employment",
+            Type = DtoContractType.Employment,
+            StartDate = start,
+            EndDate = end,
+            CompletionDate = completion,
         }, UserId);
 
     /// <summary>The carry-forward every client builder performs, with optional overrides.</summary>
@@ -287,12 +290,16 @@ public class ContractSmartTagScopeServiceTests
 
         var account = new Account
         {
-            Name = "Checking", Description = "Daily", AccountType = Odyssey.Context.AccountType.CheckingAccount,
+            Name = "Checking",
+            Description = "Daily",
+            AccountType = Odyssey.Context.AccountType.CheckingAccount,
             Opened = Day(2020, 1, 1),
         };
         var employer = new Contact
         {
-            ExternalUid = $"urn:uuid:{Guid.NewGuid()}", DisplayName = "Employer", NormalizedName = "employer",
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            DisplayName = "Employer",
+            NormalizedName = "employer",
             Type = Odyssey.Dtos.ContactType.Organization,
         };
         var salary = new TransactionTag { Name = "Salary" };
@@ -300,17 +307,25 @@ public class ContractSmartTagScopeServiceTests
         await context.SaveChangesAsync();
         context.ContractSmartTags.Add(new ContractSmartTag
         {
-            ContractId = created.ContractId, TransactionTagId = salary.TransactionTagId, AddedAt = FixedToday,
+            ContractId = created.ContractId,
+            TransactionTagId = salary.TransactionTagId,
+            AddedAt = FixedToday,
         });
         context.ContractParties.Add(new ContractParty
         {
-            ContractId = created.ContractId, ContactId = employer.ContactId,
+            ContractId = created.ContractId,
+            ContactId = employer.ContactId,
             Role = Odyssey.Context.ContractPartyRole.Employer,
         });
         var holidayPay = new Transaction
         {
-            Description = "Holiday pay", Amount = 5000m, TimeStamp = Day(2027, 6, 15), AccountId = account.AccountId,
-            ContactId = employer.ContactId, CurrencyCode = "NOK", TransactionTags = [salary],
+            Description = "Holiday pay",
+            Amount = 5000m,
+            TimeStamp = Day(2027, 6, 15),
+            AccountId = account.AccountId,
+            ContactId = employer.ContactId,
+            CurrencyCode = "NOK",
+            TransactionTags = [salary],
         };
         context.Transactions.Add(holidayPay);
         await context.SaveChangesAsync();

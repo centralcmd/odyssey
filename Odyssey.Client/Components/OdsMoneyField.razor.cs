@@ -490,13 +490,15 @@ public partial class OdsMoneyField
 
     private async Task FocusAsync(string id)
     {
-        try { await Js.InvokeVoidAsync("odsFocusById", id); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", id); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 
     private async Task RestoreInputAsync(string value)
     {
-        try { await Js.InvokeVoidAsync("odsSetInputValue", FieldId, value); }
+        try
+        { await Js.InvokeVoidAsync("odsSetInputValue", FieldId, value); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 }

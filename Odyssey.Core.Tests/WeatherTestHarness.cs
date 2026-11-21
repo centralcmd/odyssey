@@ -32,17 +32,17 @@ internal static class WeatherPointServiceTestExtensions
     public static UpdateWeatherPoint Update(
         ExistingWeatherPoint current, bool? forecast = null, bool? history = null, bool? tracked = null,
         decimal? latitude = null, decimal? longitude = null, string? zone = null) => new()
-    {
-        Name = current.Name,
-        Latitude = latitude ?? current.Site.Latitude,
-        Longitude = longitude ?? current.Site.Longitude,
-        AltitudeMeters = current.Site.AltitudeMeters,
-        TimeZoneId = zone ?? current.Site.TimeZoneId,
-        ForecastEnabled = forecast ?? current.ForecastEnabled,
-        HistoryEnabled = history ?? current.HistoryEnabled,
-        IsTracked = tracked ?? current.IsTracked,
-        SettingsVersion = current.SettingsVersion,
-    };
+        {
+            Name = current.Name,
+            Latitude = latitude ?? current.Site.Latitude,
+            Longitude = longitude ?? current.Site.Longitude,
+            AltitudeMeters = current.Site.AltitudeMeters,
+            TimeZoneId = zone ?? current.Site.TimeZoneId,
+            ForecastEnabled = forecast ?? current.ForecastEnabled,
+            HistoryEnabled = history ?? current.HistoryEnabled,
+            IsTracked = tracked ?? current.IsTracked,
+            SettingsVersion = current.SettingsVersion,
+        };
 }
 
 /// <summary>A clock the weather tests move by hand.</summary>

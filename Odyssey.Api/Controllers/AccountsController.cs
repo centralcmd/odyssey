@@ -73,7 +73,7 @@ public sealed class AccountsController : ControllerBase
     private bool CanIncludeProperties() =>
         User.HasPermission(PermissionClaims.PropertiesRead)
         && User.HasPermission(PermissionClaims.PropertiesEstimatesRead);
-    
+
     [HttpGet(Name = "GetAccounts")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingAccount>))]
@@ -111,7 +111,7 @@ public sealed class AccountsController : ControllerBase
         Summary = "Get an account based on the account ID.",
         Description = @"Get an account based on the account ID.")]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
+        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the account to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var account = await accountService.Get(id, cancellationToken, includeContractCount: CanReadContracts());
@@ -119,10 +119,10 @@ public sealed class AccountsController : ControllerBase
         {
             return this.NotFoundProblem($"Account ID {id} not found.");
         }
-    
+
         return Ok(account);
     }
-    
+
     [HttpGet("totals", Name = "GetAccountTotals")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AccountTotals))]
@@ -224,7 +224,7 @@ public sealed class AccountsController : ControllerBase
         Description = @"Create a new account. If a new account is created, the url for the new account is 
                         returned in the location header.")]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewAccount", Required = true, 
+        [FromBody] [SwaggerParameter("NewAccount", Required = true,
             Description = "The new account to create.")] NewAccount newAccount, CancellationToken cancellationToken = default)
     {
         var account = await accountService.Create(newAccount, cancellationToken);
@@ -246,9 +246,9 @@ public sealed class AccountsController : ControllerBase
                         retried PUT updates the same row rather than creating a second one. Creating needs
                         accounts.create in addition to accounts.update; without it an unknown ID is a 403.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
-            Description = @"The ID for the account to update.")] Guid id, 
-        [FromBody] [SwaggerParameter("NewAccount", Required = true, 
+        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
+            Description = @"The ID for the account to update.")] Guid id,
+        [FromBody] [SwaggerParameter("NewAccount", Required = true,
             Description = @"The account with the updated values.")] NewAccount newAccount, CancellationToken cancellationToken = default)
     {
         // Documented upsert (issue #239). The create half is authorized HERE, explicitly: the action's
@@ -272,7 +272,7 @@ public sealed class AccountsController : ControllerBase
         var created = await accountService.Create(newAccount, id, cancellationToken);
         return CreatedAtRoute("GetAccount", new { id = created.AccountId }, "");
     }
-    
+
     [HttpDelete("{id}", Name = "DeleteAccount")]
     [Authorize(Policy = PermissionClaims.AccountsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

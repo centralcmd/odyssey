@@ -386,9 +386,13 @@ public class JournalEntryIcsApiTests(JournalEntryIcsApiTests.Host host) : Shared
             {
                 context.JournalEntries.Add(new JournalEntry
                 {
-                    ExternalUid = $"urn:uuid:bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000),
+                    ExternalUid = $"urn:uuid:bulk-{i}",
+                    Title = $"Bulk {i}",
+                    Content = new string('x', 4000),
                     EntryDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                    CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+                    CreatedByUserId = ActorUserId,
+                    CreatedAt = now,
+                    UpdatedAt = now,
                 });
             }
 
@@ -454,16 +458,16 @@ public class JournalEntryIcsApiTests(JournalEntryIcsApiTests.Host host) : Shared
         Guid[]? contactIds = null,
         Guid[]? photoIds = null,
         Guid[]? attachmentFileIds = null) => new()
-    {
-        Title = title,
-        Content = content ?? "Dear journal, today was a day.",
-        EntryDate = entryDate ?? new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-        Location = location,
-        TagIds = tagIds ?? [],
-        ContactIds = contactIds ?? [],
-        PhotoIds = photoIds ?? [],
-        AttachmentFileIds = attachmentFileIds ?? [],
-    };
+        {
+            Title = title,
+            Content = content ?? "Dear journal, today was a day.",
+            EntryDate = entryDate ?? new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            Location = location,
+            TagIds = tagIds ?? [],
+            ContactIds = contactIds ?? [],
+            PhotoIds = photoIds ?? [],
+            AttachmentFileIds = attachmentFileIds ?? [],
+        };
 
     private static async Task<ExistingJournalEntry> CreateAsync(HttpClient client, NewJournalEntry request)
     {

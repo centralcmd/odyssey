@@ -60,7 +60,10 @@ public partial class CalendarIcsService
             {
                 return new ImportItem
                 {
-                    Kind = ItemKind.CancelledOverride, SampleTitle = sampleTitle, Uid = uid, Offset = offset,
+                    Kind = ItemKind.CancelledOverride,
+                    SampleTitle = sampleTitle,
+                    Uid = uid,
+                    Offset = offset,
                     RecurrenceId = recurrenceId,
                 };
             }
@@ -75,7 +78,10 @@ public partial class CalendarIcsService
 
             return new ImportItem
             {
-                Kind = ItemKind.Cancelled, SampleTitle = sampleTitle, Uid = uid, Offset = offset,
+                Kind = ItemKind.Cancelled,
+                SampleTitle = sampleTitle,
+                Uid = uid,
+                Offset = offset,
                 HasRule = ev.RecurrenceRule is not null,
             };
         }
@@ -133,9 +139,19 @@ public partial class CalendarIcsService
         {
             return new ImportItem
             {
-                Kind = ItemKind.Override, SampleTitle = sampleTitle, Uid = uid, Offset = offset, Title = title,
-                Description = description, Place = place, Start = times.Start, End = times.End, IsAllDay = isAllDay,
-                ZoneId = times.Zone?.Id, Adjusted = times.Adjusted, RecurrenceId = recurrenceId,
+                Kind = ItemKind.Override,
+                SampleTitle = sampleTitle,
+                Uid = uid,
+                Offset = offset,
+                Title = title,
+                Description = description,
+                Place = place,
+                Start = times.Start,
+                End = times.End,
+                IsAllDay = isAllDay,
+                ZoneId = times.Zone?.Id,
+                Adjusted = times.Adjusted,
+                RecurrenceId = recurrenceId,
             };
         }
 
@@ -143,9 +159,18 @@ public partial class CalendarIcsService
         {
             return new ImportItem
             {
-                Kind = ItemKind.Standalone, SampleTitle = sampleTitle, Uid = uid, Offset = offset, Title = title,
-                Description = description, Place = place, Start = times.Start, End = times.End, IsAllDay = isAllDay,
-                ZoneId = times.Zone?.Id, Adjusted = times.Adjusted,
+                Kind = ItemKind.Standalone,
+                SampleTitle = sampleTitle,
+                Uid = uid,
+                Offset = offset,
+                Title = title,
+                Description = description,
+                Place = place,
+                Start = times.Start,
+                End = times.End,
+                IsAllDay = isAllDay,
+                ZoneId = times.Zone?.Id,
+                Adjusted = times.Adjusted,
             };
         }
 
@@ -203,9 +228,21 @@ public partial class CalendarIcsService
 
         return new ImportItem
         {
-            Kind = ItemKind.Master, SampleTitle = sampleTitle, Uid = uid, Offset = offset, HasRule = true, Title = title,
-            Description = description, Place = place, Start = times.Start, End = times.End, IsAllDay = isAllDay,
-            ZoneId = times.Zone?.Id, Adjusted = times.Adjusted, Pattern = pattern, Occurrences = occurrences,
+            Kind = ItemKind.Master,
+            SampleTitle = sampleTitle,
+            Uid = uid,
+            Offset = offset,
+            HasRule = true,
+            Title = title,
+            Description = description,
+            Place = place,
+            Start = times.Start,
+            End = times.End,
+            IsAllDay = isAllDay,
+            ZoneId = times.Zone?.Id,
+            Adjusted = times.Adjusted,
+            Pattern = pattern,
+            Occurrences = occurrences,
             ExDates = exDates,
         };
     }

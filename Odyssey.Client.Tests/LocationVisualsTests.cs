@@ -66,7 +66,10 @@ public class LocationVisualsTests
         var kartverket = new LocationAttribution { Text = "© Kartverket", License = "CC BY 4.0", Url = "https://www.kartverket.no/" };
         ExistingLocation Row(LocationAttribution? attribution) => new()
         {
-            LocationId = Guid.NewGuid(), Name = "x", TimeZoneId = "UTC", Attribution = attribution,
+            LocationId = Guid.NewGuid(),
+            Name = "x",
+            TimeZoneId = "UTC",
+            Attribution = attribution,
         };
 
         Assert.Single(LocationVisuals.Credits([Row(kartverket), Row(kartverket with { }), Row(null)]));
@@ -92,9 +95,16 @@ public class LocationVisualsTests
     {
         var row = new ExistingLocation
         {
-            LocationId = Guid.NewGuid(), Name = "Cabin", Description = "d", AddressText = "a",
-            Latitude = 61.5m, Longitude = 10.1m, AltitudeMeters = 640, TimeZoneId = "Europe/Oslo",
-            Source = LocationSource.Kartverket, SourceReference = "3439-1-4",
+            LocationId = Guid.NewGuid(),
+            Name = "Cabin",
+            Description = "d",
+            AddressText = "a",
+            Latitude = 61.5m,
+            Longitude = 10.1m,
+            AltitudeMeters = 640,
+            TimeZoneId = "Europe/Oslo",
+            Source = LocationSource.Kartverket,
+            SourceReference = "3439-1-4",
         };
 
         var body = LocationsPage.WithArchived(row, archived: true);

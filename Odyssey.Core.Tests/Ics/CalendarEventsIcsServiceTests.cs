@@ -264,7 +264,8 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
 
         var body = await ExportAsync(CalendarIcsExportScope.ForAggregate(new()
         {
-            From = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc), To = new DateTime(2030, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+            From = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            To = new DateTime(2030, 1, 31, 0, 0, 0, DateTimeKind.Utc),
         }));
 
         Assert.Equal(4, Count(body, "BEGIN:VEVENT"));
@@ -283,7 +284,8 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
 
         var body = await ExportAsync(CalendarIcsExportScope.ForAggregate(new()
         {
-            From = new DateTime(2030, 8, 5, 0, 0, 0, DateTimeKind.Utc), To = new DateTime(2030, 8, 6, 0, 0, 0, DateTimeKind.Utc),
+            From = new DateTime(2030, 8, 5, 0, 0, 0, DateTimeKind.Utc),
+            To = new DateTime(2030, 8, 6, 0, 0, 0, DateTimeKind.Utc),
         }));
 
         Assert.Contains("SUMMARY:Overnight shift", body);
@@ -299,8 +301,11 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
         // Title-only, unlike the Calendar page's own client-side live filter).
         await InScopeAsync(sp => sp.GetRequiredService<CalendarEventService>().Create(new NewCalendarEvent
         {
-            CalendarId = calendar, Title = "Team sync", Location = "Standup room",
-            StartDateTime = new DateTime(2030, 2, 3, 9, 0, 0, DateTimeKind.Utc), EndDateTime = new DateTime(2030, 2, 3, 10, 0, 0, DateTimeKind.Utc),
+            CalendarId = calendar,
+            Title = "Team sync",
+            Location = "Standup room",
+            StartDateTime = new DateTime(2030, 2, 3, 9, 0, 0, DateTimeKind.Utc),
+            EndDateTime = new DateTime(2030, 2, 3, 10, 0, 0, DateTimeKind.Utc),
         }, ActorUserId));
 
         var body = await ExportAsync(CalendarIcsExportScope.ForAggregate(new() { Search = "standup" }));
@@ -324,8 +329,10 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
 
         var body = await ExportAsync(CalendarIcsExportScope.ForAggregate(new()
         {
-            CalendarIds = [calendarA], Search = "standup",
-            From = new DateTime(2030, 3, 1, 0, 0, 0, DateTimeKind.Utc), To = new DateTime(2030, 3, 31, 0, 0, 0, DateTimeKind.Utc),
+            CalendarIds = [calendarA],
+            Search = "standup",
+            From = new DateTime(2030, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+            To = new DateTime(2030, 3, 31, 0, 0, 0, DateTimeKind.Utc),
         }));
 
         Assert.Equal(1, Count(body, "BEGIN:VEVENT"));
@@ -439,7 +446,10 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
     private async Task<Guid> CreateEventAsync(Guid calendarId, string title, DateTime start) =>
         (await InScopeAsync(sp => sp.GetRequiredService<CalendarEventService>().Create(new NewCalendarEvent
         {
-            CalendarId = calendarId, Title = title, StartDateTime = start, EndDateTime = start.AddHours(1),
+            CalendarId = calendarId,
+            Title = title,
+            StartDateTime = start,
+            EndDateTime = start.AddHours(1),
         }, ActorUserId))).CalendarEventId;
 
     private async Task<Guid> CreatePatternAsync(
@@ -466,7 +476,10 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
     private async Task MoveEventToCalendarAsync(Guid eventId, Guid newCalendarId, string title, DateTime start, DateTime end) =>
         Assert.NotNull(await InScopeAsync(sp => sp.GetRequiredService<CalendarEventService>().Update(eventId, new NewCalendarEvent
         {
-            CalendarId = newCalendarId, Title = title, StartDateTime = start, EndDateTime = end,
+            CalendarId = newCalendarId,
+            Title = title,
+            StartDateTime = start,
+            EndDateTime = end,
         }, ActorUserId)));
 
     // Standalone rows straight through the context: the cap tests need thousands of them.
@@ -476,8 +489,13 @@ public class CalendarEventsIcsServiceTests : IcsServiceTestBase
         var start = new DateTime(2030, 1, 1, 9, 0, 0, DateTimeKind.Utc);
         db.CalendarEvents.AddRange(Enumerable.Range(0, count).Select(i => new ContextCalendarEvent
         {
-            CalendarId = calendarId, Title = $"{titlePrefix} {i}", StartDateTime = start.AddMinutes(i),
-            EndDateTime = start.AddMinutes(i).AddMinutes(30), CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+            CalendarId = calendarId,
+            Title = $"{titlePrefix} {i}",
+            StartDateTime = start.AddMinutes(i),
+            EndDateTime = start.AddMinutes(i).AddMinutes(30),
+            CreatedByUserId = ActorUserId,
+            CreatedAt = now,
+            UpdatedAt = now,
         }));
         await db.SaveChangesAsync();
     });

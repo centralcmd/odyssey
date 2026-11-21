@@ -213,26 +213,26 @@ internal static class RecurrenceOccurrenceGenerator
                 }
 
             case RecurrenceFrequency.Weekly:
-            {
-                // Only defined day bits can ever match. A mask with none (a row written before issue
-                // #243's validation, or by a non-validating path) has no next occurrence, so stop
-                // rather than stepping a day at a time until DateTime overflows.
-                var days = (pattern.DaysOfWeek ?? DaysOfWeekFlags.None) & AllDays;
-                if (days == DaysOfWeekFlags.None)
                 {
-                    yield break;
-                }
-
-                var anchorWeekStart = StartOfWeek(anchor.Date);
-                for (var date = anchor.Date; ; date = date.AddDays(1))
-                {
-                    var weeksSinceAnchor = (StartOfWeek(date) - anchorWeekStart).Days / 7;
-                    if (weeksSinceAnchor % pattern.Interval == 0 && HasFlag(days, date.DayOfWeek))
+                    // Only defined day bits can ever match. A mask with none (a row written before issue
+                    // #243's validation, or by a non-validating path) has no next occurrence, so stop
+                    // rather than stepping a day at a time until DateTime overflows.
+                    var days = (pattern.DaysOfWeek ?? DaysOfWeekFlags.None) & AllDays;
+                    if (days == DaysOfWeekFlags.None)
                     {
-                        yield return date + timeOfDay;
+                        yield break;
+                    }
+
+                    var anchorWeekStart = StartOfWeek(anchor.Date);
+                    for (var date = anchor.Date; ; date = date.AddDays(1))
+                    {
+                        var weeksSinceAnchor = (StartOfWeek(date) - anchorWeekStart).Days / 7;
+                        if (weeksSinceAnchor % pattern.Interval == 0 && HasFlag(days, date.DayOfWeek))
+                        {
+                            yield return date + timeOfDay;
+                        }
                     }
                 }
-            }
 
             case RecurrenceFrequency.Monthly:
                 // Anchor-relative stepping: each step's base month is computed from the ORIGINAL anchor

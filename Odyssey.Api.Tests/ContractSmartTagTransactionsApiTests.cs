@@ -400,7 +400,9 @@ public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransa
         {
             db.ContractSmartTags.Add(new ContractSmartTag
             {
-                ContractId = contract.ContractId, TransactionTagId = tag.TransactionTagId, AddedAt = DateTime.UtcNow,
+                ContractId = contract.ContractId,
+                TransactionTagId = tag.TransactionTagId,
+                AddedAt = DateTime.UtcNow,
             });
         }
 

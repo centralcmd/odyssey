@@ -215,13 +215,13 @@ public partial class ContractsCard
 
     private PageHeaderProblem Dated(
         ContractListItem contract, string group, PageHeaderSeverity severity, string message) => new()
-    {
-        Group = group,
-        Severity = severity,
-        Lead = contract.Name,
-        Message = message,
-        OnView = EventCallback.Factory.Create(this, () => JumpTo(contract.ContractId)),
-    };
+        {
+            Group = group,
+            Severity = severity,
+            Lead = contract.Name,
+            Message = message,
+            OnView = EventCallback.Factory.Create(this, () => JumpTo(contract.ContractId)),
+        };
 
     private int DaysUntil(DateTime date) => (date.Date - Today).Days;
 

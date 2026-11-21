@@ -188,7 +188,7 @@ public static class RolePermissions
     [
         ..AllClaims,
     ];
-    
+
     public static readonly string[] OwnerClaims =
     [
         AccountsCreate,

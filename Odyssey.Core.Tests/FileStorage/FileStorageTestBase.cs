@@ -84,7 +84,7 @@ public abstract class FileStorageTestBase : IAsyncLifetime
                 configure?.Invoke(services);
             });
 
-        protected string PrimaryRoot => Path.Combine(Base.FullName, "volumes", "primary");
+    protected string PrimaryRoot => Path.Combine(Base.FullName, "volumes", "primary");
 
     protected static MemoryStream Bytes(int length, byte seed = 7)
     {

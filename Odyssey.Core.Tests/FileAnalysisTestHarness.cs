@@ -87,7 +87,9 @@ internal static class FileAnalysisTestHarness
         var userRole = new IdentityUserRole<string> { UserId = userId, RoleId = roleId };
         var claim = new IdentityRoleClaim<string>
         {
-            RoleId = roleId, ClaimType = PermissionClaims.Type, ClaimValue = PermissionClaims.FileAnalysisCreate,
+            RoleId = roleId,
+            ClaimType = PermissionClaims.Type,
+            ClaimValue = PermissionClaims.FileAnalysisCreate,
         };
         context.Users.Add(user);
         context.Roles.Add(role);

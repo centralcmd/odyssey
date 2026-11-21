@@ -53,20 +53,20 @@ public static class AccountTypeVisuals
     public static string Label(AccountType type) => type switch
     {
         // Assets
-        AccountType.Cash              => "Cash",
-        AccountType.CheckingAccount   => "Checking",
-        AccountType.SavingsAccount    => "Savings",
+        AccountType.Cash => "Cash",
+        AccountType.CheckingAccount => "Checking",
+        AccountType.SavingsAccount => "Savings",
         AccountType.InvestmentAccount => "Investment",
-        AccountType.PensionAccount    => "Pension",
-        AccountType.OtherAsset        => "Other asset",
+        AccountType.PensionAccount => "Pension",
+        AccountType.OtherAsset => "Other asset",
         // Liabilities
-        AccountType.CreditCard        => "Credit card",
-        AccountType.Mortgage          => "Mortgage",
-        AccountType.StudentLoan       => "Student loan",
-        AccountType.PersonalLoan      => "Personal loan",
-        AccountType.CarLoan           => "Car loan",
-        AccountType.TaxDebt           => "Tax debt",
-        AccountType.OtherLiability    => "Other liability",
+        AccountType.CreditCard => "Credit card",
+        AccountType.Mortgage => "Mortgage",
+        AccountType.StudentLoan => "Student loan",
+        AccountType.PersonalLoan => "Personal loan",
+        AccountType.CarLoan => "Car loan",
+        AccountType.TaxDebt => "Tax debt",
+        AccountType.OtherLiability => "Other liability",
         _ => "Unknown",
     };
 
@@ -74,20 +74,20 @@ public static class AccountTypeVisuals
     public static string MaterialIcon(AccountType type) => type switch
     {
         // Assets
-        AccountType.Cash              => "payments",
-        AccountType.CheckingAccount   => "account_balance",
-        AccountType.SavingsAccount    => "savings",
+        AccountType.Cash => "payments",
+        AccountType.CheckingAccount => "account_balance",
+        AccountType.SavingsAccount => "savings",
         AccountType.InvestmentAccount => "trending_up",
-        AccountType.PensionAccount    => "elderly",
-        AccountType.OtherAsset        => "category",
+        AccountType.PensionAccount => "elderly",
+        AccountType.OtherAsset => "category",
         // Liabilities
-        AccountType.CreditCard        => "credit_card",
-        AccountType.Mortgage          => "home_work",
-        AccountType.StudentLoan       => "school",
-        AccountType.PersonalLoan      => "account_balance_wallet",
-        AccountType.CarLoan           => "directions_car",
-        AccountType.TaxDebt           => "receipt_long",
-        AccountType.OtherLiability    => "category",
+        AccountType.CreditCard => "credit_card",
+        AccountType.Mortgage => "home_work",
+        AccountType.StudentLoan => "school",
+        AccountType.PersonalLoan => "account_balance_wallet",
+        AccountType.CarLoan => "directions_car",
+        AccountType.TaxDebt => "receipt_long",
+        AccountType.OtherLiability => "category",
         _ => "help",
     };
 
@@ -95,20 +95,20 @@ public static class AccountTypeVisuals
     public static string FgColor(AccountType type) => type switch
     {
         // Assets
-        AccountType.Cash              => "var(--acct-cash)",
-        AccountType.CheckingAccount   => "var(--acct-checking)",
-        AccountType.SavingsAccount    => "var(--acct-savings)",
+        AccountType.Cash => "var(--acct-cash)",
+        AccountType.CheckingAccount => "var(--acct-checking)",
+        AccountType.SavingsAccount => "var(--acct-savings)",
         AccountType.InvestmentAccount => "var(--acct-investment)",
-        AccountType.PensionAccount    => "var(--acct-pension)",
-        AccountType.OtherAsset        => "var(--acct-other-asset)",
+        AccountType.PensionAccount => "var(--acct-pension)",
+        AccountType.OtherAsset => "var(--acct-other-asset)",
         // Liabilities
-        AccountType.CreditCard        => "var(--acct-credit)",
-        AccountType.Mortgage          => "var(--acct-mortgage)",
-        AccountType.StudentLoan       => "var(--acct-student-loan)",
-        AccountType.PersonalLoan      => "var(--acct-personal-loan)",
-        AccountType.CarLoan           => "var(--acct-car-loan)",
-        AccountType.TaxDebt           => "var(--acct-tax-debt)",
-        AccountType.OtherLiability    => "var(--acct-other-liability)",
+        AccountType.CreditCard => "var(--acct-credit)",
+        AccountType.Mortgage => "var(--acct-mortgage)",
+        AccountType.StudentLoan => "var(--acct-student-loan)",
+        AccountType.PersonalLoan => "var(--acct-personal-loan)",
+        AccountType.CarLoan => "var(--acct-car-loan)",
+        AccountType.TaxDebt => "var(--acct-tax-debt)",
+        AccountType.OtherLiability => "var(--acct-other-liability)",
         _ => "var(--mud-palette-text-secondary)",
     };
 
@@ -116,20 +116,20 @@ public static class AccountTypeVisuals
     public static string BgColor(AccountType type) => type switch
     {
         // Assets
-        AccountType.Cash              => "var(--acct-cash-soft)",
-        AccountType.CheckingAccount   => "var(--acct-checking-soft)",
-        AccountType.SavingsAccount    => "var(--acct-savings-soft)",
+        AccountType.Cash => "var(--acct-cash-soft)",
+        AccountType.CheckingAccount => "var(--acct-checking-soft)",
+        AccountType.SavingsAccount => "var(--acct-savings-soft)",
         AccountType.InvestmentAccount => "var(--acct-investment-soft)",
-        AccountType.PensionAccount    => "var(--acct-pension-soft)",
-        AccountType.OtherAsset        => "var(--acct-other-asset-soft)",
+        AccountType.PensionAccount => "var(--acct-pension-soft)",
+        AccountType.OtherAsset => "var(--acct-other-asset-soft)",
         // Liabilities
-        AccountType.CreditCard        => "var(--acct-credit-soft)",
-        AccountType.Mortgage          => "var(--acct-mortgage-soft)",
-        AccountType.StudentLoan       => "var(--acct-student-loan-soft)",
-        AccountType.PersonalLoan      => "var(--acct-personal-loan-soft)",
-        AccountType.CarLoan           => "var(--acct-car-loan-soft)",
-        AccountType.TaxDebt           => "var(--acct-tax-debt-soft)",
-        AccountType.OtherLiability    => "var(--acct-other-liability-soft)",
+        AccountType.CreditCard => "var(--acct-credit-soft)",
+        AccountType.Mortgage => "var(--acct-mortgage-soft)",
+        AccountType.StudentLoan => "var(--acct-student-loan-soft)",
+        AccountType.PersonalLoan => "var(--acct-personal-loan-soft)",
+        AccountType.CarLoan => "var(--acct-car-loan-soft)",
+        AccountType.TaxDebt => "var(--acct-tax-debt-soft)",
+        AccountType.OtherLiability => "var(--acct-other-liability-soft)",
         _ => "var(--mud-palette-action-disabled-background)",
     };
 }

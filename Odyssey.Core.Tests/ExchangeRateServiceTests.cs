@@ -135,12 +135,16 @@ public class ExchangeRateServiceTests
 
         await service.Create(new NewExchangeRate
         {
-            FromCurrencyCode = "USD", ToCurrencyCode = "EUR", Rate = 0.90m,
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "EUR",
+            Rate = 0.90m,
             AsOf = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         });
         await service.Create(new NewExchangeRate
         {
-            FromCurrencyCode = "USD", ToCurrencyCode = "SEK", Rate = 10m,
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "SEK",
+            Rate = 10m,
             AsOf = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
         });
 

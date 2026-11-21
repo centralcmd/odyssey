@@ -27,8 +27,12 @@ public class PropertyClientTests
     {
         var cabin = new ExistingProperty
         {
-            PropertyId = Guid.NewGuid(), Name = "Hytta", Description = "Cabin", CurrencyCode = "NOK",
-            Type = PropertyType.RealEstate, RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.Cabin },
+            PropertyId = Guid.NewGuid(),
+            Name = "Hytta",
+            Description = "Cabin",
+            CurrencyCode = "NOK",
+            Type = PropertyType.RealEstate,
+            RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.Cabin },
         };
         var bare = cabin with { Type = PropertyType.Vehicle, RealEstateDetails = null };
 
@@ -41,7 +45,10 @@ public class PropertyClientTests
     {
         Assert.Equal("Storgata 14, 0155 Oslo, NO", PropertyVisuals.AddressText(new RealEstateDetailsDto
         {
-            AddressLine = "Storgata 14", PostalCode = "0155", City = "Oslo", CountryCode = "NO",
+            AddressLine = "Storgata 14",
+            PostalCode = "0155",
+            City = "Oslo",
+            CountryCode = "NO",
         }));
         Assert.Equal("Oslo", PropertyVisuals.AddressText(new RealEstateDetailsDto { City = "Oslo" }));
         Assert.Null(PropertyVisuals.AddressText(new RealEstateDetailsDto()));
@@ -63,8 +70,12 @@ public class PropertyClientTests
     {
         var car = new ExistingProperty
         {
-            PropertyId = Guid.NewGuid(), Name = "Outback", Description = "Family car", CurrencyCode = "USD",
-            Type = PropertyType.Vehicle, Notes = "Winter tyres in the shed",
+            PropertyId = Guid.NewGuid(),
+            Name = "Outback",
+            Description = "Family car",
+            CurrencyCode = "USD",
+            Type = PropertyType.Vehicle,
+            Notes = "Winter tyres in the shed",
             AcquiredDate = new DateTime(2021, 3, 1, 0, 0, 0, DateTimeKind.Utc),
             VehicleDetails = new VehicleDetailsDto { Kind = VehicleKind.Car, RegistrationNumber = "EL12345" },
             RealEstateDetails = new RealEstateDetailsDto { City = "stray" },

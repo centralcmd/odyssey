@@ -395,8 +395,14 @@ public class JournalTagIconApiTests(JournalTagIconApiTests.Host host) : SharedAp
                 // Only the tag link is read here, so the photo names a stored object that exists nowhere (EF InMemory).
                 var photo = new Photo
                 {
-                    StoredObjectId = Guid.NewGuid(), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 1,
-                    Sha256Hash = new string('a', 64), CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+                    StoredObjectId = Guid.NewGuid(),
+                    FileName = "p.jpg",
+                    ContentType = "image/jpeg",
+                    SizeBytes = 1,
+                    Sha256Hash = new string('a', 64),
+                    CreatedByUserId = ActorUserId,
+                    CreatedAt = now,
+                    UpdatedAt = now,
                 };
                 photo.Tags.Add(new PhotoTagLink { PhotoTagId = tagId });
                 context.Photos.Add(photo);

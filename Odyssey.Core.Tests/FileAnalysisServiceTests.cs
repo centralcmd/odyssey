@@ -659,12 +659,17 @@ public class FileAnalysisServiceTests
         await using var context = TestContextFactory.Create();
         var archived = new Contact
         {
-            ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = "GONE", Type = ContactType.Organization,
-            Archived = DateTime.UtcNow, OrganizationDetails = new() { LegalName = "Gone" },
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            NormalizedName = "GONE",
+            Type = ContactType.Organization,
+            Archived = DateTime.UtcNow,
+            OrganizationDetails = new() { LegalName = "Gone" },
         };
         var known = new Contact
         {
-            ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = "SHOP", Type = ContactType.Organization,
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            NormalizedName = "SHOP",
+            Type = ContactType.Organization,
             OrganizationDetails = new() { LegalName = "Shop" },
         };
         journal.Contacts.AddRange(archived, known);

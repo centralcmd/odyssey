@@ -226,7 +226,8 @@ public class WeatherLinkedPlaceTests
 
         var cleared = await service.Update(source.LocationId, new UpdateLocation
         {
-            Name = "Source", Source = LocationSource.Manual,
+            Name = "Source",
+            Source = LocationSource.Manual,
         }, WeatherTestHarness.AdminId, CancellationToken.None, LocationClaims.Trusted);
         Assert.False(cleared!.HasCoordinates);
 
@@ -261,7 +262,11 @@ public class WeatherLinkedPlaceTests
         var unlinked = await h.AddLocationAsync("Unlinked", latitude: 61m);
         h.Context.WeatherDays.Add(new Odyssey.Context.WeatherDay
         {
-            WeatherPointId = point.Id, LocalDate = new DateOnly(2026, 9, 1), ObservedMeanTempC = 4, ObservedFetchedAtUtc = Noon, UpdatedAtUtc = Noon,
+            WeatherPointId = point.Id,
+            LocalDate = new DateOnly(2026, 9, 1),
+            ObservedMeanTempC = 4,
+            ObservedFetchedAtUtc = Noon,
+            UpdatedAtUtc = Noon,
         });
         await h.Context.SaveChangesAsync();
         var service = new LocationService(h.NewContext(), h.Time);
@@ -270,7 +275,12 @@ public class WeatherLinkedPlaceTests
         var linked = withWeather.Items.Single(l => l.LocationId == point.LocationId);
         Assert.Equal(new LinkedWeatherPointRef
         {
-            WeatherPointId = point.Id, Name = "Oslo", ForecastEnabled = false, HistoryEnabled = true, HasStoredHistory = true, PurgeInProgress = false,
+            WeatherPointId = point.Id,
+            Name = "Oslo",
+            ForecastEnabled = false,
+            HistoryEnabled = true,
+            HasStoredHistory = true,
+            PurgeInProgress = false,
         }, linked.WeatherPoint);
         Assert.Equal(0, linked.WeatherPointDistanceKm);
         Assert.Equal(WeatherRules.Fingerprint(59.913m, 10.750m, 12, "Europe/Oslo"), linked.WeatherFingerprint);
@@ -291,8 +301,12 @@ public class WeatherLinkedPlaceTests
         h.Context.Calendars.Add(new Odyssey.Context.Calendar { CalendarId = calendarId, Name = $"Calendar {id:N}" });
         h.Context.CalendarEvents.Add(new Odyssey.Context.CalendarEvent
         {
-            CalendarEventId = id, CalendarId = calendarId, Title = "Walk", LocationId = locationId,
-            StartDateTime = Noon.AddDays(-2), EndDateTime = Noon.AddDays(-2).AddHours(1),
+            CalendarEventId = id,
+            CalendarId = calendarId,
+            Title = "Walk",
+            LocationId = locationId,
+            StartDateTime = Noon.AddDays(-2),
+            EndDateTime = Noon.AddDays(-2).AddHours(1),
         });
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();

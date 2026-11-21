@@ -80,8 +80,10 @@ public class TaxStatementApiTests(TaxStatementApiTests.Host host) : SharedApiHos
 
         var put = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}", new UpdateTaxStatement
         {
-            Name = "x", FiscalYear = 2024,
-            StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow,
+            Name = "x",
+            FiscalYear = 2024,
+            StartDate = DateTime.UtcNow,
+            EndDate = DateTime.UtcNow,
         });
         Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
 

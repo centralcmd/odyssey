@@ -89,12 +89,18 @@ public class LocalTimeZoneDateHandlingTests
         var (service, accountId) = await NewTransactionServiceAsync(context);
         var created = await service.Create(new NewTransaction
         {
-            Description = "Coffee", Amount = 3, AccountId = accountId, TimeStamp = Utc(2021, 7, 1, 0),
+            Description = "Coffee",
+            Amount = 3,
+            AccountId = accountId,
+            TimeStamp = Utc(2021, 7, 1, 0),
         });
 
         var updated = await service.Update(created.TransactionId, new NewTransaction
         {
-            Description = "Coffee", Amount = 3, AccountId = accountId, TimeStamp = Tokyo(2021, 7, 4, 5),
+            Description = "Coffee",
+            Amount = 3,
+            AccountId = accountId,
+            TimeStamp = Tokyo(2021, 7, 4, 5),
         });
 
         AssertUtc(Utc(2021, 7, 3, 20), updated!.TimeStamp);

@@ -512,7 +512,9 @@ public partial class JournalCard
         _detailIndex = null;
         if (_focusJs is not null)
         {
-            try { await _focusJs.InvokeVoidAsync("restore"); } catch (Exception) { /* best-effort focus return */ }
+            try
+            { await _focusJs.InvokeVoidAsync("restore"); }
+            catch (Exception) { /* best-effort focus return */ }
         }
     }
 
@@ -914,14 +916,16 @@ public partial class JournalCard
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "edit", Label = "Edit entry",
+                Icon = "edit",
+                Label = "Edit entry",
                 OnClick = EventCallback.Factory.Create(this, () => EditClicked(e)),
             });
         }
 
         items.Add(new OdsMenuItem
         {
-            Icon = "event_note", Label = "Export VJOURNAL",
+            Icon = "event_note",
+            Label = "Export VJOURNAL",
             OnClick = EventCallback.Factory.Create(this, () => ExportEntryAsync(e)),
         });
         items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId))));
@@ -941,7 +945,9 @@ public partial class JournalCard
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "delete", Label = "Delete", Danger = true,
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
                 OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(e)),
             });
         }
@@ -975,12 +981,16 @@ public partial class JournalCard
         _listLoader.Dispose();
         if (_focusReturnJs is not null)
         {
-            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _focusReturnJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
 
         if (_focusJs is not null)
         {
-            try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _focusJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

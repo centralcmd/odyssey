@@ -548,8 +548,10 @@ public class ExchangeRateSyncTests
         {
             var run = new ExchangeRateSyncJobRun
             {
-                Trigger = JobRunTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
-                Status = JobRunStatus.Running, StartedAtUtc = Now,
+                Trigger = JobRunTrigger.Manual,
+                Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Running,
+                StartedAtUtc = Now,
             };
             seed.Set<ExchangeRateSyncJobRun>().Add(run);
             await seed.SaveChangesAsync();
@@ -589,8 +591,10 @@ public class ExchangeRateSyncTests
         {
             seed.Set<ExchangeRateSyncJobRun>().Add(new ExchangeRateSyncJobRun
             {
-                Trigger = JobRunTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
-                Status = JobRunStatus.Running, StartedAtUtc = Now,
+                Trigger = JobRunTrigger.Manual,
+                Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Running,
+                StartedAtUtc = Now,
             });
             await seed.SaveChangesAsync();
         }
@@ -951,8 +955,12 @@ public class ExchangeRateSyncTests
         bool archived, bool enabled, bool locked, bool? supported, bool backfillComplete, CurrencyStatus expected) =>
         Assert.Equal(expected, CurrencyStatuses.Of(archived, new ExistingExchangeRateSyncCurrency
         {
-            CurrencyCode = "USD", Name = "US Dollar", Enabled = enabled, Locked = locked,
-            Supported = supported, BackfillComplete = backfillComplete,
+            CurrencyCode = "USD",
+            Name = "US Dollar",
+            Enabled = enabled,
+            Locked = locked,
+            Supported = supported,
+            BackfillComplete = backfillComplete,
         }));
 
     [Fact]
@@ -1129,7 +1137,10 @@ public class ExchangeRateSyncTests
         await harness.EnableAsync("USD", backfilledFrom: new DateOnly(2019, 1, 1));
         harness.Context.ExchangeRates.Add(new ExchangeRate
         {
-            FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, CreatedAt = Now,
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "NOK",
+            Rate = 10m,
+            CreatedAt = Now,
             AsOf = ExchangeRateSyncClock.FetchedAsOf(new DateOnly(2019, 1, 2), ExchangeRateSyncClock.Oslo!),
             Provider = ExchangeRateProvider.NorgesBank,
         });
@@ -1327,8 +1338,12 @@ public class ExchangeRateSyncTests
         {
             harness.Context.ExchangeRates.Add(new ExchangeRate
             {
-                FromCurrencyCode = i % 2 == 0 ? "USD" : "NOK", ToCurrencyCode = i % 2 == 0 ? "NOK" : "USD",
-                Rate = 1m, AsOf = start.AddDays(i / 2), CreatedAt = Now, Provider = ExchangeRateProvider.NorgesBank,
+                FromCurrencyCode = i % 2 == 0 ? "USD" : "NOK",
+                ToCurrencyCode = i % 2 == 0 ? "NOK" : "USD",
+                Rate = 1m,
+                AsOf = start.AddDays(i / 2),
+                CreatedAt = Now,
+                Provider = ExchangeRateProvider.NorgesBank,
             });
         }
 
@@ -1450,7 +1465,10 @@ public class ExchangeRateSyncTests
         await harness.EnableAsync("USD", backfilledFrom: new DateOnly(2026, 10, 1));
         harness.Context.ExchangeRates.Add(new ExchangeRate
         {
-            FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, CreatedAt = Now,
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "NOK",
+            Rate = 10m,
+            CreatedAt = Now,
             AsOf = ExchangeRateSyncClock.FetchedAsOf(new DateOnly(2026, 10, 22), ExchangeRateSyncClock.Oslo!),
             Provider = ExchangeRateProvider.NorgesBank,
         });
@@ -1464,14 +1482,14 @@ public class ExchangeRateSyncTests
         DateTime finished,
         JobRunTrigger trigger = JobRunTrigger.Scheduled,
         ExchangeRateSyncErrorKind? errorKind = null) => new()
-    {
-        Trigger = trigger,
-        Provider = ExchangeRateProvider.NorgesBank,
-        Status = status,
-        ErrorKind = errorKind,
-        StartedAtUtc = finished.AddSeconds(-5),
-        FinishedAtUtc = finished,
-    };
+        {
+            Trigger = trigger,
+            Provider = ExchangeRateProvider.NorgesBank,
+            Status = status,
+            ErrorKind = errorKind,
+            StartedAtUtc = finished.AddSeconds(-5),
+            FinishedAtUtc = finished,
+        };
 
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
@@ -1646,7 +1664,10 @@ public class ExchangeRateSyncTests
         {
             Context.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency
             {
-                CurrencyCode = code, Enabled = true, HistoryStartDate = start, BackfilledFrom = backfilledFrom,
+                CurrencyCode = code,
+                Enabled = true,
+                HistoryStartDate = start,
+                BackfilledFrom = backfilledFrom,
                 UpdatedAtUtc = Clock.UtcNow,
             });
             await Context.SaveChangesAsync();

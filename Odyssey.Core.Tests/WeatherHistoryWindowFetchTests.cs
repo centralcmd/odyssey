@@ -27,8 +27,13 @@ public class WeatherHistoryWindowFetchTests
     {
         var point = await h.Admin().CreateAsync(new NewWeatherPoint
         {
-            Name = "Cabin", Latitude = 61.517m, Longitude = 10.165m, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = false, HistoryEnabled = history, IsTracked = false,
+            Name = "Cabin",
+            Latitude = 61.517m,
+            Longitude = 10.165m,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = false,
+            HistoryEnabled = history,
+            IsTracked = false,
             HistoryWindows = windows.Length == 0 ? null : [.. windows],
         }, WeatherTestHarness.AdminId, CancellationToken.None);
         h.Context.ChangeTracker.Clear();
@@ -43,7 +48,10 @@ public class WeatherHistoryWindowFetchTests
         {
             context.WeatherStations.Add(new WeatherStation
             {
-                WeatherPointId = pointId, Group = group, StationId = "SN18700", ResolvedAtUtc = h.Time.GetUtcNow().UtcDateTime,
+                WeatherPointId = pointId,
+                Group = group,
+                StationId = "SN18700",
+                ResolvedAtUtc = h.Time.GetUtcNow().UtcDateTime,
             });
         }
 
@@ -59,7 +67,10 @@ public class WeatherHistoryWindowFetchTests
         {
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = pointId, SiteVersion = 1, FromDate = D(from), ToDate = D(to),
+                WeatherPointId = pointId,
+                SiteVersion = 1,
+                FromDate = D(from),
+                ToDate = D(to),
             });
         }
 
@@ -348,12 +359,18 @@ public class WeatherHistoryWindowFetchTests
             context.WeatherStations.Add(new WeatherStation { WeatherPointId = id, Group = WeatherMeasureGroup.Wind, StationId = null, ResolvedAtUtc = old });
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 1, FromDate = D("2026-09-01"), ToDate = D("2026-09-30"),
+                WeatherPointId = id,
+                SiteVersion = 1,
+                FromDate = D("2026-09-01"),
+                ToDate = D("2026-09-30"),
             });
             // Site 2 is partly checked, so the run has backfill work and looks the due group up first.
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 2, FromDate = D("2026-10-01"), ToDate = D("2026-10-20"),
+                WeatherPointId = id,
+                SiteVersion = 2,
+                FromDate = D("2026-10-01"),
+                ToDate = D("2026-10-20"),
             });
             (await context.WeatherPointSchedules.SingleAsync()).ObservationsCheckedThroughDate = LastComplete;
             (await context.WeatherPointSchedules.SingleAsync()).NextObservationFetchAfterUtc = null;
@@ -387,7 +404,10 @@ public class WeatherHistoryWindowFetchTests
             // A former site's checked range, which the purge removes too (§3.4: all site versions).
             context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
             {
-                WeatherPointId = id, SiteVersion = 7, FromDate = D("2025-01-01"), ToDate = D("2025-01-31"),
+                WeatherPointId = id,
+                SiteVersion = 7,
+                FromDate = D("2025-01-01"),
+                ToDate = D("2025-01-31"),
             });
             await context.SaveChangesAsync();
         }

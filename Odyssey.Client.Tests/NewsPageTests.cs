@@ -27,9 +27,16 @@ public class NewsPageTests
     {
         var article = new NewsArticleSummary
         {
-            Id = Guid.NewGuid(), FeedId = FeedId, FeedTitle = "Example News", Title = title, Author = "Kari",
-            Excerpt = "An excerpt.", Link = "https://example.org/a", PublishedAtUtc = Now.UtcDateTime.AddHours(-3),
-            SortAtUtc = Now.UtcDateTime.AddHours(-3), FirstSeenAtUtc = Now.UtcDateTime.AddHours(-2),
+            Id = Guid.NewGuid(),
+            FeedId = FeedId,
+            FeedTitle = "Example News",
+            Title = title,
+            Author = "Kari",
+            Excerpt = "An excerpt.",
+            Link = "https://example.org/a",
+            PublishedAtUtc = Now.UtcDateTime.AddHours(-3),
+            SortAtUtc = Now.UtcDateTime.AddHours(-3),
+            FirstSeenAtUtc = Now.UtcDateTime.AddHours(-2),
         };
         edit?.Invoke(article);
         return article;
@@ -39,8 +46,12 @@ public class NewsPageTests
     {
         var feed = new NewsFeedCatalogueEntry
         {
-            Id = id ?? Guid.NewGuid(), DisplayTitle = title, Health = NewsFeedHealth.Healthy, State = NewsFeedState.Active,
-            UnreadCount = 4, ArticleCount = 10,
+            Id = id ?? Guid.NewGuid(),
+            DisplayTitle = title,
+            Health = NewsFeedHealth.Healthy,
+            State = NewsFeedState.Active,
+            UnreadCount = 4,
+            ArticleCount = 10,
         };
         edit?.Invoke(feed);
         return feed;
@@ -51,7 +62,10 @@ public class NewsPageTests
         var list = items.ToList();
         return new NewsArticlePage
         {
-            Items = list, TotalCount = total ?? list.Count, TotalCountCapped = capped, NextCursor = next,
+            Items = list,
+            TotalCount = total ?? list.Count,
+            TotalCountCapped = capped,
+            NextCursor = next,
             AsOfUtc = Now.UtcDateTime,
         };
     }
@@ -60,9 +74,17 @@ public class NewsPageTests
     {
         var detail = new NewsArticleDetail
         {
-            Id = article.Id, FeedId = article.FeedId, FeedTitle = article.FeedTitle, Title = article.Title, Author = article.Author,
-            Link = article.Link, PublishedAtUtc = article.PublishedAtUtc, FirstSeenAtUtc = article.FirstSeenAtUtc,
-            ContentChangedAtUtc = article.ContentChangedAtUtc, Language = article.Language, Body = "First paragraph.\n\nSecond paragraph.",
+            Id = article.Id,
+            FeedId = article.FeedId,
+            FeedTitle = article.FeedTitle,
+            Title = article.Title,
+            Author = article.Author,
+            Link = article.Link,
+            PublishedAtUtc = article.PublishedAtUtc,
+            FirstSeenAtUtc = article.FirstSeenAtUtc,
+            ContentChangedAtUtc = article.ContentChangedAtUtc,
+            Language = article.Language,
+            Body = "First paragraph.\n\nSecond paragraph.",
         };
         edit?.Invoke(detail);
         return detail;

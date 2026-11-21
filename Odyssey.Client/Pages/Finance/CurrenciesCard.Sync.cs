@@ -291,7 +291,9 @@ public partial class CurrenciesCard
         _canPurge && c.Sync is { Locked: false, Enabled: false, FetchedRowCount: > 0 } s
             ? new OdsMenuItem
             {
-                Icon = "delete_sweep", Label = "Delete fetched rates…", Danger = true,
+                Icon = "delete_sweep",
+                Label = "Delete fetched rates…",
+                Danger = true,
                 OnClick = EventCallback.Factory.Create(this, () => StartPurge(s)),
             }
             : null;

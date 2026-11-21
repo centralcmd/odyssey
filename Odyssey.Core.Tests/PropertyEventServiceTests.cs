@@ -55,23 +55,23 @@ public class PropertyEventServiceTests
         DateTime? occurredAt = null,
         string? description = null,
         string? notes = null) => new()
-    {
-        Type = type,
-        Title = title,
-        Description = description,
-        Notes = notes,
-        OccurredAt = occurredAt ?? FixedNow.AddDays(-1),
-    };
+        {
+            Type = type,
+            Title = title,
+            Description = description,
+            Notes = notes,
+            OccurredAt = occurredAt ?? FixedNow.AddDays(-1),
+        };
 
     private static UpdatePropertyEvent Update(
         DtoPropertyEventType type = DtoPropertyEventType.Other,
         string title = "Edited",
         DateTime? occurredAt = null) => new()
-    {
-        Type = type,
-        Title = title,
-        OccurredAt = occurredAt ?? FixedNow.AddDays(-2),
-    };
+        {
+            Type = type,
+            Title = title,
+            OccurredAt = occurredAt ?? FixedNow.AddDays(-2),
+        };
 
     // ── Create ───────────────────────────────────────────────────────────────
 

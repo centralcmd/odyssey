@@ -40,7 +40,8 @@ public partial class OdsStepChart : IAsyncDisposable
     [Parameter] public RenderFragment? Sub { get; set; }
 
     /// <summary>Formats the headline figure, the delta, the legend and (absent <see cref="AxisFormat"/>) the ticks.</summary>
-    [Parameter] public Func<decimal, string> Format { get; set; } =
+    [Parameter]
+    public Func<decimal, string> Format { get; set; } =
         static n => n.ToString("#,##0.##", CultureInfo.InvariantCulture);
 
     /// <summary>Compact y-axis tick formatter for an absolute axis; falls back to <see cref="Format"/>.</summary>

@@ -61,37 +61,63 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                 });
                 context.Contracts.Add(new Contract
                 {
-                    ContractId = contractId, Name = "Whole-of-life cover", Type = ContextContractType.Insurance, CreatedAtUtc = DateTime.UtcNow,
+                    ContractId = contractId,
+                    Name = "Whole-of-life cover",
+                    Type = ContextContractType.Insurance,
+                    CreatedAtUtc = DateTime.UtcNow,
                 });
                 context.Accounts.Add(new Account
                 {
-                    AccountId = accountId, Name = "Payroll", Description = "", Opened = DateTime.UtcNow, CurrencyCode = "USD", CustodianId = contactId,
+                    AccountId = accountId,
+                    Name = "Payroll",
+                    Description = "",
+                    Opened = DateTime.UtcNow,
+                    CurrencyCode = "USD",
+                    CustodianId = contactId,
                 });
                 await context.SaveChangesAsync();
 
                 context.ContractParties.Add(new ContractParty
                 {
                     // Beneficiary is the one role that blocks a contact DELETE; it must not block a conversion.
-                    ContractPartyId = Guid.NewGuid(), ContractId = contractId, ContactId = contactId, Role = ContextContractPartyRole.Beneficiary,
+                    ContractPartyId = Guid.NewGuid(),
+                    ContractId = contractId,
+                    ContactId = contactId,
+                    Role = ContextContractPartyRole.Beneficiary,
                 });
                 var fileId = SeedFile(context);
                 context.AccountFiles.Add(new AccountFile
                 {
-                    Id = Guid.NewGuid(), AccountId = accountId, FileMetadataId = fileId, AttachedAtUtc = DateTime.UtcNow,
-                    FileType = AccountFileType.Other, IssuedBy = contactId,
+                    Id = Guid.NewGuid(),
+                    AccountId = accountId,
+                    FileMetadataId = fileId,
+                    AttachedAtUtc = DateTime.UtcNow,
+                    FileType = AccountFileType.Other,
+                    IssuedBy = contactId,
                 });
                 context.ContractFiles.Add(new ContractFile
                 {
-                    ContractFileId = Guid.NewGuid(), ContractId = contractId, FileMetadataId = fileId, AttachedAtUtc = DateTime.UtcNow,
+                    ContractFileId = Guid.NewGuid(),
+                    ContractId = contractId,
+                    FileMetadataId = fileId,
+                    AttachedAtUtc = DateTime.UtcNow,
                     IssuedBy = contactId,
                 });
                 context.Transactions.Add(new Transaction
                 {
-                    TransactionId = transactionId, Description = "Salary", Amount = 100m, TimeStamp = DateTime.UtcNow, AccountId = accountId, ContactId = contactId,
+                    TransactionId = transactionId,
+                    Description = "Salary",
+                    Amount = 100m,
+                    TimeStamp = DateTime.UtcNow,
+                    AccountId = accountId,
+                    ContactId = contactId,
                 });
                 context.JournalEntries.Add(new JournalEntry
                 {
-                    JournalEntryId = entryId, ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "Met them", Content = "",
+                    JournalEntryId = entryId,
+                    ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+                    Title = "Met them",
+                    Content = "",
                     Contacts = [new JournalEntryContact { JournalEntryContactId = Guid.NewGuid(), ContactId = contactId }],
                 });
                 await context.SaveChangesAsync();
@@ -549,7 +575,11 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
         context.Photos.Add(new Photo
         {
             PhotoId = photoId,
-            StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = new string('a', 64),
+            StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"),
+            FileName = "p.jpg",
+            ContentType = "image/jpeg",
+            SizeBytes = 3,
+            Sha256Hash = new string('a', 64),
             People = [new PhotoPerson { PhotoId = photoId, ContactId = contactId }],
         });
         await context.SaveChangesAsync();

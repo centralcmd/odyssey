@@ -134,7 +134,10 @@ internal static class NewsApiTestSupport
             var article = await context.NewsArticles.AsNoTracking().SingleAsync(a => a.NewsArticleId == articleId);
             context.NewsArticleTags.Add(new NewsArticleTag
             {
-                NewsArticleTagId = Guid.NewGuid(), NewsArticleId = articleId, NewsTagId = tagId, SortAtUtc = article.SortAtUtc,
+                NewsArticleTagId = Guid.NewGuid(),
+                NewsArticleId = articleId,
+                NewsTagId = tagId,
+                SortAtUtc = article.SortAtUtc,
             });
             await context.SaveChangesAsync();
         });

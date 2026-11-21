@@ -44,12 +44,12 @@ public class BudgetItemServiceTests
     private static NewBudgetItem Item(
         Guid budgetId, Guid tagId, DtoBudgetCategoryType category = DtoBudgetCategoryType.Expense,
         decimal amount = 100) => new()
-    {
-        BudgetId = budgetId,
-        CategoryType = category,
-        PlannedAmount = amount,
-        TransactionTagId = tagId,
-    };
+        {
+            BudgetId = budgetId,
+            CategoryType = category,
+            PlannedAmount = amount,
+            TransactionTagId = tagId,
+        };
 
     // ── Round trip ──────────────────────────────────────────────────────────────
 
@@ -369,13 +369,15 @@ public class BudgetItemServiceTests
 
         var asc = (await service.ListAsync(new BudgetItemsQueryParams
         {
-            SortBy = BudgetItemSortBy.PlannedAmount, SortDir = SortDirection.Asc,
+            SortBy = BudgetItemSortBy.PlannedAmount,
+            SortDir = SortDirection.Asc,
         })).Items;
         Assert.Equal([100m, 200m, 300m], asc.Select(i => i.PlannedAmount));
 
         var desc = (await service.ListAsync(new BudgetItemsQueryParams
         {
-            SortBy = BudgetItemSortBy.PlannedAmount, SortDir = SortDirection.Desc,
+            SortBy = BudgetItemSortBy.PlannedAmount,
+            SortDir = SortDirection.Desc,
         })).Items;
         Assert.Equal([300m, 200m, 100m], desc.Select(i => i.PlannedAmount));
     }

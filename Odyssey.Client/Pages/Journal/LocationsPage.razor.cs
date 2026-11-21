@@ -352,8 +352,11 @@ public partial class LocationsPage
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "my_location", Label = "Copy coordinates", AriaLabel = $"Copy coordinates of {l.Name}",
-                TrailingIcon = "content_copy", OnClick = copyCoordinates,
+                Icon = "my_location",
+                Label = "Copy coordinates",
+                AriaLabel = $"Copy coordinates of {l.Name}",
+                TrailingIcon = "content_copy",
+                OnClick = copyCoordinates,
             });
         }
 
@@ -756,7 +759,7 @@ public partial class LocationsPage
             builder.AddComponentParameter(1, nameof(LocationAttributionLink.Attribution), attribution);
             builder.CloseComponent();
         }
-        : OdsInfoTile.Caption("no third-party data")!;
+    : OdsInfoTile.Caption("no third-party data")!;
 
     // ── Weather point link (issue #388 flow B) ──────────────────────────────────────────────────────
 

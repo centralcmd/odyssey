@@ -39,12 +39,12 @@ public static class PermissionClaims
     public const string BudgetsRead = "budgets.read";
     public const string BudgetsUpdate = "budgets.update";
     public const string BudgetsDelete = "budgets.delete";
-    
+
     public const string TransactionsCreate = "transactions.create";
     public const string TransactionsRead = "transactions.read";
     public const string TransactionsUpdate = "transactions.update";
     public const string TransactionsDelete = "transactions.delete";
-    
+
     public const string TransactionTagsCreate = "transactions.tags.create";
     public const string TransactionTagsRead = "transactions.tags.read";
     public const string TransactionTagsUpdate = "transactions.tags.update";

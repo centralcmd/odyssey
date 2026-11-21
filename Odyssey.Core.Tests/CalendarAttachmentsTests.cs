@@ -71,7 +71,8 @@ public class CalendarAttachmentsTests
         await context.SaveChangesAsync();
         var service = new CalendarIcsService(
             context, NullLogger<CalendarIcsService>.Instance, new FakeImportExportLimitsLookup(),
-            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now)) { TempFreeSpace = _ => 1024 };
+            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now))
+        { TempFreeSpace = _ => 1024 };
         var ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nDTSTART:20260302T100000\r\nDTEND:20260302T110000\r\nSUMMARY:A\r\n"
             + "ATTACH;FMTTYPE=text/plain;ENCODING=BASE64;VALUE=BINARY:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("hello"))
             + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
@@ -120,7 +121,8 @@ public class CalendarAttachmentsTests
         await using var context = TestContextFactory.CreateJournal();
         var importer = new CalendarAttachmentImporter(
             context, new FileValidationService(), null, null, "user", 1024, Path.GetTempPath(), _ => long.MaxValue,
-            NullLogger.Instance) { Claims = new CalendarIcsImportClaims(FilesRead: true, FilesCreate: true, PhotosRead: false, PhotosCreate: false) };
+            NullLogger.Instance)
+        { Claims = new CalendarIcsImportClaims(FilesRead: true, FilesCreate: true, PhotosRead: false, PhotosCreate: false) };
         var photo = new SpooledAttachment { Reference = "r", IsPhoto = true, Problem = IcsAttachmentSpooler.DamagedProblem };
 
         var inline = await Assert.ThrowsAsync<CalendarAttachmentsException>(() =>
@@ -178,7 +180,8 @@ public class CalendarAttachmentsTests
         await context.SaveChangesAsync();
         var service = new CalendarIcsService(
             context, NullLogger<CalendarIcsService>.Instance, new FakeImportExportLimitsLookup(),
-            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now)) { TempFreeSpace = _ => 0 };
+            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now))
+        { TempFreeSpace = _ => 0 };
         var ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nDTSTART:20260302T100000\r\nDTEND:20260302T110000\r\nSUMMARY:A\r\n"
             + "BEGIN:VALARM\r\nACTION:AUDIO\r\nTRIGGER:-PT5M\r\nATTACH;ENCODING=BASE64;VALUE=BINARY:aGVsbG8=\r\nEND:VALARM\r\n"
             + "END:VEVENT\r\nEND:VCALENDAR\r\n";
@@ -237,7 +240,9 @@ public class CalendarAttachmentsTests
         await context.SaveChangesAsync();
         var rows = Enumerable.Range(0, 3).Select(_ => new Odyssey.Context.CalendarEvent
         {
-            CalendarEventId = Guid.NewGuid(), CalendarId = Guid.NewGuid(), Title = "x",
+            CalendarEventId = Guid.NewGuid(),
+            CalendarId = Guid.NewGuid(),
+            Title = "x",
         }).ToList();
 
         await CalendarLinkService.StageCopyToDetachedAsync(context, patternId, rows, default);

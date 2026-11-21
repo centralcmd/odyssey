@@ -99,15 +99,29 @@ public class ContractSummaryService
                 c.StartDate, c.EndDate, c.CompletionDate, c.Archived, c.Paused, c.Ready, c.Signed, today);
             switch (status)
             {
-                case ContractStatus.Active: counts.Active++; break;
-                case ContractStatus.Upcoming: counts.Upcoming++; break;
-                case ContractStatus.Expired: counts.Expired++; break;
-                case ContractStatus.Archived: counts.Archived++; break;
-                case ContractStatus.Paused: counts.Paused++; break;
+                case ContractStatus.Active:
+                    counts.Active++;
+                    break;
+                case ContractStatus.Upcoming:
+                    counts.Upcoming++;
+                    break;
+                case ContractStatus.Expired:
+                    counts.Expired++;
+                    break;
+                case ContractStatus.Archived:
+                    counts.Archived++;
+                    break;
+                case ContractStatus.Paused:
+                    counts.Paused++;
+                    break;
                 // Two more REAL buckets (issue #145 §5.5), not a slice: the seven are mutually
                 // exclusive derived statuses and still sum to TotalContracts.
-                case ContractStatus.Draft: counts.Draft++; break;
-                case ContractStatus.Ready: counts.Ready++; break;
+                case ContractStatus.Draft:
+                    counts.Draft++;
+                    break;
+                case ContractStatus.Ready:
+                    counts.Ready++;
+                    break;
             }
 
             // A SLICE of Active, not a sixth bucket: it is already counted above, so the five still sum
@@ -511,29 +525,29 @@ public class ContractSummaryService
         {
             case ContextInterval.Daily:
             case ContextInterval.Weekly:
-            {
-                var stepDays = (interval == ContextInterval.Weekly ? 7 : 1) * count;
-                var diff = (from - cur).Days;
-                var steps = (diff + stepDays - 1) / stepDays; // ceil to the first occurrence >= from
-                return cur.AddDays((long)steps * stepDays);
-            }
+                {
+                    var stepDays = (interval == ContextInterval.Weekly ? 7 : 1) * count;
+                    var diff = (from - cur).Days;
+                    var steps = (diff + stepDays - 1) / stepDays; // ceil to the first occurrence >= from
+                    return cur.AddDays((long)steps * stepDays);
+                }
             case ContextInterval.Annually:
             case ContextInterval.Monthly:
-            {
-                var months = interval == ContextInterval.Annually ? 12 * count : count;
-                // Bounded rather than a bare while: an anchor far in the past with a huge count must not
-                // spin, and beyond the bound there is no occurrence worth reporting anyway.
-                for (var k = 1; k <= MaxCadenceSteps; k++)
                 {
-                    cur = anchor.Date.AddMonths(months * k);
-                    if (cur >= from)
+                    var months = interval == ContextInterval.Annually ? 12 * count : count;
+                    // Bounded rather than a bare while: an anchor far in the past with a huge count must not
+                    // spin, and beyond the bound there is no occurrence worth reporting anyway.
+                    for (var k = 1; k <= MaxCadenceSteps; k++)
                     {
-                        return cur;
+                        cur = anchor.Date.AddMonths(months * k);
+                        if (cur >= from)
+                        {
+                            return cur;
+                        }
                     }
-                }
 
-                return null;
-            }
+                    return null;
+                }
             default:
                 return null;
         }

@@ -170,7 +170,11 @@ public class InstrumentPriceSyncTests
                 store.SaveChanges();
                 store.InstrumentPriceSourceBindings.Add(new InstrumentPriceSourceBinding
                 {
-                    InstrumentId = instrument, SourceKey = FakePrimarySource.DeclaredKey, SourceSymbol = "NEW", Priority = 1, Enabled = true,
+                    InstrumentId = instrument,
+                    SourceKey = FakePrimarySource.DeclaredKey,
+                    SourceSymbol = "NEW",
+                    Priority = 1,
+                    Enabled = true,
                     UpdatedAtUtc = Now,
                 });
                 store.SaveChanges();
@@ -442,7 +446,11 @@ public class InstrumentPriceSyncTests
         await harness.BindAsync(instrument, FakePrimarySource.DeclaredKey, 1);
         harness.Store.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = Today, Close = 1m, CreatedAtUtc = Now,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = Today,
+            Close = 1m,
+            CreatedAtUtc = Now,
         });
         await harness.Store.SaveChangesAsync();
 

@@ -86,9 +86,17 @@ public class CalendarIcsExportByteCapTests
         var start = new DateTime(2031, 1, 1, 9, 0, 0, DateTimeKind.Utc);
         var pattern = new RecurrencePattern
         {
-            CalendarId = calendar.CalendarId, Calendar = calendar, Title = "Bulky", Description = new string('x', 2000),
-            StartDateTime = start, EndDateTime = start.AddHours(1), Frequency = RecurrenceFrequency.Daily, Interval = 1,
-            OccurrenceCount = rows, CreatedAt = now, UpdatedAt = now,
+            CalendarId = calendar.CalendarId,
+            Calendar = calendar,
+            Title = "Bulky",
+            Description = new string('x', 2000),
+            StartDateTime = start,
+            EndDateTime = start.AddHours(1),
+            Frequency = RecurrenceFrequency.Daily,
+            Interval = 1,
+            OccurrenceCount = rows,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
         context.RecurrencePatterns.Add(pattern);
         CalendarEvent? first = null;
@@ -96,9 +104,15 @@ public class CalendarIcsExportByteCapTests
         {
             var row = new CalendarEvent
             {
-                CalendarId = calendar.CalendarId, Calendar = calendar, Title = i == 0 ? "Edited" : "Bulky", Description = new string('x', 2000),
-                StartDateTime = start.AddDays(i), EndDateTime = start.AddDays(i).AddHours(1), RecurrencePattern = pattern,
-                CreatedAt = now, UpdatedAt = now,
+                CalendarId = calendar.CalendarId,
+                Calendar = calendar,
+                Title = i == 0 ? "Edited" : "Bulky",
+                Description = new string('x', 2000),
+                StartDateTime = start.AddDays(i),
+                EndDateTime = start.AddDays(i).AddHours(1),
+                RecurrencePattern = pattern,
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             first ??= row;
             context.CalendarEvents.Add(row);

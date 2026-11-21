@@ -17,7 +17,8 @@ public partial class PropertyEstimatesSection
     /// <summary>Gates the row edit/delete buttons (<c>properties.estimates.write</c>).</summary>
     [Parameter] public bool CanWrite { get; set; }
 
-    [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } =
+    [Parameter, EditorRequired]
+    public Func<decimal, string?, string> FormatMoney { get; set; } =
         (v, _) => v.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Raised after a create, edit or delete, so the host can refresh the row's figure and counts.</summary>

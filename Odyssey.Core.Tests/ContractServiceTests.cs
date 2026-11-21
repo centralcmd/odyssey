@@ -356,19 +356,26 @@ public class ContractServiceTests
         var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
         await service.Update(created.ContractId, new UpdateContract
         {
-            Name = created.Name, Type = created.Type,
-            StartDate = created.StartDate, EndDate = created.EndDate, IsArchived = true,
-            Ready = created.Ready, Signed = created.Signed,
+            Name = created.Name,
+            Type = created.Type,
+            StartDate = created.StartDate,
+            EndDate = created.EndDate,
+            IsArchived = true,
+            Ready = created.Ready,
+            Signed = created.Signed,
         }, userId: null);
 
         // Only the TRANSITION into archived is gated. Re-saving an already-archived row must not
         // re-validate, or a row archived before this rule existed could never be edited or restored.
         UpdateContract Running(bool isArchived) => new()
         {
-            Name = created.Name, Type = created.Type,
-            StartDate = FixedToday.AddDays(-10), EndDate = FixedToday.AddDays(10),
+            Name = created.Name,
+            Type = created.Type,
+            StartDate = FixedToday.AddDays(-10),
+            EndDate = FixedToday.AddDays(10),
             IsArchived = isArchived,
-            Ready = created.Ready, Signed = created.Signed,
+            Ready = created.Ready,
+            Signed = created.Signed,
         };
 
         Assert.NotNull((await service.Update(created.ContractId, Running(isArchived: true), userId: null))!.Archived);
@@ -391,7 +398,8 @@ public class ContractServiceTests
             Name = created.Name,
             Type = created.Type,
             CompletionDate = FixedToday.AddDays(-2),
-            Ready = created.Ready, Signed = created.Signed,
+            Ready = created.Ready,
+            Signed = created.Signed,
         }, userId: null);
 
         Assert.NotNull(updated);
@@ -416,7 +424,8 @@ public class ContractServiceTests
             Type = created.Type,
             StartDate = FixedToday.AddDays(-5),
             EndDate = FixedToday.AddDays(5),
-            Ready = created.Ready, Signed = created.Signed,
+            Ready = created.Ready,
+            Signed = created.Signed,
         }, userId: null);
 
         Assert.NotNull(updated);
@@ -590,7 +599,8 @@ public class ContractServiceTests
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             IsArchived = true,
-            Ready = contract.Ready, Signed = contract.Signed,
+            Ready = contract.Ready,
+            Signed = contract.Signed,
         }, userId: null);
 
         var party = await Parties(context).AddParty(
@@ -782,7 +792,8 @@ public class ContractServiceTests
             Name = contract.Name,
             Type = contract.Type,
             StartDate = FixedToday.AddDays(-10),
-            Ready = contract.Ready, Signed = contract.Signed,
+            Ready = contract.Ready,
+            Signed = contract.Signed,
         }, userId: null);
 
         var reloaded = await service.Get(contract.ContractId);

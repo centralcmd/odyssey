@@ -109,7 +109,8 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
             // Retry-After is read on success too: a polled job answers 200 with the interval to wait
             // before asking again (issue #445).
             return ApiResult<T>.Success(await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode)
-                with { RetryAfter = ApiRetryAfter.Of(response), RetryAfterDelta = ApiRetryAfter.DeltaOf(response) };
+                with
+            { RetryAfter = ApiRetryAfter.Of(response), RetryAfterDelta = ApiRetryAfter.DeltaOf(response) };
         }
         catch (Exception ex)
         {
@@ -169,7 +170,8 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
 
             return ApiResult<T>.Success(
                 await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location)
-                with { RetryAfter = ApiRetryAfter.Of(response) };
+                with
+            { RetryAfter = ApiRetryAfter.Of(response) };
         }
         catch (Exception ex)
         {
@@ -191,7 +193,8 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
             var hasBody = response.StatusCode != HttpStatusCode.NoContent && response.Content.Headers.ContentLength is not 0;
             var value = hasBody ? await response.Content.ReadFromJsonAsync<T>(ct) : null;
             return ApiResult<T?>.Success(value, response.StatusCode, response.Headers.Location)
-                with { RetryAfter = ApiRetryAfter.Of(response) };
+                with
+            { RetryAfter = ApiRetryAfter.Of(response) };
         }
         catch (Exception ex)
         {

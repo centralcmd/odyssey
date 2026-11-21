@@ -28,21 +28,21 @@ public class Transaction
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public Guid TransactionId { get; set; }
-    
+
     [StringLength(256)]
     [Required]
     public required string Description { get; set; }
-    
+
     [Required]
     [Precision(18, 6)]
     public required decimal Amount { get; set; }
-    
+
     [Required]
     public required DateTime TimeStamp { get; set; } = DateTime.UtcNow;
-    
+
     [Required]
     public required Guid AccountId { get; set; }
-    
+
     [ForeignKey(nameof(AccountId))]
     [DeleteBehavior(DeleteBehavior.Cascade)]
     public Account? Account { get; set; }

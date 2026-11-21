@@ -842,20 +842,20 @@ public class JournalEntryIcsService
 
     private static JournalEntryIcsImportResult BuildResult(
         int imported, int updated, ImportSkipCollector skipped, LinkSkipCounts counts) => new()
-    {
-        ImportedCount = imported,
-        UpdatedCount = updated,
-        Skipped = skipped.ToGroups((reason, count, samples) => new JournalEntryImportSkipGroup
         {
-            Reason = reason,
-            Count = count,
-            SampleTitles = samples,
-        }),
-        SkippedTagLinkCount = counts.Tags,
-        SkippedContactLinkCount = counts.Contacts,
-        SkippedAttachmentCount = counts.Attachments,
-        SkippedPhotoCount = counts.Photos,
-    };
+            ImportedCount = imported,
+            UpdatedCount = updated,
+            Skipped = skipped.ToGroups((reason, count, samples) => new JournalEntryImportSkipGroup
+            {
+                Reason = reason,
+                Count = count,
+                SampleTitles = samples,
+            }),
+            SkippedTagLinkCount = counts.Tags,
+            SkippedContactLinkCount = counts.Contacts,
+            SkippedAttachmentCount = counts.Attachments,
+            SkippedPhotoCount = counts.Photos,
+        };
 
     // ── Reference collection + batched resolution ───────────────────────────────
 

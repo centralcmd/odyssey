@@ -115,7 +115,11 @@ public class PropertyListEnrichmentTests
         var propertyId = (await service.Create(PropertyTestData.Car(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         context.PropertyEstimates.Add(new PropertyEstimate
         {
-            PropertyId = propertyId, Value = 250_000m, CurrencyCode = "SEK", EffectiveFrom = Utc(2026, 12, 1), CreatedAtUtc = Utc(2026, 5, 1),
+            PropertyId = propertyId,
+            Value = 250_000m,
+            CurrencyCode = "SEK",
+            EffectiveFrom = Utc(2026, 12, 1),
+            CreatedAtUtc = Utc(2026, 5, 1),
         });
         await context.SaveChangesAsync();
 

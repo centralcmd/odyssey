@@ -196,12 +196,22 @@ public sealed class PhotoThumbnailApiTests(PhotoThumbnailApiTests.Host host) : S
             var now = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
             context.JournalEntries.Add(new JournalEntry
             {
-                JournalEntryId = entryId, ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "With a photo", Content = "c",
-                EntryDate = now, CreatedByUserId = JournalFactory.Actor, CreatedAt = now, UpdatedAt = now,
+                JournalEntryId = entryId,
+                ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+                Title = "With a photo",
+                Content = "c",
+                EntryDate = now,
+                CreatedByUserId = JournalFactory.Actor,
+                CreatedAt = now,
+                UpdatedAt = now,
             });
             context.JournalEntryPhotos.Add(new JournalEntryPhoto
             {
-                JournalEntryPhotoId = Guid.NewGuid(), JournalEntryId = entryId, PhotoId = photoId, Position = 0, CreatedAt = now,
+                JournalEntryPhotoId = Guid.NewGuid(),
+                JournalEntryId = entryId,
+                PhotoId = photoId,
+                Position = 0,
+                CreatedAt = now,
             });
             await context.SaveChangesAsync();
         }

@@ -349,10 +349,10 @@ public class NetWorthHistoryService(
 
             return Empty(main, interval, (effectiveFrom, requested.To), reason, includeProperties)
                 with
-                {
-                    UnconvertedAccounts = [.. unconverted.Values],
-                    UnconvertedProperties = [.. unconvertedProperties.Values],
-                };
+            {
+                UnconvertedAccounts = [.. unconverted.Values],
+                UnconvertedProperties = [.. unconvertedProperties.Values],
+            };
         }
 
         return new NetWorthHistory

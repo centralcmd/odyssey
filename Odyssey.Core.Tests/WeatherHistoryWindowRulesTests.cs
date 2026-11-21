@@ -163,13 +163,26 @@ public class WeatherHistoryWindowRulesTests
         List<WeatherHistoryWindowDto> windows = [W("2026-06-10", "2026-06-17"), W("2025-07-01")];
         var create = new NewWeatherPoint
         {
-            Name = "Cabin by the lake", Latitude = 61.517m, Longitude = 10.165m, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = true, HistoryEnabled = true, IsTracked = false, HistoryWindows = windows,
+            Name = "Cabin by the lake",
+            Latitude = 61.517m,
+            Longitude = 10.165m,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
+            HistoryWindows = windows,
         };
         var update = new UpdateWeatherPoint
         {
-            Name = "Cabin by the lake", Latitude = 61.517m, Longitude = 10.165m, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = true, HistoryEnabled = true, IsTracked = false, SettingsVersion = Guid.NewGuid(), HistoryWindows = windows,
+            Name = "Cabin by the lake",
+            Latitude = 61.517m,
+            Longitude = 10.165m,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
+            SettingsVersion = Guid.NewGuid(),
+            HistoryWindows = windows,
         };
 
         foreach (var text in new[] { create.ToString(), update.ToString(), $"{create}", $"{update}" })

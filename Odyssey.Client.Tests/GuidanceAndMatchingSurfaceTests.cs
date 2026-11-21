@@ -390,7 +390,10 @@ public class GuidanceAndMatchingSurfaceTests
         var entry = Entry() with
         {
             MatchVocabularyScope = FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions,
-            ContactCount = 19, AliasCount = 7, TagCount = 12, TagDescriptionCount = 9,
+            ContactCount = 19,
+            AliasCount = 7,
+            TagCount = 12,
+            TagDescriptionCount = 9,
             VocabularyReduction = FileAnalysisVocabularyReduction.None,
         };
 
@@ -403,16 +406,16 @@ public class GuidanceAndMatchingSurfaceTests
 
     private static FileAnalysisDisclosureDto Disclosure(
         IEnumerable<string> fields, string coverage = "allActive", bool matchGuidance = false) => new()
-    {
-        Processor = "Anthropic",
-        ProcessorRegion = "United States",
-        LawfulBasis = "Consent",
-        PrivacyNoticeUrl = "https://example.test/privacy",
-        Model = "m",
-        MatchVocabularyFields = fields.ToList(),
-        MatchVocabularyCoverage = coverage,
-        MatchGuidanceInForce = matchGuidance,
-    };
+        {
+            Processor = "Anthropic",
+            ProcessorRegion = "United States",
+            LawfulBasis = "Consent",
+            PrivacyNoticeUrl = "https://example.test/privacy",
+            Model = "m",
+            MatchVocabularyFields = fields.ToList(),
+            MatchVocabularyCoverage = coverage,
+            MatchGuidanceInForce = matchGuidance,
+        };
 
     private static ExistingFileAnalysisJob Job(
         int contacts, int? aliases, int tags, int? described, FileAnalysisVocabularyReduction? reduction) =>

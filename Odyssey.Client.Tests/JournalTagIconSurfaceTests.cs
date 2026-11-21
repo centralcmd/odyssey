@@ -87,8 +87,10 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
         photos.Setup(a => a.GetAsync(photo.PhotoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExistingPhoto
             {
-                PhotoId = photo.PhotoId, TagIds = [tagId],
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                PhotoId = photo.PhotoId,
+                TagIds = [tagId],
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
             });
 
         var provider = ctx.Render<MudDialogProvider>();
@@ -115,8 +117,10 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
         photos.Setup(a => a.GetAsync(photo.PhotoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExistingPhoto
             {
-                PhotoId = photo.PhotoId, AlbumIds = [coloured, unknown, plain],
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                PhotoId = photo.PhotoId,
+                AlbumIds = [coloured, unknown, plain],
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
             });
         var albums = new Dictionary<Guid, OdsTagChips.Tag>
         {

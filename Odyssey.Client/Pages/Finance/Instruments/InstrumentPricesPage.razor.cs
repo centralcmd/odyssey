@@ -444,7 +444,8 @@ public partial class InstrumentPricesPage
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "edit", Label = "Edit",
+                Icon = "edit",
+                Label = "Edit",
                 OnClick = EventCallback.Factory.Create(this, () => OpenDialog(price, null, false, ctx.MenuTriggerId)),
             });
         }

@@ -164,7 +164,8 @@ public partial class InstrumentPriceDialog
             return;
         }
 
-        try { await Js.InvokeVoidAsync("odsFocusById", target); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", target); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime (bUnit) */ }
     }

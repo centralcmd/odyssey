@@ -254,7 +254,8 @@ public class NewsRulesTests
         Assert.NotEmpty(Validate(new NewsArticlesReadStateBulk { ArticleIds = [], IsRead = true }));
         Assert.NotEmpty(Validate(new NewsArticlesReadStateBulk
         {
-            ArticleIds = [.. Enumerable.Range(0, NewsLimits.MaxBulkReadStateIds + 1).Select(_ => Guid.NewGuid())], IsRead = true,
+            ArticleIds = [.. Enumerable.Range(0, NewsLimits.MaxBulkReadStateIds + 1).Select(_ => Guid.NewGuid())],
+            IsRead = true,
         }));
     }
 
@@ -273,7 +274,8 @@ public class NewsRulesTests
         Assert.NotEmpty(Validate(new NewNewsFeed { Url = "https://example.com", CustomTitle = new string('t', NewsLimits.MaxCustomTitleLength + 1) }));
         Assert.NotEmpty(Validate(new NewNewsFeed
         {
-            Url = "https://example.com", TagIds = [.. Enumerable.Range(0, NewsLimits.MaxTagIdsPerRequest + 1).Select(_ => Guid.NewGuid())],
+            Url = "https://example.com",
+            TagIds = [.. Enumerable.Range(0, NewsLimits.MaxTagIdsPerRequest + 1).Select(_ => Guid.NewGuid())],
         }));
         Assert.NotEmpty(Validate(new NewNewsTag { Name = "" }));
         Assert.NotEmpty(Validate(new NewNewsTag { Name = new string('n', NewsLimits.MaxTagNameLength + 1) }));
