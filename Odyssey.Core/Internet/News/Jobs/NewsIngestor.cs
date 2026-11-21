@@ -49,6 +49,7 @@ internal enum NewsItemSkip
 public sealed class NewsIngestor(
     IServiceScopeFactory scopes,
     INewsCounterWriter counters,
+    Podcasts.PodcastIngest podcasts,
     TimeProvider time,
     ILogger<NewsIngestor> logger)
 {
@@ -98,6 +99,22 @@ public sealed class NewsIngestor(
             resolutions = NewsIdentityResolver.Resolve(items.Select(i => i.Item.Keys).ToList(), snapshot);
         }
 
+        // Podcasts (issue #556 §3.4): the channel fields and the fetch's auto-download state, before any item.
+        Podcasts.PodcastIngestState? podcast = null;
+        if (claim.Kind == Dtos.Internet.NewsFeedKind.Podcast)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var began = await NewsTransactions.RunAsync(context, () => session.WithFenceAsync(context, async _ =>
+            {
+                podcast = await podcasts.BeginAsync(context, claim, feed, settings, Now, cancellationToken);
+            }, cancellationToken), cancellationToken);
+            if (began != NewsFenceOutcome.Ok)
+            {
+                return new NewsIngestSummary { Failures = failures, TransientSkip = true, Aborted = session.Aborted };
+            }
+        }
+
         var stored = 0;
         var revised = 0;
         var transient = false;
@@ -134,7 +151,7 @@ public sealed class NewsIngestor(
                         continue;
                     }
 
-                    skip = await InsertAsync(session, item, resolution, settings, language, cancellationToken);
+                    skip = await InsertAsync(session, item, resolution, settings, language, podcast, cancellationToken);
                     if (skip == NewsItemSkip.None)
                     {
                         stored++;
@@ -143,7 +160,7 @@ public sealed class NewsIngestor(
                 }
                 else
                 {
-                    var (edited, editSkip) = await UpdateAsync(session, item, resolution, settings, cancellationToken);
+                    var (edited, editSkip) = await UpdateAsync(session, item, resolution, settings, podcast, cancellationToken);
                     skip = editSkip;
                     if (edited)
                     {
@@ -185,6 +202,31 @@ public sealed class NewsIngestor(
         if (dailyCapHit)
         {
             logger.LogInformation("Feed {FeedId} reached its daily article cap; new items wait for the next UTC day.", claim.FeedId);
+        }
+
+        if (podcast is not null)
+        {
+            if (podcast.AutoQueued > 0)
+            {
+                logger.LogInformation("Podcast feed {FeedId}: {Count} new episodes queued for automatic download.", claim.FeedId, podcast.AutoQueued);
+            }
+
+            // §3.4 step 7: only a full parse stamps the baseline, so a fetch cut short by a cap or the budget never
+            // makes the rest of the back catalogue look new on the next one.
+            if (!transient && !storageRefused)
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+                var stamped = await NewsTransactions.RunAsync(context, () => session.WithFenceAsync(context, async _ =>
+                {
+                    await Podcasts.PodcastIngest.StampBaselineAsync(context, claim.FeedId, Now, cancellationToken);
+                    await context.SaveChangesAsync(cancellationToken);
+                }, cancellationToken), cancellationToken);
+                if (stamped != NewsFenceOutcome.Ok)
+                {
+                    return new NewsIngestSummary { Stored = stored, Revised = revised, Failures = failures, TransientSkip = true, Aborted = session.Aborted };
+                }
+            }
         }
 
         return new NewsIngestSummary { Stored = stored, Revised = revised, Failures = failures, TransientSkip = transient, StorageRefused = storageRefused };
@@ -242,7 +284,7 @@ public sealed class NewsIngestor(
 
     private async Task<NewsItemSkip> InsertAsync(
         NewsFetchSession session, NewsNormalizedItem item, NewsIdentityResolution resolution, NewsSettings settings, string? language,
-        CancellationToken cancellationToken)
+        Podcasts.PodcastIngestState? podcast, CancellationToken cancellationToken)
     {
         var claim = session.Claim;
         await using var scope = scopes.CreateAsyncScope();
@@ -277,8 +319,18 @@ public sealed class NewsIngestor(
             SortAtUtc = NewsFetchRules.SortAt(item.PublishedAtUtc, now),
             FeedVisible = claim.FeedVisible,
             Language = language is null ? null : NewsText.Clamp(language, NewsLimits.MaxLanguageLength),
+            FeedKind = claim.Kind,
         };
         Apply(article, item);
+
+        // §3.4 step 3: a podcast feed's articles have no read flag of their own, so they are born read — otherwise they
+        // would stay unread for life in the unread index and counters the article stream never shows.
+        var isPodcast = podcast is not null;
+        if (isPodcast)
+        {
+            article.IsRead = true;
+            article.ReadAtUtc = now;
+        }
 
         var outcome = await NewsTransactions.RunAsync(context, () => session.WithFenceAsync(context, async state =>
         {
@@ -292,8 +344,13 @@ public sealed class NewsIngestor(
                 context.NewsArticleImages.AddRange(NewImages(articleId, item.Images, 0, 0, settings.ImageMaxPerArticle));
             }
 
+            if (podcast is not null && item.Podcast is { } episode)
+            {
+                await podcasts.StageAsync(context, claim, articleId, article.SortAtUtc, episode, articleIsNew: true, podcast, settings, now, cancellationToken);
+            }
+
             await context.SaveChangesAsync(cancellationToken);
-            await counters.AddToFeedAsync(context, claim.FeedId, articles: 1, unread: 1, cancellationToken);
+            await counters.AddToFeedAsync(context, claim.FeedId, articles: 1, unread: isPodcast ? 0 : 1, cancellationToken);
             // The storage totals last, as the final statement of the transaction (§3.5).
             await counters.AddToStorageAsync(context, 0, files.Sum(f => f.SizeBytes), cancellationToken);
         }, cancellationToken), cancellationToken);
@@ -303,7 +360,8 @@ public sealed class NewsIngestor(
     // ── Existing: unchanged or changed ───────────────────────────────────────────────────────────────
 
     private async Task<(bool Edited, NewsItemSkip Skip)> UpdateAsync(
-        NewsFetchSession session, NewsNormalizedItem item, NewsIdentityResolution resolution, NewsSettings settings, CancellationToken cancellationToken)
+        NewsFetchSession session, NewsNormalizedItem item, NewsIdentityResolution resolution, NewsSettings settings,
+        Podcasts.PodcastIngestState? podcast, CancellationToken cancellationToken)
     {
         var claim = session.Claim;
         await using var scope = scopes.CreateAsyncScope();
@@ -321,7 +379,12 @@ public sealed class NewsIngestor(
         {
             // Unchanged: touch LastSeenAtUtc at most once an hour, and attach any key the item newly carries.
             var touch = now - article.LastSeenAtUtc >= NewsJobTiming.TouchInterval;
-            if (!touch && resolution.KeysToAttach.Count == 0)
+            // §3.4 step 3: an unchanged article still gets its episode — a feed switched to podcasts gains its episodes
+            // this way — and an episode whose own fields changed is rewritten in place.
+            var episode = podcast is not null && item.Podcast is { } parsed && Podcasts.PodcastIngest.NeedsWrite(podcast, article.NewsArticleId, parsed)
+                ? parsed
+                : null;
+            if (!touch && resolution.KeysToAttach.Count == 0 && episode is null)
             {
                 return (false, NewsItemSkip.None);
             }
@@ -335,6 +398,11 @@ public sealed class NewsIngestor(
                 }
 
                 context.NewsArticleIdentities.AddRange(resolution.KeysToAttach.Select(key => Identity(article, key, now)));
+                if (episode is not null)
+                {
+                    await podcasts.StageAsync(context, claim, article.NewsArticleId, article.SortAtUtc, episode, articleIsNew: false, podcast!, settings, now, cancellationToken);
+                }
+
                 await context.SaveChangesAsync(cancellationToken);
             }, cancellationToken), cancellationToken);
             return (false, touched == NewsFenceOutcome.Ok ? NewsItemSkip.None : NewsItemSkip.Aborted);
@@ -430,6 +498,11 @@ public sealed class NewsIngestor(
             if (claim.DownloadImages)
             {
                 await ReconcileImagesAsync(context, tracked.NewsArticleId, item.Images, settings.ImageMaxPerArticle, cancellationToken);
+            }
+
+            if (podcast is not null && item.Podcast is { } changedEpisode && Podcasts.PodcastIngest.NeedsWrite(podcast, tracked.NewsArticleId, changedEpisode))
+            {
+                await podcasts.StageAsync(context, claim, tracked.NewsArticleId, tracked.SortAtUtc, changedEpisode, articleIsNew: false, podcast, settings, now, cancellationToken);
             }
 
             await context.SaveChangesAsync(cancellationToken);

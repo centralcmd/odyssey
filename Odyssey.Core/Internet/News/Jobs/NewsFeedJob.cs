@@ -316,6 +316,9 @@ public sealed class NewsFeedJob(
                 Language = state.Language,
                 SuggestedUrl = state.SuggestedUrl,
                 ArticlesToday = state.ArticlesToday,
+                Kind = feed.Kind,
+                AutoDownload = feed.AutoDownload,
+                KindChangedAtUtc = feed.KindChangedAtUtc,
             };
 
             state.LeaseOwner = owner;

@@ -53,6 +53,7 @@ public static class NewsServiceCollectionExtensions
         services.TryAddScoped<NewsArticleWriter>();
         services.TryAddScoped<NewsBucketAllocator>();
         services.TryAddSingleton<NewsHostThrottleGate>();
+        services.TryAddSingleton<Podcasts.PodcastIngest>();
         services.TryAddSingleton<NewsIngestor>();
         services.TryAddSingleton<NewsFeedFetcher>();
         services.TryAddSingleton<NewsImageDownloader>();
