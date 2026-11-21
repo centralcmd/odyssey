@@ -1,0 +1,61 @@
+name: PR title
+
+# Pull requests are squash-merged, so the PR title becomes the commit subject on main that
+# release-please reads to pick the version bump and write the CHANGELOG. A malformed title is
+# skipped silently by release-please, which drops the change from the release notes.
+#
+# The rules mirror CLAUDE.md → *Git & Versioning*; keep TYPES and SCOPES in step with it:
+#   <type>(<scope>)!: <description>  — scope and `!` optional, description lowercase-first,
+#   no trailing period, whole subject under 72 characters.
+#
+# Inline shell rather than a third-party action or npm commitlint: nothing to pin or audit, and
+# no checkout. The title reaches the script only through an environment variable, never through
+# `${{ }}` in `run:`, so a crafted title cannot inject shell.
+#
+# Bot PRs are exempt: Dependabot writes "chore: Bump X from 1 to 2" (capital B) and release-please
+# writes "chore(main): release x.y.z" (scope `main`). Neither format is ours to change.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conventional-commit:
+    name: Conventional Commit title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      !startsWith(github.event.pull_request.head.ref, 'release-please--')
+    steps:
+      - name: Check the PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          TYPES='feat|fix|chore|refactor|test|docs|ci|perf'
+          SCOPES='api|auth|client|core|data|migrations|dtos|worker|infra|aspire|deps|config'
+          PATTERN="^(${TYPES})(\((${SCOPES})\))?!?: [^A-Z ].*[^.]$"
+
+          fail=0
+          if ! printf '%s' "$TITLE" | grep -qE "$PATTERN"; then
+            echo "::error title=PR title::'$TITLE' is not <type>(<scope>): <description>."
+            echo "Types:  ${TYPES//|/, }"
+            echo "Scopes: ${SCOPES//|/, } (or none, for a cross-cutting change)"
+            echo "The description starts lowercase and has no trailing period."
+            fail=1
+          fi
+          if [ "${#TITLE}" -ge 72 ]; then
+            echo "::error title=PR title::The title is ${#TITLE} characters; keep it under 72."
+            fail=1
+          fi
+          if printf '%s' "$TITLE" | grep -qE '#[0-9]+'; then
+            echo "::error title=PR title::Issue numbers go in the body, not the title."
+            fail=1
+          fi
+          exit "$fail"
