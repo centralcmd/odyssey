@@ -123,7 +123,7 @@ Phase 2 is done, on the branch for this PR.
 | P3 | `DemoDataSetTests.cs` rewritten with xUnit `Assert`. `AwesomeAssertions` removed from the project, `Directory.Packages.props`, `dependabot.yml` and `THIRD-PARTY-NOTICES.md`. The notices now say tests use `Assert` only and that FluentAssertions 8+ should not come back (Xceed licence). |
 | Contacts.cs | The insurance "link collection" comments now say what the household contacts are for today. The seeded description strings (demo data) are unchanged. |
 
-## Phase 3 status (in progress)
+## Phase 3 status (complete)
 
 | Item | Decision | Result |
 |---|---|---|
