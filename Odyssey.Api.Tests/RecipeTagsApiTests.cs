@@ -111,6 +111,42 @@ public class RecipeTagsApiTests(RecipeTagsApiTests.Host host) : SharedApiHostTes
         Assert.Equal([popular, rare], sorted.Select(t => t.RecipeTagId));
     }
 
+    [Fact]
+    public async Task PutAndDelete_OnAnUnknownId_AreNotFound()
+    {
+        using var client = Factory.ClientWith(ReadWrite);
+        var id = Guid.NewGuid();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"{Path}/{id}", new UpdateRecipeTag { Name = "x" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"{Path}/{id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Rename_OntoAnotherTagsName_IsConflict_AndKeepingItsOwnIsNot()
+    {
+        await SeedTagAsync("Taken");
+        var mine = await SeedTagAsync("Mine");
+        using var client = Factory.ClientWith(ReadWrite);
+
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PutAsJsonAsync($"{Path}/{mine}", new UpdateRecipeTag { Name = "TAKEN" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{Path}/{mine}", new UpdateRecipeTag { Name = "mine" })).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("""{"icon":"no-such-icon"}""")]
+    [InlineData("""{"color":"#12345Z"}""")]
+    [InlineData("""{"color":""}""")]
+    [InlineData("""{"name":""}""")]
+    public async Task Create_WithAnInvalidNameIconOrColour_IsBadRequest(string fields)
+    {
+        using var client = Factory.ClientWith(ReadWrite);
+        var body = fields.Contains("\"name\"", StringComparison.Ordinal) ? fields : fields.Insert(1, "\"name\":\"Valid\",");
+
+        var response = await client.PostAsync(Path, new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private async Task<Guid> SeedTagAsync(string name, bool archived = false)
     {
         await using var scope = Factory.Services.CreateAsyncScope();

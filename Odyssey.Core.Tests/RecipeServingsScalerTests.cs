@@ -87,6 +87,33 @@ public class RecipeServingsScalerTests
     public void FitsScale_AllowsThreeDecimals(string value, bool fits) =>
         Assert.Equal(fits, RecipeAmounts.FitsScale(decimal.Parse(value, System.Globalization.CultureInfo.InvariantCulture)));
 
+    /// <summary>
+    /// Every member's ordinal and whether it scales (§8.2). The ordinals are a wire and persistence contract, so a
+    /// renumbering, a reuse or a new member fails here and has to be decided deliberately.
+    /// </summary>
+    [Fact]
+    public void Every_unit_has_its_contracted_ordinal_and_scaling()
+    {
+        (IngredientUnit Unit, int Ordinal, bool Scalable)[] expected =
+        [
+            (IngredientUnit.None, 0, true), (IngredientUnit.Milligram, 1, true), (IngredientUnit.Gram, 2, true),
+            (IngredientUnit.Kilogram, 3, true), (IngredientUnit.Millilitre, 4, true), (IngredientUnit.Centilitre, 5, true),
+            (IngredientUnit.Decilitre, 6, true), (IngredientUnit.Litre, 7, true), (IngredientUnit.Teaspoon, 8, true),
+            (IngredientUnit.Tablespoon, 9, true), (IngredientUnit.Cup, 10, true), (IngredientUnit.Piece, 11, true),
+            (IngredientUnit.Clove, 12, true), (IngredientUnit.Slice, 13, true), (IngredientUnit.Can, 14, true),
+            (IngredientUnit.Package, 15, true), (IngredientUnit.Bunch, 16, true), (IngredientUnit.Pinch, 17, false),
+            (IngredientUnit.ToTaste, 18, false),
+        ];
+
+        Assert.Equal(expected.Select(e => e.Unit), Enum.GetValues<IngredientUnit>());
+        Assert.All(expected, e =>
+        {
+            Assert.Equal(e.Ordinal, (int)e.Unit);
+            Assert.Equal(e.Scalable, IngredientUnitScaling.IsScalable(e.Unit));
+        });
+        Assert.False(IngredientUnitScaling.IsScalable((IngredientUnit)99));
+    }
+
     private static ExistingRecipe Recipe(int servings, params RecipeIngredientDto[] lines) => new()
     {
         RecipeId = Guid.NewGuid(),
