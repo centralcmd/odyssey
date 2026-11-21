@@ -53,6 +53,7 @@ public class DomainExceptionHierarchyGuardTests
         "Odyssey.Core.Internet.News.Fetching.NewsStreamAbortedException",
         "Odyssey.Core.Internet.News.Podcasts.PodcastAudioDownloadJob+DownloadStoppedException",
         "Odyssey.Core.Internet.News.Podcasts.PodcastAudioDownloadJob+RefusedException",
+        "Odyssey.Core.Internet.News.Podcasts.PodcastAudioDownloadJob+SourceReadException",
         // The OPML reader's internal signals (issue #508 §7.5, §9 item 3): the import service turns both into
         // 400 news-opml-unreadable, so neither escapes it.
         "Odyssey.Core.Internet.News.Opml.OpmlTokenLimitException",

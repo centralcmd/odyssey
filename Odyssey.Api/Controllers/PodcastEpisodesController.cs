@@ -102,9 +102,12 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
         if (HttpMethods.IsGet(Request.Method) && User.HasPermission(PermissionClaims.NewsUpdate))
         {
             var length = descriptor.SizeBytes;
+            // A Range the server ignored (a multi-range, an If-Range that no longer matches) still gets a 200 with the
+            // whole body, but it is not a whole-file download the caller asked for, so it never stamps.
+            var rangeRequested = Request.Headers.Range.Count > 0;
             Response.OnCompleted(async () =>
             {
-                if (DeliveredWhole(length, stream.BytesRead))
+                if (DeliveredWhole(length, stream.BytesRead, rangeRequested))
                 {
                     await using var scope = scopes.CreateAsyncScope();
                     await scope.ServiceProvider.GetRequiredService<PodcastEpisodeService>().StampPlayedAsync(id, CancellationToken.None);
@@ -116,11 +119,11 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
     }
 
     /// <summary>
-    /// A full <c>200</c>, or a <c>206</c> whose single range is exactly <c>0 … length−1</c>, written to the end without the
-    /// client aborting (§5.3 #8). A tail range, any other partial range, a <c>HEAD</c> or a <c>304</c> never gets here or
+    /// A full <c>200</c> to a request without a <c>Range</c>, or a <c>206</c> whose single range is exactly
+    /// <c>0 … length−1</c>, written to the end without the client aborting (§5.3 #8). A tail range, any other partial range, a <c>HEAD</c> or a <c>304</c> never gets here or
     /// fails this test.
     /// </summary>
-    private bool DeliveredWhole(long length, long bytesRead)
+    private bool DeliveredWhole(long length, long bytesRead, bool rangeRequested)
     {
         if (HttpContext.RequestAborted.IsCancellationRequested || bytesRead != length)
         {
@@ -129,7 +132,7 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
 
         return Response.StatusCode switch
         {
-            StatusCodes.Status200OK => true,
+            StatusCodes.Status200OK => !rangeRequested,
             StatusCodes.Status206PartialContent => Response.GetTypedHeaders().ContentRange is { From: 0, To: { } to, Length: { } total }
                 && total == length && to == length - 1,
             _ => false,

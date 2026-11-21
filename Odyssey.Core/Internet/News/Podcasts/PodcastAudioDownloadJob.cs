@@ -240,6 +240,9 @@ public sealed class PodcastAudioDownloadJob(
 
     private sealed record Outcome(OutcomeKind Kind, long Bytes = 0, bool ReservationRefused = false);
 
+    /// <summary>A read of the publisher's body failed (a stall, the floor, the deadline, the network) — never the volume.</summary>
+    private sealed class SourceReadException(Exception inner) : Exception("Reading the download failed.", inner);
+
     /// <summary>Why the download stopped from inside (a renewal saw the feed change, or lost the fence).</summary>
     private sealed class DownloadStoppedException(bool requeue) : Exception("The download was stopped.")
     {
@@ -336,8 +339,9 @@ public sealed class PodcastAudioDownloadJob(
                 var committed = await CommitAsync(claim, written, type, expected, stoppingToken);
                 if (!committed)
                 {
+                    // A lost fence: whoever took the row (the expired-lease recovery, the purge) already returned its
+                    // byte reservation, so returning it here would count it twice.
                     await store.AbandonReservationAsync(written, CancellationToken.None);
-                    await ReturnReservationAsync(expected);
                     return new Outcome(OutcomeKind.Stopped);
                 }
 
@@ -353,7 +357,9 @@ public sealed class PodcastAudioDownloadJob(
                 {
                     DownloadStoppedException stopped => await StopAsync(claim, expected, stopped.Requeue),
                     StoredObjectTooLargeException => await FailAsync(claim, PodcastAudioFailureKind.TooLarge, permanent: true, expected, CancellationToken.None),
-                    NewsStreamAbortedException => await FailAsync(claim, PodcastAudioFailureKind.Timeout, permanent: false, expected, CancellationToken.None),
+                    NewsStreamAbortedException or SourceReadException { InnerException: NewsStreamAbortedException }
+                        => await FailAsync(claim, PodcastAudioFailureKind.Timeout, permanent: false, expected, CancellationToken.None),
+                    SourceReadException => await FailAsync(claim, PodcastAudioFailureKind.HttpError, permanent: false, expected, CancellationToken.None),
                     FileStorageFullException => await DeferAsync(claim, PodcastAudioDeferredReason.DiskHeadroom, CancellationToken.None, expected),
                     FileStorageUnavailableException => await StorageUnavailableAsync(claim, expected),
                     HttpRequestException or IOException => await FailAsync(claim, PodcastAudioFailureKind.HttpError, permanent: false, expected, CancellationToken.None),
@@ -509,14 +515,6 @@ public sealed class PodcastAudioDownloadJob(
             row.ReservedBytes = 0;
             await context.SaveChangesAsync(cancellationToken);
         }
-    }
-
-    /// <summary>A reservation whose row is gone (a lost fence): only the total is returned.</summary>
-    private async Task ReturnReservationAsync(long bytes)
-    {
-        await using var scope = scopes.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        await counters.AddToPodcastStorageAsync(context, new PodcastStorageDelta(AudioReservedBytes: -bytes), CancellationToken.None);
     }
 
     // ── 7. Lease renewal ─────────────────────────────────────────────────────────────────────────────
@@ -712,8 +710,9 @@ public sealed class PodcastAudioDownloadJob(
 
     private async Task<Outcome> StopAsync(Claim claim, long reserved, bool requeue)
     {
-        // A lost fence leaves the row to whoever rotated it; only the total is ours to return.
-        if (!await EndAsync(claim, row =>
+        // A lost fence leaves the row, and its byte reservation, to whoever rotated it: the recovery and the purge both
+        // return ReservedBytes themselves, so nothing is returned here.
+        await EndAsync(claim, row =>
             {
                 if (requeue)
                 {
@@ -726,10 +725,7 @@ public sealed class PodcastAudioDownloadJob(
                     row.RequestedAtUtc = null;
                     row.NextAttemptAtUtc = null;
                 }
-            }, reserved, CancellationToken.None))
-        {
-            await ReturnReservationAsync(reserved);
-        }
+            }, reserved, CancellationToken.None);
 
         logger.LogInformation("Podcast audio {EpisodeId}: download stopped ({Next}).", claim.EpisodeId, requeue ? "queued for later" : "cancelled");
         return new Outcome(OutcomeKind.Stopped);
@@ -966,7 +962,16 @@ public sealed class PodcastAudioDownloadJob(
                 lastRenewal = time.GetTimestamp();
             }
 
-            return await inner.ReadAsync(buffer, cancellationToken);
+            try
+            {
+                return await inner.ReadAsync(buffer, cancellationToken);
+            }
+            catch (Exception ex) when (ex is IOException or HttpRequestException)
+            {
+                // The object store reads an IOException from its source as a volume failure; a publisher's stall, slow
+                // trickle or dropped connection is not one, so it leaves the store under its own type.
+                throw new SourceReadException(ex);
+            }
         }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
