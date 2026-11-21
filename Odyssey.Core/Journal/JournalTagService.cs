@@ -11,8 +11,7 @@ namespace Odyssey.Core.Journal;
 
 /// <summary>
 /// CRUD for the module-local journal tags: name search + archival-status filter + allowlisted sort,
-/// case-insensitive name uniqueness that a new or renamed tag checks against archived tags too, and a
-/// delete-if-unused guard (in-use → 409).
+/// case-insensitive name uniqueness across active and archived tags, and a delete-if-unused guard (in-use → 409).
 /// </summary>
 public class JournalTagService
 {
@@ -70,7 +69,7 @@ public class JournalTagService
         TagIconGuard.EnsureKnown(request.Icon);
         TagColorGuard.EnsureValid(request.Color);
         var name = request.Name.Trim();
-        await EnsureNameAvailable(name, null, null, cancellationToken);
+        await EnsureNameAvailable(name, null, cancellationToken);
 
         var tag = new JournalTag
         {
@@ -82,7 +81,7 @@ public class JournalTagService
         };
 
         context.JournalTags.Add(tag);
-        await context.SaveChangesAsync(cancellationToken);
+        await SaveGuardingDuplicateName(name, cancellationToken);
 
         return tag.Adapt<ExistingJournalTag>();
     }
@@ -99,7 +98,7 @@ public class JournalTagService
         }
 
         var name = request.Name.Trim();
-        await EnsureNameAvailable(name, id, tag.Name, cancellationToken);
+        await EnsureNameAvailable(name, id, cancellationToken);
 
         tag.Name = name;
         tag.Description = request.Description;
@@ -108,7 +107,7 @@ public class JournalTagService
         tag.Color = HexColor.Normalize(request.Color);
         ApplyArchiveTransition(tag, request.Archived);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await SaveGuardingDuplicateName(name, cancellationToken);
 
         return tag.Adapt<ExistingJournalTag>();
     }
@@ -133,44 +132,59 @@ public class JournalTagService
     }
 
     /// <summary>
-    /// A new name, or a rename, must not match any other journal tag case-insensitively, archived ones included:
-    /// an archived tag is not offered by the pickers, so reusing its name would put two tags with one name in
-    /// the list the moment the archived one is restored. The design system's picker refuses such a name with
-    /// "“X” is an archived tag. Restore it on the Journal tags page to use it."; this is the server half.
+    /// A journal tag name is unique case-insensitively across ALL journal tags, archived ones included: an archived tag
+    /// is not offered by the pickers, so reusing its name would put two tags with one name in the list the moment
+    /// the archived one is restored. The design system's picker refuses such a name with "“X” is an archived tag.
+    /// Restore it on the Journal tags page to use it."; this is the server half.
     /// </summary>
     /// <remarks>
-    /// A tag that keeps its name is checked against ACTIVE tags only. Databases from before this rule can
-    /// hold an active and an archived tag with one name, and each must stay editable; restoring the archived
-    /// one is still refused while the active one holds the name. Names are compared in memory with
-    /// <see cref="StringComparison.OrdinalIgnoreCase"/>, which behaves identically on the relational store
-    /// (utf8mb4 *_ci collation) and the InMemory provider used by tests.
+    /// The comparison is <see cref="StringComparison.OrdinalIgnoreCase"/> rather than a database collation, so it
+    /// holds on the EF InMemory tiers, which have no collation at all. The unique index on <c>Name</c>
+    /// (<c>UniqueJournalAndTaskTagNames</c>) is the other half; this is what turns the violation into an explaining,
+    /// field-keyed <c>409</c>.
     /// </remarks>
-    private async Task EnsureNameAvailable(string name, Guid? excludeId, string? currentName, CancellationToken cancellationToken)
+    private async Task EnsureNameAvailable(string name, Guid? excludeId, CancellationToken cancellationToken)
     {
-        var renamed = currentName is null || !string.Equals(currentName.Trim(), name, StringComparison.OrdinalIgnoreCase);
-        var others = await context.JournalTags
-            .AsNoTracking()
-            .Where(t => excludeId == null || t.JournalTagId != excludeId)
-            .Select(t => new { t.Name, t.Archived })
-            .ToListAsync(cancellationToken);
+        // Materialised rather than compared in SQL: EF cannot translate OrdinalIgnoreCase, and the tag table is
+        // small reference data the pickers already load whole.
+        var clash = (await context.JournalTags
+                .AsNoTracking()
+                .Where(t => excludeId == null || t.JournalTagId != excludeId)
+                .Select(t => new { t.Name, t.Archived })
+                .ToListAsync(cancellationToken))
+            .FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
 
-        var clash = others
-            .Where(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase))
-            .Where(t => t.Archived is null || renamed)
-            .OrderBy(t => t.Archived is null ? 0 : 1)
-            .FirstOrDefault();
-        if (clash is null)
+        if (clash is not null)
         {
-            return;
+            throw DuplicateName(name, clash.Archived is not null);
         }
-
-        // Keyed to `name` so the tag dialogs render it at the field rather than as an unattributed toast.
-        throw new DomainConflictException(
-            clash.Archived is null
-                ? $"A journal tag named '{name}' already exists."
-                : $"A journal tag named '{name}' already exists but is archived. Restore it, or rename it, to reuse the name.",
-            nameof(NewJournalTag.Name));
     }
+
+    /// <summary>
+    /// Saves, translating the unique index's duplicate-key error into the <b>same</b> field-keyed <c>409</c> the
+    /// pre-check throws, so the loser of a concurrent create or rename gets an answer the form can show.
+    /// </summary>
+    private async Task SaveGuardingDuplicateName(string name, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKeyOn(ex, "IX_JournalTags_Name"))
+        {
+            // The failed write is still tracked; leaving it would flush on the next save. The winner's archived
+            // state is not known here, so the message takes the plain form.
+            context.ChangeTracker.Clear();
+            throw DuplicateName(name, archived: false);
+        }
+    }
+
+    // Keyed to `name` so the tag dialogs render it at the field rather than as an unattributed toast.
+    private static DomainConflictException DuplicateName(string name, bool archived) =>
+        new(archived
+                ? $"A journal tag named '{name}' already exists but is archived. Restore it, or rename it, to reuse the name."
+                : $"A journal tag named '{name}' already exists.",
+            nameof(NewJournalTag.Name));
 
     private void ApplyArchiveTransition(JournalTag tag, bool requestedArchived)
     {

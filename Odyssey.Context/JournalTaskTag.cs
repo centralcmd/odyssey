@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Odyssey.Context;
 
-[Index(nameof(Name))]
+[Index(nameof(Name), IsUnique = true)]
 [Index(nameof(Archived))]
 public class JournalTaskTag
 {

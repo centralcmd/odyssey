@@ -196,30 +196,6 @@ public class JournalTagsApiTests(JournalTagsApiTests.Host host) : SharedApiHostT
         Assert.Equal(HttpStatusCode.Conflict, put.StatusCode);
     }
 
-    [Fact]
-    public async Task LegacyDuplicate_ActiveTagKeepingItsName_StaysEditable_AndRestoringTheArchivedOneIsRefused()
-    {
-        // A database from before the rule can hold an active and an archived tag with one name.
-        var factory = Factory.ForCaller(ReadWrite);
-        Guid activeId, archivedId;
-        using (var scope = factory.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var active = new JournalTag { Name = "Bills" };
-            var archived = new JournalTag { Name = "bills", Archived = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
-            context.JournalTags.AddRange(active, archived);
-            await context.SaveChangesAsync();
-            (activeId, archivedId) = (active.JournalTagId, archived.JournalTagId);
-        }
-        using var client = factory.CreateClient();
-
-        var edit = await client.PutAsJsonAsync($"{Path}/{activeId}", new UpdateJournalTag { Name = "Bills", Description = "Utilities" });
-        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
-
-        var restore = await client.PutAsJsonAsync($"{Path}/{archivedId}", new UpdateJournalTag { Name = "bills", Archived = false });
-        Assert.Equal(HttpStatusCode.Conflict, restore.StatusCode);
-    }
-
     private static async Task<ExistingJournalTag> CreateAsync(HttpClient client, string name, string? description = null)
     {
         var post = await client.PostAsJsonAsync(Path, new NewJournalTag { Name = name, Description = description });

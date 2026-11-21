@@ -3250,7 +3250,8 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("Archived");
 
-                    b.HasIndex("Name");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("JournalTags");
                 });
@@ -3372,7 +3373,8 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("Archived");
 
-                    b.HasIndex("Name");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("JournalTaskTags");
                 });
