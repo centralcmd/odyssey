@@ -1,0 +1,23 @@
+# Self-hosted basemap TEST overlay (issue #384): the Compose stack serving the committed fixture
+# (TestShared/Basemap/basemap.pmtiles, ~2 x 2 km around the demo Cabin) with the self-hosted styles, for
+# Odyssey.E2ETests' SelfHostedBasemapTests. Not a production recipe — an operator fills the `basemap` volume
+# instead (docs/deployment.md → Self-hosting the basemap).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ca.yml -f docker-compose.selfhosted-basemap.yml up --build -d
+#   ODYSSEY_E2E_SELFHOSTED_BASEMAP=1 E2E_BASE_URL=http://localhost:5199 dotnet test Odyssey.E2ETests --filter SelfHostedBasemapTests
+#
+# The fixture is bind-mounted read-only in place of the named volume, at the same paths, in both containers.
+services:
+  api:
+    environment:
+      Map__StyleUrlLight: /maps/self-hosted-light.json
+      Map__StyleUrlDark: /maps/self-hosted-dark.json
+      Map__AllowedOrigins: ""
+      Map__Attribution: © OpenMapTiles © OpenStreetMap contributors
+    volumes:
+      - ./TestShared/Basemap:/var/odyssey/basemap:ro,z
+  client:
+    environment:
+      MAP_ALLOWED_ORIGINS: ""
+    volumes:
+      - ./TestShared/Basemap:/usr/share/nginx/html/basemap:ro,z

@@ -1,2 +1,5 @@
 # Shell scripts run under busybox sh in the client image, which rejects CRLF line endings (issue #370).
 *.sh text eol=lf
+# The self-hosted basemap's binary assets (issue #384): byte-exact, never line-ending-converted or diffed.
+*.pbf binary
+*.pmtiles binary

@@ -8,7 +8,10 @@
 # without a public domain, set ODYSSEY_DOMAIN=localhost and Caddy issues an internal cert.
 
 {$ODYSSEY_DOMAIN} {
-	encode zstd gzip
+	# Never re-encode the self-hosted basemap (issue #384): the pmtiles library reads it with byte ranges, and a
+	# compressed 206 would break every read. Stated explicitly rather than relying on encode's default type list.
+	@compressible not path /basemap/*
+	encode @compressible zstd gzip
 
 	# The large-file routes — task, journal and calendar .ics export/import (task and journal files carry attached
 	# files and photos inline; calendar files stream, issue #516), photos and the Files store — take bodies up to the API's 10 GB transport ceiling plus multipart envelope
