@@ -11,7 +11,10 @@ public class EpubSignatureTests
     private static byte[] Zip(string firstName, string content)
     {
         var header = new byte[30];
-        header[0] = 0x50; header[1] = 0x4B; header[2] = 0x03; header[3] = 0x04;
+        header[0] = 0x50;
+        header[1] = 0x4B;
+        header[2] = 0x03;
+        header[3] = 0x04;
         header[26] = (byte)firstName.Length;
         return [.. header, .. Encoding.ASCII.GetBytes(firstName), .. Encoding.ASCII.GetBytes(content), .. new byte[16]];
     }

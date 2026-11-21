@@ -138,7 +138,9 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
             "POST" => await client.PostAsJsonAsync(Path, NewBook(Guid.NewGuid())),
             "PUT" => await client.PutAsJsonAsync($"{Path}/{id}", ToUpdate(new ExistingBook
             {
-                BookId = id, Title = "x", MainAuthor = new() { ContactId = Guid.NewGuid() },
+                BookId = id,
+                Title = "x",
+                MainAuthor = new() { ContactId = Guid.NewGuid() },
             })),
             _ => await client.DeleteAsync($"{Path}/{id}"),
         };
@@ -179,7 +181,9 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         // An empty array needs no claim.
         Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(Path, NewBook(author) with
         {
-            PhotoIds = [], AttachmentFileIds = [], TagIds = [],
+            PhotoIds = [],
+            AttachmentFileIds = [],
+            TagIds = [],
         })).StatusCode);
     }
 
@@ -215,7 +219,8 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         using var full = Factory.ClientFor(Full);
         var created = await CreatedAsync(await full.PostAsJsonAsync(Path, NewBook(author) with
         {
-            TagIds = [tag], Contributors = [new() { ContactId = contributor }],
+            TagIds = [tag],
+            Contributors = [new() { ContactId = contributor }],
         }));
 
         using var limited = Factory.ClientFor(Without(PermissionClaims.BookTagsRead));
@@ -278,7 +283,8 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         var id = Guid.NewGuid();
         var body = ToUpdate(new ExistingBook { BookId = id, Title = "x", MainAuthor = new() { ContactId = Guid.NewGuid() } }) with
         {
-            PhotoIds = [Guid.NewGuid()], TagIds = [Guid.NewGuid()],
+            PhotoIds = [Guid.NewGuid()],
+            TagIds = [Guid.NewGuid()],
         };
 
         Assert.Equal(HttpStatusCode.NotFound, (await full.PutAsJsonAsync($"{Path}/{id}", body)).StatusCode);
@@ -379,11 +385,15 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(herbert, "Dune") with { Year = 1965, TagIds = [tag] }));
         await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(asimov, "Foundation") with
         {
-            Year = null, Status = BookStatus.Wishlist, Format = BookFormat.Ebook,
+            Year = null,
+            Status = BookStatus.Wishlist,
+            Format = BookFormat.Ebook,
         }));
         await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(asimov, "Robots") with
         {
-            Year = -10, Status = BookStatus.LentOut, Contributors = [new() { ContactId = herbert }],
+            Year = -10,
+            Status = BookStatus.LentOut,
+            Contributors = [new() { ContactId = herbert }],
         }));
 
         async Task<List<string>> Titles(string query) =>
@@ -417,14 +427,16 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         var created = await CreatedAsync(await client.PostAsJsonAsync(Path, NewBook(author) with
         {
             Contributors = [new() { ContactId = a }, new() { ContactId = b }],
-            PhotoIds = [front, back], CoverPhotoId = front,
+            PhotoIds = [front, back],
+            CoverPhotoId = front,
         }));
         var keptRow = created.Contributors.Single(x => x.Contact.ContactId == b).BookContributorId;
 
         var put = await client.PutAsJsonAsync($"{Path}/{created.BookId}", ToUpdate(created) with
         {
             Contributors = [new() { ContactId = b, Role = "Editor" }, new() { ContactId = c }],
-            PhotoIds = [front, back], CoverPhotoId = back,
+            PhotoIds = [front, back],
+            CoverPhotoId = back,
         });
 
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
@@ -534,9 +546,14 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         switch (await context.Set<T>().FindAsync(id))
         {
-            case Contact contact: contact.Archived = DateTime.UtcNow; break;
-            case BookTag tag: tag.Archived = DateTime.UtcNow; break;
-            default: throw new InvalidOperationException($"No {typeof(T).Name} {id}.");
+            case Contact contact:
+                contact.Archived = DateTime.UtcNow;
+                break;
+            case BookTag tag:
+                tag.Archived = DateTime.UtcNow;
+                break;
+            default:
+                throw new InvalidOperationException($"No {typeof(T).Name} {id}.");
         }
 
         await context.SaveChangesAsync();

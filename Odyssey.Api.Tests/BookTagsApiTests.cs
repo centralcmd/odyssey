@@ -47,7 +47,11 @@ public class BookTagsApiTests(BookTagsApiTests.Host host) : SharedApiHostTests<B
         var author = await PhotoTestSupport.SeedPersonAsync(Factory);
         var book = await client.PostAsJsonAsync("/api/books", new NewBook
         {
-            Title = "Tagged", Format = BookFormat.Hardcover, Status = BookStatus.Owned, MainAuthorContactId = author, TagIds = [tag.BookTagId],
+            Title = "Tagged",
+            Format = BookFormat.Hardcover,
+            Status = BookStatus.Owned,
+            MainAuthorContactId = author,
+            TagIds = [tag.BookTagId],
         });
         Assert.Equal(HttpStatusCode.Created, book.StatusCode);
 

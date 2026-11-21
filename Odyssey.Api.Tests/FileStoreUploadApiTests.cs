@@ -67,7 +67,10 @@ public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : Shared
     private static byte[] Zip(string firstName, string content)
     {
         var header = new byte[30];
-        header[0] = 0x50; header[1] = 0x4B; header[2] = 0x03; header[3] = 0x04;
+        header[0] = 0x50;
+        header[1] = 0x4B;
+        header[2] = 0x03;
+        header[3] = 0x04;
         header[26] = (byte)firstName.Length;
         return [.. header, .. System.Text.Encoding.ASCII.GetBytes(firstName), .. System.Text.Encoding.ASCII.GetBytes(content), .. new byte[64]];
     }

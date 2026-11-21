@@ -216,6 +216,7 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
 
         Assert.Equal(
             [StoredFileAreas.ContactAvatarFeatureKey, StoredFileAreas.FinanceFeatureKey, StoredFileAreas.JournalFeatureKey,
+             StoredFileAreas.LibraryFeatureKey,
              NewsArticleStorage.FeatureKey, PhotoOriginalStorage.FeatureKey, PhotoThumbnailStorage.FeatureKey],
             features.Select(f => f.Key).Order(StringComparer.Ordinal));
         Assert.All(features, f => Assert.Equal(StorageReleaseMode.Graced, f.ReleaseMode));
