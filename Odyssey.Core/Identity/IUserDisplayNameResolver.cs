@@ -6,7 +6,7 @@ namespace Odyssey.Core.Identity;
 /// Resolves user-ids to human display labels at the API edge, given the caller's claims (issue #316).
 /// The single source of truth for "who did this" attribution: it batches one query over
 /// <c>AspNetUsers ⋈ UserProfiles</c> and applies the claim-aware rule
-/// <c>DisplayName ?? FirstName ?? (caller holds <see cref="Odyssey.Context.Authorization.PermissionClaims.UsersRead"/> ? Email/UserName : "Unknown user")</c>.
+/// <c>DisplayName ?? FirstName ?? (caller holds <see cref="Odyssey.Dtos.Authorization.PermissionClaims.UsersRead"/> ? Email/UserName : "Unknown user")</c>.
 /// The caller <see cref="ClaimsPrincipal"/> is a REQUIRED parameter so no call site can bypass the
 /// claim check and regress to leaking emails. Only five columns are ever read
 /// (<c>Id, UserName, Email, DisplayName, FirstName</c>) — never <c>BirthDate/Sex/Title/MiddleName/LastName</c>.

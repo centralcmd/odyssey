@@ -146,7 +146,9 @@ public class PropertyDocumentsSectionTests
         // OnInitializedAsync early-returns outside the browser: the two seams are the way in.
         cut.InvokeAsync(() => section.Instance.UseContacts(contacts ?? [], canReadContacts)).GetAwaiter().GetResult();
         if (load)
+        {
             cut.InvokeAsync(() => section.Instance.LoadAsync()).GetAwaiter().GetResult();
+        }
 
         return harness;
     }
@@ -332,9 +334,10 @@ public class PropertyDocumentsSectionTests
 
         h.Host.WaitForAssertion(() =>
             Assert.Contains("The file itself is kept in Files.", h.Markup, StringComparison.Ordinal));
-        h.Host.FindAll(".mud-message-box button, .mud-dialog-actions button")
-            .First(b => b.TextContent.Trim() == "Detach")
-            .Click();
+        var confirm = h.Host.FindComponents<OdsConfirmDialog>().Single();
+        Assert.Equal("Detach document", confirm.Instance.Title);
+        Assert.Equal("link_off", confirm.Instance.SubmitIcon);
+        h.Host.FindAll(".ods-modal button").Single(b => b.TextContent.Trim().EndsWith("Detach", StringComparison.Ordinal)).Click();
 
         h.Host.WaitForAssertion(() => h.Properties.Verify(
             p => p.DetachFileAsync(PropertyId, doc.FileMetadata.Id, It.IsAny<CancellationToken>()), Times.Once));

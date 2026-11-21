@@ -22,7 +22,6 @@ public class PhotoService
 {
     private readonly OdysseyContext context;
     private readonly IContactLookup contacts;
-    private readonly IFileReferenceGuard fileReferences;
     private readonly PhotoMetadataService metadataService;
     private readonly IJournalLimitsLookup journalLimits;
     private readonly ILogger<PhotoService> logger;
@@ -35,7 +34,6 @@ public class PhotoService
     public PhotoService(
         OdysseyContext context,
         IContactLookup contacts,
-        IFileReferenceGuard fileReferences,
         PhotoMetadataService metadataService,
         IJournalLimitsLookup journalLimits,
         ILogger<PhotoService> logger,
@@ -47,7 +45,6 @@ public class PhotoService
     {
         this.context = context;
         this.contacts = contacts;
-        this.fileReferences = fileReferences;
         this.metadataService = metadataService;
         this.journalLimits = journalLimits;
         this.logger = logger;
@@ -257,7 +254,7 @@ public class PhotoService
             FileName = fileName,
             ContentType = contentType,
             SizeBytes = stored.SizeBytes,
-            Sha256Hash = stored.Sha256Hash,
+            Sha256Hash = stored.Sha256Hash!,
             Title = Clamp(request.Title ?? extracted.Title, PhotoLimits.MaxTitleLength),
             Caption = Clamp(request.Caption ?? extracted.Caption, PhotoLimits.MaxCaptionLength),
             TakenAt = callerTakenAt ?? NormalizeTakenAt(extracted.TakenAt, fromCaller: false),
@@ -289,6 +286,76 @@ public class PhotoService
         await thumbnails.StageEnqueueAsync(photo, cancellationToken);
         return photo;
     }
+
+    /// <summary>
+    /// The first half of an import's photo upload (issue #521 v5 §1, implementation note 3): the library upload's checks,
+    /// hash and metadata extraction, and the original's write as a reservation — outside any transaction, once. No tag is
+    /// created, no album item is staged and no duplicate is refused here: the importer has already matched existing
+    /// content, and re-checks it under its lock before <see cref="AttachPreparedAsync"/>.
+    /// </summary>
+    internal async Task<PreparedPhoto> PrepareUploadAsync(
+        FileUpload upload, string? title, string? caption, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(upload);
+        var contentType = await ValidateUploadAsync(upload, cancellationToken);
+        await using var content = upload.OpenReadStream();
+        var hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(content, cancellationToken)).ToLowerInvariant();
+        content.Position = 0;
+        var extracted = await metadataService.ExtractFromStreamAsync(content, cancellationToken);
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var fileName = SanitizeUploadName(upload.FileName);
+        content.Position = 0;
+        var maxBytes = (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes;
+        var reservation = await originals.ReserveAsync(content, fileName, contentType, now, maxBytes, cancellationToken);
+        if (!string.Equals(reservation.Sha256Hash, hash, StringComparison.Ordinal))
+        {
+            await store.AbandonReservationAsync(reservation, cancellationToken);
+            throw new DomainValidationException("The photo changed while it was being stored.");
+        }
+
+        return new PreparedPhoto(
+            Guid.NewGuid(), reservation, fileName, contentType,
+            Clamp(title ?? extracted.Title, PhotoLimits.MaxTitleLength),
+            Clamp(caption ?? extracted.Caption, PhotoLimits.MaxCaptionLength),
+            NormalizeTakenAt(extracted.TakenAt, fromCaller: false),
+            extracted.Latitude, extracted.Longitude, extracted.PixelWidth, extracted.PixelHeight, now);
+    }
+
+    /// <summary>
+    /// The second half: a NEW <see cref="Photo"/> for <paramref name="prepared"/>, its original attached and its thumbnail
+    /// job enqueued, staged on this context unsaved. Called once per attempt of the importer's retried transaction.
+    /// </summary>
+    internal async Task<Photo> AttachPreparedAsync(PreparedPhoto prepared, string userId, CancellationToken cancellationToken = default)
+    {
+        var stored = store.AttachReserved(context, prepared.Reservation);
+        var photo = new Photo
+        {
+            PhotoId = prepared.PhotoId,
+            StoredObjectId = stored.Id,
+            FileName = prepared.FileName,
+            ContentType = prepared.ContentType,
+            SizeBytes = stored.SizeBytes,
+            Sha256Hash = stored.Sha256Hash!,
+            Title = prepared.Title,
+            Caption = prepared.Caption,
+            TakenAt = prepared.TakenAt,
+            CapturedLatitude = prepared.Latitude,
+            CapturedLongitude = prepared.Longitude,
+            PixelWidth = prepared.PixelWidth,
+            PixelHeight = prepared.PixelHeight,
+            CreatedByUserId = userId,
+            CreatedAt = prepared.CreatedAtUtc,
+            UpdatedAt = prepared.CreatedAtUtc,
+        };
+        context.Photos.Add(photo);
+        await thumbnails.StageEnqueueAsync(photo, cancellationToken);
+        return photo;
+    }
+
+    /// <summary>Releases a prepared photo that will never be attached (issue #521 implementation note 2).</summary>
+    internal Task AbandonPreparedAsync(PreparedPhoto prepared, CancellationToken cancellationToken) =>
+        store.AbandonReservationAsync(prepared.Reservation, cancellationToken);
 
     /// <summary>
     /// The upload's checks (§6, §8): the effective cap (413), then an allowed image type whose leading bytes agree
@@ -326,8 +393,8 @@ public class PhotoService
     }
 
     /// <summary>
-    /// Refuses bytes equal to an existing photo's (§3.2 step 3): a disk-backed photo by its own hash, a legacy one by
-    /// its file's — only files wrapped by a photo, so this is never an oracle for finance documents. Archived photos
+    /// Refuses bytes equal to an existing photo's (§3.2 step 3), by the photo's own hash — never a Files-store file's,
+    /// so this is never an oracle for finance documents. Archived photos
     /// count. Holds no lock: two identical uploads at the same instant can both pass (accepted, Non-Goal 9).
     /// </summary>
     private async Task EnsureNotDuplicateAsync(string hash, long size, CancellationToken cancellationToken)
@@ -335,13 +402,7 @@ public class PhotoService
         var match = await context.Photos
             .Where(p => p.Sha256Hash == hash && p.SizeBytes == size)
             .Select(p => new { p.PhotoId, p.Archived })
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? await context.Photos
-                .Where(p => p.FileId != null)
-                .Join(context.FileMetadata, p => p.FileId, f => (Guid?)f.Id, (p, f) => new { p.PhotoId, p.Archived, f.Sha256Hash, f.SizeBytes })
-                .Where(x => x.Sha256Hash == hash && x.SizeBytes == size)
-                .Select(x => new { x.PhotoId, x.Archived })
-                .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
         if (match is not null)
         {
             throw new DuplicatePhotoException(match.PhotoId, match.Archived is not null);
@@ -432,39 +493,13 @@ public class PhotoService
             return false;
         }
 
-        if (photo.StoredObjectId is { } objectId)
-        {
-            // A photo that owns its original (issue #428): the original and both thumbnails are released in the
-            // delete's own save, graced by FileStorageDeletionGraceHours. No file is touched.
-            await thumbnails.StageDeleteAsync(photo.PhotoId, cancellationToken);
-            await store.StageReleaseAsync(objectId, immediate: false, cancellationToken);
-            context.Photos.Remove(photo);
-            await context.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        // A legacy photo and the file it wraps are one thing, so they are deleted together in both directions:
-        // deleting the file cascades the photo (FK on Photo.FileId), and deleting the photo deletes the file here.
-        //
-        // Refuse when something else still holds the file. Several tables carry a cascading FK to FileMetadata, so
-        // deleting it would quietly strip the file off a transaction, a tax statement or a journal entry as a side
-        // effect of a photo delete. A 409 naming the other holders is the honest answer.
-        var fileId = photo.FileId!.Value;
-        var otherHolders = await fileReferences.DescribeNonPhotoReferencesAsync(fileId, cancellationToken);
-        if (otherHolders.Count > 0)
-        {
-            throw new DomainConflictException(
-                "This photo's file is also used as " + string.Join(", ", otherHolders) +
-                ". Deleting the photo would remove it there too, so the photo was not deleted.");
-        }
-
-        // Owned tag/person/album-item rows cascade; an album whose cover was this photo nulls its
-        // CoverPhotoId (FK SET NULL). Both thumbnails are released in the same save (issue #362 §4.1).
+        // The original and both thumbnails are released in the delete's own save, graced by
+        // FileStorageDeletionGraceHours. Owned tag/person/album-item rows cascade; an album whose cover was this photo
+        // nulls its CoverPhotoId (FK SET NULL).
         await thumbnails.StageDeleteAsync(photo.PhotoId, cancellationToken);
+        await store.StageReleaseAsync(photo.StoredObjectId, immediate: false, cancellationToken);
         context.Photos.Remove(photo);
         await context.SaveChangesAsync(cancellationToken);
-
-        await fileReferences.DeleteFileAndBlobAsync(fileId, cancellationToken);
         return true;
     }
 
@@ -878,4 +913,18 @@ public class PhotoService
     }
 
     private sealed record ValidatedLinks(List<Guid> TagIds, List<Guid> PersonIds, List<Guid> AlbumIds);
+}
+
+/// <summary>
+/// A photo validated, hashed, described and written by <see cref="PhotoService.PrepareUploadAsync"/>, not yet a row.
+/// Immutable, so every attempt of a retried transaction builds its own <see cref="Photo"/> from it.
+/// </summary>
+internal sealed record PreparedPhoto(
+    Guid PhotoId, Odyssey.Core.FileStorage.StoredObjectReservation Reservation, string FileName, string ContentType,
+    string? Title, string? Caption, DateTime? TakenAt, double? Latitude, double? Longitude, int? PixelWidth, int? PixelHeight,
+    DateTime CreatedAtUtc)
+{
+    public long SizeBytes => Reservation.SizeBytes;
+
+    public string Sha256Hash => Reservation.Sha256Hash;
 }

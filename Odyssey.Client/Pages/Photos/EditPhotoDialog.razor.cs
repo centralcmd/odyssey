@@ -14,6 +14,12 @@ public partial class EditPhotoDialog
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
     [Parameter] public Guid PhotoId { get; set; }
     [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
+
+    /// <summary>
+    /// The Tags picker's <c>CreateBlocked</c> (<see cref="TagNameRule"/>): a photo tag name is unique across
+    /// archived tags too, so the host builds it from every photo tag it loaded.
+    /// </summary>
+    [Parameter] public Func<string, string?>? TagNameBlocked { get; set; }
     [Parameter] public IReadOnlyList<OdsOption> PeopleOptions { get; set; } = [];
     [Parameter] public IReadOnlyList<OdsOption> AlbumOptions { get; set; } = [];
 
@@ -93,7 +99,10 @@ public partial class EditPhotoDialog
     {
         var option = ContactCreator.Begin(name, nameof(ContactType.Person));
         if (option is not null)
+        {
             _createdPeople.Add(option);
+        }
+
         return option;
     }
 

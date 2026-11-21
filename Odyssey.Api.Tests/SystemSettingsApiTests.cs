@@ -21,7 +21,7 @@ namespace Odyssey.Api.Tests;
 /// "leave unchanged" write contract, range validation on the two Contracts summary fields, and that audit
 /// fields are never accepted from the request body.
 /// </summary>
-public class SystemSettingsApiTests
+public class SystemSettingsApiTests(SystemSettingsApiTests.Host host) : SharedApiHostTests<SystemSettingsApiTests.Host>(host)
 {
     private const string ActorUserId = "system-settings-actor-id";
     private const string Path = "/api/system-settings";
@@ -74,7 +74,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Get_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -85,7 +85,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Get_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -98,7 +98,7 @@ public class SystemSettingsApiTests
     {
         // No EnsureCreated: an empty SystemSettings table falls back to the documented defaults —
         // matching the migration-seeded values exactly, so a caller can never observe the difference.
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -119,10 +119,11 @@ public class SystemSettingsApiTests
         Assert.Null(dto.ContactVCardMaxImportEntries);
         Assert.Equal(64, dto.ContactVCardMaxImportMegabytes);
         Assert.Equal(64, dto.ContactVCardMaxExportMegabytes);
-        Assert.Equal(2000, dto.CalendarIcsMaxExportEvents);
-        Assert.Equal(2000, dto.CalendarIcsMaxImportEvents);
-        Assert.Equal(64, dto.CalendarIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.CalendarIcsMaxExportMegabytes);
+        // The calendar surface streams its export and import (issue #516, AC 6), so it ships like task and journal.
+        Assert.Null(dto.CalendarIcsMaxExportEvents);
+        Assert.Null(dto.CalendarIcsMaxImportEvents);
+        Assert.Equal(10240, dto.CalendarIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.CalendarIcsMaxExportMegabytes);
         // The task surface ships unlimited on counts and at 10 GB on size: its files carry attached files inline.
         Assert.Null(dto.TaskIcsMaxExportTasks);
         Assert.Null(dto.TaskIcsMaxImportTasks);
@@ -138,7 +139,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Get_NeverWrites_EvenWhenTableIsEmpty()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         (await client.GetAsync(Path)).EnsureSuccessStatusCode();
@@ -151,7 +152,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task MigrationSeed_ProducesExactlyTheKnownKeyRows()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
@@ -166,8 +167,9 @@ public class SystemSettingsApiTests
         // start date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
         // for the background-job run retention (issue #409), then -1 for the retired match vocabulary cap
         // and +2 for the extraction and match prompt guidance (issue #433), then +3 for the instrument-price
-        // settings (issue #446), then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508).
-        Assert.Equal(88, rows.Count);
+        // settings (issue #446), then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508),
+        // then +1 for the calendar link cap (issue #521).
+        Assert.Equal(89, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 
@@ -176,7 +178,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_WithoutReadClaim_ReturnsForbidden_EvenWithBothWriteClaims()
     {
-        await using var factory = new ApiFactory([PermissionClaims.SystemSettingsUpdate, PermissionClaims.SystemSettingsSecurityUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.SystemSettingsUpdate, PermissionClaims.SystemSettingsSecurityUpdate]);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
@@ -187,7 +189,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_AllFieldsNull_IsNoOp()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate());
@@ -208,7 +210,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_CosmeticOnly_Succeeds_ForCosmeticClaim_WithoutSecurityClaim()
     {
-        await using var factory = new ApiFactory(ReadAndCosmeticUpdate);
+        var factory = Factory.ForCaller(ReadAndCosmeticUpdate);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -226,7 +228,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_PerimeterField_WithOnlyCosmeticClaim_ReturnsForbidden_AndPersistsNoField()
     {
-        await using var factory = new ApiFactory(ReadAndCosmeticUpdate);
+        var factory = Factory.ForCaller(ReadAndCosmeticUpdate);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -248,7 +250,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_PerimeterOnly_Succeeds_ForSecurityClaim_WithoutCosmeticClaim()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -269,7 +271,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_CosmeticField_WithOnlySecurityClaim_ReturnsForbidden_AndPersistsNoField()
     {
-        await using var factory = new ApiFactory(ReadAndSecurityUpdate);
+        var factory = Factory.ForCaller(ReadAndSecurityUpdate);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -290,7 +292,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_NullPerimeterFields_DoesNotRevertConcurrentSecurityAdminChange()
     {
-        await using var factory = new ApiFactory(permissions: []); // only used to stand up the host.
+        var factory = Factory.ForCaller([]); // only used to stand up the host.
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
@@ -319,7 +321,7 @@ public class SystemSettingsApiTests
         // §3: the null-vs-value decision is keyed off claim possession, never off a transient
         // "disabled" UI state — modeled here directly by a caller that legitimately lacks one claim
         // saving successfully while a field it never touched stays completely untouched.
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
@@ -338,7 +340,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_CosmeticFieldBelowRange_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 0 });
@@ -349,7 +351,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_CosmeticFieldAboveRange_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractMaxSummaryContracts = 100001 });
@@ -360,7 +362,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_NullCosmeticField_NeverTriggersRangeCheck()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         // Only RequireTwoFactor is set; both cosmetic fields are null and must pass through untouched.
@@ -372,7 +374,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_AuditFieldsInRequestBody_AreIgnored()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         // SystemSettingsUpdate has no updatedAt/updatedBy properties at all — a client-supplied value
@@ -396,7 +398,7 @@ public class SystemSettingsApiTests
     public async Task Get_SeededRows_CarryNoProvenance()
     {
         // A migration-seeded row has no UpdatedBy, so the page reads it as "Never changed".
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using (var scope = factory.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Database.EnsureCreatedAsync();
@@ -412,7 +414,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Put_StampsOnlyTheRowsItWrote_KeyedByUpdateFieldName()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
@@ -429,7 +431,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Provenance_IsPerRow_NotTheMostRecentWriteEverywhere()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         await SeedUserAsync(factory, FirstWriterId, "first@example.com", displayName: "Ada Lovelace");
         await SeedUserAsync(factory, SecondWriterId, "second@example.com", displayName: "Grace Hopper");
         using var scope = factory.Services.CreateScope();
@@ -456,7 +458,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Provenance_UnresolvableWriter_IsUnknownUser()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var scope = factory.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
 
@@ -476,7 +478,7 @@ public class SystemSettingsApiTests
     {
         // Mirrors the page-level UpdatedByDisplayName rule: with no profile name the resolver's only
         // remaining candidate is the email, which only a users.read holder may see.
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         await SeedUserAsync(factory, FirstWriterId, "nameless@example.com", displayName: null);
         using var scope = factory.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
@@ -527,7 +529,7 @@ public class SystemSettingsApiTests
     [Fact]
     public async Task Provenance_CarriesNoRawUserId()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 61 });
@@ -551,7 +553,10 @@ public class SystemSettingsApiTests
 
     // No photo volume: these tests read the settings table as EF InMemory leaves it without EnsureCreated (no seeded
     // rows), and verifying a volume ensures the store is created.
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId,
             configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" });
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

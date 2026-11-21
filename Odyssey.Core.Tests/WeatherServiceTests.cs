@@ -5,6 +5,7 @@ using Odyssey.Context.Secrets;
 using Odyssey.Core.Preferences;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -435,7 +436,10 @@ public class WeatherServiceTests
         var schedule = await h.Context.WeatherPointSchedules.SingleAsync(s => s.WeatherPointId == location.Id);
         schedule.NextObservationFetchAfterUtc = new DateTime(2026, 10, 23, 6, 0, 0);
         if (failed)
+        {
             schedule.ObservationFailureKind = WeatherFetchFailureKind.RateLimited;
+        }
+
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();
 
@@ -542,11 +546,11 @@ public class WeatherServiceTests
         Assert.True(await new WeatherPointService(h.NewContext(), h.Fetch(), h.Settings, new TrackedWeatherHistoryPurger(h.NewContext()), h.Time, pointLog)
             .DeleteAsync(point.WeatherPointId, WeatherTestHarness.AdminId, CancellationToken.None));
 
-        var lines = pointLog.Lines.Concat(linkLog.Lines).ToList();
+        var lines = pointLog.Messages.Concat(linkLog.Messages).ToList();
         Assert.Contains(lines, l => l.Contains("created", StringComparison.Ordinal) && l.Contains(point.WeatherPointId.ToString(), StringComparison.Ordinal));
         Assert.Contains(lines, l => l.Contains("moved", StringComparison.Ordinal));
         Assert.Contains(lines, l => l.Contains($"{point.WeatherPointId} deleted", StringComparison.Ordinal) && l.Contains("2 linked location(s) unlinked", StringComparison.Ordinal));
-        Assert.Equal(2, linkLog.Lines.Count(l => l.Contains(" set by ", StringComparison.Ordinal)));
+        Assert.Equal(2, linkLog.Messages.Count(l => l.Contains(" set by ", StringComparison.Ordinal)));
         Assert.All(lines, l =>
         {
             Assert.DoesNotContain("Secret Street", l, StringComparison.Ordinal);
@@ -556,19 +560,6 @@ public class WeatherServiceTests
             Assert.DoesNotContain("10.7", l, StringComparison.Ordinal);
         });
         Assert.Equal(2, await h.NewContext().Locations.CountAsync(l => l.WeatherPointId == null));
-    }
-
-    private sealed class RecordingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 
     private static WeatherScheduleJob Job(WeatherTestHarness h)
@@ -1392,8 +1383,15 @@ public class WeatherServiceTests
     {
         using var h = new WeatherTestHarness();
         var home = await h.EnableAsync();
-        if (!contact) h.Settings.Value = h.Settings.Value with { Contact = null };
-        if (clientId) h.Secrets.Frost = SecretResult.Found("frost-client");
+        if (!contact)
+        {
+            h.Settings.Value = h.Settings.Value with { Contact = null };
+        }
+
+        if (clientId)
+        {
+            h.Secrets.Frost = SecretResult.Found("frost-client");
+        }
 
         var daily = await h.Read().DailyAsync(Daily(home.Id, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 22)), "u1", CancellationToken.None);
 

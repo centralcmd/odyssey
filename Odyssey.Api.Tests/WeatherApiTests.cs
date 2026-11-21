@@ -24,7 +24,7 @@ namespace Odyssey.Api.Tests;
 /// recorded response — so nothing here leaves the test host. The purge runs through the tracked purger the
 /// Testing environment registers, so its whole success path runs here.
 /// </summary>
-public class WeatherApiTests
+public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<WeatherApiTests.Host>(host)
 {
     private static readonly string[] Reader = [PermissionClaims.WeatherRead, PermissionClaims.WeatherPreferencesUpdate, PermissionClaims.LocationsRead];
 
@@ -119,9 +119,8 @@ public class WeatherApiTests
     public async Task Every_endpoint_is_403_without_its_claim(string method, string path)
     {
         // Everything except the weather claims, so the 403 can only come from the weather gate.
-        await using var factory = new WeatherFactory(
+        using var client = Factory.ClientFor(
             [PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate, PermissionClaims.CalendarRead, PermissionClaims.JournalRead]);
-        using var client = factory.CreateClient();
 
         var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), path)
         {
@@ -136,14 +135,14 @@ public class WeatherApiTests
     [InlineData("/api/journal-entries/{0}/weather", PermissionClaims.JournalRead)]
     public async Task Event_and_entry_weather_need_both_claims(string template, string moduleClaim)
     {
-        await using var weatherOnly = new WeatherFactory([PermissionClaims.WeatherRead]);
-        Assert.Equal(HttpStatusCode.Forbidden, (await weatherOnly.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
+        using var weatherOnly = Factory.ClientFor([PermissionClaims.WeatherRead]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await weatherOnly.GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
 
-        await using var moduleOnly = new WeatherFactory([moduleClaim]);
-        Assert.Equal(HttpStatusCode.Forbidden, (await moduleOnly.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
+        using var moduleOnly = Factory.ClientFor([moduleClaim]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await moduleOnly.GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
 
-        await using var both = new WeatherFactory([moduleClaim, PermissionClaims.WeatherRead]);
-        Assert.Equal(HttpStatusCode.NotFound, (await both.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
+        using var both = Factory.ClientFor([moduleClaim, PermissionClaims.WeatherRead]);
+        Assert.Equal(HttpStatusCode.NotFound, (await both.GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
     }
 
     public static TheoryData<string, string> PointEndpoints => new()
@@ -164,8 +163,8 @@ public class WeatherApiTests
     {
         foreach (var role in new[] { RolePermissions.OwnerClaims, RolePermissions.UserClaims, RolePermissions.GuestClaims })
         {
-            await using var factory = new WeatherFactory(role);
-            var response = await factory.CreateClient().SendAsync(new HttpRequestMessage(new HttpMethod(method), path)
+            var factory = Factory;
+            var response = await factory.ClientFor(role).SendAsync(new HttpRequestMessage(new HttpMethod(method), path)
             {
                 Content = method is "PUT" or "POST" ? JsonContent.Create(NewPoint()) : null,
             });
@@ -176,8 +175,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Admin_owner_and_user_can_link_and_guest_or_a_caller_without_weather_read_cannot()
     {
-        await using var admin = new WeatherFactory(RolePermissions.AdminClaims);
-        using var adminClient = admin.CreateClient();
+        var factory = Factory;
+        using var adminClient = factory.ClientFor(RolePermissions.AdminClaims);
         var point = await CreatePointAsync(adminClient);
         var place = await CreateLocationAsync(adminClient);
 
@@ -190,9 +189,8 @@ public class WeatherApiTests
             ([PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate], HttpStatusCode.Forbidden),
         })
         {
-            // Same in-memory store: the factories share nothing, so each links its own place.
-            await using var factory = new WeatherFactory(claims);
-            using var client = factory.CreateClient();
+            // One store: each caller expected to succeed links a place and point of its own, never the admin's.
+            using var client = factory.ClientFor(claims);
             Guid locationId = place.LocationId, pointId = point.WeatherPointId;
             if (expected == HttpStatusCode.OK)
             {
@@ -220,8 +218,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Create_is_201_with_a_location_header_and_a_rounded_site_one()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.PostAsJsonAsync("/api/weather/points", NewPoint());
 
@@ -253,8 +251,8 @@ public class WeatherApiTests
     [MemberData(nameof(BadCreateBodies))]
     public async Task A_malformed_create_is_400(string body)
     {
-        await using var factory = new WeatherFactory(Admin);
-        var response = await factory.CreateClient().PostAsync("/api/weather/points",
+        var factory = Factory;
+        var response = await factory.ClientFor(Admin).PostAsync("/api/weather/points",
             new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -262,8 +260,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Create_from_a_location_copies_the_fingerprinted_position_and_links_nothing()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var location = await CreateLocationAsync(client, "Storgata 1");
         Assert.Equal(WeatherRules.Fingerprint(59.913m, 10.750m, 12, "Europe/Oslo"), location.WeatherFingerprint);
 
@@ -291,15 +289,15 @@ public class WeatherApiTests
     [Fact]
     public async Task Create_from_a_location_needs_locations_read_and_a_place_with_coordinates()
     {
-        await using var noRead = new WeatherFactory([PermissionClaims.WeatherPointsUpdate, PermissionClaims.WeatherPointsRead]);
-        var forbidden = await noRead.CreateClient().PostAsJsonAsync("/api/weather/points", new NewWeatherPoint
+        var factory = Factory;
+        using var noRead = factory.ClientFor([PermissionClaims.WeatherPointsUpdate, PermissionClaims.WeatherPointsRead]);
+        var forbidden = await noRead.PostAsJsonAsync("/api/weather/points", new NewWeatherPoint
         {
             FromLocationId = Guid.NewGuid(), ExpectedLocationFingerprint = "x", ForecastEnabled = true, HistoryEnabled = true, IsTracked = false,
         });
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
 
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(Admin);
         var bare = await client.PostAsJsonAsync("/api/locations", new NewLocation { Name = "Bare", Source = LocationSource.Manual });
         var place = (await bare.Content.ReadFromJsonAsync<ExistingLocation>())!;
         Assert.Null(place.WeatherFingerprint);
@@ -316,8 +314,8 @@ public class WeatherApiTests
     [Fact]
     public async Task A_duplicate_name_is_409_duplicate_name_and_a_stale_put_is_409_stale()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var oslo = await CreatePointAsync(client, "Oslo");
         var bergen = await CreatePointAsync(client, "Bergen");
 
@@ -346,8 +344,8 @@ public class WeatherApiTests
     [Fact]
     public async Task A_move_with_linked_places_warns_and_reports_site_two()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         foreach (var name in new[] { "A", "B" })
         {
@@ -370,8 +368,8 @@ public class WeatherApiTests
     [Fact]
     public async Task The_linked_count_and_its_sort_follow_locations_read()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var place = await CreateLocationAsync(client, "Storgata 1", latitude: 59.92m);
         await LinkAsync(client, place.LocationId, point.WeatherPointId);
@@ -384,26 +382,15 @@ public class WeatherApiTests
         Assert.Equal(JsonValueKind.Number, only.GetProperty("distanceKm").ValueKind);
         Assert.Equal(1, only.GetProperty("distanceKm").GetInt32());
 
-        await using var blind = new WeatherFactory([PermissionClaims.WeatherPointsRead]);
-        using var blindClient = blind.CreateClient();
+        using var blindClient = factory.ClientFor([PermissionClaims.WeatherPointsRead]);
         Assert.Equal(HttpStatusCode.Forbidden, (await blindClient.GetAsync("/api/weather/points?sortBy=LinkedLocationCount")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await blindClient.GetAsync($"/api/weather/points/{point.WeatherPointId}/linked-locations")).StatusCode);
-        using (var scope = blind.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var now = DateTime.UtcNow;
-            var id = Guid.NewGuid();
-            context.WeatherPoints.Add(new WeatherPoint
-            {
-                WeatherPointId = id, Name = "P", CurrentSiteVersion = 1,
-                SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
-            });
-            context.WeatherPointSites.Add(new WeatherPointSite { WeatherPointId = id, SiteVersion = 1, Latitude = 1, Longitude = 1, TimeZoneId = "UTC", AppliedAt = now });
-            await context.SaveChangesAsync();
-        }
 
+        // The same point the admin just saw linked once: its count is withheld, not zero.
         using var page = JsonDocument.Parse(await blindClient.GetStringAsync("/api/weather/points"));
-        Assert.Equal(JsonValueKind.Null, page.RootElement.GetProperty("items")[0].GetProperty("linkedLocationCount").ValueKind);
+        var row = Assert.Single(page.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal(point.WeatherPointId, row.GetProperty("weatherPointId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, row.GetProperty("linkedLocationCount").ValueKind);
     }
 
     // ── Purge and delete (AC 11a, 20, 21) ────────────────────────────────────────────────────────
@@ -411,8 +398,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Purge_and_delete_keep_their_guards_then_204_and_the_places_are_unlinked()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var place = await CreateLocationAsync(client);
         await LinkAsync(client, place.LocationId, point.WeatherPointId);
@@ -446,8 +433,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Deleting_the_household_default_is_409_household_default()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate { WeatherDefaultPointId = point.WeatherPointId.ToString() });
         using (var scope = factory.Services.CreateScope())
@@ -469,8 +456,10 @@ public class WeatherApiTests
     [Fact]
     public async Task Refresh_without_a_contact_is_503_weather_not_configured()
     {
-        await using var factory = new WeatherFactory(Admin, contact: null);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
+        await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherUserAgentContact, SystemSettingsDefaults.WeatherUserAgentContact);
+        Evict(factory);
         var point = await CreatePointAsync(client);
 
         var response = await client.PostAsync($"/api/weather/points/{point.WeatherPointId}/refresh", null);
@@ -483,8 +472,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Refresh_fetches_and_reports_the_issue_time()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client, tracked: true);
 
         var result = await client.PostAsync($"/api/weather/points/{point.WeatherPointId}/refresh", null);
@@ -501,8 +490,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Linking_validates_its_target_and_reports_whole_kilometres()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var far = await CreateLocationAsync(client, "Far", latitude: 64.4m);
 
@@ -532,8 +521,8 @@ public class WeatherApiTests
     [Fact]
     public async Task A_nested_point_object_changes_no_point_and_a_location_put_changes_no_link()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var other = await CreatePointAsync(client, "Bergen");
         var place = await CreateLocationAsync(client);
@@ -560,8 +549,8 @@ public class WeatherApiTests
     [Fact]
     public async Task The_location_read_carries_the_link_only_for_a_weather_read_holder()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var place = await CreateLocationAsync(client);
         await LinkAsync(client, place.LocationId, point.WeatherPointId);
@@ -574,25 +563,9 @@ public class WeatherApiTests
         Assert.Equal(JsonValueKind.Number, raw.RootElement.GetProperty("weatherPointDistanceKm").ValueKind);
         Assert.Equal(1, raw.RootElement.GetProperty("weatherPointDistanceKm").GetInt32());
 
-        await using var blind = new WeatherFactory([PermissionClaims.LocationsRead, PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate]);
-        using var blindClient = blind.CreateClient();
-        var mine = await CreateLocationAsync(blindClient);
-        using (var scope = blind.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var now = DateTime.UtcNow;
-            var id = Guid.NewGuid();
-            context.WeatherPoints.Add(new WeatherPoint
-            {
-                WeatherPointId = id, Name = "P", CurrentSiteVersion = 1,
-                SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
-            });
-            context.WeatherPointSites.Add(new WeatherPointSite { WeatherPointId = id, SiteVersion = 1, Latitude = 59.9m, Longitude = 10.7m, TimeZoneId = "UTC", AppliedAt = now });
-            (await context.Locations.SingleAsync(l => l.LocationId == mine.LocationId)).WeatherPointId = id;
-            await context.SaveChangesAsync();
-        }
-
-        using var hidden = JsonDocument.Parse(await blindClient.GetStringAsync($"/api/locations/{mine.LocationId}"));
+        // The same linked place, read by a caller without weather.read.
+        using var blindClient = factory.ClientFor([PermissionClaims.LocationsRead, PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate]);
+        using var hidden = JsonDocument.Parse(await blindClient.GetStringAsync($"/api/locations/{place.LocationId}"));
         Assert.Equal(JsonValueKind.Null, hidden.RootElement.GetProperty("weatherPoint").ValueKind);
         Assert.Equal(JsonValueKind.Null, hidden.RootElement.GetProperty("weatherPointDistanceKm").ValueKind);
     }
@@ -602,8 +575,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Options_expose_no_coordinate_site_schedule_or_station_and_nearLocationId_needs_locations_read()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var place = await CreateLocationAsync(client);
 
@@ -619,8 +592,7 @@ public class WeatherApiTests
         Assert.Equal(JsonValueKind.Number, nearest.GetProperty("distanceKm").ValueKind);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/weather/points/options?nearLocationId={Guid.NewGuid()}")).StatusCode);
 
-        await using var guest = new WeatherFactory([PermissionClaims.WeatherRead]);
-        using var guestClient = guest.CreateClient();
+        using var guestClient = factory.ClientFor([PermissionClaims.WeatherRead]);
         Assert.Equal(HttpStatusCode.OK, (await guestClient.GetAsync("/api/weather/points/options")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await guestClient.GetAsync($"/api/weather/points/options?nearLocationId={place.LocationId}")).StatusCode);
     }
@@ -630,8 +602,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Current_with_no_place_is_NoPlace_and_an_unknown_point_is_404()
     {
-        await using var factory = new WeatherFactory(Reader);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Reader);
 
         var current = await client.GetFromJsonAsync<WeatherCurrentResponse>("/api/weather/current", Json);
         Assert.Equal(WeatherStatus.NoPlace, current!.Status);
@@ -643,8 +615,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Current_for_an_untracked_point_is_fetched_on_demand()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
 
         using var raw = JsonDocument.Parse(await client.GetStringAsync($"/api/weather/current?weatherPointId={point.WeatherPointId}"));
@@ -663,15 +635,15 @@ public class WeatherApiTests
     [InlineData("/api/weather/daily?from=2026-03-05&to=2026-03-01")]
     public async Task An_invalid_window_is_400(string path)
     {
-        await using var factory = new WeatherFactory(Reader);
-        Assert.Equal(HttpStatusCode.BadRequest, (await factory.CreateClient().GetAsync(path)).StatusCode);
+        var factory = Factory;
+        Assert.Equal(HttpStatusCode.BadRequest, (await factory.ClientFor(Reader).GetAsync(path)).StatusCode);
     }
 
     [Fact]
     public async Task Preferences_accept_only_a_selectable_point_and_take_no_user_id()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var off = await CreatePointAsync(client, "Off", forecast: false);
         var home = await CreatePointAsync(client, "Home");
 
@@ -692,8 +664,8 @@ public class WeatherApiTests
     [Fact]
     public async Task The_household_default_must_be_a_point_with_its_forecast_on()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var off = await CreatePointAsync(client, "Off", forecast: false);
         var home = await CreatePointAsync(client, "Home");
 
@@ -719,8 +691,8 @@ public class WeatherApiTests
     [InlineData("http://example.org/contact")]
     public async Task An_unusable_contact_is_refused(string contact)
     {
-        await using var factory = new WeatherFactory(Admin);
-        var response = await factory.CreateClient().PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate { WeatherUserAgentContact = contact });
+        var factory = Factory;
+        var response = await factory.ClientFor(Admin).PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate { WeatherUserAgentContact = contact });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -729,8 +701,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Hourly_and_daily_return_the_fetched_forecast()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var from = DateTime.UtcNow;
 
@@ -761,8 +733,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Event_and_entry_weather_at_a_linked_place_name_the_place_and_the_distance()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var place = await CreateLocationAsync(client, "Storgata 1", latitude: 59.92m);
         await LinkAsync(client, place.LocationId, point.WeatherPointId);
@@ -807,14 +779,14 @@ public class WeatherApiTests
     [InlineData("/api/journal-entries/weather?ids={0}", PermissionClaims.JournalRead)]
     public async Task Batch_reads_need_both_claims_and_reach_the_batch_action_not_the_record(string template, string moduleClaim)
     {
-        await using var weatherOnly = new WeatherFactory([PermissionClaims.WeatherRead]);
-        Assert.Equal(HttpStatusCode.Forbidden, (await weatherOnly.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
+        using var weatherOnly = Factory.ClientFor([PermissionClaims.WeatherRead]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await weatherOnly.GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
 
-        await using var moduleOnly = new WeatherFactory([moduleClaim]);
-        Assert.Equal(HttpStatusCode.Forbidden, (await moduleOnly.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
+        using var moduleOnly = Factory.ClientFor([moduleClaim]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await moduleOnly.GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
 
-        await using var both = new WeatherFactory([moduleClaim, PermissionClaims.WeatherRead]);
-        var response = await both.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()));
+        using var both = Factory.ClientFor([moduleClaim, PermissionClaims.WeatherRead]);
+        var response = await both.GetAsync(string.Format(template, Guid.NewGuid()));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(0, body.RootElement.GetProperty("items").GetArrayLength());
@@ -835,9 +807,9 @@ public class WeatherApiTests
     [MemberData(nameof(MalformedIds))]
     public async Task A_malformed_ids_list_is_one_400_keyed_ids_that_echoes_nothing(string query)
     {
-        await using var factory = new WeatherFactory([PermissionClaims.JournalRead, PermissionClaims.WeatherRead]);
+        var factory = Factory;
 
-        var response = await factory.CreateClient().GetAsync($"/api/journal-entries/weather{query}");
+        var response = await factory.ClientFor([PermissionClaims.JournalRead, PermissionClaims.WeatherRead]).GetAsync($"/api/journal-entries/weather{query}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var text = await response.Content.ReadAsStringAsync();
@@ -853,8 +825,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Fifty_ids_and_two_spellings_of_one_id_are_accepted()
     {
-        await using var factory = new WeatherFactory([PermissionClaims.CalendarRead, PermissionClaims.WeatherRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.CalendarRead, PermissionClaims.WeatherRead]);
         var fifty = string.Join("&", Enumerable.Range(0, WeatherRules.BatchMaxIds).Select(_ => $"ids={Guid.NewGuid()}"));
         var id = Guid.NewGuid();
 
@@ -866,8 +838,8 @@ public class WeatherApiTests
     [Fact]
     public async Task The_four_event_and_entry_reads_send_private_no_store()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var eventId = Guid.NewGuid();
         var entryId = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
@@ -922,11 +894,14 @@ public class WeatherApiTests
     {
         // AC 18 with the shipped configuration — no override — so a changed default fails here.
         Assert.Equal((20, 60), (new WeatherReadBatchRateLimitOptions().PermitLimit, new WeatherReadBatchRateLimitOptions().WindowSeconds));
-        await using var factory = new WeatherFactory(Admin);
+        await using var factory = new WeatherFactory(Admin); // a fresh host: this test spends a real rate-limit window
         using var client = factory.CreateClient();
 
         for (var i = 0; i < 20; i++)
+        {
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/journal-entries/weather?ids={Guid.NewGuid()}")).StatusCode);
+        }
+
         Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync($"/api/calendar-events/weather?ids={Guid.NewGuid()}")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/current")).StatusCode);
     }
@@ -934,8 +909,8 @@ public class WeatherApiTests
     [Fact]
     public async Task A_batch_answers_a_linked_place_with_its_point_in_request_order()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var place = await CreateLocationAsync(client, "Storgata 1", latitude: 59.92m);
         await LinkAsync(client, place.LocationId, point.WeatherPointId);
@@ -1004,8 +979,8 @@ public class WeatherApiTests
     [Fact]
     public async Task The_scheduler_fetches_only_the_first_places_within_the_cap()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         foreach (var name in new[] { "One", "Two", "Three" })
         {
             await CreatePointAsync(client, name, tracked: true);
@@ -1024,8 +999,8 @@ public class WeatherApiTests
     [Fact]
     public async Task The_scheduler_sends_nothing_without_a_contact()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         await CreatePointAsync(client, tracked: true);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherUserAgentContact, "");
         Evict(factory);
@@ -1038,14 +1013,13 @@ public class WeatherApiTests
     [Fact]
     public async Task The_scheduler_makes_no_frost_request_while_the_secret_is_not_set()
     {
-        var observations = new CountingObservations();
-        await using var factory = new WeatherFactory(Admin, observations: observations);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         await CreatePointAsync(client, tracked: false);
 
         await Scheduler(factory).RunOnceAsync(CancellationToken.None);
 
-        Assert.Equal(0, observations.Calls);
+        Assert.Equal(0, factory.Observations.Calls);
         Assert.Equal(0, factory.Forecasts.Calls);
     }
 
@@ -1074,8 +1048,8 @@ public class WeatherApiTests
     public async Task The_lookup_clamps_and_degrades_the_interval_toward_fewer_requests(
         string contact, string interval, string? unused, int expectedInterval, int expectedCap)
     {
-        await using var factory = new WeatherFactory(Reader, contact);
-        factory.CreateClient().Dispose();
+        var factory = Factory;
+        await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherUserAgentContact, contact);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherRefreshIntervalMinutes, interval);
         Evict(factory);
 
@@ -1094,8 +1068,7 @@ public class WeatherApiTests
     [InlineData("not an address")]
     public async Task A_stored_contact_the_rule_rejects_reads_as_not_configured(string stored)
     {
-        await using var factory = new WeatherFactory(Reader, contact: null);
-        factory.CreateClient().Dispose();
+        var factory = Factory;
         await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherUserAgentContact, stored);
         Evict(factory);
 
@@ -1110,8 +1083,8 @@ public class WeatherApiTests
     [Fact]
     public async Task An_unparseable_household_default_is_none_and_degraded()
     {
-        await using var factory = new WeatherFactory(Reader);
-        factory.CreateClient().Dispose();
+        var factory = Factory;
+        factory.ClientFor(Reader).Dispose();
         await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultPointId, "not-a-guid");
         Evict(factory);
 
@@ -1120,24 +1093,6 @@ public class WeatherApiTests
 
         Assert.Null(settings.HouseholdDefaultPointId);
         Assert.True(settings.IsDegraded);
-    }
-
-    private sealed class CountingObservations : IWeatherObservationSource
-    {
-        public int Calls;
-
-        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken)
-        {
-            Interlocked.Increment(ref Calls);
-            return Task.FromResult(new StationLookupResult(true, null));
-        }
-
-        public Task<ObservationFetchResult> FetchDailyAsync(
-            IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken)
-        {
-            Interlocked.Increment(ref Calls);
-            return Task.FromResult(new ObservationFetchResult(true, []));
-        }
     }
 
     // ── Hours of one day (issue #414) ─────────────────────────────────────────────────────────────
@@ -1152,7 +1107,9 @@ public class WeatherApiTests
             var response = await client.GetFromJsonAsync<WeatherHourlyResponse>(
                 $"/api/weather/hourly?weatherPointId={pointId}&date={candidate:yyyy-MM-dd}", Json);
             if (response!.Day!.IsToday)
+            {
                 return candidate;
+            }
         }
 
         throw new InvalidOperationException("No date within a day of UTC is the point's today.");
@@ -1169,8 +1126,8 @@ public class WeatherApiTests
     [InlineData("/api/weather/hourly?date=%EF%BC%92%EF%BC%90%EF%BC%92%EF%BC%96-%EF%BC%91%EF%BC%91-%EF%BC%90%EF%BC%95", "date")]
     public async Task A_malformed_hourly_query_is_400_keyed_on_the_field_at_fault(string path, string key)
     {
-        await using var factory = new WeatherFactory(Reader);
-        var response = await factory.CreateClient().GetAsync(path);
+        var factory = Factory;
+        var response = await factory.ClientFor(Reader).GetAsync(path);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
@@ -1180,8 +1137,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Day_mode_returns_the_point_local_day_with_local_times_and_nothing_of_the_site()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var tomorrow = (await PointTodayAsync(client, point.WeatherPointId)).AddDays(1);
 
@@ -1224,8 +1181,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Day_mode_outside_the_window_is_OutOfRange_with_no_bounds_and_never_fetches()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var today = await PointTodayAsync(client, point.WeatherPointId);
         var callsBefore = factory.Forecasts.Calls;
@@ -1251,8 +1208,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Every_other_weather_read_keeps_its_wire_shape()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var point = await CreatePointAsync(client);
         var place = await CreateLocationAsync(client, "Storgata 1", latitude: 59.92m);
         await LinkAsync(client, place.LocationId, point.WeatherPointId);
@@ -1295,7 +1252,10 @@ public class WeatherApiTests
         })
         {
             if (carriesSteps)
+            {
                 Assert.Contains("\"timeUtc\"", body, StringComparison.Ordinal);
+            }
+
             Assert.DoesNotContain("\"localStart\"", body, StringComparison.Ordinal);
             Assert.DoesNotContain("\"localEnd\"", body, StringComparison.Ordinal);
         }
@@ -1336,8 +1296,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Windows_round_trip_with_a_status_and_the_list_carries_only_the_summary()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var request = NewPoint();
         request.HistoryWindows = [Window("2026-06-10", "2026-06-17"), Window("2025-07-01", "2025-07-07")];
         var created = await client.PostAsJsonAsync("/api/weather/points", request);
@@ -1357,8 +1317,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Put_without_windows_keeps_them_and_with_an_array_replaces_them()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var request = NewPoint();
         request.HistoryWindows = [Window("2026-06-10", "2026-06-17")];
         var point = (await (await client.PostAsJsonAsync("/api/weather/points", request)).Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
@@ -1401,8 +1361,8 @@ public class WeatherApiTests
     [MemberData(nameof(InvalidWindowSets))]
     public async Task An_invalid_window_set_is_a_400_keyed_on_exactly_the_member_path(string windowsJson, string key)
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.PostAsync("/api/weather/points", JsonBody(PointBody(windowsJson)));
 
@@ -1414,8 +1374,8 @@ public class WeatherApiTests
     [Fact]
     public async Task The_last_allowed_day_and_adjacent_windows_are_accepted()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
 
         var response = await client.PostAsync("/api/weather/points", JsonBody(PointBody(
             $$"""[{"from":"2026-06-10","to":"2026-06-17"},{"from":"2026-06-18","to":"2026-06-20"},{"from":"{{ServerToday(730)}}"}]""")));
@@ -1429,8 +1389,8 @@ public class WeatherApiTests
         // AC 24: the spec's shape — 700 000 empty elements, under the 4 MB write limit, far above D. Every element is
         // individually invalid (no From), so any per-element work would surface as a per-element key. No wall-clock
         // bound in the fast tier: the single key is the proof that nothing ran per element.
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         const int count = 700_000;
         Assert.True(count > WeatherHistoryWindowRules.MaxValidCount(DateOnly.FromDateTime(DateTime.UtcNow)));
         var impossible = PointBody($"[{string.Join(",", Enumerable.Repeat("{}", count))}]");
@@ -1449,8 +1409,8 @@ public class WeatherApiTests
     public async Task An_unknown_member_on_a_window_element_is_ignored_and_sets_no_id()
     {
         // AC 14 / §7.4: unknown members are ignored by the binder; a window id is always server-generated.
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var forged = Guid.NewGuid();
         var response = await client.PostAsync("/api/weather/points", JsonBody(PointBody(
             $$"""[{"from":"2026-06-10","to":"2026-06-17","id":"{{forged}}","weatherPointHistoryWindowId":"{{forged}}","weatherPointId":"{{forged}}","status":"Complete","extra":[1,"x"]}]""")));
@@ -1504,8 +1464,8 @@ public class WeatherApiTests
     {
         // Read off the routed endpoints' metadata — the public IRequestSizeLimitMetadata surface the request-size
         // middleware consults — rather than the attribute's private field.
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var endpoints = factory.Services.GetServices<Microsoft.AspNetCore.Routing.EndpointDataSource>()
             .SelectMany(source => source.Endpoints).ToList();
 
@@ -1521,8 +1481,8 @@ public class WeatherApiTests
     [Fact]
     public async Task A_window_only_edit_with_a_stale_token_is_a_409_and_changes_nothing()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var request = NewPoint();
         request.HistoryWindows = [Window("2026-06-10", "2026-06-17")];
         var point = (await (await client.PostAsJsonAsync("/api/weather/points", request)).Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
@@ -1604,8 +1564,8 @@ public class WeatherApiTests
     [Fact]
     public async Task Weather_read_surfaces_carry_no_window_data()
     {
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var (point, paths) = await WindowedPointWithEveryReadAsync(factory, client);
 
         foreach (var path in paths)
@@ -1637,8 +1597,8 @@ public class WeatherApiTests
     {
         // AC 9b: same stored data, different windows → the same bytes on every weather.read surface, so the accepted
         // exposure (§7.3: the measured days themselves) is exactly what is described and no wider.
-        await using var factory = new WeatherFactory(Admin);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
         var (point, paths) = await WindowedPointWithEveryReadAsync(factory, client);
 
         async Task<List<string>> ReadAllAsync()
@@ -1675,31 +1635,38 @@ public class WeatherApiTests
         }
     }
 
-    private sealed class WeatherFactory : OdysseyApiFactory
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : WeatherFactory([]);
+
+    public class WeatherFactory : OdysseyApiFactory
     {
         public WeatherFactory(
             IReadOnlyCollection<string> permissions, string? contact = "ops@example.org",
-            IReadOnlyDictionary<string, string?>? configuration = null, IWeatherObservationSource? observations = null)
-            : this(permissions, contact, new StubForecasts(), configuration, observations ?? new NoObservations())
+            IReadOnlyDictionary<string, string?>? configuration = null)
+            : this(permissions, contact, new StubForecasts(), configuration, new NoObservations())
         {
         }
 
         private WeatherFactory(
             IReadOnlyCollection<string> permissions, string? contact, StubForecasts forecasts,
-            IReadOnlyDictionary<string, string?>? configuration, IWeatherObservationSource observations)
+            IReadOnlyDictionary<string, string?>? configuration, NoObservations observations)
             : base(permissions, "weather-actor", configuration, services =>
             {
                 services.RemoveAll<IWeatherForecastSource>();
                 services.AddSingleton<IWeatherForecastSource>(forecasts);
                 services.RemoveAll<IWeatherObservationSource>();
-                services.AddSingleton(observations);
+                services.AddSingleton<IWeatherObservationSource>(observations);
             })
         {
             Forecasts = forecasts;
+            Observations = observations;
             Contact = contact;
         }
 
         public StubForecasts Forecasts { get; }
+
+        /// <summary>The Frost stand-in: counts every call, then throws, since no test here may reach Frost.</summary>
+        public NoObservations Observations { get; }
 
         private string? Contact { get; }
 
@@ -1716,13 +1683,29 @@ public class WeatherApiTests
         }
 
         private bool contactSet;
+
+        /// <summary>A shared host starts each test as a fresh one would: no forecast calls, the contact set.</summary>
+        public override async Task ResetStoreAsync()
+        {
+            await base.ResetStoreAsync();
+            Forecasts.Reset();
+            Observations.Reset();
+            contactSet = false;
+            if (Contact is not null)
+            {
+                await SetSystemSettingAsync(SystemSettingsKeys.WeatherUserAgentContact, Contact);
+                contactSet = true;
+            }
+        }
     }
 
-    private sealed class StubForecasts : IWeatherForecastSource
+    public sealed class StubForecasts : IWeatherForecastSource
     {
         private int calls;
 
         public int Calls => calls;
+
+        public void Reset() => Interlocked.Exchange(ref calls, 0);
 
         public Task<ForecastFetchResult> FetchAsync(
             WeatherSiteQuery site, string contact, string? ifModifiedSince, TimeSpan budget, CancellationToken cancellationToken)
@@ -1737,13 +1720,26 @@ public class WeatherApiTests
         }
     }
 
-    private sealed class NoObservations : IWeatherObservationSource
+    public sealed class NoObservations : IWeatherObservationSource
     {
-        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken) =>
+        private int calls;
+
+        /// <summary>Every call, counted before it throws: a caller that swallows the throw is still seen.</summary>
+        public int Calls => calls;
+
+        public void Reset() => Interlocked.Exchange(ref calls, 0);
+
+        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref calls);
             throw new InvalidOperationException("No read may call Frost.");
+        }
 
         public Task<ObservationFetchResult> FetchDailyAsync(
-            IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken) =>
+            IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref calls);
             throw new InvalidOperationException("No read may call Frost.");
+        }
     }
 }

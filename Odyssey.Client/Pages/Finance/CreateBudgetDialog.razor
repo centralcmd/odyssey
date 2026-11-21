@@ -18,15 +18,11 @@
                OnSubmit="SaveAsync">
 
     <!-- Budget name -->
-    <MudTextField @bind-Value="_name"
-                  Label="Budget name"
-                  Required="true"
-                  Placeholder="e.g. January 2025"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Error="@_nameError"
-                  ErrorText="Give the budget a name."
-                  Immediate="true" />
+    <OdsField @bind-Value="_name"
+              Label="Budget name"
+              Required="true"
+              Placeholder="e.g. January 2025"
+              Error="@(_nameError ? "Give the budget a name." : null)" />
 
     <!-- Start + End date -->
     <OdsFormRow>
@@ -84,7 +80,9 @@
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         if (Budget is { } budget)
         {
@@ -127,7 +125,9 @@
         _nameError = string.IsNullOrWhiteSpace(_name);
         _dateError = _startDate is not null && _endDate is not null && _endDate.Value.Date < _startDate.Value.Date;
         if (_nameError || _dateError)
+        {
             return false;
+        }
 
         if (_startDate is null || _endDate is null)
         {

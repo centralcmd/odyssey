@@ -1,0 +1,79 @@
+@using Odyssey.Client.Pages.Attachments
+@*
+    CalendarEventLinks — the event dialog's Photos and Attachments (issue #522 §3.1–§3.2). Editable in create,
+    standalone-edit and series modes (AttachmentLinkFields, the journal's fields); read-only for a viewer who cannot save
+    (v3 §B); on an occurrence of a series, the series' links read-only under the h3 "From the series" — the dialog title is
+    the h2 — with the help line and the dialog's own "Edit series…" control.
+*@
+
+@if (FromSeries)
+{
+    <section class="cal-ce-fromseries" aria-labelledby="@HeadingId" aria-busy="@(Loading ? "true" : null)">
+        <h3 class="cal-ce-fromseries-h" id="@HeadingId">From the series</h3>
+        <AttachmentLinkFields Photos="Draft.Photos" Attachments="Draft.Attachments" ReadOnly="true" Loading="Loading"
+                              Voice="AttachmentLinkVoice.Calendar" Noun="event"
+                              CanReadFiles="CanReadFiles" CanReadPhotos="CanReadPhotos" CanDownload="CanReadFiles"
+                              AttachmentCount="AttachmentCount" PhotoCount="PhotoCount" />
+        <p class="cal-ce-fromseries-help">
+            @CalendarEventCopy.LinksBelongToSeries
+            <button type="button" class="link-btn" @onclick="OnEditSeries">Edit series…</button>
+        </p>
+    </section>
+}
+else
+{
+    <div class="cal-ce-links">
+        <AttachmentLinkFields Photos="Draft.Photos" Attachments="Draft.Attachments" ReadOnly="ReadOnly" Loading="Loading"
+                              Voice="AttachmentLinkVoice.Calendar" Noun="@Noun"
+                              Cap="Cap" CanReadFiles="CanReadFiles" CanReadPhotos="CanReadPhotos" CanDownload="CanReadFiles"
+                              AttachmentCount="AttachmentCount" PhotoCount="PhotoCount"
+                              RemoveLabel="Remove from event"
+                              PhotosSubtitle="Pick photos to attach to this event."
+                              FilesSubtitle="Pick documents to attach to this event."
+                              OnAnnounce="OnAnnounce" OnChanged="Changed" />
+    </div>
+}
+
+@code {
+    internal const string HeadingId = "cal-ev-fromseries-h";
+
+    [Parameter, EditorRequired] public CalendarEventDraft Draft { get; set; } = default!;
+
+    /// <summary>The dialog is editing one occurrence of a series: show the series' links, read-only.</summary>
+    [Parameter] public bool FromSeries { get; set; }
+
+    /// <summary>The viewer cannot save the dialog.</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>"event" or "series" — named by the lowered-cap help line.</summary>
+    [Parameter] public string Noun { get; set; } = "event";
+
+    [Parameter] public int? Cap { get; set; }
+
+    [Parameter] public bool CanReadFiles { get; set; }
+
+    [Parameter] public bool CanReadPhotos { get; set; }
+
+    [Parameter] public int AttachmentCount { get; set; }
+
+    [Parameter] public int PhotoCount { get; set; }
+
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    [Parameter] public EventCallback OnEditSeries { get; set; }
+
+    // A kind counts as changed once the user adds or removes in it; only then does the save send it (AttachmentLinks.Set).
+    private void Changed(AttachmentLinkKind kind)
+    {
+        if (kind == AttachmentLinkKind.Photos)
+        {
+            Draft.PhotosChanged = true;
+        }
+        else
+        {
+            Draft.FilesChanged = true;
+        }
+    }
+}

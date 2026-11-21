@@ -22,5 +22,10 @@ internal sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Cale
             .WithMany(pattern => pattern.GeneratedEvents)
             .HasForeignKey(calendarEvent => calendarEvent.RecurrencePatternId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Issue #519 §4 (SR8): an all-day row is zone-less. A "generated row has a key" check is deliberately NOT
+        // declared yet — un-keyed legacy rows exist until the backfill finishes.
+        entity.ToTable(tb => tb.HasCheckConstraint(
+            "CK_CalendarEvents_AllDayHasNoZone", "`IsAllDay` = 0 OR `TimeZoneId` IS NULL"));
     }
 }

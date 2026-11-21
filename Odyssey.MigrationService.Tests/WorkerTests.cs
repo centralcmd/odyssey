@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.MigrationService.Tests;
@@ -106,9 +107,9 @@ public class WorkerTests
         try
         {
             Environment.ExitCode = 0;
-            var logger = new RecordingLogger();
+            var logger = new RecordingLogger<Worker>();
             var drift = new MigrationDriftException(
-                "OdysseyContext", new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
+                new MigrationDrift("20260828172122_InitialCreate", "table 'Accounts'"));
             var worker = BuildWorker(
                 [], failAt: nameof(OdysseyMigrationService), logger: logger, failWith: drift);
 
@@ -137,7 +138,7 @@ public class WorkerTests
         try
         {
             Environment.ExitCode = 0;
-            var logger = new RecordingLogger();
+            var logger = new RecordingLogger<Worker>();
             var worker = BuildWorker([], failAt: nameof(BootstrapAdminSeeder), logger: logger);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(worker));
@@ -169,7 +170,7 @@ public class WorkerTests
         List<string> calls,
         string? failAt = null,
         RecordingLifetime? lifetime = null,
-        RecordingLogger? logger = null,
+        RecordingLogger<Worker>? logger = null,
         Exception? failWith = null)
     {
         StubStep Step(string name) => new(name, calls, failAt, failWith);
@@ -181,7 +182,7 @@ public class WorkerTests
             Step(nameof(DemoDataSeeder)),
             Step(nameof(AdministratorAssertion)),
             lifetime ?? new RecordingLifetime(),
-            logger ?? new RecordingLogger());
+            logger ?? new RecordingLogger<Worker>());
     }
 
     /// <summary>
@@ -219,24 +220,6 @@ public class WorkerTests
         public CancellationToken ApplicationStopped => CancellationToken.None;
 
         public void StopApplication() => Stopped = true;
-    }
-
-    /// <summary>Captures what the worker logged, so the operator-facing message can be asserted on.</summary>
-    private sealed class RecordingLogger : ILogger<Worker>
-    {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter) =>
-            Entries.Add((logLevel, formatter(state, exception)));
     }
 }
 

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -10,14 +11,8 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class ApiRetryAfterTests
 {
-    private sealed class StubHandler(Func<HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
-            Task.FromResult(respond());
-    }
-
     private static OdysseyApi Api(Func<HttpResponseMessage> respond) =>
-        new(new HttpClient(new StubHandler(respond)) { BaseAddress = new Uri("http://localhost/") });
+        new(new HttpClient(new RecordingHttpHandler(_ => respond())) { BaseAddress = new Uri("http://localhost/") });
 
     private static HttpResponseMessage TooMany(Action<HttpResponseMessage>? configure = null)
     {

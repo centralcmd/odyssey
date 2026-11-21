@@ -3,9 +3,9 @@ using Microsoft.JSInterop;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// Focus return across a tile removal, shared by the policy-party and contract-party tile surfaces
-/// (issue #122 §4, §6.4). Domain-agnostic: it knows only opaque string keys and the selector a key
-/// maps to, which is what lets one implementation serve both.
+/// Focus return across a tile removal, shared by the contract party tiles and the contract events
+/// section (issue #122 §4, §6.4). Domain-agnostic: it knows only opaque string keys and the selector a
+/// key maps to, which is what lets one implementation serve every surface.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -15,11 +15,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// is a removal too.
 /// </para>
 /// <para>
-/// Extracted rather than copied. <c>InsurancePolicyLinkTiles</c> cannot be dropped into the contract
-/// surface — it takes a required <c>InsurancePartyRole</c> and is instantiated once per collection,
-/// while a contract's parties are one flat list — so the alternative was a second copy of the
-/// pre-compute-neighbour + JS-interop dance, and two copies of a focus mechanism drift in exactly the
-/// way that is invisible until a keyboard user hits it.
+/// One shared mechanism rather than a copy per surface: two copies of the pre-compute-neighbour +
+/// JS-interop dance drift in exactly the way that is invisible until a keyboard user hits it.
 /// </para>
 /// </remarks>
 internal sealed class TileRemovalFocus : IAsyncDisposable
@@ -100,8 +97,16 @@ internal sealed class TileRemovalFocus : IAsyncDisposable
             if (string.Equals(keys[i], key, StringComparison.Ordinal)) { index = i; break; }
         }
 
-        if (index < 0) return null;
-        if (index + 1 < keys.Count) return keys[index + 1];
+        if (index < 0)
+        {
+            return null;
+        }
+
+        if (index + 1 < keys.Count)
+        {
+            return keys[index + 1];
+        }
+
         return index > 0 ? keys[index - 1] : null;
     }
 

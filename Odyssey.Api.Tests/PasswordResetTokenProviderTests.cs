@@ -16,6 +16,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -33,11 +34,18 @@ public class PasswordResetTokenProviderTests
     private const string Email = "resetter@example.com";
 
     /// <summary>
-    /// The lifespan both timing tests configure. Long enough that a token minted and redeemed back
+    /// The lifespan the control test configures. Long enough that a token minted and redeemed back
     /// to back survives a loaded machine — a one-second window made the control flaky when the whole
-    /// suite ran in parallel — and short enough to wait out in one bounded delay.
+    /// suite ran in parallel.
     /// </summary>
     private static readonly TimeSpan ShortLifespan = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// The lifespan the expiry test configures. Only the control needs headroom against a loaded
+    /// machine — a slow mint-to-redeem gap can only make an expiry test MORE expired — so this one is
+    /// short, and the real wait stays near 2 s while still crossing a genuine expiry.
+    /// </summary>
+    private static readonly TimeSpan ExpiryLifespan = TimeSpan.FromSeconds(1);
 
     [Fact]
     public void ThePasswordResetProvider_IsRegisteredAndSelected()
@@ -89,12 +97,12 @@ public class PasswordResetTokenProviderTests
         // A single bounded wait, not a poll: DataProtectorTokenProvider<TUser> reads
         // DateTimeOffset.UtcNow directly in both GenerateAsync and ValidateAsync and takes no
         // TimeProvider, so this repo's fake-clock pattern cannot reach it.
-        await using var factory = new ApiFactory(ShortLifespan);
+        await using var factory = new ApiFactory(ExpiryLifespan);
         await CreateUserAsync(factory);
         using var client = factory.CreateClient();
 
         var code = await RequestCodeAsync(client, factory);
-        await Task.Delay(ShortLifespan + TimeSpan.FromSeconds(2));
+        await Task.Delay(ExpiryLifespan + TimeSpan.FromSeconds(1));
         var response = await client.PostAsJsonAsync(
             "/resetPassword", new { email = Email, resetCode = code, newPassword = NewPassword });
 
@@ -128,7 +136,7 @@ public class PasswordResetTokenProviderTests
     {
         private readonly string databaseName = $"PasswordResetTokenProviderTests-{Guid.NewGuid()}";
 
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         /// <summary>
         /// The client base URL is a settings row now, not configuration (issue #8), and it has to be

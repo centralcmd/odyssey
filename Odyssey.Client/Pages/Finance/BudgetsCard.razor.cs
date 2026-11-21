@@ -19,6 +19,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class BudgetsCard
 {
+    private OdsConfirm _confirm = default!;
+
     private List<ExistingBudget> _budgets = [];
     // Server-computed rollup backing the header count + planned balance (issue #372) — it spans every
     // budget, unlike the server-filtered display list, without fetching one.
@@ -87,7 +89,9 @@ public partial class BudgetsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -175,7 +179,9 @@ public partial class BudgetsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "budgets");
         if (load.IsSuccess)
@@ -249,7 +255,9 @@ public partial class BudgetsCard
 
         _expandedId = budgetId;
         if (!_reports.ContainsKey(budgetId))
+        {
             await LoadReport(budgetId);
+        }
     }
 
     /// <summary>
@@ -268,7 +276,9 @@ public partial class BudgetsCard
     {
         var expanding = editing && _expandedId != budgetId;
         if (expanding)
+        {
             await ToggleExpand(budgetId);
+        }
 
         _editingItemsId = editing ? budgetId : null;
 
@@ -285,7 +295,10 @@ public partial class BudgetsCard
         _loadingReports.Add(budgetId);
         var report = (await Budgets.GetReportAsync(budgetId)).OrToast(Snackbar, "Unable to load budget transactions");
         if (report is not null)
+        {
             _reports[budgetId] = report;
+        }
+
         _loadingReports.Remove(budgetId);
         StateHasChanged();
     }
@@ -298,7 +311,9 @@ public partial class BudgetsCard
         {
             var index = _budgets.FindIndex(b => b.BudgetId == budgetId);
             if (index >= 0)
+            {
                 _budgets[index] = budget;
+            }
         }
 
         await LoadReport(budgetId);
@@ -318,7 +333,9 @@ public partial class BudgetsCard
     {
         var result = new Dictionary<Guid, decimal>();
         if (!_reports.TryGetValue(budgetId, out var report))
+        {
             return result;
+        }
 
         foreach (var summary in report.ExistingTransactionReport)
         {
@@ -352,7 +369,9 @@ public partial class BudgetsCard
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _createBudgetKey = Guid.NewGuid();
         _createBudgetOpen = true;
@@ -366,7 +385,9 @@ public partial class BudgetsCard
     private void EditClicked(ExistingBudget budget)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editBudget = budget;
         _editBudgetKey = Guid.NewGuid();
@@ -379,7 +400,9 @@ public partial class BudgetsCard
 
         // Dates and base currency drive the transaction report — drop the cached one if it's loaded.
         if (_editBudget is not null && _reports.ContainsKey(_editBudget.BudgetId))
+        {
             await LoadReport(_editBudget.BudgetId);
+        }
     }
 
     private ExistingBudget? _itemBudget;
@@ -390,7 +413,9 @@ public partial class BudgetsCard
     private void AddItemClicked(ExistingBudget budget)
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _itemUsedTagIds = budget.BudgetItems
             .Select(i => i.TransactionTagId)
@@ -405,7 +430,9 @@ public partial class BudgetsCard
     private async Task OnItemSaved()
     {
         if (_itemBudget is null)
+        {
             return;
+        }
 
         // Reveal the budget so the new item is visible, then refresh it.
         _expandedId = _itemBudget.BudgetId;
@@ -415,7 +442,9 @@ public partial class BudgetsCard
     private async Task ToggleArchive(ExistingBudget budget)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         var targetArchived = budget.Archived is null;
         var update = new NewBudget
@@ -440,14 +469,15 @@ public partial class BudgetsCard
     private async Task ConfirmDelete(ExistingBudget budget)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete budget",
-            $"Delete '{budget.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed == true)
+        var confirmed = await _confirm.AskAsync("Delete budget", $"Delete '{budget.Name}'? This cannot be undone.", "Delete");
+        if (confirmed)
+        {
             await DeleteBudget(budget);
+        }
     }
 
     private async Task DeleteBudget(ExistingBudget budget)
@@ -458,12 +488,14 @@ public partial class BudgetsCard
             _reports.Remove(budget.BudgetId);
             await LoadSummary();
             if (_expandedId == budget.BudgetId)
+            {
                 _expandedId = null;
+            }
         }
     }
 
     private Task CopyBudgetId(Guid budgetId) =>
-        Clipboard.CopyAsync(budgetId.ToString(), "Budget ID copied.");
+        Clipboard.CopyAsync(budgetId.ToString(), OdsCopied.Id("Budget"));
 
     // ── Row actions ──────────────────────────────────────────────────────
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a
@@ -508,13 +540,7 @@ public partial class BudgetsCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyBudgetId(budget.BudgetId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyBudgetId(budget.BudgetId))));
 
         if (_canUpdate)
         {
@@ -558,7 +584,6 @@ public partial class BudgetsCard
 
     private static string Lines(int count, string noun) => BudgetBalanceVisuals.Lines(count, noun);
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     private string FormatMoney(decimal value, string? currencyCode) =>
         OdsMoney.Format(value, currencyCode, MinorUnits(currencyCode));
@@ -569,7 +594,9 @@ public partial class BudgetsCard
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
         if (_minorUnitsCache.TryGetValue(key, out var cached))
+        {
             return cached;
+        }
 
         _currenciesByCode.TryGetValue(key, out var currency);
         var units = OdsMoney.MinorUnitsOf(currency);

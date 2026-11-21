@@ -26,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// (<c>Odyssey.Api/DatabaseExtension.cs</c>). EF InMemory never configures a retrying execution
 /// strategy, so no InMemory-backed tier could ever have caught this.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class TaskIcsIntegrationTests(MariaDbFixture fixture)
 {
     [SkippableFact]
@@ -36,7 +36,7 @@ public class TaskIcsIntegrationTests(MariaDbFixture fixture)
 
         var connectionString = fixture.RelationalConnectionString;
         var options = new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .Options;
 
         await using (var migrating = new OdysseyContext(options))

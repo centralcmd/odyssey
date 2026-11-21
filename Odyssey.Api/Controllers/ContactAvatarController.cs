@@ -72,9 +72,9 @@ image is never served from a stale cache.")]
         [FromRoute(Name = "id")] Guid id,
         CancellationToken cancellationToken = default)
     {
-        // Metadata only — no Include(fm => fm.FileBlob). no-cache makes revalidation the hot path, so
-        // materialising the LONGBLOB to answer a conditional request would make every return visit pay
-        // for a response that carries no body.
+        // Metadata only — never the stored bytes. no-cache makes revalidation the hot path, so
+        // opening the stored object (ContactAvatars area) to answer a conditional request would make every
+        // return visit pay for a response that carries no body.
         var descriptor = await avatarService.GetDescriptorAsync(id, cancellationToken);
         if (descriptor is null)
         {
@@ -98,7 +98,7 @@ image is never served from a stale cache.")]
 
         // The FileResult overload that TAKES an EntityTagHeaderValue, so ASP.NET Core performs
         // conditional-request handling itself. A manually assigned Response.Headers.ETag does not engage
-        // that machinery at all. The image streams from the store, or from its legacy blob (issue #448).
+        // that machinery at all. The image streams from the store (issue #448).
         return File(content.Content, descriptor.ContentType, lastModified: null, entityTag: etag, enableRangeProcessing: true);
     }
 

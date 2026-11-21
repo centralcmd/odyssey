@@ -164,7 +164,7 @@ public partial class AddContractPartyDialog
     /// <summary>
     /// Ids already linked to this contract <b>for the chosen kind AND in the chosen role</b>. Both
     /// halves matter: uniqueness is <i>(contract, target, role)</i>, so a record linked as Seller is
-    /// still offerable as Service provider — and a contract role, unlike an insurance one, implies
+    /// still offerable as Buyer — and a contract role implies
     /// nothing about which kind of record holds it. The party BEING EDITED is not "already linked" as
     /// far as its own picker is concerned; only its siblings are.
     /// </summary>
@@ -223,7 +223,10 @@ public partial class AddContractPartyDialog
     {
         var option = ContactCreator.Begin(text, kind);
         if (option is not null)
+        {
             _createdContacts.Add(option);
+        }
+
         return option;
     }
 
@@ -231,14 +234,21 @@ public partial class AddContractPartyDialog
     {
         _createdContacts.RemoveAll(o => o.Value == tempId);
         if (_value == tempId)
+        {
             _value = null;
+        }
+
         StateHasChanged();
     }
 
     private Task PickKind(string kind)
     {
         var next = Enum.Parse<ContractPartyKind>(kind);
-        if (_kind == next) return Task.CompletedTask;
+        if (_kind == next)
+        {
+            return Task.CompletedTask;
+        }
+
         _kind = next;
         _error = null;
         // A record is kind-specific, so a kind change all but always discards the selection. The one
@@ -251,7 +261,11 @@ public partial class AddContractPartyDialog
     private Task PickRole(string value)
     {
         var next = Enum.Parse<ContractPartyRole>(value);
-        if (_role == next) return Task.CompletedTask;
+        if (_role == next)
+        {
+            return Task.CompletedTask;
+        }
+
         _role = next;
         _error = null;
         _roleError = null;
@@ -307,7 +321,11 @@ public partial class AddContractPartyDialog
 
     private async Task SubmitAsync()
     {
-        if (_isSaving) return;
+        if (_isSaving)
+        {
+            return;
+        }
+
         _error = null;
         _roleError = null;
         _errors.Clear();
@@ -332,7 +350,9 @@ public partial class AddContractPartyDialog
         // create that failed resolves to null and reads as "nothing selected" rather than posting an
         // id no server issued.
         if (IsContactKind)
+        {
             await ContactCreator.WhenSettledAsync();
+        }
 
         if (!Guid.TryParse(IsContactKind ? ContactCreator.Resolve(_value) : _value, out var id))
         {
@@ -353,7 +373,10 @@ public partial class AddContractPartyDialog
             _errors["toDate"] = "End date can't be before the start date.";
         }
 
-        if (_errors.Count > 0) return;
+        if (_errors.Count > 0)
+        {
+            return;
+        }
 
         // The body is a FULL replacement on the edit, so the dialog always sends the role and both
         // dates — an emptied date goes as null and clears.
@@ -386,7 +409,10 @@ public partial class AddContractPartyDialog
             var ok = result.Toast(Snackbar,
                 IsEdit ? "Unable to update party" : "Unable to add party",
                 IsEdit ? "Party updated." : "Party added.");
-            if (!ok) return;
+            if (!ok)
+            {
+                return;
+            }
 
             await OnAnnounce.InvokeAsync(IsEdit
                 ? $"{SelectedLabel} updated: {PartyRoleLabel.For(role)}{TermSuffix}."

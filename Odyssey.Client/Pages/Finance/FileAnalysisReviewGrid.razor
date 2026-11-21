@@ -164,6 +164,7 @@
                                                    Id="@CategoryControlId(row)"
                                                    OnCreate="@(Session.CanCreateTag ? ((text, kind) => BeginCreateTag(row, text)) : null)"
                                                    CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                                                   CreateBlocked="Session.TagNameBlocked"
                                                    Placeholder="@(string.IsNullOrWhiteSpace(row.CategoryHint) ? "Set tags" : $"{row.CategoryHint} · set tags")" />
                                 @if (FileAnalysisSession.CategoryState(row) == OdsMatchState.Suggestion && row.CatSuggestion is not null)
                                 {

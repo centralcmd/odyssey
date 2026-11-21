@@ -257,8 +257,14 @@ public class OdsChartHoverTests
         cut.Find(".odc-lc-plot").Focus();
         Assert.NotEmpty(cut.FindAll(".odc-lc-tip"));
 
-        if (how == "Escape") cut.Find(".odc-lc-plot").KeyDown("Escape");
-        else cut.Find(".odc-lc-plot").Blur();
+        if (how == "Escape")
+        {
+            cut.Find(".odc-lc-plot").KeyDown("Escape");
+        }
+        else
+        {
+            cut.Find(".odc-lc-plot").Blur();
+        }
 
         Assert.Empty(cut.FindAll(".odc-lc-tip"));
         Assert.Equal("", LiveText(cut));

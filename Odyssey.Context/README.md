@@ -1,9 +1,9 @@
-# Readme
+# Odyssey.Context
 
 `OdysseyContext` is the single application-domain `DbContext`. It owns:
 
 - **Finance** — accounts, transactions, budgets, tags, contracts,
-  tax statements, the Files store (`FileMetadata`/`FileBlob`) and the file-analysis tables, plus the
+  tax statements, the Files store (`FileMetadata`, whose bytes live on the object store) and the file-analysis tables, plus the
   `Currencies` reference table (164 ISO-4217 rows seeded from `HasData` in
   `ModelConfiguration/CurrencyConfiguration.cs`, so the initial migration carries them and nothing needs
   to seed them at runtime).
@@ -11,18 +11,24 @@
 - **Photos** — the photo library, its tags, people and albums, and its thumbnails: the rendition rows, the
   job queue, the bucket counter, the breaker incidents and the worker heartbeats (issue #362). All five are
   derived data.
-- **Calendars** — calendars, events and recurrence patterns.
+- **Calendars** — calendars, events, recurrence patterns and their exclusions (issue #519: an event's occurrence key,
+  override flag and zone; a series' zone, version and keying date), and the four link tables that attach files and
+  library photos to a standalone event or a series (issue #521: every key `CASCADE`, each pair unique, no attribution
+  column; `Down()` of `CalendarEventAttachments` drops the links, never the files or photos).
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.
 - **Identity and auth** — the ASP.NET Identity schema plus `UserProfile`, `UserPreference`,
   `SystemSetting`, the encrypted `SystemSettingSecret` store and the three legal-acceptance tables.
+- **Everything else** — locations and weather points, exchange rates and their sync, instruments and
+  their prices, the news reader, the shared background-job run log and the file object store. The
+  per-area rules are in [`docs/architecture/`](../docs/architecture/).
 
 ## Where the model is configured
 
 Each entity's fluent configuration is one `IEntityTypeConfiguration<T>` under `ModelConfiguration/`,
-picked up by `ApplyConfigurationsFromAssembly` (issue #287). Three key sets stay in `OdysseyContext`
+picked up by `ApplyConfigurationsFromAssembly` (issue #287). A few key sets stay in `OdysseyContext`
 itself because each spans many entities and is reviewed as a set: `ConfigureCurrencyReferences`,
-`ConfigureCrossModuleForeignKeys` and `ConfigureUserAttribution`. A key belonging to one of those sets
+`ConfigureCrossModuleForeignKeys`, `ConfigureLocationReferences` and `ConfigureUserAttribution`. A key belonging to one of those sets
 goes there, not into the entity's own file.
 
 ## Why one context
@@ -32,15 +38,10 @@ This project is the former `Odyssey.Finance.Context`, `Odyssey.Journal.Context` 
 declare a relationship whose principal lives in a different model, so every reference across a context
 boundary was a bare key — validated by a lookup service on write and swept by a guard on delete, with
 nothing stopping a write path that forgot to call either. One context makes them declarable, and
-`OdysseyContext.ConfigureCrossModuleForeignKeys` declares them:
-
-| Reference | On delete |
-|---|---|
-| `Transaction.ContactId`, `Account.CustodianId`, `AccountFile.IssuedBy`, `PropertyFile.IssuedBy`, `FileAnalysisCandidateTransaction.MatchedContactId` → `Contact` | `SET NULL` |
-| `ContractParty.ContactId` → `Contact` | `CASCADE` |
-| `Photo.FileId`, `JournalEntryAttachment.FileId`, `JournalTaskAttachment.FileId`, `PropertyFile.FileMetadataId` → `FileMetadata` | `CASCADE` |
-| `PropertyFile.PropertyId` → `Property` (issue #210; the document link dies with its property, the file survives) | `CASCADE` |
-| `Contact.AvatarFileId` → `FileMetadata` | `SET NULL` |
+`OdysseyContext.ConfigureCrossModuleForeignKeys` declares them, and is the list. In outline: an optional
+finance reference to a `Contact` (counterparty, custodian, issuer, homeowners' association, analysis
+match) is `SET NULL`; `ContractParty.ContactId` is `CASCADE`; the journal attachment tables cascade with
+their `FileMetadata`; and `Contact.AvatarFileId` is `SET NULL`.
 
 They are declared as relationships with **no navigation properties** (`HasOne<Contact>().WithMany()`),
 so the modules stay one-directional in the source — a finance entity still has no `Contact` to
@@ -48,8 +49,8 @@ so the modules stay one-directional in the source — a finance entity still has
 
 ### A contact's image detaches; it does not restrict, and the reverse is not a key
 
-`Contact.AvatarFileId` (issue #86) is the one image a contact carries, held in the ordinary Files
-store. Its `SET NULL` is declared **explicitly**, because EF's default for an optional relationship is
+`Contact.AvatarFileId` (issue #86) is the one image a contact carries, a `FileMetadata` row in the
+Files store's `ContactAvatars` area. Its `SET NULL` is declared **explicitly**, because EF's default for an optional relationship is
 `ClientSetNull` — which emits `RESTRICT`, under which deleting an avatar's file from the Files page
 would be a raw constraint violation rather than the graceful detach that leaves the contact rendering
 its type glyph.
@@ -87,23 +88,6 @@ claim, and the presence determination and the destruction read one snapshot insi
 There is **no advisory lock** on any of these paths. `IContactMutationLock` was a mutex with no
 counterparty once the write path it serialized against was gone, and a source-lint keeps it retired.
 
-### A library photo and its file are deleted together, both ways
-
-`Photo.FileId` cascading is only half of it. Deleting a **photo** also deletes its file, in
-`PhotoService.Delete`. That **reverses issue #321 §7**, which had the file survive its library record —
-read that section without this note and the current behaviour looks like a bug. It was changed because
-the two directions disagreed about which object was the durable one: a file delete destroyed the photo
-and all its curation (tags, people, albums, journal placements), while a photo delete carefully
-preserved the file. One of the two had to give, and treating the pair as one thing is the rule that
-holds in both directions.
-
-The safety catch is `IFileReferenceGuard`. Nine tables carry a cascading FK to `FileMetadata`, so
-deleting a file as a side effect of deleting a photo would silently strip it off a transaction, a tax
-statement or a journal entry that also holds it — the database obliges without complaint. The guard
-refuses with a `409` naming the other holders, and deletes nothing: not the file, and not the photo.
-**A new table referencing `FileMetadata` must be added to that guard**, or a photo delete starts
-silently destroying rows in it.
-
 The lookup services (`IContactLookup`, `IFileLookup`, `IPhotoLookup`, `IContactReferenceGuard`) are
 **kept**, and are not redundant:
 
@@ -115,13 +99,11 @@ The lookup services (`IContactLookup`, `IFileLookup`, `IPhotoLookup`, `IContactR
 
 ### User attribution foreign keys
 
-Columns across the model name the user who created, updated, attached, uploaded, requested or reviewed
-a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`, `JournalEntry`,
-`JournalTask`, `Photo`, `PhotoAlbum` and `RecurrencePattern`; `Contract.CreatedByUserId`; `AttachedByUserId` on the file-link
-tables (`AccountFiles`, `ContractFiles`, `PropertyFiles`, `TransactionFiles`, `TaxStatementFiles`); `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
-`FileAnalysisCandidateTransaction.ReviewedByUserId`; and, for the exchange-rate sync (issue #349),
-`ExchangeRateSyncCurrency.UpdatedByUserId`; and `JobRun.RequestedByUserId` on the shared background-job run
-log (issue #409), which absorbed the sync's `ExchangeRateSyncRun.RequestedByUserId`.
+Columns across the model name the user who created, updated, applied, attached, uploaded, requested or
+reviewed a row. The set grows with most features, so it is not restated here:
+`OdysseyContext.ConfigureUserAttribution` declares every one, and
+`Odyssey.IntegrationTests/UserAttributionForeignKeyTests` holds the allow-list the database is checked
+against.
 
 They were bare strings while identity lived in its own context, so deleting a user left every one of
 them naming an account that no longer existed, and no transaction could span the two contexts to fix
@@ -150,20 +132,23 @@ enforces no foreign keys, so the fast tiers never exercise it.
 
 ### Currency foreign keys
 
-Every currency-code column is a navigation-less **`RESTRICT`** key to `Currencies.CurrencyCode`:
-`Accounts`, `Transactions`, `Properties`, `AccountEstimates`, `PropertyEstimates` and `Terms`
-(`CurrencyCode`), `Budgets` and `TaxStatements` (`BaseCurrencyCode`), and both ends of `ExchangeRates`.
-Only the exchange-rate pair existed before issue #241, so a currency could be deleted out from under
+A currency is reference data, so a column recording a value in one is a navigation-less **`RESTRICT`**
+key to `Currencies.CurrencyCode`: neither destroying a ledger nor blanking its unit is an acceptable side
+effect of removing a currency. Most are declared in `OdysseyContext.ConfigureCurrencyReferences`; the
+exchange-rate pair and `Instruments.CurrencyCode` sit in their own entity configurations.
+`Odyssey.IntegrationTests/CurrencyForeignKeyTests` enumerates the set. `ExchangeRateSyncCurrency.CurrencyCode`
+is the one **`CASCADE`** key — sync configuration for a removed currency means nothing, and a currency with
+exchange rates is already undeletable. Only the exchange-rate pair existed before issue #241, so a currency could be deleted out from under
 the records kept in it, leaving accounts that could not be edited and budgets and statements that
 refused updates. `AddCurrencyForeignKeys` added the rest, first **restoring** any code already orphaned
 that way as an active `Restored currency XYZ (review)` row — the one data write, which changes no
 referencing row. Adding each key rebuilds its table (`ALGORITHM=COPY`, writes blocked meanwhile); the
-upgrade note is in [`docs/deployment.md`](../docs/deployment.md).
+upgrade note is in [`docs/upgrade-notes.md`](../docs/upgrade-notes.md#currencies-in-use-can-no-longer-be-deleted-issue-241).
 
 `CurrencyService.CountDeleteBlockers` is the explaining pre-check: one clause per key, counts only, a
 `409`. A new currency column needs its key **and** its clause. `FileAnalysisCandidateTransactions.Currency`
 is the deliberate exception — unvetted extraction output, checked against `Currencies` on import rather
-than keyed. `Odyssey.IntegrationTests/CurrencyForeignKeyTests` pins the set at the database.
+than keyed.
 
 ### Permission claims are not seeded here
 
@@ -203,7 +188,7 @@ skips a row whose `UpdatedBy` is non-null — ownership, never a value compariso
 |---|---|
 | `StoredObject.VolumeId` → `FileStorageVolume` | `RESTRICT` — a volume holding objects cannot be removed |
 | `FileStorageOrphanSighting.VolumeId` → `FileStorageVolume` | `CASCADE` — bookkeeping about the volume |
-| any consumer's `StoredObjectId` → `StoredObject` — today `PhotoThumbnail.StoredObjectId` (issue #362), unique | `RESTRICT`, always — a consumer releases through `IObjectStore.StageRelease` |
+| any consumer's `StoredObjectId` → `StoredObject` (the photo original and thumbnails, the three `FileMetadata` areas, news article files, …) | `RESTRICT`, always — a consumer releases through `IObjectStore.StageRelease`. `FileStorageMaintenanceTests` (`Odyssey.Core.Tests`) reflects over the model and fails on a key that breaks this |
 | `PhotoThumbnail.PhotoId`, `PhotoThumbnailJobEntry.PhotoId` → `Photo` | `CASCADE` — derived data dies with its photo; the files are released by the service, or swept as unreferenced |
 
 `StoredObjects.State` is a concurrency token and is guarded by four CHECKs; `(VolumeId, RelativePath)` is
@@ -220,10 +205,9 @@ names, so neither is logged or exported.
 Because this is one model with keys throughout, its halves **cannot be pointed at different
 databases**. There is one connection string, `OdysseyConnection`.
 
-Two check constraints are declared on the model and so are reproduced by the initial migration:
-`CK_ContractParties_ExactlyOneTarget` and `CK_TransactionFiles_Type_AllowedValues`. Later migrations
-added `CK_Terms_ValueMatchesUnit` and, with `WidenEventsForProperties` (issue #209), the two that contain
-the shared `Events` table: `CK_Events_ExactlyOneOwner` and `CK_Events_TypeMatchesOwner`.
+Many invariants are `CHECK` constraints declared on the model (`ToTable(t => t.HasCheckConstraint(…))`
+in the entity configurations), so a migration reproduces each one; the configurations are the list.
+The two that contain the shared `Events` table are described below.
 
 ### The shared `Events` table
 
@@ -260,7 +244,7 @@ dotnet ef migrations add <MigrationName> --project "./Odyssey.Context/" --startu
 Apply migrations:
 
 ```bash
-dotnet ef database update --project "./Odyssey.Api" --context "OdysseyContext"
+dotnet ef database update --project "./Odyssey.Context/" --startup-project "./Odyssey.Api/Odyssey.Api.csproj" --context OdysseyContext
 ```
 
 Scaffolding resolves the provider through `Odyssey.Api` and there is no `IDesignTimeDbContextFactory`,
@@ -270,3 +254,8 @@ provider and the generated migration is unusable.
 
 In normal operation nobody runs `database update` by hand: `Odyssey.MigrationService` migrates the
 context on start, and the API waits for it to exit successfully.
+
+**History is never squashed again.** A production database with real data has existed since `v0.35.0`,
+so every schema change is an additive migration and `InitialCreate` stays the permanent root. A
+migration interrupted on MariaDB leaves its DDL behind with no history row; `MigrationRunner` detects
+that and names the repair, described in [`docs/migration-history-drift.md`](../docs/migration-history-drift.md).

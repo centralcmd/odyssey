@@ -42,9 +42,9 @@ request time rather than yielding precedence). The Codex spec review flagged thi
 ### Remember this device (opt-in, secure default)
 
 The built-in `/login` ties `rememberClient` to `isPersistent`, which is `true` for our
-`?useCookies=true` calls — so a TOTP sign-in **silently sets** Identity's `TwoFactorRememberMe`
-cookie and later password-only logins from that browser would skip the challenge. That is not
-acceptable as a default. The login page exposes a **"Remember this device" checkbox (default
+`?useCookies=true` calls — so a TOTP sign-in **silently sets** Identity's remember-me cookie
+(`IdentityConstants.TwoFactorRememberMeScheme`) and later password-only logins from that browser
+would skip the challenge. That is not acceptable as a default. The login page exposes a **"Remember this device" checkbox (default
 off)**; unless the user ticks it, the page calls `POST /manage/2fa { forgetMachine: true }`
 immediately after a successful TOTP sign-in to clear that cookie. So the challenge is required on
 every login by default, and only trusted when the user explicitly opts in. (We can't set
@@ -59,20 +59,21 @@ Recovery-code logins are never remembered by Identity, so the checkbox is hidden
 | Custom `TwoFactorController` (6 endpoints) | **Dropped** | Identity's `POST /manage/2fa` covers all six operations. |
 | `POST /login/2fa` + `odyssey-2fa-pending` Data-Protection cookie | **Dropped** | Built-in `/login` + Identity's `TwoFactorUserId` cookie already implement this, battle-tested. |
 | `ApplicationUser.TwoFactorEnabledAt` + `AddTwoFactorEnabledAt` migration | **Dropped** | Identity does not track an enabled-at timestamp, and the built-in enable path cannot be hooked to set one without forking it. The UI now shows status + remaining recovery codes without a precise enabled-at date. **No migration is needed for this feature.** |
-| Custom sliding-window rate limiter returning `429` | **Dropped** | Identity's account **lockout** already throttles failed password/TOTP attempts on the login path (`lockoutOnFailure: true`; `TwoFactorAuthenticatorSignInAsync` increments the failed count and returns `LockedOut`). The `/manage/2fa` enable path is session-authenticated, so a bad code only affects the caller's own account. |
-| `TwoFactor:Enabled` feature toggle returning `503` | **Dropped** | Not an Identity concept; gating the built-in endpoints would require exactly the custom wrapping this approach avoids. Candidate for a future change if an ops kill-switch is needed. |
+| Custom sliding-window rate limiter returning `429` | **Dropped at the time; superseded** | Identity's account **lockout** throttles failed password/TOTP attempts on the login path (`lockoutOnFailure: true`; `TwoFactorAuthenticatorSignInAsync` increments the failed count and returns `LockedOut`). A per-IP limiter was added later after all: the whole Identity group, `/manage/2fa` included, now carries `RequireRateLimiting(IdentityRateLimiting.PolicyName)` (`Odyssey.Api/Program.cs`, `Odyssey.Api/IdentityRateLimiting.cs`), and the client reports a `429` as `LoginOutcome.RateLimited`. |
+| `TwoFactor:Enabled` feature toggle returning `503` | **Dropped** | Not an Identity concept; gating the built-in endpoints would require exactly the custom wrapping this approach avoids. CLAUDE.md also forbids new runtime feature toggles — capabilities are gated with permission claims. |
 | Confirmation code required for disable / reset / regenerate | **Relaxed to session auth** | The built-in endpoints authorize these via the active session cookie (consistent with how `manage/info` password change is gated). The UI keeps a "type DISABLE" guard on the disable action. |
 
 ## Frontend changes
 
-- `Odyssey.Client/Auth/AuthApiClient.cs` — `LoginAsync` now returns a `LoginOutcome`
-  (`Success` / `RequiresTwoFactor` / `LockedOut` / `Failed`) parsed from the `/login` response;
+- `Odyssey.ApiClient/Auth/AuthApiClient.cs` (originally in `Odyssey.Client/Auth/`) — `LoginAsync`
+  returns a `LoginOutcome` (`Success` / `RequiresTwoFactor` / `LockedOut` / `RateLimited` / `Failed`)
+  parsed from the `/login` response;
   added `GetTwoFactorStatusAsync`, `EnableTwoFactorAsync`, `DisableTwoFactorAsync`,
   `ResetTwoFactorKeyAsync`, `RegenerateRecoveryCodesAsync`, and `ForgetTwoFactorMachineAsync`
   over `POST /manage/2fa`.
-- `Odyssey.Client/Models/AuthModels.cs` — `LoginRequest` gains `TwoFactorCode` /
+- `Odyssey.ApiClient/Contracts/AuthModels.cs` (originally `Odyssey.Client/Models/`) — `LoginRequest` gains `TwoFactorCode` /
   `TwoFactorRecoveryCode`.
-- `Odyssey.Client/Pages/Account.razor[.cs]` — the existing 2FA wizard (previously a UI-only
+- `Odyssey.Client/Pages/AccountTwoFactorSection.razor[.cs]` (originally part of `Account.razor`) — the 2FA wizard (previously a UI-only
   preview) is wired to the API; the placeholder QR is replaced with a real scannable QR
   (PNG data-URI via **QRCoder**) built from the `otpauth://` URI off the live shared key.
   Enabling always regenerates the recovery codes (`resetRecoveryCodes`) so the "save your codes"

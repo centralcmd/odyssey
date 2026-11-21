@@ -99,16 +99,6 @@ public static class JobCatalogue
             ManualRunClaims: [PermissionClaims.PhotosUpdate],
             DetailReadClaim: PermissionClaims.PhotosRead),
 
-        // The photo-original move (issue #428). Work-driven, and idle for good once every legacy photo has moved. Its
-        // progress and its park codes are file-storage operations data, so both gates follow file-storage.read — the
-        // same decision as the maintenance pass above: no file-storage write claim exists, the claim is Admin-only, and
-        // a manual run only does what the next tick would (it also ends a back-off).
-        new(JobType.PhotoOriginalBackfill, typeof(PhotoOriginalBackfillJob), PhotoOriginalBackfillJob.Tick,
-            Cadence: null, DynamicCadence: false,
-            StaleAfter: PhotoOriginalBackfillJob.RunBudget + PhotoOriginalBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
-            ManualRunClaims: [PermissionClaims.FileStorageRead],
-            DetailReadClaim: PermissionClaims.FileStorageRead),
-
         // The file-analysis queue (issue #444). Work-driven, and never run by hand: every job it runs is one a user
         // consented to, so a manual run would have nothing of its own to do. Counts follow file-analysis.read, the
         // claim the analysis log and the job reads already sit behind.
@@ -118,13 +108,6 @@ public static class JobCatalogue
             ManualRunClaims: [PermissionClaims.FileAnalysisCreate],
             DetailReadClaim: PermissionClaims.FileAnalysisRead,
             ManualRunSupported: false),
-        // The file move (issue #448): every remaining FileBlob onto the file store. Work-driven, idle for good once the
-        // database holds no file bytes. Gated like the photo move, for the same reasons.
-        new(JobType.FileBlobBackfill, typeof(FileBlobBackfillJob), FileBlobBackfillJob.Tick,
-            Cadence: null, DynamicCadence: false,
-            StaleAfter: FileBlobBackfillJob.RunBudget + FileBlobBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
-            ManualRunClaims: [PermissionClaims.FileStorageRead],
-            DetailReadClaim: PermissionClaims.FileStorageRead),
         // The instrument-price sync (issue #446): the exchange-rate sync's shape — a dynamic cadence from its interval
         // setting, exclusive runs, and a stale window above its 10-minute run cap. Its counters are counts only, so the
         // detail needs nothing beyond system-settings.read; a manual run makes outbound requests only to the sources an
@@ -143,6 +126,14 @@ public static class JobCatalogue
             StaleAfter: NewsJobTiming.StaleAfter,
             ManualRunClaims: [PermissionClaims.NewsFeedsUpdate],
             DetailReadClaim: PermissionClaims.NewsFeedsUpdate),
+        // The recurrence key backfill (issue #519 §11): work-driven, idle for good once every pre-#519 series is keyed.
+        // Its counts are calendar operations data, so the card follows calendar.read; a manual run only keys what the
+        // next tick would, so it needs calendar.update, the claim a series edit (which also keys inline) already needs.
+        new(JobType.RecurrenceKeyBackfill, typeof(Odyssey.Core.Journal.RecurrenceKeyBackfillJob), Odyssey.Core.Journal.RecurrenceKeyBackfillJob.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: Odyssey.Core.Journal.RecurrenceKeyBackfillJob.RunBudget + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.CalendarUpdate],
+            DetailReadClaim: PermissionClaims.CalendarRead),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>

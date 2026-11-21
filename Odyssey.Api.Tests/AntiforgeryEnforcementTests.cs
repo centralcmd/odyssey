@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// enforcement. These tests boot the same in-memory API in a non-"Testing" environment, which
 /// activates the RequireAntiforgeryToken metadata + UseAntiforgery middleware on the controllers.
 /// </summary>
-public class AntiforgeryEnforcementTests
+public class AntiforgeryEnforcementTests(AntiforgeryEnforcementTests.Host host) : SharedApiHostTests<AntiforgeryEnforcementTests.Host>(host)
 {
     private const string ContactsPath = "/api/contacts";
     private const string TokenPath = "/api/antiforgery/token";
@@ -32,6 +32,9 @@ public class AntiforgeryEnforcementTests
     private static NewContact NewContact(string name) =>
         new() { Type = ContactType.Organization, Archived = false, OrganizationDetails = new() { LegalName = name } };
 
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : EnforcedFactory([]);
+
     /// <summary>
     /// <see cref="OdysseyApiFactory"/> rehosted in a non-"Testing" environment, which flips on the
     /// antiforgery enforcement the base "Testing" environment is exempt from. Because the in-memory
@@ -41,7 +44,7 @@ public class AntiforgeryEnforcementTests
     /// <c>AddEnvironmentVariables</c> to pick it up. (Benign and never reset: every suite wants the
     /// in-memory database; the "Testing" suites simply ignore the flag.)
     /// </summary>
-    private sealed class EnforcedFactory : OdysseyApiFactory
+    public class EnforcedFactory : OdysseyApiFactory
     {
         public EnforcedFactory(IReadOnlyCollection<string>? permissions) : base(permissions) =>
             Environment.SetEnvironmentVariable("UseInMemoryDatabase", "true");
@@ -56,7 +59,7 @@ public class AntiforgeryEnforcementTests
     [Fact]
     public async Task TokenEndpoint_ReturnsRequestToken()
     {
-        await using var factory = new EnforcedFactory(ContactWrite);
+        var factory = Factory.ForCaller(ContactWrite);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(TokenPath);
@@ -69,7 +72,7 @@ public class AntiforgeryEnforcementTests
     [Fact]
     public async Task UnsafeRequest_WithoutToken_Returns400()
     {
-        await using var factory = new EnforcedFactory(ContactWrite);
+        var factory = Factory.ForCaller(ContactWrite);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(ContactsPath, NewContact("no-token"));
@@ -85,7 +88,7 @@ public class AntiforgeryEnforcementTests
     [Fact]
     public async Task UnsafeRequest_WithToken_IsAccepted()
     {
-        await using var factory = new EnforcedFactory(ContactWrite);
+        var factory = Factory.ForCaller(ContactWrite);
         using var client = factory.CreateClient();
 
         // The GET both returns the request token and sets the paired secret cookie; the client's
@@ -107,7 +110,7 @@ public class AntiforgeryEnforcementTests
     [Fact]
     public async Task SafeRequest_WithoutToken_IsUnaffected()
     {
-        await using var factory = new EnforcedFactory(ContactWrite);
+        var factory = Factory.ForCaller(ContactWrite);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(ContactsPath);

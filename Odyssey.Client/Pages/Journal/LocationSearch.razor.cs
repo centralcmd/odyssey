@@ -48,7 +48,10 @@ public partial class LocationSearch : IDisposable
     protected override void OnInitialized()
     {
         if (string.IsNullOrWhiteSpace(InitialQuery))
+        {
             return;
+        }
+
         _query = InitialQuery;
         _awaitingSearch = true;
     }
@@ -117,20 +120,28 @@ public partial class LocationSearch : IDisposable
         // Switching region re-runs the current query against the newly selected provider only — but never a
         // prefilled query nobody has asked to send yet.
         if (_lastRegion is { } last && last != Region && !_awaitingSearch)
+        {
             Schedule(immediate: true);
+        }
+
         _lastRegion = Region;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_keysHooked)
+        {
             return;
+        }
+
         _keysHooked = true;
         try
         {
             await Js.InvokeVoidAsync("odsComboboxKeys", InputId);
             if (AutoFocus)
+            {
                 await Js.InvokeVoidAsync("odsFocusById", InputId);
+            }
         }
         catch (JSException) { /* the dialog's own Esc still closes it */ }
     }
@@ -148,12 +159,17 @@ public partial class LocationSearch : IDisposable
     private async Task OnRegionChanged(string value)
     {
         if (!Enum.TryParse<LocationSearchRegion>(value, out var region) || region == Region)
+        {
             return;
+        }
+
         Region = region;
         _lastRegion = region;
         await RegionChanged.InvokeAsync(region);
         if (!_awaitingSearch)
+        {
             Schedule(immediate: true);
+        }
     }
 
     private void OnInput(ChangeEventArgs e)
@@ -189,7 +205,10 @@ public partial class LocationSearch : IDisposable
             // Anything still in flight is now stale.
             _seq++;
             if (state != _state && state is SearchState.Short or SearchState.Long)
+            {
                 Say(state == SearchState.Short ? ShortText : LongText);
+            }
+
             _state = state;
             _active = -1;
             return;
@@ -210,7 +229,9 @@ public partial class LocationSearch : IDisposable
         try
         {
             if (delay > 0)
+            {
                 await Task.Delay(delay, ct);
+            }
         }
         catch (TaskCanceledException)
         {
@@ -218,7 +239,9 @@ public partial class LocationSearch : IDisposable
         }
 
         if (!ct.IsCancellationRequested)
+        {
             await InvokeAsync(RunAsync);
+        }
     }
 
     private async Task RunAsync()
@@ -231,7 +254,9 @@ public partial class LocationSearch : IDisposable
 
         var result = await Locations.SearchAsync(new LocationSearchRequest { Query = Clean(_query), Region = region });
         if (mine != _seq)
+        {
             return;
+        }
 
         var provider = ProviderLabel;
         if (result.IsSuccess && result.Value is { } body)
@@ -260,7 +285,10 @@ public partial class LocationSearch : IDisposable
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
         if (!IsOpen)
+        {
             return;
+        }
+
         switch (e.Key)
         {
             case "ArrowDown":

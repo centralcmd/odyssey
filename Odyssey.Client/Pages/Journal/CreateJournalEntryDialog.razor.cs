@@ -17,6 +17,9 @@ public partial class CreateJournalEntryDialog
     /// <summary>Active journal-tag options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
 
+    /// <summary>Names of the archived journal tags, which a new tag may not reuse.</summary>
+    [Parameter] public IReadOnlyCollection<string> ArchivedTagNames { get; set; } = [];
+
     /// <summary>Active contact options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> ContactOptions { get; set; } = [];
 
@@ -68,7 +71,9 @@ public partial class CreateJournalEntryDialog
         _canCreateLocations = _canReadLocations && user.HasPermission(PermissionClaims.LocationsCreate);
 
         if (Entry is not { } entry)
+        {
             return;
+        }
 
         _loadingDetail = true;
         try
@@ -141,7 +146,9 @@ public partial class CreateJournalEntryDialog
     private async Task<bool> SaveAsync()
     {
         if (!_draft.Validate())
+        {
             return false;
+        }
 
         // Let any in-flight inline creates land, then map the staged ids to the ones the server
         // issued; a create that failed resolves to null and is dropped rather than posted.

@@ -14,11 +14,10 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
             .HasValue<WeatherJobRun>(JobType.Weather)
             .HasValue<FileStorageMaintenanceJobRun>(JobType.FileStorageMaintenance)
             .HasValue<PhotoThumbnailJobRun>(JobType.PhotoThumbnails)
-            .HasValue<PhotoOriginalBackfillJobRun>(JobType.PhotoOriginalBackfill)
             .HasValue<FileAnalysisJobRun>(JobType.FileAnalysis)
-            .HasValue<FileBlobBackfillJobRun>(JobType.FileBlobBackfill)
             .HasValue<InstrumentPriceSyncJobRun>(JobType.InstrumentPriceSync)
             .HasValue<NewsFeedJobRun>(JobType.NewsFeedFetch)
+            .HasValue<RecurrenceKeyBackfillJobRun>(JobType.RecurrenceKeyBackfill)
             .IsComplete();
 
         entity.Property(run => run.OpenHeldGuard)
@@ -31,12 +30,13 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
 
         entity.ToTable(tb =>
         {
-            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+            // 5 and 7 (the two file moves) are retired ordinals: never stored again.
+            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10)");
             tb.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
             tb.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
             tb.HasCheckConstraint(
                 "CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
-            tb.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+            tb.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
             tb.HasCheckConstraint(
                 "CK_JobRuns_CountersNonNegative",
                 "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0"
@@ -49,19 +49,17 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
                 + " AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0"
                 + " AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0"
                 + " AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0"
-                + " AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0"
-                + " AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0"
                 + " AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0"
                 + " AND COALESCE(`AnalysesRefused`, 0) >= 0"
-                + " AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0"
-                + " AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0"
                 + " AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0"
                 + " AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0"
                 + " AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0"
                 + " AND COALESCE(`PricesDeleted`, 0) >= 0"
                 + " AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0"
                 + " AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0"
-                + " AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+                + " AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0"
+                + " AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0"
+                + " AND COALESCE(`KeyRowsDetached`, 0) >= 0");
             // FinishedAtUtc is NULL only on a Running row or an open held period, and always NULL on a Running one.
             tb.HasCheckConstraint(
                 "CK_JobRuns_FinishedMatchesStatus",
@@ -76,22 +74,10 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
     }
 }
 
-internal sealed class FileBlobBackfillJobRunConfiguration : IEntityTypeConfiguration<FileBlobBackfillJobRun>
-{
-    public void Configure(EntityTypeBuilder<FileBlobBackfillJobRun> entity) =>
-        entity.Property(run => run.Interruptions).HasColumnName(nameof(FileBlobBackfillJobRun.Interruptions));
-}
-
-internal sealed class PhotoOriginalBackfillJobRunConfiguration : IEntityTypeConfiguration<PhotoOriginalBackfillJobRun>
-{
-    public void Configure(EntityTypeBuilder<PhotoOriginalBackfillJobRun> entity) =>
-        entity.Property(run => run.Interruptions).HasColumnName(nameof(PhotoOriginalBackfillJobRun.Interruptions));
-}
-
 internal sealed class JobHeartbeatConfiguration : IEntityTypeConfiguration<JobHeartbeat>
 {
     public void Configure(EntityTypeBuilder<JobHeartbeat> entity)
     {
-        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)"));
+        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10)"));
     }
 }

@@ -4,7 +4,6 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRuntime
 @inject IClipboardService Clipboard
-@inject IDialogService DialogService
 @inject ITaxStatementsApiClient TaxStatements
 @inject IUploadLimitsCache UploadLimits
 
@@ -77,6 +76,8 @@
                        FileType="AccountFileType.Tax"
                        AccountName="@StatementName" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     private readonly RenderFragment _empty = @<OdsEmptyLine Text="No documents attached yet — upload the tax return / assessment PDFs." />;

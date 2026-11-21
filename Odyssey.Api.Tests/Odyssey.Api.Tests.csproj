@@ -13,13 +13,13 @@
     <ProjectReference Include="..\Odyssey.ApiClient\Odyssey.ApiClient.csproj" />
     <!-- The shared image fixtures (issue #86): real, decodable containers the avatar tests upload. -->
     <ProjectReference Include="..\Odyssey.TestData\Odyssey.TestData.csproj" />
-    <!-- Several tests exercise the migrations job's seeders directly (RoleSeedTests, and the two
-         factories that must run RoleClaimSeeder after EnsureCreated or their principals carry a role
+    <!-- Several tests exercise the migrations job's seeders directly (the factories and session
+         tests that must run RoleClaimSeeder after EnsureCreated or their principals carry a role
          with no permissions). Odyssey.IntegrationTests already references both projects, so the
          combination is precedented.
          Aliased because both projects expose a top-level `Program`, and an unaliased reference makes
          every `WebApplicationFactory<Program>` in this assembly ambiguous (CS0433). The alias keeps the
-         migrations assembly out of the global namespace; only the one file that says
+         migrations assembly out of the global namespace; only a file that says
          `extern alias migrations;` can see it. -->
     <ProjectReference Include="..\Odyssey.MigrationService\Odyssey.MigrationService.csproj"
                       Aliases="migrations" />
@@ -31,23 +31,30 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Xunit.SkippableFact" />
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="FirstUserRoleAssignmentTests.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
+    <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
+    <Compile Include="..\TestShared\SourceLint.cs" Link="TestShared\SourceLint.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
+    <Compile Include="..\TestShared\Logging\*.cs" Link="TestShared\Logging\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\HexColorNegativeCorpus.cs" Link="TestShared\HexColorNegativeCorpus.cs" />
+    <Compile Include="..\TestShared\Lookups\*.cs" Link="TestShared\Lookups\%(Filename)%(Extension)" />
+    <Compile Include="..\TestShared\Http\*.cs" Link="TestShared\Http\%(Filename)%(Extension)" />
+    <Compile Include="..\TestShared\Fixtures\ContactImageFixtures.cs" Link="TestShared\Fixtures\ContactImageFixtures.cs" />
     <Compile Include="..\TestShared\InstrumentPrices\*.cs" Link="TestShared\InstrumentPrices\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- The map origin accept/reject table (issue #370), also run against the client's shell check. -->
     <None Include="..\TestShared\MapOriginVectors.json" Link="Fixtures\MapOriginVectors.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Odyssey.Testing" />
   </ItemGroup>
 
 </Project>

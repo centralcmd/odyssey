@@ -81,10 +81,10 @@ services:
       Seed__DemoData: ${SEED_DEMO_DATA:-true}
       # No Email__*, FileAnalysis__* or FileStorage__* here. Those settings are database-backed and
       # edited at /settings; the migrations job used to read them for SystemSettingsConfigAdoption,
-      # which carried a pre-existing configured value into the store on upgrade. That step is gone —
-      # no deployment ever ran the releases it existed to upgrade from — so the job needs none of
-      # them. The API still reads the ones with a startup role (the mail transport, the upload
-      # transport ceiling); see the api service below.
+      # which carried a pre-existing configured value into the store on upgrade. That step was removed
+      # before any production database existed; a setting moved out of configuration from now on needs
+      # a carry-over step again (CLAUDE.md). The API still reads the one value with a startup role (the
+      # upload transport ceiling); see the api service below.
 
       # The initial administrator (issue #290). Applied ONLY when the user table is completely empty;
       # ignored on every later deploy. Required on a fresh database unless demo seeding provides an
@@ -228,6 +228,9 @@ services:
       # environment filter decides which stored secrets exist at all.
       DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
+      # The demo files and photos (Development/Testing only, whatever this says): the half of the demo seed with
+      # bytes, which only a host with the file volumes can write. The same flag as the migrations job's.
+      Seed__DemoData: ${SEED_DEMO_DATA:-true}
       # The API's key ring, READ-ONLY (`:ro` below), so a job can read the encrypted secret store — the
       # Frost client id today. This makes the worker the second container that can decrypt every stored
       # credential, a deliberate trade-off (docs/deployment.md). It never writes a key: automatic key

@@ -15,6 +15,8 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  # Only to dispatch perf.yml on the Release PR's branch (see the last step below).
+  actions: write
 
 jobs:
   release-please:
@@ -34,6 +36,28 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # The perf tier gates the release rather than every PR. A pull_request trigger cannot do it: the Release
+      # PR is written with the default GITHUB_TOKEN, whose events start no workflow run (so ci.yml never runs
+      # there either). workflow_dispatch is the exception, so dispatch perf.yml on the PR's branch each time this
+      # run creates or updates the PR; it reports a `perf` commit status on the PR head. Not on the run that cuts
+      # the release — the PR is merged by then. The PR JSON goes through env, never into the script text.
+      #
+      # The JSON is parsed in the script, not with fromJSON() in env: a step's env is evaluated BEFORE its `if`,
+      # and release-please leaves `pr` empty when the Release PR "remained the same", so fromJSON('') failed the
+      # whole job on every push that did not change the PR.
+      - name: Run the perf tier on the Release PR
+        if: steps.release.outputs.pr && steps.release.outputs.release_created != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+        run: |
+          release_branch=$(jq -r '.headBranchName // empty' <<<"$RELEASE_PR")
+          if [ -z "$release_branch" ]; then
+            echo "::error::release-please's pr output carries no headBranchName"
+            exit 1
+          fi
+          gh workflow run perf.yml --repo "$GITHUB_REPOSITORY" --ref "$release_branch"
 
   # Once a release is cut, build the images from the new tag and stamp them with
   # the SemVer. We can't rely on a separate `push: tags` trigger because tags

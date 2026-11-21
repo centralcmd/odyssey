@@ -154,10 +154,14 @@ public static class TermVisuals
     public static string? CadenceText(Interval? interval, int? count)
     {
         if (InfoFor(interval) is not { } info || interval == Interval.OneTime)
+        {
             return null;
+        }
 
         if (!info.Periodic)
+        {
             return info.Adverb;
+        }
 
         var every = count ?? 1;
         return every > 1 ? $"every {every} {info.Many}" : info.Adverb;
@@ -219,7 +223,9 @@ public static class TermVisuals
     public static string FormatDateTime(DateTime? utc, TimeZoneInfo? zone = null)
     {
         if (utc is not { } instant)
+        {
             return NoValue;
+        }
 
         var local = ToLocal(instant, zone ?? TimeZoneInfo.Local);
         return $"{local.ToString("dd MMM yyyy, HH:mm", CultureInfo.InvariantCulture)} {OffsetLabel(local.Offset)}";
@@ -251,7 +257,9 @@ public static class TermVisuals
     public static DateTime? LocalToUtc(DateTime? date, TimeSpan? time, TimeZoneInfo zone)
     {
         if (date is not { } d || time is not { } t)
+        {
             return null;
+        }
 
         var wall = DateTime.SpecifyKind(d.Date + t, DateTimeKind.Unspecified);
         var offset = zone.IsInvalidTime(wall)
@@ -268,7 +276,9 @@ public static class TermVisuals
     {
         var days = (int)Math.Round((AsUtc(utc) - AsUtc(nowUtc)).TotalDays);
         if (days == 0)
+        {
             return "today";
+        }
 
         var abs = Math.Abs(days);
         var span = abs < 60 ? $"{abs} {(abs == 1 ? "day" : "days")}" : $"{(int)Math.Round(abs / 30.4)} months";
@@ -323,7 +333,9 @@ public static class TermVisuals
     public static (string Color, string Soft) IconColors(ExistingTerm term)
     {
         if (IsNumeric(term))
+        {
             return (DirectionColor(term), DirectionSoft(term));
+        }
 
         var info = Info(term);
         return (info.Color, info.Soft);

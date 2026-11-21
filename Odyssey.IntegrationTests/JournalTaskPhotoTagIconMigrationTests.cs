@@ -5,30 +5,24 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// <c>AddJournalTaskPhotoTagIcons</c> (issue #345) applied over a database that already holds journal,
-/// task and photo tags — the state every production database is in. Each column must arrive as
-/// <c>varchar(64) NULL</c> with no default and no backfill, so every existing tag reads as the default.
+/// The journal, task and photo tag icon columns (issue #345) on real MariaDB: each is <c>varchar(64) NULL</c> with no
+/// default, so a tag written without one reads as the default, and a set icon round-trips.
 /// </summary>
 /// <remarks>
-/// Unobservable on the fast tiers: the EF InMemory provider has no schema and no migrations.
+/// Unobservable on the fast tiers: the EF InMemory provider has no schema.
 /// </remarks>
 [Collection(MariaDbCollection.Name)]
 public class JournalTaskPhotoTagIconMigrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_journal_tag_icon";
 
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_AddContractSmartTagScope";
-
-    private const string Subject = "_AddJournalTaskPhotoTagIcons";
-
     private static readonly string[] Tables = ["JournalTags", "JournalTaskTags", "PhotoTags"];
 
     [SkippableFact]
-    public async Task Pre_existing_tags_survive_the_upgrade_with_no_icon_and_each_column_is_nullable_varchar_64()
+    public async Task Tags_written_without_an_icon_read_none_and_each_column_is_nullable_varchar_64()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var ids = Tables.ToDictionary(table => table, _ => Guid.NewGuid());
 
@@ -36,27 +30,13 @@ public class JournalTaskPhotoTagIconMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
-                foreach (var table in Tables)
-                {
-                    Assert.Null(await ColumnAsync(context, table));
-                }
-
-                // Raw SQL: the entities already carry Icon, which the baseline schema does not have.
+                // Raw SQL, naming no icon: the columns' own default is what is under test.
                 await context.Database.ExecuteSqlAsync(
                     $"INSERT INTO `JournalTags` (`JournalTagId`, `Name`) VALUES ({ids["JournalTags"]}, {"Holidays"})");
                 await context.Database.ExecuteSqlAsync(
                     $"INSERT INTO `JournalTaskTags` (`JournalTaskTagId`, `Name`) VALUES ({ids["JournalTaskTags"]}, {"Holidays"})");
                 await context.Database.ExecuteSqlAsync(
                     $"INSERT INTO `PhotoTags` (`PhotoTagId`, `Name`) VALUES ({ids["PhotoTags"]}, {"Holidays"})");
-            }
-
-            await using (var context = NewContext())
-            {
-                // To the latest schema, not just the subject: the entity read below maps every column the
-                // model has now, including ones later migrations add (issue #392 added tag colours).
-                await context.Database.MigrateAsync();
-                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
 
                 foreach (var table in Tables)
                 {
@@ -106,21 +86,9 @@ public class JournalTaskPhotoTagIconMigrationTests(MariaDbFixture fixture)
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
 
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
-
     private async Task DropAsync()
     {
-        await using var server = ServerContext();
+        await using var server = fixture.CreateOdysseyContext();
         await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
     }
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 }

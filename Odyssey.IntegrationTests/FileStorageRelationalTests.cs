@@ -14,7 +14,7 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #346: the migration and its constraints, the reservation's independent commit, the
+/// The relational half of issue #346: the schema's constraints, the reservation's independent commit, the
 /// database's RESTRICT key as the re-check for an unknown feature, concurrent writers, the maintenance lease, and the
 /// no-op rule on a relational host. None of it is observable on the EF InMemory provider, which honours no
 /// transaction, unique index, CHECK or foreign key.
@@ -23,8 +23,6 @@ namespace Odyssey.IntegrationTests;
 public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncLifetime
 {
     private const string Database = "odyssey_file_storage";
-    private const string PreviousMigration = "_AddExchangeRateProviderSeries";
-    private const string ThisMigration = "_AddFileSystemObjectStorage";
 
     private readonly DirectoryInfo volumes = Directory.CreateTempSubdirectory("odyssey-fs-it-");
     private readonly List<FileStorageTestHost> hosts = [];
@@ -43,15 +41,12 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
     }
 
     [SkippableFact]
-    public async Task The_migration_creates_the_tables_with_their_keys_checks_and_seeds_and_its_down_removes_them()
+    public async Task The_tables_carry_their_keys_checks_and_seeded_lease()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync(migrate: false);
+        await fixture.CreateMigratedDatabaseAsync(Database);
         await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, ThisMigration);
 
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` = 'FileStorageDeletionGraceHours' AND `Value` = '24'"));
         Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `FileStorageMaintenanceLeases` WHERE `Id` = 1"));
         Assert.Equal(1L, await MigrationSeam.CountAsync(context,
             "SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() "
@@ -78,14 +73,6 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
             $"INSERT INTO `FileStorageMaintenanceLeases` (`Id`, `Version`) VALUES (2, '{Guid.NewGuid()}')"));
         // RESTRICT: a volume holding objects cannot be removed.
         await Assert.ThrowsAsync<MySqlException>(() => context.Database.ExecuteSqlRawAsync($"DELETE FROM `FileStorageVolumes` WHERE `Id` = '{volumeId}'"));
-
-        await context.Database.ExecuteSqlRawAsync("DELETE FROM `StoredObjects`");
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "StoredObjects"));
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "FileStorageVolumes"));
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "FileStorageOrphanSightings"));
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "FileStorageMaintenanceLeases"));
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` = 'FileStorageDeletionGraceHours'"));
     }
 
     [SkippableFact]
@@ -403,24 +390,15 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
             [path]);
 
     private void UseDatabase(DbContextOptionsBuilder<OdysseyContext> options) =>
-        options.UseMySql(fixture.ConnectionStringFor(Database), new MariaDbServerVersion(new Version(11, 4)), mySql => mySql.EnableRetryOnFailure());
+        options.UseMySql(fixture.ConnectionStringFor(Database), new MariaDbServerVersion(new Version(11, 4)), OdysseyDatabaseRetry.Configure);
 
     /// <summary>The base context: a derived one would see none of <c>OdysseyContext</c>'s migrations.</summary>
     private OdysseyContext NewContext() =>
         new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), new MariaDbServerVersion(new Version(11, 4))).Options);
 
-    private async Task RecreateAsync(bool migrate = true)
+    private async Task RecreateAsync()
     {
-        if (!migrate)
-        {
-            await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-                .UseMySql(fixture.OdysseyConnectionString, new MariaDbServerVersion(new Version(11, 4))).Options);
-            await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-            await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-            return;
-        }
-
         await fixture.CreateMigratedDatabaseAsync(Database);
         await using var context = NewContext();
         foreach (var sql in TestStorageContext.CreateTablesSql)

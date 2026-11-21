@@ -73,12 +73,12 @@ public class NewsNavigationAndCacheTests
     [Fact]
     public async Task The_cache_is_cleared_when_the_signed_in_user_changes()
     {
-        var news = new Mock<INewsApiClient>();
+        var tags = new Mock<ITagsApiClient<ExistingNewsTag>>();
         var reads = 0;
-        news.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => ApiResult<List<ExistingNewsTag>>.Success([new() { Id = Guid.NewGuid(), Name = $"read {++reads}" }], HttpStatusCode.OK));
+        tags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ApiResult<List<ExistingNewsTag>>.Success([new() { NewsTagId = Guid.NewGuid(), Name = $"read {++reads}" }], HttpStatusCode.OK));
         var auth = new SwitchableAuth();
-        using var cache = new NewsCatalogueCache(news.Object, auth);
+        using var cache = new NewsCatalogueCache(Mock.Of<INewsApiClient>(), tags.Object, auth);
 
         var first = await cache.GetTagsAsync();
         var again = await cache.GetTagsAsync();
@@ -99,7 +99,7 @@ public class NewsNavigationAndCacheTests
         news.Setup(n => n.GetCatalogueAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => ApiResult<List<NewsFeedCatalogueEntry>>.Success([new() { Id = Guid.NewGuid(), DisplayTitle = $"read {++reads}" }], HttpStatusCode.OK));
         var auth = new SwitchableAuth();
-        using var cache = new NewsCatalogueCache(news.Object, auth);
+        using var cache = new NewsCatalogueCache(news.Object, Mock.Of<ITagsApiClient<ExistingNewsTag>>(), auth);
 
         await cache.GetCatalogueAsync();
         auth.UserId = "bob";
@@ -110,11 +110,11 @@ public class NewsNavigationAndCacheTests
     [Fact]
     public async Task A_failure_is_never_cached()
     {
-        var news = new Mock<INewsApiClient>();
-        news.SetupSequence(n => n.ListTagsAsync(It.IsAny<CancellationToken>()))
+        var tags = new Mock<ITagsApiClient<ExistingNewsTag>>();
+        tags.SetupSequence(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<List<ExistingNewsTag>>.Failure(HttpStatusCode.ServiceUnavailable, new ApiProblem { Code = NewsErrorCodes.Busy }))
             .ReturnsAsync(ApiResult<List<ExistingNewsTag>>.Success([], HttpStatusCode.OK));
-        using var cache = new NewsCatalogueCache(news.Object, new SwitchableAuth());
+        using var cache = new NewsCatalogueCache(Mock.Of<INewsApiClient>(), tags.Object, new SwitchableAuth());
 
         Assert.False((await cache.GetTagsAsync()).IsSuccess);
         Assert.True((await cache.GetTagsAsync()).IsSuccess);

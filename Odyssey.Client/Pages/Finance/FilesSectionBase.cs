@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Microsoft.AspNetCore.Components;
@@ -24,13 +25,13 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     [Inject] protected ISnackbar Snackbar { get; set; } = default!;
     [Inject] protected IJSRuntime JsRuntime { get; set; } = default!;
     [Inject] protected IClipboardService Clipboard { get; set; } = default!;
-    [Inject] protected IDialogService DialogService { get; set; } = default!;
     [Inject] protected IUploadLimitsCache UploadLimits { get; set; } = default!;
 
     [Parameter] public bool CanUpload { get; set; }
     [Parameter] public bool CanDelete { get; set; }
     [Parameter] public bool CanDownload { get; set; }
 
+    protected OdsConfirm confirm = default!;
     protected List<TFile> items = [];
     protected bool isLoading;
     protected bool isUploading;
@@ -73,21 +74,15 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected static bool IsPreviewable(string contentType) =>
         PreviewableContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Whether the section is running interactively; the file load is skipped off-browser (prerender).
-    /// </summary>
-    /// <remarks>
-    /// A swappable seam, as <c>TransactionListView.InteractiveCheck</c> is: a bUnit host is not a
-    /// browser either, so a hard <c>OperatingSystem.IsBrowser()</c> would leave every host that stages
-    /// changes to these files untestable. It is static on the CLOSED generic type, so a test moves
-    /// <c>FilesSectionBase&lt;ExistingTransactionFile&gt;.InteractiveCheck</c>, must restore it, and
-    /// must not run in parallel with another class that moves it.
-    /// </remarks>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] protected IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck()) return;
+        if (!Interactivity.IsInteractive)
+        {
+            return;
+        }
+
         uploadLimits = await UploadLimits.GetAsync();
         await LoadFilesAsync();
     }
@@ -101,7 +96,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
 
     protected async Task UploadFilesAsync(IReadOnlyList<IBrowserFile>? files)
     {
-        if (files is null || files.Count == 0) return;
+        if (files is null || files.Count == 0)
+        {
+            return;
+        }
 
         // Re-read on each upload, not just at init: a long-lived page could otherwise enforce a cap
         // an administrator changed minutes ago.
@@ -130,7 +128,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             valid = valid.Take(MaxFileCount - items.Count).ToList();
         }
 
-        if (valid.Count == 0) return;
+        if (valid.Count == 0)
+        {
+            return;
+        }
 
         isUploading = true;
         var uploaded = 0;
@@ -163,7 +164,9 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             }
 
             if (perFile.Count > 0)
+            {
                 Snackbar.Add(UploadFailureText.Several(perFile, itemised: perFile.Count <= 3), Severity.Error, o => o.RequireInteraction = true);
+            }
 
             if (uploaded > 0)
             {
@@ -177,7 +180,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task PreviewFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!previewingFiles.Add(meta.Id)) return;
+        if (!previewingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try
@@ -196,7 +202,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task DownloadFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!downloadingFiles.Add(meta.Id)) return;
+        if (!downloadingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try
@@ -204,8 +213,7 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             var content = await Files.GetContentAsync(meta.Id);
             if (content is null) { Snackbar.Add("Download failed.", Severity.Error); return; }
 
-            var contentType = content.ContentType ?? "application/octet-stream";
-            await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, meta.FileName, contentType);
+            await JsRuntime.SaveFileAsync(content, meta.FileName);
         }
         catch (Exception ex) { Snackbar.Add($"Download failed: {ex.Message}", Severity.Error); }
         finally { downloadingFiles.Remove(meta.Id); }
@@ -214,18 +222,21 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task ConfirmDeleteAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach file",
-            $"Detach '{meta.FileName}' from this {EntityNoun}?",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await confirm.AskAsync("Detach file", $"Detach '{meta.FileName}' from this {EntityNoun}?", "Detach", "link_off");
 
-        if (confirmed == true) await DeleteFileAsync(file);
+        if (confirmed)
+        {
+            await DeleteFileAsync(file);
+        }
     }
 
     private async Task DeleteFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!deletingFiles.Add(meta.Id)) return;
+        if (!deletingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try

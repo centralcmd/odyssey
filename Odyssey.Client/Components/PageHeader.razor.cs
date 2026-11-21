@@ -30,8 +30,9 @@ public partial class PageHeader
     /// <summary>Problem rollup rows. When non-empty, the severity-tinted toggle appears.</summary>
     [Parameter] public IReadOnlyCollection<PageHeaderProblem>? Problems { get; set; }
 
-    /// <summary>Label on the problem toggle (the rollup count is appended as a badge).</summary>
-    [Parameter] public string ProblemsLabel { get; set; } = "Problems";
+    /// <summary>Label on the problem toggle (the rollup count is appended as a badge). The design
+    /// system's default is "Attention", so the toggle reads "Attention, 2".</summary>
+    [Parameter] public string ProblemsLabel { get; set; } = "Attention";
 
     /// <summary>Whether the rollup region starts open the first time problems appear.</summary>
     [Parameter] public bool ProblemsOpenByDefault { get; set; } = true;
@@ -71,6 +72,14 @@ public partial class PageHeader
 
     /// <summary>Gate for the primary action (e.g. permissions). Hidden when false.</summary>
     [Parameter] public bool ShowPrimaryAction { get; set; } = true;
+
+    /// <summary>Secondary actions rendered before the signal and the region toggles (the design
+    /// system's <c>leadActions</c>).</summary>
+    [Parameter] public RenderFragment? LeadActions { get; set; }
+
+    /// <summary>Extra secondary actions rendered after the region toggles and before the primary
+    /// action (the design system's <c>actions</c>).</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
 
     /// <summary>Custom primary action markup — overrides the convenience button (e.g. a Save button).</summary>
     [Parameter] public RenderFragment? PrimaryAction { get; set; }
@@ -152,13 +161,24 @@ public partial class PageHeader
         // When a page binds a region's open state, mirror it (the page — restoring a
         // saved layout — is authoritative). Unbound regions keep their internal state.
         if (ProblemsOpenChanged.HasDelegate)
+        {
             _showProblems = ProblemsOpen;
+        }
+
         if (OverviewOpenChanged.HasDelegate)
+        {
             _showOverview = OverviewOpen;
+        }
+
         if (SearchOpenChanged.HasDelegate)
+        {
             _showSearch = SearchOpen;
+        }
+
         if (InfoOpenChanged.HasDelegate)
+        {
             _showInfo = InfoOpen;
+        }
     }
 
     private Task ToggleProblems() => ToggleAsync(_showProblems = !_showProblems, ProblemsOpenChanged);

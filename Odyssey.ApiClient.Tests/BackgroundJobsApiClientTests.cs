@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -17,27 +18,9 @@ public class BackgroundJobsApiClientTests
 {
     private const string Base = "/api/background-jobs";
 
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (BackgroundJobsApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string ResponseJson { get; set; } = """{"items":[],"offset":0,"limit":25,"totalCount":0}""";
-
-        public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(Status)
-            {
-                Content = new StringContent(ResponseJson, System.Text.Encoding.UTF8, "application/json"),
-            });
-        }
-    }
-
-    private static (BackgroundJobsApiClient Client, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new BackgroundJobsApiClient(api), handler);
     }
@@ -90,7 +73,7 @@ public class BackgroundJobsApiClientTests
         var (client, handler) = Create();
         handler.Status = HttpStatusCode.Accepted;
         var id = Guid.NewGuid();
-        handler.ResponseJson = $$"""{"id":"{{id}}"}""";
+        handler.Body = $$"""{"id":"{{id}}"}""";
 
         var result = await client.RunNowAsync(JobType.FileStorageMaintenance);
 
@@ -104,7 +87,7 @@ public class BackgroundJobsApiClientTests
     {
         var (client, handler) = Create();
         handler.Status = HttpStatusCode.Conflict;
-        handler.ResponseJson = """{"status":409,"detail":"held","code":"job-run.held","heldReason":"BreakerTripped","resumesAtUtc":"2026-11-05T11:00:00Z"}""";
+        handler.Body = """{"status":409,"detail":"held","code":"job-run.held","heldReason":"BreakerTripped","resumesAtUtc":"2026-11-05T11:00:00Z"}""";
 
         var result = await client.RunNowAsync(JobType.PhotoThumbnails);
 
@@ -120,7 +103,7 @@ public class BackgroundJobsApiClientTests
     public async Task An_unknown_enum_name_and_an_unknown_kind_are_tolerated()
     {
         var (client, handler) = Create();
-        handler.ResponseJson = """
+        handler.Body = """
             {"$kind":"Backups","id":"6f0e1c2a-0000-0000-0000-000000000001","jobType":"Backups","trigger":"Webhook",
              "status":"Paused","failureCategory":"Quota","heldReason":"Maintenance","startedAtUtc":"2026-11-05T10:00:00Z",
              "lastActivityAtUtc":"2026-11-05T10:00:00Z","futureField":42}
@@ -140,7 +123,7 @@ public class BackgroundJobsApiClientTests
     public async Task A_known_kind_reads_as_its_subtype_and_the_overview_reads_its_enums_by_name()
     {
         var (client, handler) = Create();
-        handler.ResponseJson = """
+        handler.Body = """
             {"$kind":"Weather","id":"6f0e1c2a-0000-0000-0000-000000000002","jobType":"Weather","trigger":"Scheduled",
              "status":"PartiallySucceeded","failureCategory":"ProviderRateLimited","startedAtUtc":"2026-11-05T10:00:00Z",
              "lastActivityAtUtc":"2026-11-05T10:00:00Z","pointsAttempted":3,"pointsFailed":1,"failureKind":3}
@@ -149,7 +132,7 @@ public class BackgroundJobsApiClientTests
         var weather = Assert.IsType<WeatherJobRunDetail>((await client.GetRunAsync(Guid.NewGuid())).Value);
         Assert.Equal((3, 1, WeatherFetchFailureKind.RateLimited), (weather.PointsAttempted, weather.PointsFailed, weather.FailureKind));
 
-        handler.ResponseJson = """
+        handler.Body = """
             {"generatedAtUtc":"2026-11-05T10:00:00Z","jobs":[{"jobType":"Weather","health":"Exploded","notTickingAfterSeconds":300,
              "totals":{"last24h":{"runs":1,"succeeded":1,"failed":0,"held":0},"last7d":{"runs":1,"succeeded":1,"failed":0,"held":0}}}],
              "running":[],"workerHealth":{"fileStorage":null,"thumbnails":{"state":"Running","resumesAtUtc":null}}}

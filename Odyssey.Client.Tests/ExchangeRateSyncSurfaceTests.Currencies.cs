@@ -68,10 +68,10 @@ public partial class ExchangeRateSyncSurfaceTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims));
+        ctx.UseInteractivity();
         _popover = ctx.Render<MudPopoverProvider>();
         _dialogs = ctx.Render<MudDialogProvider>();
         ctx.Render<MudSnackbarProvider>();
-        CurrenciesCard.InteractiveCheck = static () => true;
         return (ctx, sync, currencies);
     }
 
@@ -313,10 +313,10 @@ public partial class ExchangeRateSyncSurfaceTests
 
         ClickRowAction(cut, "USD", "Delete fetched rates…");
         cut.WaitForAssertion(() => Assert.Equal("cur-USD-menu",
-            cut.FindComponents<ConfirmDeleteDialog>().Single().Instance.ReturnFocusToId));
+            cut.FindComponents<OdsConfirmDialog>().Single().Instance.ReturnFocusToId));
 
         ClickRowAction(cut, "USD", "Delete");
-        cut.WaitForAssertion(() => Assert.All(cut.FindComponents<ConfirmDeleteDialog>(),
+        cut.WaitForAssertion(() => Assert.All(cut.FindComponents<OdsConfirmDialog>(),
             dialog => Assert.Equal("cur-USD-menu", dialog.Instance.ReturnFocusToId)));
     }
 
@@ -715,10 +715,10 @@ public partial class ExchangeRateSyncSurfaceTests
     private void FillNewCurrency(string code)
     {
         var fields = Dialogs.FindAll("input");
-        // The code field is Immediate: it binds on input, not change.
+        // OdsField is Immediate: every field binds on input, not change.
         fields[0].Input(code);
-        fields[1].Change("¤");
-        fields[2].Change(code + " name");
+        fields[1].Input("¤");
+        fields[2].Input(code + " name");
     }
 
     [Fact]
@@ -826,7 +826,9 @@ public partial class ExchangeRateSyncSurfaceTests
         currencies.Verify(c => c.UpdateAsync("USD", It.Is<NewCurrency>(n => n.Archived), It.IsAny<CancellationToken>()), Times.Once);
         // The synced count in the header follows a stopped sync.
         if (synced)
+        {
             cut.WaitForAssertion(() => Assert.True(sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync)) > reads));
+        }
     }
 
     // ── Purge ────────────────────────────────────────────────────────────────────────────────────

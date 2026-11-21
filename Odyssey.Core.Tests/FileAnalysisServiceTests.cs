@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Finance;
 using Xunit;
 using ContextJobStatus = Odyssey.Context.FileAnalysisJobStatus;
@@ -129,21 +130,8 @@ public class FileAnalysisServiceTests
         };
         context.Accounts.Add(account);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(new FileMetadata
-        {
-            Id = fileId,
-            UploadedByUserId = "user-1",
-            FileName = "statement.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = 3,
-            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-            UploadedAtUtc = DateTime.UtcNow,
-        });
+        var fileId = (await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1, 2, 3], "statement.pdf", uploadedByUserId: "user-1")).Id;
         await context.SaveChangesAsync();
 
         context.AccountFiles.Add(new AccountFile
@@ -648,9 +636,14 @@ public class FileAnalysisServiceTests
         var (service, jobId, accountId, candidates) = await AnalyzeTwoCandidatesAsync(context);
         var account = await context.Accounts.SingleAsync(a => a.AccountId == accountId);
         if (closed)
+        {
             account.Closed = DateTime.UtcNow;
+        }
         else
+        {
             account.Archived = DateTime.UtcNow;
+        }
+
         await context.SaveChangesAsync();
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -918,8 +911,16 @@ public class FileAnalysisServiceTests
                 Currency = "USD",
                 ReviewStatus = rs,
             });
-        for (var i = 0; i < pending; i++) AddCandidate(ContextReviewStatus.Pending);
-        for (var i = 0; i < reviewed; i++) AddCandidate(ContextReviewStatus.Accepted);
+        for (var i = 0; i < pending; i++)
+        {
+            AddCandidate(ContextReviewStatus.Pending);
+        }
+
+        for (var i = 0; i < reviewed; i++)
+        {
+            AddCandidate(ContextReviewStatus.Accepted);
+        }
+
         await context.SaveChangesAsync();
         return job.Id;
     }
@@ -927,21 +928,8 @@ public class FileAnalysisServiceTests
     // Attaches another Statement file to an existing account, returning its file id.
     private static async Task<Guid> AddStatementFileAsync(OdysseyContext context, Guid accountId, string name)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1] };
-        var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(new FileMetadata
-        {
-            Id = fileId,
-            UploadedByUserId = "user-1",
-            FileName = name,
-            ContentType = "application/pdf",
-            SizeBytes = 1,
-            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-            UploadedAtUtc = DateTime.UtcNow,
-        });
+        var fileId = (await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1], name, uploadedByUserId: "user-1")).Id;
         await context.SaveChangesAsync();
         context.AccountFiles.Add(new AccountFile
         {
@@ -1164,6 +1152,7 @@ public class FileAnalysisServiceTests
         context.FileAnalysisJobs.Add(job);
 
         foreach (var (merchant, category) in candidates)
+        {
             context.FileAnalysisCandidateTransactions.Add(new FileAnalysisCandidateTransaction
             {
                 AnalysisJobId = job.Id,
@@ -1175,15 +1164,27 @@ public class FileAnalysisServiceTests
                 Currency = "USD",
                 ReviewStatus = ContextReviewStatus.Pending,
             });
+        }
 
         foreach (var name in contactNames)
+        {
             journal.Contacts.Add(new Contact { ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = name.ToUpperInvariant(), Type = ContactType.Organization, OrganizationDetails = new() { LegalName = name } });
+        }
+
         foreach (var name in archivedContacts ?? [])
+        {
             journal.Contacts.Add(new Contact { ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = name.ToUpperInvariant(), Type = ContactType.Organization, Archived = DateTime.UtcNow, OrganizationDetails = new() { LegalName = name } });
+        }
+
         foreach (var name in tagNames)
+        {
             context.TransactionTags.Add(new TransactionTag { Name = name });
+        }
+
         foreach (var name in archivedTags ?? [])
+        {
             context.TransactionTags.Add(new TransactionTag { Name = name, Archived = DateTime.UtcNow });
+        }
 
         await journal.SaveChangesAsync();
         await context.SaveChangesAsync();
@@ -1576,7 +1577,10 @@ public class FileAnalysisServiceTests
     {
         var contact = await journal.Contacts.SingleAsync(c => c.OrganizationDetails!.LegalName == contactName);
         foreach (var alias in aliases)
+        {
             journal.ContactAliases.Add(new ContactAlias { ContactId = contact.ContactId, Value = alias, Label = "card" });
+        }
+
         await journal.SaveChangesAsync();
     }
 
@@ -1649,7 +1653,7 @@ public class FileAnalysisServiceTests
 
         var provider = FakeProvider.Matching((_, _, _) => []);
         var aliasesOnly = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
-            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            settingsLookup, NullLogger<FileAnalysisService>.Instance,
             FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
         { MatchVocabularyBudget = 1000 };
 
@@ -1662,7 +1666,7 @@ public class FileAnalysisServiceTests
         Assert.Equal(0, first.AliasCount);
 
         var tiny = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
-            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            settingsLookup, NullLogger<FileAnalysisService>.Instance,
             FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
         { MatchVocabularyBudget = 10 };
 

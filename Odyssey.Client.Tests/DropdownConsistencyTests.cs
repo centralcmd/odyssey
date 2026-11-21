@@ -546,6 +546,7 @@ public class DropdownConsistencyTests
         { "Journal tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTag>._statusOptions },
         { "Task tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTaskTag>._statusOptions },
         { "Photo tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingPhotoTag>._statusOptions },
+        { "News tags", OdsTagAdmin<Odyssey.Dtos.Internet.ExistingNewsTag>._statusOptions },
         { "Users status", Odyssey.Client.Pages.Users._statusOptions },
         { "File analysis outcome", Odyssey.Client.Pages.AnalysisLog._statusOptions },
     };

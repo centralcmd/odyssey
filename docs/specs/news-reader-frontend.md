@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved |
+| **Status** | Implemented (#507); amended since — see the *Superseded* notes inline |
 | **Source issue** | [#473](https://github.com/centralcmd/odyssey/issues/473), the issue body and every spec amendment posted on it, merged into one document |
 | **Backend counterpart** | [`docs/specs/news-reader-backend.md`](news-reader-backend.md) (issue #470). It owns the API contract |
 | **Visual reference** | The design system artifact, https://claude.ai/artifact/VkrcragM9HGn1cXKkANizr, **version 227** |
@@ -69,7 +69,8 @@ tags.
 5. OPML import and export, AI features, and per-user read state.
 6. A diff view between revisions.
 7. Notifications for new articles.
-8. Generalising `OdsTagAdmin`. That is a committed follow-up (§13).
+8. Generalising `OdsTagAdmin`. That is a committed follow-up (§12.2). *(Superseded: done — `/news-tags` is now
+   the shared `OdsTagAdmin`; see §3.4.)*
 9. **Full-article-text search** (user decision). Search covers the title, author and summary only; the
    full text is stored as a file and is not searched. See §13.
 10. A published-date range in the filter bar. The API keeps `from`/`to`, but v1's UI does not offer
@@ -495,6 +496,10 @@ with **Save**. Required fields carry the `*` **and** the visible word "Required"
 
 ### 3.4 `/news-tags`
 
+> **Superseded (November 2026, commit 88dbf6e).** `/news-tags` no longer has a dedicated page: it is the shared
+> `OdsTagAdmin` over the shared tag contract (backend §5.4), in `Odyssey.Client/Pages/Internet/NewsTagsPage.razor`.
+> The description below is the v1 design, kept for history.
+
 This is a dedicated page. It does **not** use `OdsTagAdmin`, which is bound to `Guid`-keyed
 `ITagsApiClient<TRow>` rows, archive by `PUT` replay, and paged lists with no in-use delete. The page is
 built from existing pieces:
@@ -641,6 +646,9 @@ The panel renders in the `Ready`, `Degraded` and `Unconfigured` storage states.
 
 ### 4.2 Changed
 
+> **Superseded (November 2026).** The `OdsInfiniteList` footer-only mode was built for the v1 News Tags page;
+> since `/news-tags` moved onto `OdsTagAdmin` (§3.4) no page uses it.
+
 Each change is opt-in or invisible to existing pages unless stated.
 
 | Component | Change |
@@ -656,7 +664,7 @@ Each change is opt-in or invisible to existing pages unless stated.
 |---|---|
 | `OdsSearchField`, `OdsSelect`, `OdsSwitch`, `OdsPageSizeSelect`, `OdsListStatus` | |
 | `OdsRecordCard` + `OdsRecordBody` + `OdsInfoTileGrid` + `OdsRecordSection` | The fixed body order is used as is. Cards use `HeadingLevel = 3`; sections `HeadingLevel = 4` |
-| `OdsRecordTable` | News Tags, caption "News tags". Receives the page's current window as `Rows` with `ServerSort="true"`, and keeps its own loading, error and empty states; `OdsInfiniteList`'s footer-only mode follows it |
+| `OdsRecordTable` | *(Superseded: `/news-tags` is now `OdsTagAdmin`, §3.4.)* News Tags, caption "News tags". Receives the page's current window as `Rows` with `ServerSort="true"`, and keeps its own loading, error and empty states; `OdsInfiniteList`'s footer-only mode follows it |
 | `OdsTagIconPicker`, `OdsTagColorPicker`, `OdsTagChips`, `OdsTagMultiSelect`, `OdsChip` | |
 | `OdsModal`, `OdsFormDialog`, `OdsCheckbox`, `OdsErrorSummary` | |
 | `OdsAlert`, `OdsProblemAlert`, `OdsEmptyState`, `OdsSkeleton`, `OdsSkeletonRow`, `OdsProgressBar`, `OdsLiveAnnouncer` | |
@@ -747,7 +755,7 @@ follow the existing naming: `INewsArticlesApiClient`, `INewsFeedsApiClient`, `IN
 
 | Endpoint | Where |
 |---|---|
-| `GET/POST/PUT /api/news-tags…`, `…/archive`, `…/unarchive`, `DELETE …[?detachLinks=true]` | `/news-tags` |
+| `GET/POST/PUT/DELETE /api/news-tags…` — the shared tag contract since November 2026 (backend §5.4); the page is the shared `OdsTagAdmin` | `/news-tags` |
 | `GET /api/news-status` | The News status panel and the job card's text-quota warning line |
 | Existing `/api/background-jobs/…` and `/api/system-settings` | The job card and the settings group |
 
@@ -984,7 +992,7 @@ failed-update, busy, network and Mark all read partial-failure snackbars.
 | `news-tag-in-use` (409) | §3.4 |
 | `NewsFeedUrlRejected` (422, `url`) | Inline. The server's message wins over any client result |
 | `news-feed-limit` / `news-tag-limit` (422) | An `OdsAlert` in the dialog: "The limit has been reached. An administrator can raise it in Settings." The tag limit is a constant, so its alert drops the Settings sentence |
-| `news-feed-not-archived` / `-inactive` / `-not-quarantined` (422) | A snackbar with the server's message. Only a race reaches this |
+| `news-feed-inactive` / `-not-quarantined` (422; `news-feed-not-archived` is retired) | A snackbar with the server's message. Only a race reaches this |
 | `NewsTagNotUsable` (422) | Inline on the tag picker: "One of these tags is archived." |
 | `NewsMarkReadScopeInvalid` / `asOfUtc` (422) | "The list is out of date. Refresh and try again." with **Refresh**. The scope error covers an unknown id only |
 | A pending-deletion feed id (422) | Never reached on load: stale ids are dropped first (§3.1) |
@@ -1366,7 +1374,8 @@ through `odyssey-design-system-changes`.
 ### 12.2 Committed follow-up
 
 - **"Fold news tags into a key-generic `OdsTagAdmin`."** Filed as its own issue when this spec is
-  implemented. The module has no milestone, so that issue has none either.
+  implemented. The module has no milestone, so that issue has none either. *(Superseded: done in
+  November 2026, commit 88dbf6e — see §3.4.)*
 
 ## 13. Future Work (not committed)
 

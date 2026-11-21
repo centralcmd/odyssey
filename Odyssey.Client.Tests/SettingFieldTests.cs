@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -29,7 +30,7 @@ public class SettingFieldTests
         var markup = Component(name);
         var code = markup.IndexOf("@code {", StringComparison.Ordinal);
         var body = code < 0 ? markup : markup[..code];
-        return Regex.Replace(body, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+        return SourceLint.StripComments(body);
     }
 
     /// <summary>Each rendered <c>.odc-sfield-advisory</c> element, opening tag through closing div.</summary>
@@ -45,7 +46,7 @@ public class SettingFieldTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
 
     private static string PageCodeBehind() =>
-        File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
     // ── OdsSettingField ──────────────────────────────────────────────────────────────────────────
 

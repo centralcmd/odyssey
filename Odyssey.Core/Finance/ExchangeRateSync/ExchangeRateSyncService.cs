@@ -13,8 +13,8 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 
 /// <summary>
 /// Runs the exchange-rate sync (issue #349 §3 "Processing pipeline"): plans forward fill and backfill per
-/// enabled currency, fetches each span from Norges Bank, writes <c>X → NOK</c> and <c>NOK → X</c> rows
-/// idempotently, and records the run. It holds no schedule state: everything the worker's job and the status
+/// enabled currency, fetches each span from Norges Bank, writes the published <c>X → NOK</c> row idempotently
+/// (readers invert it for <c>NOK → X</c>, issue #472), and records the run. It holds no schedule state: everything the worker's job and the status
 /// endpoint need is derived from the run log and the rows on every call.
 /// </summary>
 /// <remarks>
@@ -448,39 +448,56 @@ public sealed class ExchangeRateSyncService(
             .ToHashSet();
 
         var now = Now;
+        var rounded = new Dictionary<string, (int Count, DateOnly First, DateOnly Last)>(StringComparer.Ordinal);
         foreach (var observation in observations)
         {
+            // fromHub is computed and range-checked but never stored (issue #472 §8.1): readers invert the
+            // published X → NOK row instead, and a reciprocal outside the stored bounds would hand them a
+            // rate no manual entry could hold.
             if (!requested.Contains(observation.CurrencyCode)
-                || !TryNormalise(observation, out var toHub, out var fromHub))
+                || !TryNormalise(observation, out var toHub, out _))
             {
                 outcome.RowsRejected++;
                 continue;
             }
 
             var asOf = ExchangeRateSyncClock.FetchedAsOf(observation.Date, oslo);
-            foreach (var (from, to, rate) in new[]
+            if (!existing.Add((observation.CurrencyCode, Hub, asOf)))
             {
-                (observation.CurrencyCode, Hub, toHub),
-                (Hub, observation.CurrencyCode, fromHub),
-            })
-            {
-                if (!existing.Add((from, to, asOf)))
-                {
-                    outcome.RowsSkipped++;
-                    continue;
-                }
-
-                context.ExchangeRates.Add(new ExchangeRate
-                {
-                    FromCurrencyCode = from,
-                    ToCurrencyCode = to,
-                    Rate = rate,
-                    AsOf = asOf,
-                    CreatedAt = now,
-                    Provider = ExchangeRateProvider.NorgesBank,
-                });
-                outcome.RowsInserted++;
+                outcome.RowsSkipped++;
+                continue;
             }
+
+            if (!IsStoredExactly(observation, toHub))
+            {
+                rounded[observation.CurrencyCode] = rounded.TryGetValue(observation.CurrencyCode, out var seen)
+                    ? (seen.Count + 1, seen.First < observation.Date ? seen.First : observation.Date,
+                        seen.Last > observation.Date ? seen.Last : observation.Date)
+                    : (1, observation.Date, observation.Date);
+            }
+
+            // The published direction only (issue #472 release 2): NOK → X is 1 / this row, inverted at read time.
+            context.ExchangeRates.Add(new ExchangeRate
+            {
+                FromCurrencyCode = observation.CurrencyCode,
+                ToCurrencyCode = Hub,
+                Rate = toHub,
+                AsOf = asOf,
+                CreatedAt = now,
+                Provider = ExchangeRateProvider.NorgesBank,
+            });
+            outcome.RowsInserted++;
+        }
+
+        // Norges Bank has never published more than 8 decimals after scaling (issue #472 §7.11), so a rounded row
+        // means the stored rate — and every reciprocal read from it — is off in the last place. Only rows this
+        // request inserts count, and each currency logs once per request: a deep backfill would otherwise log one
+        // line per business day. Named by currency, count and dates only, never a rate.
+        foreach (var (code, (count, first, last)) in rounded)
+        {
+            logger.LogWarning(
+                "Exchange-rate sync stored {Count} rounded {CurrencyCode} rate(s) between {First:yyyy-MM-dd} and {Last:yyyy-MM-dd}: the published values need more than {Scale} decimals.",
+                count, code, first, last, MoneyBounds.ExchangeRateScale);
         }
 
         if (backfill)
@@ -548,6 +565,22 @@ public sealed class ExchangeRateSyncService(
         }
 
         return toHub >= RateMin && toHub <= RateMax && fromHub >= RateMin && fromHub <= RateMax;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="toHub"/> — already rounded to <see cref="MoneyBounds.ExchangeRateScale"/> — is the
+    /// published value exactly, after scaling. Only meaningful once <see cref="TryNormalise"/> has accepted it.
+    /// </summary>
+    internal static bool IsStoredExactly(ProviderObservation observation, decimal toHub)
+    {
+        var value = decimal.Parse(observation.Value!, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+        var scale = 1m;
+        for (var i = 0; i < int.Parse(observation.UnitMult!, NumberStyles.None, CultureInfo.InvariantCulture); i++)
+        {
+            scale *= 10m;
+        }
+
+        return toHub * scale == value;
     }
 
     // ── Reading state ─────────────────────────────────────────────────────────────────────────────

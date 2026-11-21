@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Odyssey.Context;
+using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 
@@ -18,45 +19,53 @@ public sealed record NewsTagResolution(
     IReadOnlyList<string> Created,
     IReadOnlyList<(string Name, NewsOpmlTagSkipReason Reason)> Skipped);
 
-/// <summary>Who may detach which link class on a tag delete (§5.4 item 25): decided by the caller's claims.</summary>
-public readonly record struct NewsTagDetachRights(bool FeedLinks, bool ArticleLinks);
-
 /// <summary>
-/// The news tags (issue #470 §4.12, §5.4): the journal tags' shape and guards. A name is unique across every tag,
-/// archived or not (the unique <c>NameKey</c>); there are at most <see cref="NewsLimits.MaxTags"/>. A tag in use is a
-/// <c>409</c> with its direct-link counts unless the delete detaches its links, which needs a claim per link class
-/// actually present, decided against the delete's own snapshot.
+/// The news tags (issue #470 §4.12, §5.4): the journal and photo tags' contract — a paged list with name/description
+/// search, archival-status filter and allowlisted sort; a full-replacement update that also archives or restores; and a
+/// delete that refuses a tag in use (<c>409</c>, archive it instead). A name is unique across every tag, archived or not
+/// (the unique <c>NameKey</c>); there are at most <see cref="NewsLimits.MaxTags"/>.
 /// </summary>
 public sealed class NewsTagService(OdysseyContext context, TimeProvider time, ILogger<NewsTagService> logger)
 {
     private DateTime Now => time.GetUtcNow().UtcDateTime;
 
-    /// <summary>Every tag, unpaged (≤ 500), with its direct-link counts (one <c>GROUP BY</c> per link table).</summary>
-    public Task<List<ExistingNewsTag>> ListAsync(CancellationToken cancellationToken) =>
+    /// <summary>Server-side paged list (issue #277): name/description search + status filter + allowlisted sort.</summary>
+    public Task<PagedResult<ExistingNewsTag>> ListAsync(NewsTagsQueryParams query, CancellationToken cancellationToken) =>
         NewsQueryGuard.RunAsync(async () =>
         {
-            var tags = await context.NewsTags.AsNoTracking().News().ToListAsync(cancellationToken);
-            var feedCounts = await context.NewsFeedTags.AsNoTracking().News().GroupBy(l => l.NewsTagId)
-                .Select(g => new { TagId = g.Key, Count = g.Count() }).ToDictionaryAsync(g => g.TagId, g => g.Count, cancellationToken);
-            var articleCounts = await context.NewsArticleTags.AsNoTracking().News().GroupBy(l => l.NewsTagId)
-                .Select(g => new { TagId = g.Key, Count = g.Count() }).ToDictionaryAsync(g => g.TagId, g => g.Count, cancellationToken);
-            return tags
-                .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).ThenBy(t => t.NewsTagId)
-                .Select(t => ToDto(t, feedCounts.GetValueOrDefault(t.NewsTagId), articleCounts.GetValueOrDefault(t.NewsTagId)))
-                .ToList();
+            ArgumentNullException.ThrowIfNull(query);
+            var q = context.NewsTags.AsNoTracking().News();
+
+            var term = ListQuery.NormalizeSearch(query.Search);
+            if (term is not null)
+            {
+                var pattern = ListQuery.ContainsPattern(term);
+                q = q.Where(t => EF.Functions.Like(t.Name, pattern) ||
+                                 (t.Description != null && EF.Functions.Like(t.Description, pattern)));
+            }
+
+            q = query.Status switch
+            {
+                ArchivalStatus.Archived => q.Where(t => t.ArchivedAtUtc != null),
+                ArchivalStatus.Active => q.Where(t => t.ArchivedAtUtc == null),
+                _ => q,
+            };
+
+            var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: true);
+            IOrderedQueryable<NewsTag> sorted = query.SortBy switch
+            {
+                NewsTagSortBy.Status => ascending ? q.OrderBy(t => t.ArchivedAtUtc != null) : q.OrderByDescending(t => t.ArchivedAtUtc != null),
+                _ => ascending ? q.OrderBy(t => t.Name) : q.OrderByDescending(t => t.Name),
+            };
+
+            return await sorted.ThenBy(t => t.NewsTagId).ToPagedResultAsync(query.Offset, query.Limit, ToDto, cancellationToken);
         });
 
     public Task<ExistingNewsTag?> GetAsync(Guid id, CancellationToken cancellationToken) =>
         NewsQueryGuard.RunAsync(async () =>
         {
             var tag = await context.NewsTags.AsNoTracking().News().FirstOrDefaultAsync(t => t.NewsTagId == id, cancellationToken);
-            if (tag is null)
-            {
-                return null;
-            }
-
-            var (feeds, articles) = await CountsAsync(id, cancellationToken);
-            return (ExistingNewsTag?)ToDto(tag, feeds, articles);
+            return tag is null ? null : ToDto(tag);
         });
 
     public Task<ExistingNewsTag> CreateAsync(NewNewsTag request, CancellationToken cancellationToken) =>
@@ -87,10 +96,13 @@ public sealed class NewsTagService(OdysseyContext context, TimeProvider time, IL
             };
             context.NewsTags.Add(tag);
             await SaveAsync(cancellationToken);
-            return ToDto(tag, 0, 0);
+            return ToDto(tag);
         });
 
-    /// <summary>Full replacement: an omitted icon, colour or description clears it. <c>null</c> for an unknown tag.</summary>
+    /// <summary>
+    /// Full replacement: an omitted icon, colour or description clears it, and <see cref="UpdateNewsTag.Archived"/>
+    /// archives or restores — links stay either way, so an archived tag still filters. <c>null</c> for an unknown tag.
+    /// </summary>
     public Task<ExistingNewsTag?> UpdateAsync(Guid id, UpdateNewsTag request, CancellationToken cancellationToken) =>
         NewsQueryGuard.RunAsync(async () =>
         {
@@ -111,41 +123,23 @@ public sealed class NewsTagService(OdysseyContext context, TimeProvider time, IL
             tag.Description = Clean(request.Description);
             tag.Icon = request.Icon;
             tag.Color = HexColor.Normalize(request.Color);
-            tag.UpdatedAtUtc = Now;
+            var now = Now;
+            if (request.Archived != tag.ArchivedAtUtc is not null)
+            {
+                tag.ArchivedAtUtc = request.Archived ? now : null;
+            }
+
+            tag.UpdatedAtUtc = now;
             await SaveAsync(cancellationToken);
-            var (feeds, articles) = await CountsAsync(id, cancellationToken);
-            return (ExistingNewsTag?)ToDto(tag, feeds, articles);
-        });
-
-    /// <summary>Archive or unarchive; idempotent. Links stay, so an archived tag still filters. <c>null</c> when unknown.</summary>
-    public Task<ExistingNewsTag?> SetArchivedAsync(Guid id, bool archived, CancellationToken cancellationToken) =>
-        NewsQueryGuard.RunAsync(async () =>
-        {
-            var tag = await context.NewsTags.News().FirstOrDefaultAsync(t => t.NewsTagId == id, cancellationToken);
-            if (tag is null)
-            {
-                return null;
-            }
-
-            if (archived != tag.ArchivedAtUtc is not null)
-            {
-                var now = Now;
-                tag.ArchivedAtUtc = archived ? now : null;
-                tag.UpdatedAtUtc = now;
-                await context.SaveChangesAsync(cancellationToken);
-            }
-
-            var (feeds, articles) = await CountsAsync(id, cancellationToken);
-            return (ExistingNewsTag?)ToDto(tag, feeds, articles);
+            return (ExistingNewsTag?)ToDto(tag);
         });
 
     /// <summary>
-    /// <c>DELETE</c> (§5.4 item 25). Without <paramref name="detachLinks"/> a tag in use is <c>409 news-tag-in-use</c>
-    /// with its counts. With it, each link class present needs its claim (<paramref name="rights"/>) — refused with
-    /// <see cref="DomainForbiddenException"/>, changing nothing — and the links and the tag go in one transaction whose
-    /// own reads decide both. Detaching feed links rotates those feeds' versions, as any feed-tag write does.
+    /// <c>DELETE</c>: a tag any feed or article links is <c>409 news-tag-in-use</c> with its counts — archive it instead,
+    /// as on every tag resource. The check and the delete share one transaction, so a link added between them is never
+    /// destroyed.
     /// </summary>
-    public Task<bool> DeleteAsync(Guid id, bool detachLinks, NewsTagDetachRights rights, string userId, CancellationToken cancellationToken) =>
+    public Task<bool> DeleteAsync(Guid id, string userId, CancellationToken cancellationToken) =>
         NewsQueryGuard.RunAsync(async () =>
         {
             var deleted = await NewsTransactions.RunAsync(context, async () =>
@@ -156,28 +150,11 @@ public sealed class NewsTagService(OdysseyContext context, TimeProvider time, IL
                     return false;
                 }
 
-                var feedLinks = await context.NewsFeedTags.News().Where(l => l.NewsTagId == id).ToListAsync(cancellationToken);
-                var articleLinks = await context.NewsArticleTags.News().Where(l => l.NewsTagId == id).ToListAsync(cancellationToken);
-                if (feedLinks.Count + articleLinks.Count > 0)
+                var feeds = await context.NewsFeedTags.News().CountAsync(l => l.NewsTagId == id, cancellationToken);
+                var articles = await context.NewsArticleTags.News().CountAsync(l => l.NewsTagId == id, cancellationToken);
+                if (feeds + articles > 0)
                 {
-                    if (!detachLinks)
-                    {
-                        throw NewsErrors.TagInUse(id, feedLinks.Count, articleLinks.Count);
-                    }
-
-                    if ((feedLinks.Count > 0 && !rights.FeedLinks) || (articleLinks.Count > 0 && !rights.ArticleLinks))
-                    {
-                        throw new DomainForbiddenException("You do not have permission to detach this tag from everything that uses it.");
-                    }
-
-                    var feedIds = feedLinks.Select(l => l.NewsFeedId).Distinct().ToList();
-                    foreach (var feed in await context.NewsFeeds.News().Where(f => feedIds.Contains(f.NewsFeedId)).ToListAsync(cancellationToken))
-                    {
-                        feed.SettingsVersion = Guid.NewGuid();
-                    }
-
-                    context.NewsFeedTags.RemoveRange(feedLinks);
-                    context.NewsArticleTags.RemoveRange(articleLinks);
+                    throw NewsErrors.TagInUse(feeds, articles);
                 }
 
                 context.NewsTags.Remove(tag);
@@ -187,7 +164,7 @@ public sealed class NewsTagService(OdysseyContext context, TimeProvider time, IL
 
             if (deleted)
             {
-                logger.LogInformation("News tag {TagId} deleted by {ActorUserId} (detachLinks {Detach}).", id, userId, detachLinks);
+                logger.LogInformation("News tag {TagId} deleted by {ActorUserId}.", id, userId);
             }
 
             return deleted;
@@ -447,22 +424,14 @@ public sealed class NewsTagService(OdysseyContext context, TimeProvider time, IL
         }
     }
 
-    private async Task<(int Feeds, int Articles)> CountsAsync(Guid id, CancellationToken cancellationToken) =>
-        (await context.NewsFeedTags.AsNoTracking().News().CountAsync(l => l.NewsTagId == id, cancellationToken),
-            await context.NewsArticleTags.AsNoTracking().News().CountAsync(l => l.NewsTagId == id, cancellationToken));
-
-    private static ExistingNewsTag ToDto(NewsTag tag, int feedCount, int articleCount) => new()
+    private static ExistingNewsTag ToDto(NewsTag tag) => new()
     {
-        Id = tag.NewsTagId,
+        NewsTagId = tag.NewsTagId,
         Name = tag.Name,
         Description = tag.Description,
+        Archived = tag.ArchivedAtUtc,
         Icon = tag.Icon is not null && TagIcons.IsKnown(tag.Icon) ? tag.Icon : null,
         Color = HexColor.Normalize(tag.Color),
-        Archived = tag.ArchivedAtUtc is not null,
-        CreatedAtUtc = tag.CreatedAtUtc,
-        UpdatedAtUtc = tag.UpdatedAtUtc,
-        FeedCount = feedCount,
-        ArticleCount = articleCount,
     };
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

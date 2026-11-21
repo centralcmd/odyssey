@@ -26,7 +26,7 @@ public class NewsMarkAllReadTests
 
     private static NewsPageTestContext Ctx(List<NewsFeedCatalogueEntry>? catalogue = null, NewsUnreadCounts? counts = null,
         NewsArticlePage? page = null) =>
-        Context([Article("A")], catalogue: catalogue, tags: [new() { Id = TagId, Name = "Climate" }, new() { Id = Guid.NewGuid(), Name = "Energy" }],
+        Context([Article("A")], catalogue: catalogue, tags: [new() { NewsTagId = TagId, Name = "Climate" }, new() { NewsTagId = Guid.NewGuid(), Name = "Energy" }],
             counts: counts ?? new NewsUnreadCounts
             {
                 Total = 42,
@@ -46,7 +46,7 @@ public class NewsMarkAllReadTests
             cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
         }
 
-        cut.Find("#nw-mark-all").Click();
+        OpenMarkAll(cut);
         cut.WaitForElement("#nw-markall-desc");
         return cut;
     }
@@ -175,7 +175,7 @@ public class NewsMarkAllReadTests
         Assert.All(calls, c => Assert.Equal(AsOf, c.AsOf));
         Assert.All(calls, c => Assert.Equal([FeedId], c.Filter.FeedIds));
         Assert.All(calls, c => Assert.Equal([TagId], c.Filter.TagIds));
-        Assert.All(calls, c => Assert.Equal(false, c.Filter.IsRead));
+        Assert.All(calls, c => Assert.Equal([NewsArticleReadStatus.Unread], c.Filter.Statuses));
         // Said once — by the snackbar, which is a live region in MudBlazor 9 — never twice (AC 29).
         Assert.DoesNotContain("marked as read", Polite(cut), StringComparison.Ordinal);
         // Then a fresh first page, focus to the visible target, and the counts and catalogue re-read.

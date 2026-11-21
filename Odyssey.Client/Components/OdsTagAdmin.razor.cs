@@ -48,6 +48,12 @@ public partial class OdsTagAdmin<TRow>
     /// </summary>
     [Parameter, EditorRequired] public Func<TRow, string?> ColorOf { get; set; } = default!;
 
+    /// <summary>
+    /// Called after every successful write (create, edit, archive, restore, delete), for a family whose tags are cached
+    /// elsewhere — the news tag list behind the feed and article pickers.
+    /// </summary>
+    [Parameter] public Action? OnTagsChanged { get; set; }
+
     /// <summary>The Color field's help line — the same on all four tag pages (issue #394 [PO-1]).</summary>
     public const string ColorHelp = "Shown on this tag's chips and avatar.";
 
@@ -104,7 +110,9 @@ public partial class OdsTagAdmin<TRow>
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -193,7 +201,9 @@ public partial class OdsTagAdmin<TRow>
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, Noun);
         if (load.IsSuccess)
@@ -261,7 +271,7 @@ public partial class OdsTagAdmin<TRow>
             });
         }
 
-        items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(Id(t))) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(Id(t)))));
 
         if (_canDelete)
         {
@@ -296,7 +306,9 @@ public partial class OdsTagAdmin<TRow>
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _editId = Guid.Empty;
         _editArchived = false;
@@ -313,7 +325,9 @@ public partial class OdsTagAdmin<TRow>
     private void EditClicked(TRow tag)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editId = Id(tag);
         _editArchived = Archived(tag) is not null;
@@ -331,7 +345,9 @@ public partial class OdsTagAdmin<TRow>
     private async Task<bool> SaveAsync()
     {
         if (_isEditing ? !_canUpdate : !_canCreate)
+        {
             return false;
+        }
 
         if (string.IsNullOrWhiteSpace(_draftName))
         {
@@ -347,7 +363,10 @@ public partial class OdsTagAdmin<TRow>
             _draftColorShowErrors = true;
             StateHasChanged();
             if (_colorPicker is not null)
+            {
                 await _colorPicker.FocusErrorAsync();
+            }
+
             return false;
         }
 
@@ -397,7 +416,10 @@ public partial class OdsTagAdmin<TRow>
             _draftColorError = colorError;
             StateHasChanged();
             if (_colorPicker is not null)
+            {
                 await _colorPicker.FocusErrorAsync();
+            }
+
             return false;
         }
 
@@ -439,7 +461,9 @@ public partial class OdsTagAdmin<TRow>
     {
         _draftColorValid = valid;
         if (valid)
+        {
             _draftColorShowErrors = false;
+        }
     }
 
     private void OnDraftIconChanged(string? value)
@@ -456,12 +480,20 @@ public partial class OdsTagAdmin<TRow>
     }
 
     // Transaction tags are cached for the whole session so the pickers don't re-fetch them per dialog
-    // open (issue #372); a write here has to drop that cache. The other three tag resources this
-    // component serves aren't cached, hence the type test rather than an unconditional invalidate.
+    // open (issue #372); a write here has to drop that cache. A host whose tags are cached elsewhere
+    // passes OnTagsChanged instead.
     private bool Invalidated(bool saved)
     {
         if (saved && typeof(TRow) == typeof(ExistingTransactionTag))
+        {
             ReferenceData.InvalidateTransactionTags();
+        }
+
+        if (saved)
+        {
+            OnTagsChanged?.Invoke();
+        }
+
         return saved;
     }
 
@@ -474,12 +506,16 @@ public partial class OdsTagAdmin<TRow>
     private async Task ToggleArchive(TRow tag)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         // The icon rides along: a full-replacement PUT without it would reset the tag to the default.
         var body = WriteFor(Name(tag), Description(tag), archived: Archived(tag) is null, icon: IconOf?.Invoke(tag), color: ColorOf(tag));
         if (Invalidated((await Tags.UpdateAsync(Id(tag), body)).Toast(Snackbar, "Update failed", "Tag updated.")))
+        {
             await RefreshCurrentPageAsync();
+        }
 
         StateHasChanged();
     }
@@ -487,11 +523,15 @@ public partial class OdsTagAdmin<TRow>
     private async Task HandleDelete(object key)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var tag = _tags.FirstOrDefault(t => Id(t).Equals(key));
         if (tag is null)
+        {
             return;
+        }
 
         if (Invalidated((await Tags.DeleteAsync(Id(tag))).Toast(Snackbar, "Delete failed", "Tag deleted.")))
         {
@@ -509,7 +549,7 @@ public partial class OdsTagAdmin<TRow>
         await GetTags();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tag ID copied to clipboard.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Tag"));
 
     public void Dispose() => _listLoader.Dispose();
 }

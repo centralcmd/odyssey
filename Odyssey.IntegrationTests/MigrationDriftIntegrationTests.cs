@@ -24,7 +24,7 @@ namespace Odyssey.IntegrationTests;
 /// deterministic.
 /// </para>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_migration_drift";
@@ -68,7 +68,6 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
                     () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
 
                 Assert.Equal(migrationId, error.MigrationId);
-                Assert.Equal(nameof(OdysseyContext), error.ContextName);
                 Assert.Contains(firstTable, error.ExistingObject);
                 Assert.Contains("docs/migration-history-drift.md", error.Message);
             }

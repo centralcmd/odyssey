@@ -20,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// (<see cref="Odyssey.Core.Finance.FileAnalysisOptions.Enabled"/> defaults to false), and every service
 /// method runs its enabled-check first, so arbitrary route ids never reach a lookup.
 /// </summary>
-public class FileAnalysisFeatureFlagTests
+public class FileAnalysisFeatureFlagTests(FileAnalysisFeatureFlagTests.Host host) : SharedApiHostTests<FileAnalysisFeatureFlagTests.Host>(host)
 {
     private static readonly string[] AllFileAnalysisClaims =
     [
@@ -44,7 +44,7 @@ public class FileAnalysisFeatureFlagTests
     {
         // Issue #444: the job read stays open with the switch off, so a client can read that the switch
         // cancelled its queued job. An unknown id is therefore an ordinary 404, not the 503.
-        await using var factory = new OdysseyApiFactory(AllFileAnalysisClaims);
+        var factory = Factory.ForCaller(AllFileAnalysisClaims);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/file-analysis/{Guid.NewGuid()}");
@@ -55,7 +55,7 @@ public class FileAnalysisFeatureFlagTests
     [Fact]
     public async Task ImportCandidates_WhenDisabled_BubblesTo503ProblemDetails()
     {
-        await using var factory = new OdysseyApiFactory(AllFileAnalysisClaims);
+        var factory = Factory.ForCaller(AllFileAnalysisClaims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(
@@ -68,7 +68,7 @@ public class FileAnalysisFeatureFlagTests
     [Fact]
     public async Task MatchCandidates_WhenDisabled_BubblesTo503ProblemDetails()
     {
-        await using var factory = new OdysseyApiFactory(AllFileAnalysisClaims);
+        var factory = Factory.ForCaller(AllFileAnalysisClaims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(
@@ -82,7 +82,7 @@ public class FileAnalysisFeatureFlagTests
     {
         // Authorization runs before the action, so a caller lacking file-analysis.create is rejected
         // with 403 regardless of the feature flag — read-only claims here.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.FileAnalysisRead]);
+        var factory = Factory.ForCaller([PermissionClaims.FileAnalysisRead]);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(
@@ -94,7 +94,7 @@ public class FileAnalysisFeatureFlagTests
     [Fact]
     public async Task AnalyzeAccountFile_WhenDisabled_BubblesTo503ProblemDetails()
     {
-        await using var factory = new OdysseyApiFactory(AllFileAnalysisClaims);
+        var factory = Factory.ForCaller(AllFileAnalysisClaims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync(
@@ -108,11 +108,14 @@ public class FileAnalysisFeatureFlagTests
     {
         // Issue #444: the resumable read stays open with the switch off (a pending review or a failure must
         // still be shown), so it never answers the feature-disabled 503.
-        await using var factory = new OdysseyApiFactory(AllFileAnalysisClaims);
+        var factory = Factory.ForCaller(AllFileAnalysisClaims);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/accounts/{Guid.NewGuid()}/files/analysis/resumable");
 
         Assert.NotEqual(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
+
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

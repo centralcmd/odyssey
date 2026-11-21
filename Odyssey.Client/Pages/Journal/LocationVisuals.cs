@@ -166,7 +166,10 @@ public static partial class LocationVisuals
     public static TimeZoneInfo? FindZone(string? id)
     {
         if (string.IsNullOrWhiteSpace(id))
+        {
             return null;
+        }
+
         return TimeZoneInfo.TryFindSystemTimeZoneById(id, out var zone) ? zone : null;
     }
 
@@ -181,7 +184,10 @@ public static partial class LocationVisuals
     public static string? UtcOffset(string? id, DateTime at)
     {
         if (FindZone(id) is not { } zone)
+        {
             return null;
+        }
+
         var offset = zone.GetUtcOffset(at);
         var sign = offset < TimeSpan.Zero ? "−" : "+";
         return $"UTC{sign}{Math.Abs(offset.Hours):00}:{Math.Abs(offset.Minutes):00}";

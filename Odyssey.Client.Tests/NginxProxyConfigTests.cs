@@ -68,7 +68,9 @@ public class NginxProxyConfigTests
         {
             depth += text[i] switch { '{' => 1, '}' => -1, _ => 0 };
             if (depth == 0)
+            {
                 return text[(open + 1)..i];
+            }
         }
 
         throw new InvalidOperationException("Unbalanced braces in the site config template.");

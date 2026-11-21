@@ -35,7 +35,7 @@ public sealed class StoredFileWriter(
         }
     }
 
-    /// <summary>Whether the area can be written right now, for a caller that must not throw (the move's per-area gate).</summary>
+    /// <summary>Whether the area can be written right now, for a caller that must not throw.</summary>
     public bool CanWrite(StoredFileArea area)
     {
         try
@@ -60,6 +60,49 @@ public sealed class StoredFileWriter(
         var bucket = await buckets.AllocateAsync(key, year, cancellationToken);
         return await store.PutAsync(key, new StoredFileLayout(year, bucket), fileName, null, contentType, content, maxBytes, cancellationToken);
     }
+
+    /// <summary>
+    /// <see cref="StageNewFileAsync"/> split in two (issue #521 v5 §1): the bytes are written and reserved here, outside
+    /// any transaction, and <see cref="AttachPrepared"/> stages a fresh <see cref="FileMetadata"/> per attempt of a
+    /// retried one. The file's id and upload time are fixed now, so every attempt names the same file.
+    /// </summary>
+    public async Task<PreparedStoredFile> PrepareNewFileAsync(
+        StoredFileArea area, Stream content, string fileName, string contentType, long maxBytes, CancellationToken cancellationToken)
+    {
+        EnsureWritable(area);
+        var now = time.GetUtcNow().UtcDateTime;
+        var key = StoredFileAreas.FeatureKey(area);
+        var bucket = await buckets.AllocateAsync(key, now.Year, cancellationToken);
+        var reservation = await store.ReserveAndWriteAsync(
+            key, new StoredFileLayout(now.Year, bucket), fileName, null, contentType, content, maxBytes, cancellationToken);
+        return new PreparedStoredFile(Guid.NewGuid(), area, reservation, fileName, contentType, now);
+    }
+
+    /// <summary>
+    /// Stages <paramref name="prepared"/> on <paramref name="context"/>: a new <see cref="FileMetadata"/> and its stored
+    /// object attached <c>Committed</c>, unsaved. Call once per attempt, on a cleared tracker.
+    /// </summary>
+    public FileMetadata AttachPrepared(OdysseyContext context, PreparedStoredFile prepared, string? userId)
+    {
+        var stored = store.AttachReserved(context, prepared.Reservation);
+        var file = new FileMetadata
+        {
+            Id = prepared.FileId,
+            UploadedByUserId = userId,
+            FileName = prepared.FileName,
+            ContentType = prepared.ContentType,
+            SizeBytes = stored.SizeBytes,
+            Sha256Hash = stored.Sha256Hash!,
+            UploadedAtUtc = prepared.UploadedAtUtc,
+        };
+        StoredFileAreas.Assign(file, prepared.Area, stored.Id);
+        context.FileMetadata.Add(file);
+        return file;
+    }
+
+    /// <summary>Releases a prepared file that will never be attached (issue #521 implementation note 2).</summary>
+    public Task AbandonPreparedAsync(PreparedStoredFile prepared, CancellationToken cancellationToken) =>
+        store.AbandonReservationAsync(prepared.Reservation, cancellationToken);
 
     /// <summary>
     /// Writes a new file and stages its <see cref="FileMetadata"/> on the caller's context, <b>without saving</b>: one
@@ -88,4 +131,13 @@ public sealed class StoredFileWriter(
         context.FileMetadata.Add(file);
         return file;
     }
+}
+
+/// <summary>A file written and reserved by <see cref="StoredFileWriter.PrepareNewFileAsync"/>, not yet a <see cref="FileMetadata"/>.</summary>
+public sealed record PreparedStoredFile(
+    Guid FileId, StoredFileArea Area, StoredObjectReservation Reservation, string FileName, string ContentType, DateTime UploadedAtUtc)
+{
+    public long SizeBytes => Reservation.SizeBytes;
+
+    public string Sha256Hash => Reservation.Sha256Hash;
 }

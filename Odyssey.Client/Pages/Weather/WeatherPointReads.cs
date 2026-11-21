@@ -79,7 +79,10 @@ public sealed class WeatherPointReads(IWeatherApiClient weather, TimeProvider? t
         if (!keep)
         {
             if (hourly.TryGetValue(key, out var current) && ReferenceEquals(current, slot))
+            {
                 hourly.Remove(key);
+            }
+
             return result;
         }
 
@@ -95,7 +98,10 @@ public sealed class WeatherPointReads(IWeatherApiClient weather, TimeProvider? t
                 expiry = Min(expiry, Min(arrived + TodayLifetime, firstEnds));
             }
             else if (result.Value.Day.FromUtc is { } dayStart)
+            {
                 expiry = Min(expiry, new DateTimeOffset(DateTime.SpecifyKind(dayStart, DateTimeKind.Utc)));
+            }
+
             slot.ExpiresAt = expiry;
         }
 
@@ -110,7 +116,9 @@ public sealed class WeatherPointReads(IWeatherApiClient weather, TimeProvider? t
         current.Remove(weatherPointId);
         daily.Remove(weatherPointId);
         foreach (var key in hourly.Keys.Where(k => k.Point == weatherPointId).ToList())
+        {
             hourly.Remove(key);
+        }
     }
 
     private static DateTimeOffset Min(DateTimeOffset a, DateTimeOffset b) => a <= b ? a : b;
@@ -126,7 +134,10 @@ public sealed class WeatherPointReads(IWeatherApiClient weather, TimeProvider? t
 
         var result = await task;
         if (!result.IsSuccess && slots.TryGetValue(id, out var held) && ReferenceEquals(held, task))
+        {
             slots.Remove(id);
+        }
+
         return result;
     }
 }

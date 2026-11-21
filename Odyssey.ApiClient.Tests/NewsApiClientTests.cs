@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Internet;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -14,16 +15,10 @@ public class NewsApiClientTests
     private static readonly Guid TagId = Guid.Parse("22222222-0000-0000-0000-000000000002");
     private static readonly Guid ArticleId = Guid.Parse("33333333-0000-0000-0000-000000000003");
 
-    private sealed class RecordingHandler(HttpStatusCode status, string? body, string mediaType = "application/json") : HttpMessageHandler
+    private static (NewsApiClient Client, RecordingHttpHandler Handler) Create(HttpStatusCode status, string? body, string mediaType = "application/json")
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        var handler = new RecordingHttpHandler(request =>
         {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
             var response = new HttpResponseMessage(status);
             if (body is not null)
             {
@@ -36,12 +31,7 @@ public class NewsApiClientTests
             }
 
             return response;
-        }
-    }
-
-    private static (NewsApiClient Client, RecordingHandler Handler) Create(HttpStatusCode status, string? body, string mediaType = "application/json")
-    {
-        var handler = new RecordingHandler(status, body, mediaType);
+        });
         return (new NewsApiClient(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") })), handler);
     }
 
@@ -137,8 +127,6 @@ public class NewsApiClientTests
     {
         var (client, handler) = Create(HttpStatusCode.NoContent, null);
 
-        await client.DeleteTagAsync(TagId, detachLinks: true);
-        Assert.Equal((HttpMethod.Delete, $"/api/news-tags/{TagId}?detachLinks=true"), (handler.LastRequest!.Method, handler.LastRequest.RequestUri!.PathAndQuery));
         await client.AddArticleTagAsync(ArticleId, TagId);
         Assert.Equal((HttpMethod.Put, $"/api/news-articles/{ArticleId}/tags/{TagId}"), (handler.LastRequest!.Method, handler.LastRequest.RequestUri!.PathAndQuery));
         await client.SetReadAsync(ArticleId, true);

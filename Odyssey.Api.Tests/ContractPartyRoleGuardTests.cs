@@ -303,7 +303,7 @@ public class ContractPartyRoleGuardTests
 
     /// <summary>
     /// Issue #169 AC 10 — the suggested counts, re-pinned to the 4 / 3 / 2 / 1 shape. Insurance carries
-    /// FOUR, mirroring an insurance policy's four link collections, and so does Loan, whose booked
+    /// FOUR (insurer, policyholder, insured, beneficiary), and so does Loan, whose booked
     /// <c>Account</c> and pledged <c>Collateral</c> are both as ordinary as its two counterparties;
     /// Rental, Purchase and Deposit carry THREE, their one object role being as ordinary as their two
     /// counterparties; <c>Other</c>-the-type

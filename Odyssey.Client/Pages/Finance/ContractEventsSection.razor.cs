@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -31,6 +32,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// </remarks>
 public partial class ContractEventsSection : IAsyncDisposable
 {
+    private OdsConfirm _confirm = default!;
+
     /// <summary>
     /// Rows per page. Matches the design system's <c>pageSize</c> default; the endpoint's own default
     /// is not relied on, because the pager has to ask for a window it can then describe.
@@ -129,7 +132,9 @@ public partial class ContractEventsSection : IAsyncDisposable
         }
 
         if (NewEventRequestToken is not { } token || token == _handledNewEventToken)
+        {
             return;
+        }
 
         _handledNewEventToken = token;
         OpenNew();
@@ -163,7 +168,9 @@ public partial class ContractEventsSection : IAsyncDisposable
         var response = await _listLoader.RunAsync(ct =>
             Contracts.ListEventsAsync(Contract.ContractId, page: _page, pageSize: PageSize, ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var page = response.Value.PagedOrToast(Snackbar, "events");
 
@@ -190,7 +197,9 @@ public partial class ContractEventsSection : IAsyncDisposable
     private async Task GoToPageAsync(int page)
     {
         if (page == _page)
+        {
             return;
+        }
 
         _page = page;
         await LoadAsync();
@@ -206,19 +215,20 @@ public partial class ContractEventsSection : IAsyncDisposable
     private async Task DeleteAsync(ExistingContractEvent ev)
     {
         // Named by what the user called it, so a log with several entries says which one is going.
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete event?",
-            $"Remove “{ev.Title}” from this contract's log? This can’t be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete event?", $"Remove “{ev.Title}” from this contract's log? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
+        {
             return;
+        }
 
         var ok = (await Contracts.DeleteEventAsync(Contract.ContractId, ev.ContractEventId))
             .Toast(Snackbar, "Unable to delete event", "Event deleted.");
 
         if (!ok)
+        {
             return;
+        }
 
         await LoadAsync();
 

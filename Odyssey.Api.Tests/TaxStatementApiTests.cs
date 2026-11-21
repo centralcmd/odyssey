@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Microsoft.AspNetCore.Authentication;
@@ -22,7 +23,7 @@ using ContextAccountType = Odyssey.Context.AccountType;
 
 namespace Odyssey.Api.Tests;
 
-public class TaxStatementApiTests
+public class TaxStatementApiTests(TaxStatementApiTests.Host host) : SharedApiHostTests<TaxStatementApiTests.Host>(host)
 {
     private const string ActorUserId = "tax-statements-actor-id";
     private const string Path = "/api/tax-statements";
@@ -49,7 +50,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -60,7 +61,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task List_WithoutReadPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -71,7 +72,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Mutations_WithReadOnlyPermission_ReturnForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, NewStatement());
@@ -93,7 +94,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Post_PersistsAndIsListed()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -118,7 +119,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Post_EndBeforeStart_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -135,7 +136,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Get_UnknownId_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{Path}/{Guid.NewGuid()}");
@@ -145,7 +146,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Put_UpdatesDeclaredFigures_ReflectedInReport()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -175,7 +176,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task PatchStatus_PersistsStatusAndComment()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -200,7 +201,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task PutTags_DerivesPaidTaxAndIncome_ExcludesOffCurrency()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var (taxTagId, incomeTagId) = await SeedTaggedTransactionsAsync(factory);
         using var client = factory.CreateClient();
 
@@ -223,7 +224,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task PutTags_UnknownTag_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -240,7 +241,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task PutTags_TagInBothTaxPaymentAndSettlement_ReturnsUnprocessable()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -261,7 +262,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Post_SettlementRangeHalfSet_ReturnsBadRequestKeyedOnTheMissingEnd()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         await EnsureDatabaseAsync(factory);
 
@@ -277,7 +278,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Post_EndDateBeyondBound_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         await EnsureDatabaseAsync(factory);
 
@@ -293,7 +294,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task SettlementTagsAndRange_RoundTripAndFeedTheReport()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         await EnsureDatabaseAsync(factory);
         var (taxTagId, settlementTagId) = await SeedSettlementTransactionsAsync(factory);
@@ -329,7 +330,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task Delete_ArchivesAndHidesFromList()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -346,7 +347,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task List_StatusArchivedFilter_ReturnsArchivedStatements()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await EnsureDatabaseAsync(factory);
@@ -375,7 +376,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task AttachFile_PdfAndJpeg_Retrievable_UnsupportedRejected()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory.ForCaller(ReadWriteWithFiles);
         var pdfId = await SeedFileAsync(factory, "statement.pdf", "application/pdf");
         var jpegId = await SeedFileAsync(factory, "scan.jpg", "image/jpeg");
         var textId = await SeedFileAsync(factory, "notes.txt", "text/plain");
@@ -524,9 +525,8 @@ public class TaxStatementApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -536,13 +536,15 @@ public class TaxStatementApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

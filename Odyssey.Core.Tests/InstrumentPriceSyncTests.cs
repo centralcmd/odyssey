@@ -9,6 +9,7 @@ using Odyssey.Core.Finance.Instruments.Sources;
 using Odyssey.Core.Finance.Instruments.Sync;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Odyssey.TestShared.InstrumentPrices;
 using Xunit;
 
@@ -347,6 +348,13 @@ public class InstrumentPriceSyncTests
         // so the fourth instrument is never requested.
         Assert.Equal(9, harness.Handler.Requests.Count);
         Assert.Equal(9, run.RequestsMade);
+        // Each instrument backs off twice between its three attempts, exponentially with up to 250 ms of jitter.
+        Assert.Equal(6, harness.Clock.RequestedDelays.Count);
+        Assert.All(harness.Clock.RequestedDelays.Chunk(2), pair =>
+        {
+            Assert.InRange(pair[0], TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(750));
+            Assert.InRange(pair[1], TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(1250));
+        });
         Assert.Equal(3, run.InstrumentsFailed);
         Assert.Equal(JobFailureCategory.ProviderUnavailable, run.FailureCategory);
         var state = await harness.Store.InstrumentPriceSourceStates.AsNoTracking().SingleAsync();
@@ -470,8 +478,12 @@ public class InstrumentPriceSyncTests
 
         await harness.Sync.RunScheduledIfDueAsync();
 
-        Assert.NotEmpty(harness.Logs.Lines);
-        Assert.All(harness.Logs.Lines, line =>
+        // Every rendered line, its exception and every scope's state: what a sink could have written.
+        var lines = harness.Logs.Entries.Select(entry => entry.Message + " " + entry.Exception)
+            .Concat(harness.Logs.Scopes.Select(scope => scope.ToString() ?? string.Empty))
+            .ToList();
+        Assert.NotEmpty(lines);
+        Assert.All(lines, line =>
         {
             Assert.DoesNotContain(SyncHarness.Secret, line, StringComparison.Ordinal);
             Assert.DoesNotContain("SENTINELSYMBOL", line, StringComparison.Ordinal);
@@ -542,37 +554,25 @@ public class InstrumentPriceSyncTests
     }
 
     /// <summary>A clock fixed at a settable instant whose timers are real, so the transport's short retry delays elapse.</summary>
+    /// <summary>
+    /// A wall clock the test sets. Its timers fire at once and record what they were asked to wait: the only timer
+    /// the sync takes from its <see cref="TimeProvider"/> is the transport's retry back-off, which a test asserts by
+    /// its requested length rather than by sleeping through it.
+    /// </summary>
     internal sealed class SettableClock(DateTime now) : TimeProvider
     {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<TimeSpan> requestedDelays = new();
+
         public DateTime Now { get; set; } = now;
 
+        public IReadOnlyList<TimeSpan> RequestedDelays => [.. requestedDelays];
+
         public override DateTimeOffset GetUtcNow() => new(Now, TimeSpan.Zero);
-    }
 
-    /// <summary>Captures every formatted log line, scopes and exception text included.</summary>
-    internal sealed class CapturingLoggerProvider : Microsoft.Extensions.Logging.ILoggerProvider
-    {
-        public System.Collections.Concurrent.ConcurrentQueue<string> Lines { get; } = new();
-
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new Logger(this);
-
-        public void Dispose()
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-        }
-
-        private sealed class Logger(CapturingLoggerProvider owner) : Microsoft.Extensions.Logging.ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-            {
-                owner.Lines.Enqueue(state.ToString() ?? string.Empty);
-                return null;
-            }
-
-            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
-
-            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state,
-                Exception? exception, Func<TState, Exception?, string> formatter) =>
-                owner.Lines.Enqueue(formatter(state, exception) + " " + exception);
+            requestedDelays.Enqueue(dueTime);
+            return base.CreateTimer(callback, state, TimeSpan.Zero, period);
         }
     }
 
@@ -626,7 +626,7 @@ public class InstrumentPriceSyncTests
 
         public SettableSecrets Secrets { get; } = new();
 
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         public ScriptedPriceHandler Handler { get; } = new();
 

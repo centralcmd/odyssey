@@ -1,6 +1,6 @@
 # News reader (RSS, Atom, JSON Feed) — backend specification
 
-**Status:** approved.
+**Status:** implemented (#507); amended since — see the *Superseded* notes inline.
 **Source:** GitHub issue [#470](https://github.com/centralcmd/odyssey/issues/470), merged from the issue
 body and its specification comments into one document.
 **Frontend counterpart:** [`docs/specs/news-reader-frontend.md`](news-reader-frontend.md), issue
@@ -147,7 +147,7 @@ Shared Core helpers named in this spec, each the single definition of its rule: 
     keeps every folder at ≤ 10,000 entries, the store's §3.3 rule.
   - `NewsArticles.Bucket` records the chosen bucket, so all of an article's later files (revisions, late
     images) land in the **same** folder.
-- **Store rules inherited unchanged (`CLAUDE.md` → *Files on disk*):**
+- **Store rules inherited unchanged ([`docs/architecture/file-storage.md`](../architecture/file-storage.md)):**
   - A `Committed` row always has its file.
   - Writes go through `PutAsync`, saved with the referencing row in one `SaveChangesAsync`.
   - Releases go through `StageRelease` in the same save that removes the reference.
@@ -788,7 +788,7 @@ General rules:
 9. `POST /api/news-feeds/{id:guid}/archive` and `POST /api/news-feeds/{id:guid}/unarchive` —
    `news-feeds.update`.
 10. `DELETE /api/news-feeds/{id:guid}` — `news-feeds.delete`. Returns `202`. The feed must be archived
-    first, otherwise `422 news-feed-not-archived`. Sets `DeletionRequestedAtUtc`; the purge is batched
+    first, otherwise `422 news-feed-not-archived`. *(Superseded: since the design-system sync of 2026-11-19 any feed can be deleted, with no archive-first step, and the code is retired.)* Sets `DeletionRequestedAtUtc`; the purge is batched
     (§3.4 step 1).
 11. `POST /api/news-feeds/{id:guid}/release-quarantine` — `news-feeds.update`. Clears
     `QuarantinedAtUtc` and `CrashSuspectCount` with the conditional `UPDATE` in §3.3. It writes no
@@ -942,6 +942,13 @@ ids would read and sort every matching row instead. So:
 
 ### 5.4 Tags
 
+> **Superseded (November 2026).** News tags now take the contract every tag resource shares (journal, task,
+> photo and transaction tags): `GET` is paged with `search`, `status`, `sortBy` (`Name`/`Status`), `sortDir`,
+> `offset` and `limit` and returns `{ newsTagId, name, description, archived (DateTime?), icon, color }` — no
+> counts; `PUT` carries `archived` and is how a tag is archived or restored (the `…/archive` and `…/unarchive`
+> routes are gone); and `DELETE` refuses a tag in use with `409 news-tag-in-use` (its counts still in the body) —
+> there is no `detachLinks`. Items 21, 24 and 25 below describe the original design.
+
 21. `GET /api/news-tags` — `news.read`. **Unpaged**; returns every tag (≤ 500, the tag cap), each with
     every field of the `NewsTags` entity plus the counts:
     `{ id, name, description, icon, color, archived, createdAtUtc, updatedAtUtc, feedCount, articleCount }`.
@@ -1057,7 +1064,7 @@ parsing (§7.10). An image is at most `NewsImageMaxSizeKb`.
   `DailyQuotaDate == todayUtc && ArticlesToday >= cap`, so yesterday's `ArticlesToday` cannot keep the
   cap set. It serves both the ingest skip and the quota-reason recompute.
 - Each host resolves `NewsTextStoreMaxGiB` through its own settings cache, so the worker and the status
-  endpoint may disagree for up to the 30 s TTL after a settings save. This is expected (`CLAUDE.md`,
+  endpoint may disagree for up to the 30 s TTL after a settings save. This is expected ([`docs/architecture/background-jobs.md`](../architecture/background-jobs.md),
   "Settings reach the worker within the cache TTL").
 
 **When `QuotaReason` is set and cleared.**
@@ -1450,7 +1457,7 @@ into one.
 | `NewsTagLimitReached` | 422 | `news-tag-limit` |
 | `NewsFeedUrlRejected` | 422 | key `url` |
 | `NewsFeedLimitReached` | 422 | `news-feed-limit` |
-| `NewsFeedNotArchived` / `Inactive` / `NotQuarantined` | 422 | `news-feed-not-archived` / `news-feed-inactive` / as named |
+| ~~`NewsFeedNotArchived`~~ / `Inactive` / `NotQuarantined` | 422 | ~~`news-feed-not-archived`~~ *(retired by the design-system sync of 2026-11-19: any feed can be deleted)* / `news-feed-inactive` / as named |
 | `NewsTagNotUsable` | 422 | key `tagIds` |
 | `NewsMarkReadScopeInvalid` | 422 | unknown or pending-deletion id in `feedIds`/`tagIds` (keyed by the list), or `asOfUtc` in the future |
 | Unknown filter id on the list | 422 | key `feedIds` or `tagIds` |
@@ -1547,7 +1554,7 @@ The migration contains:
 2. **The `FULLTEXT` index** on `NewsArticles (Title, Author, Excerpt)`, declared with Pomelo's
    `HasIndex(...).IsFullText()`, so it is part of the model and visible to `CreatedBy`. **No change to
    `MigrationRunner`** is needed.
-3. **Nine `SystemSettings` rows** with `HasData`. Each follows the full `CLAUDE.md` recipe, with its
+3. **Nine `SystemSettings` rows** with `HasData`. Each follows the full recipe in [`docs/architecture/settings.md`](../architecture/settings.md), with its
    pair in `SystemSettingsBounds`:
 
    | Setting | Default | Bounds | Claim | Degraded read |

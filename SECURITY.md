@@ -32,11 +32,13 @@ disclosure. We will credit you in the advisory unless you would rather stay anon
 In scope — anything in this repository:
 
 - the ASP.NET Core API (`Odyssey.Api`) and the domain services;
+- the background-job host (`Odyssey.Worker`), including the news reader's outbound fetching of
+  untrusted feeds and the photo-thumbnail decoding of uploaded images;
 - authentication, 2FA, password reset, and the permission-claim authorization model;
 - the Blazor WebAssembly client (`Odyssey.Client`), including XSS and CSRF;
 - file upload and the AI file-analysis path;
 - container images, `docker-compose*.yml`, and the GitHub Actions workflows;
-- the EF Core contexts and migrations.
+- the EF Core context (`OdysseyContext`) and its migrations.
 
 Out of scope:
 
@@ -58,11 +60,11 @@ Out of scope:
 - the seeded demo dataset and its shared password. Demo seeding is gated to the
   **Development and Testing environments only** — an allow-list, so any other environment
   name refuses, and an explicit `Seed:DemoData=true` cannot override it (it is logged as
-  ignored). **This includes finding `Odyssey!Demo1` inside the released `…-migrations`
-  container image.** The seeder lives in the migrations job and references
-  `Odyssey.TestData`, so the demo generators — and that constant — are compiled into the
-  published image and `strings` will find them. They are unreachable there:
-  `DemoDataSeeder.IsEnabled` refuses outside Development/Testing, and the seeded users only
+  ignored). **This includes finding `Odyssey!Demo1` inside the released `…-migrations` or
+  `…-worker` container image.** The demo seeders live in the migrations job and the worker and
+  both reference `Odyssey.TestData`, so the demo generators — and that constant — are compiled
+  into those published images and `strings` will find them. They are unreachable there:
+  `DemoDataGate.IsEnabled` refuses outside Development/Testing, and the seeded users only
   exist on a database that was seeded. A report that the string is *present* is not a
   finding; a report that a deployment **outside Development or Testing** actually created
   those users is;

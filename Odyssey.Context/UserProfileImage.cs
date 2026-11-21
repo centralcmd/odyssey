@@ -6,7 +6,7 @@ namespace Odyssey.Context;
 /// <summary>
 /// The signed-in user's one profile picture (issue #94 §6) — 1:1 with <see cref="ApplicationUser"/>,
 /// stored in its <b>own</b> pair of tables with <b>zero relationships in either direction</b> to
-/// <see cref="FileMetadata"/> / <see cref="FileBlob"/>.
+/// <see cref="FileMetadata"/> and the object store.
 ///
 /// <para>
 /// <b>Why a second blob store rather than the domain one.</b> The separation is the point, and it is
@@ -40,7 +40,7 @@ public class UserProfileImage
     public Guid UserProfileImageId { get; set; }
 
     /// <summary>
-    /// FK to <see cref="ApplicationUser.Id"/>; unique (1:1) with cascade delete. The unique index is
+    /// FK to <c>ApplicationUser.Id</c>; unique (1:1) with cascade delete. The unique index is
     /// what turns a concurrent <b>first</b> upload race into a <c>409</c> rather than two rows, and the
     /// cascade is what makes the picture die with the account inside the existing delete transaction.
     ///

@@ -1,6 +1,5 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
-@inject IDialogService DialogService
 @inject IContractsApiClient Contracts
 @inject ISnackbar Snackbar
 
@@ -148,6 +147,8 @@
                             Event="_editingEvent"
                             OnSaved="OnEventChangedAsync" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.

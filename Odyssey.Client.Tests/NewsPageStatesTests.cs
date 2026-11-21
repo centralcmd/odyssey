@@ -66,14 +66,14 @@ public class NewsPageStatesTests
     {
         await using var context = Context([]);
         var sent = new List<NewsArticleListFilter>();
-        SetList(context, f => { sent.Add(f); return Ok(Page(f.IsRead is null ? [Article("Old", a => a.IsRead = true)] : [])); });
+        SetList(context, f => { sent.Add(f); return Ok(Page(f.Statuses is null ? [Article("Old", a => a.IsRead = true)] : [])); });
 
         var cut = context.Render<NewsPage>();
 
         cut.WaitForAssertion(() => Assert.Equal("You’re all caught up", cut.Find("#nw-empty-h").TextContent));
         cut.FindAll("button").Single(b => b.TextContent.Contains("Show all articles", StringComparison.Ordinal)).Click();
         cut.WaitForAssertion(() => Assert.Equal(["Old"], CardNames(cut)));
-        Assert.Null(sent[^1].IsRead);
+        Assert.Null(sent[^1].Statuses);
         Assert.Contains(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsNewsFocusListStart");
     }
 
@@ -97,7 +97,7 @@ public class NewsPageStatesTests
 
         cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
         Assert.Null(sent[^1].Search);
-        Assert.Equal(false, sent[^1].IsRead);
+        Assert.Equal([NewsArticleReadStatus.Unread], sent[^1].Statuses);
     }
 
     [Fact]

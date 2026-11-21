@@ -88,7 +88,9 @@ public partial class Users
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -162,7 +164,9 @@ public partial class Users
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
+        {
             StateHasChanged();
+        }
     }
 
     // ── Data loading ──
@@ -189,7 +193,9 @@ public partial class Users
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "users");
         if (!load.IsSuccess)
@@ -217,10 +223,14 @@ public partial class Users
             IEnumerable<ExistingUser> query = _users;
 
             if (_roleFilter.Count > 0)
+            {
                 query = query.Where(u => _roleFilter.Contains(u.Role));
+            }
 
             if (_statusFilter.Count > 0)
+            {
                 query = query.Where(u => _statusFilter.Contains(u.Enabled ? EnabledValue : DisabledValue));
+            }
 
             // Search is applied server-side (issue #277); role/status remain client-side multi-selects.
             return query.ToList();
@@ -370,7 +380,9 @@ public partial class Users
             {
                 var index = _users.FindIndex(u => u.Id == user.Id);
                 if (index >= 0)
+                {
                     _users[index] = updated;
+                }
             }
 
             // Enabled/role edits change the header's total/enabled tally.
@@ -402,26 +414,32 @@ public partial class Users
         && string.Equals(target.Role, "Admin", StringComparison.OrdinalIgnoreCase)
         && EnabledAdminCount <= 1;
 
-    private Task CopyUserId(ExistingUser user) => Clipboard.CopyAsync(user.Id, "User ID copied.");
+    private Task CopyUserId(ExistingUser user) => Clipboard.CopyAsync(user.Id, OdsCopied.Id("User"));
 
     private void RequestDelete(ExistingUser user) => _pendingDelete = user;
 
     private void OnDeleteOpenChanged(bool open)
     {
         if (!open && !_deleting)
+        {
             _pendingDelete = null;
+        }
     }
 
     private async Task DeleteConfirmedAsync()
     {
         if (_pendingDelete is not { } user || TargetIsLastEnabledAdmin)
+        {
             return;
+        }
 
         _deleting = true;
         var deleted = await DeleteUserAsync(user);
         _deleting = false;
         if (deleted)
+        {
             _pendingDelete = null;
+        }
     }
 
     private async Task<bool> DeleteUserAsync(ExistingUser user)
@@ -432,13 +450,22 @@ public partial class Users
         {
             _users.RemoveAll(u => u.Id == user.Id);
             _allUsers.RemoveAll(u => u.Id == user.Id);
-            if (_expandedId == user.Id)
-                _expandedId = null;
-            if (_editingId == user.Id)
-                _editingId = null;
             _totalCount = Math.Max(0, _totalCount - 1);
+            if (_expandedId == user.Id)
+            {
+                _expandedId = null;
+            }
+
+            if (_editingId == user.Id)
+            {
+                _editingId = null;
+            }
+
             if (_page > 1 && PageStartIndex >= FilteredCount)
+            {
                 _page--;
+            }
+
             return true;
         }
         return false;
@@ -462,7 +489,9 @@ public partial class Users
     private void OnResetOpenChanged(bool open)
     {
         if (!open && !_sendingReset)
+        {
             _pendingReset = null;
+        }
     }
 
     /// <summary>
@@ -473,7 +502,9 @@ public partial class Users
     private async Task SendPasswordResetAsync()
     {
         if (_pendingReset is not { } target || _sendingReset)
+        {
             return;
+        }
 
         _sendingReset = true;
         var result = await UsersApi.SendPasswordResetAsync(target.Id);
@@ -516,15 +547,21 @@ public partial class Users
     private async Task RefreshUserRowAsync(string id)
     {
         if ((await UsersApi.GetAsync(id)).Value is not { } updated)
+        {
             return;
+        }
 
         var index = _users.FindIndex(u => u.Id == id);
         if (index >= 0)
+        {
             _users[index] = updated;
+        }
 
         var allIndex = _allUsers.FindIndex(u => u.Id == id);
         if (allIndex >= 0)
+        {
             _allUsers[allIndex] = updated;
+        }
     }
 
     private string? _claimsOpenId;

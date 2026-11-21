@@ -91,7 +91,10 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
             var light = await page.EvaluateAsync<string?>(
                 "async () => { const r = await fetch('/api/api/map-styles', { credentials: 'include' }); return r.ok ? (await r.json()).lightStyleUrl : null; }");
             if (light == "/maps/self-hosted-light.json")
+            {
                 selfHostedStack = "The stack serves the self-hosted basemap; this class needs the default tile host (SelfHostedBasemapTests covers it).";
+            }
+
             await page.CloseAsync();
         }
         finally
@@ -409,7 +412,10 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         await page.Mouse.MoveAsync(frame.X + frame.Width * 0.7f, frame.Y + frame.Height * 0.7f);
         await page.Keyboard.DownAsync("Control");
         for (var i = 0; i < 12; i++)
+        {
             await page.Mouse.WheelAsync(0, -300);
+        }
+
         await page.Keyboard.UpAsync("Control");
         await page.WaitForTimeoutAsync(800);
         var zoomed = double.Parse((await host.GetAttributeAsync("data-zoom"))!, System.Globalization.CultureInfo.InvariantCulture);
@@ -577,7 +583,10 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
             if (route.Request.Url.Contains("/styles/", StringComparison.Ordinal))
             {
                 if (styleDelay is { } delay)
+                {
                     await Task.Delay(delay);
+                }
+
                 await route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = style, Headers = cors });
                 return;
             }
@@ -604,7 +613,10 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
             }
 
             if (styleDelay is { } delay)
+            {
                 await Task.Delay(delay);
+            }
+
             await route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = style });
         });
 
@@ -636,7 +648,10 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     {
         var trigger = Trigger(page);
         if (await trigger.GetAttributeAsync("aria-expanded") != "true")
+        {
             await trigger.ClickAsync();
+        }
+
         await Expect(trigger).ToHaveAttributeAsync("aria-expanded", "true");
     }
 
@@ -644,7 +659,10 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     {
         var trigger = Trigger(page);
         if (await trigger.GetAttributeAsync("aria-expanded") == "true")
+        {
             await trigger.ClickAsync();
+        }
+
         await Expect(trigger).ToHaveAttributeAsync("aria-expanded", "false");
     }
 

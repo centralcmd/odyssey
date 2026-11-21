@@ -99,7 +99,9 @@ public class UnifiedLocationsComponentTests
             {
                 await release.Task;
                 if (ct.IsCancellationRequested)
+                {
                     throw new InvalidOperationException("The request was cancelled.");
+                }
             }
 
             return Rows(q);

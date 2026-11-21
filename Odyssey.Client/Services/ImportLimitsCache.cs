@@ -17,7 +17,7 @@ namespace Odyssey.Client.Services;
 /// </para>
 /// <para>
 /// <b>Failures are never cached, and never surfaced as null.</b> A failed load leaves the slot empty so
-/// the next reader retries, and this attempt resolves to <see cref="Fallback"/> — the shipped-default
+/// the next reader retries, and this attempt resolves to <see cref="ImportLimitsCache.Fallback"/> — the shipped-default
 /// caps, sourced once from the same per-surface <c>MaxImportBytes</c> constants the four typed export
 /// clients already carry (issue #343 fe C4: "the fallback constants live in one place in
 /// Odyssey.ApiClient, not per-dialog"). Callers always get a usable <see cref="ImportLimitsDto"/> and
@@ -58,14 +58,15 @@ public sealed class ImportLimitsCache(IImportLimitsApiClient api) : IImportLimit
         ContactVCardMaxExportRows = null,
         ContactVCardMaxImportEntries = null,
         ContactVCardMaxImportMegabytes = (int)(ContactVCardApiClient.MaxImportBytes / (1024 * 1024)),
-        // No ApiClient MaxExportBytes constant exists for these five (a post-#343 follow-up; exports
-        // were never client-side size-bound before), so — like the count fields above — these mirror
-        // the migration-seeded defaults as plain literals.
+        // No ApiClient MaxExportBytes constant exists for the export sizes (a post-#343 follow-up; exports
+        // were never client-side size-bound before). The vCard one mirrors its migration-seeded default as
+        // a plain literal; the three .ics ones name their shared SystemSettingsBounds ceiling, which is
+        // also their shipped default (issue #516), and the calendar counts ship unlimited (null).
         ContactVCardMaxExportMegabytes = 64,
-        CalendarIcsMaxExportEvents = 2000,
-        CalendarIcsMaxImportEvents = 2000,
+        CalendarIcsMaxExportEvents = null,
+        CalendarIcsMaxImportEvents = null,
         CalendarIcsMaxImportMegabytes = (int)(CalendarApiClient.MaxImportBytes / (1024 * 1024)),
-        CalendarIcsMaxExportMegabytes = 64,
+        CalendarIcsMaxExportMegabytes = SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax,
         TaskIcsMaxExportTasks = null,
         TaskIcsMaxImportTasks = null,
         TaskIcsMaxImportMegabytes = (int)(TaskApiClient.MaxImportBytes / (1024 * 1024)),
@@ -76,6 +77,8 @@ public sealed class ImportLimitsCache(IImportLimitsApiClient api) : IImportLimit
         JournalIcsMaxExportMegabytes = SystemSettingsBounds.JournalIcsMaxExportMegabytesMax,
         NewsOpmlMaxImportEntries = SystemSettingsDefaults.NewsOpmlMaxImportEntries,
         NewsOpmlMaxImportMegabytes = SystemSettingsDefaults.NewsOpmlMaxImportMegabytes,
+        // No invented cap (issue #521 v3 §E): the dialog pre-checks the calendar link cap only against a live value.
+        CalendarEventMaxLinksPerKind = null,
     };
 
     private Task<ImportLimitsDto?>? pending;

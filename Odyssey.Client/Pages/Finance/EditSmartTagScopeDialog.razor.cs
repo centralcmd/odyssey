@@ -43,9 +43,15 @@ public partial class EditSmartTagScopeDialog
     private void OnScopeChanged(OdsScopeRange next)
     {
         if (next.Start != _scope.Start)
+        {
             _serverStartError = null;
+        }
+
         if (next.End != _scope.End)
+        {
             _serverEndError = null;
+        }
+
         _scope = next;
     }
 
@@ -53,7 +59,9 @@ public partial class EditSmartTagScopeDialog
     {
         _tried = true;
         if (Errors.Start is not null || Errors.End is not null)
+        {
             return false;
+        }
 
         var c = Contract;
         var update = new UpdateContract

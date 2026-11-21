@@ -12,6 +12,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -21,7 +22,7 @@ namespace Odyssey.Api.Tests;
 /// endpoint, a type-changing PUT and a vCard re-type — writes one <c>type.converted</c> line naming the
 /// actor; a refusal writes one line with counts; and no line carries a name or a field value.
 /// </summary>
-public class ContactConversionAuditTests
+public class ContactConversionAuditTests(ContactConversionAuditTests.Host host) : SharedApiHostTests<ContactConversionAuditTests.Host>(host)
 {
     private const string ActorUserId = "conversion-audit-actor";
     private const string First = "Grace";
@@ -37,7 +38,7 @@ public class ContactConversionAuditTests
     [Fact]
     public async Task Convert_WritesOneActorBearingLine_AndEchoesNoName()
     {
-        await using var factory = new LoggingApiFactory();
+        var factory = Factory;
         var (id, updatedAt) = await SeedPersonAsync(factory);
         using var client = factory.CreateClient();
 
@@ -54,7 +55,7 @@ public class ContactConversionAuditTests
     [Fact]
     public async Task TypeChangingPut_WritesTheSameLine()
     {
-        await using var factory = new LoggingApiFactory();
+        var factory = Factory;
         var (id, _) = await SeedPersonAsync(factory);
         using var client = factory.CreateClient();
 
@@ -74,7 +75,7 @@ public class ContactConversionAuditTests
     [Fact]
     public async Task BlockedConversion_WritesCountsOnly()
     {
-        await using var factory = new LoggingApiFactory();
+        var factory = Factory;
         var (id, updatedAt) = await SeedOrgAsync(factory);
         await SeedAssociatedPropertyAsync(factory, id);
         using var client = factory.CreateClient();
@@ -97,7 +98,7 @@ public class ContactConversionAuditTests
     [Fact]
     public async Task VCardReType_WritesTheLineFromTheController_AndKeepsIdsOutOfTheResponse()
     {
-        await using var factory = new LoggingApiFactory();
+        var factory = Factory;
         var (id, _) = await SeedPersonAsync(factory, externalUid: "urn:uuid:audit-retype");
         using var client = factory.CreateClient();
 
@@ -174,9 +175,19 @@ public class ContactConversionAuditTests
         await context.SaveChangesAsync();
     }
 
-    private sealed class LoggingApiFactory() : OdysseyApiFactory(Claims, ActorUserId)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : LoggingApiFactory();
+
+    public class LoggingApiFactory() : OdysseyApiFactory(Claims, ActorUserId)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
+
+        /// <summary>A shared host forgets the previous test's log lines.</summary>
+        public override async Task ResetStoreAsync()
+        {
+            await base.ResetStoreAsync();
+            Logs.Clear();
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

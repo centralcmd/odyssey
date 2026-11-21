@@ -24,7 +24,6 @@ public class ContactVCardLabelTests
     /// </summary>
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
-            new FileService(context, new FileValidationService()),
             new FixedUploadLimits(64L * 1024 * 1024),
             writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
             store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
@@ -67,7 +66,9 @@ public class ContactVCardLabelTests
     {
         var colon = line.IndexOf(':');
         if (line.StartsWith(' ') || colon < 0)
+        {
             return line;
+        }
 
         var parameters = line[..colon].Split(';')
             .Where(segment => !segment.StartsWith("X-ODYSSEY-LABEL=", StringComparison.Ordinal));

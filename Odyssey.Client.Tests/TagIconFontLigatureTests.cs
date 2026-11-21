@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -16,7 +17,7 @@ namespace Odyssey.Client.Tests;
 /// </remarks>
 public class TagIconFontLigatureTests
 {
-    private static readonly string FixturePath = ClientSource.Sibling("Odyssey.Client.Tests/Fixtures/materialicons-ligatures.txt");
+    private static readonly string FixturePath = SourceTree.File("Odyssey.Client.Tests/Fixtures/materialicons-ligatures.txt");
 
     [Fact]
     public void The_fixture_was_generated_from_the_bundled_font()

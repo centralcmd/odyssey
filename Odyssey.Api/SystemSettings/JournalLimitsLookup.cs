@@ -102,6 +102,10 @@ public sealed class JournalLimitsLookup(
         SystemSettingsBounds.RecurrenceMaxGeneratedOccurrencesMin,
         SystemSettingsBounds.RecurrenceMaxGeneratedOccurrencesMax);
 
+    private static readonly IntSettingSpec CalendarEventMaxLinksPerKind = new(
+        SystemSettingsKeys.CalendarEventMaxLinksPerKind, SystemSettingsDefaults.CalendarEventMaxLinksPerKind,
+        SystemSettingsBounds.CalendarEventMaxLinksPerKindMin, SystemSettingsBounds.CalendarEventMaxLinksPerKindMax);
+
     private static readonly IntSettingSpec[] Specs =
     [
         PhotoMaxLinksPerKind,
@@ -113,6 +117,7 @@ public sealed class JournalLimitsLookup(
         CalendarMaxWindowDays,
         CalendarMaxEventDurationDays,
         RecurrenceMaxGeneratedOccurrences,
+        CalendarEventMaxLinksPerKind,
     ];
 
     private static readonly string[] Keys = [.. Specs.Select(spec => spec.Key)];
@@ -146,7 +151,11 @@ public sealed class JournalLimitsLookup(
             Cap(CalendarMaxWindowDays),
             Cap(CalendarMaxEventDurationDays),
             Cap(RecurrenceMaxGeneratedOccurrences),
-            degraded);
+            degraded)
+        {
+            CalendarEventMaxLinksPerKind = Cap(CalendarEventMaxLinksPerKind),
+        };
+        limits = limits with { IsDegraded = degraded };
 
         cache.Set(CacheKey, limits, IntSettingResolver.CacheTtl);
         return limits;

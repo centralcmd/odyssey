@@ -121,8 +121,9 @@ server {
         proxy_busy_buffers_size 32k;
     }
 
-    # The large-file routes — task and journal .ics export/import (attached files and photos travel
-    # inline), photos and the Files store — up to the API's 10 GB transport ceiling (FileStorage:MaxFileSizeBytes) plus the
+    # The large-file routes — the task, journal and calendar .ics export/import routes (task and journal files carry
+    # attached files and photos inline; calendar files stream, issue #516), photos and the Files store — up to the API's
+    # 10 GB transport ceiling (FileStorage:MaxFileSizeBytes) plus the
     # multipart envelope headroom, 10240 MiB + 1 MiB. Caddy's matching request_body limit must stay >=
     # this. Bodies stream through instead of spooling to nginx's temp directory first, and a transfer
     # gets an hour instead of the 60 s defaults that would cut a 10 GB one off part-way. Scoped to these
@@ -131,7 +132,34 @@ server {
     # A regex location wins over the /api/ prefix, so it repeats that block's directives (nginx
     # inherits none). proxy_pass carries no URI in a regex location; the rewrite strips the first /api/
     # exactly as the /api/ block's trailing slash does.
-    location ~ ^/api/api/(tasks/ics|journal-entries/([^/]+/)?vjournal|photos|files)(/|$) {
+    location ~ ^/api/api/(tasks/ics|journal-entries/([^/]+/)?vjournal|calendars/[^/]+/ics|calendar-events/([^/]+/)?ics|recurrence-patterns/[^/]+/ics)(/|$) {
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://api:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_connect_timeout 5s;
+        proxy_buffer_size 16k;
+        proxy_buffers 8 16k;
+        proxy_busy_buffers_size 32k;
+
+        client_max_body_size 10241m;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        client_body_timeout 3600s;
+
+        # The .ics exports are guarded by the API's export progress guard (issue #516 §3 component 8), which measures
+        # the bytes the API finishes writing. With nginx buffering the response, a slow client would look fast to the
+        # API and park up to proxy_max_temp_file_size (1 GB) per export on nginx's temp disk instead; unbuffered, the
+        # guard measures the real client.
+        proxy_buffering off;
+    }
+
+    # The photo and Files-store routes: the same limits, with nginx's default response buffering.
+    location ~ ^/api/api/(photos|files)(/|$) {
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass http://api:8080;
         proxy_http_version 1.1;

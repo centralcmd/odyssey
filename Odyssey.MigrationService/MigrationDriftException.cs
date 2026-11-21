@@ -7,23 +7,21 @@ namespace Odyssey.MigrationService;
 /// digging for.
 /// </summary>
 /// <remarks>
-/// The message names both causes rather than asserting one, because the guard cannot tell them apart and
-/// should not pretend to. Distinguishing them would mean checking __EFMigrationsHistory for ids this
-/// build no longer ships — but the contexts share one history table, so rows belonging to the *other*
-/// context always look unknown, and the check would report a squash on every healthy database. Naming
-/// both costs a sentence; guessing sends the reader looking for an interruption that never happened.
+/// The message names both causes rather than asserting one, because the guard does not tell them apart.
+/// With one context writing <c>__EFMigrationsHistory</c>, an id this build no longer ships would now be
+/// real evidence of a superseded set — but telling the two apart is a separate change, and until it is
+/// made deliberately, naming both costs a sentence where guessing would send the reader looking for an
+/// interruption that never happened.
 /// </remarks>
-public sealed class MigrationDriftException(string contextName, MigrationDrift drift)
-    : Exception(BuildMessage(contextName, drift))
+public sealed class MigrationDriftException(MigrationDrift drift)
+    : Exception(BuildMessage(drift))
 {
-    public string ContextName { get; } = contextName;
-
     public string MigrationId { get; } = drift.MigrationId;
 
     public string ExistingObject { get; } = drift.ExistingObject;
 
-    private static string BuildMessage(string contextName, MigrationDrift drift) =>
-        $"{contextName}: migration '{drift.MigrationId}' is recorded as pending, but the {drift.ExistingObject} " +
+    private static string BuildMessage(MigrationDrift drift) =>
+        $"Migration '{drift.MigrationId}' is recorded as pending, but the {drift.ExistingObject} " +
         "it creates already exists. The database is out of step with __EFMigrationsHistory. Two things " +
         "cause that, and the repair is the same for both: either an earlier run was interrupted after " +
         "MariaDB had committed some of the migration's DDL but before its history row was written " +

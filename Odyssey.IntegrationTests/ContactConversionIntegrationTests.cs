@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -25,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// ambient transaction instead of opening a second one. None of it is observable on EF InMemory, which
 /// honours neither transactions nor the execution strategy.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactConversionIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contact_conversion";
@@ -253,7 +254,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                 var contacts = new ContactService(context, new ContactReferenceGuard(context));
                 var vCard = new ContactVCardService(
                     context, contacts,
-                    new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024),
+                    new ContactAvatarService(context, new FixedUploadLimits(64L * 1024 * 1024),
                 writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer, store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
                 source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source),
                     new UnlimitedLimits(),
@@ -419,7 +420,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
         var contacts = new ContactService(context, new ContactReferenceGuard(context));
         var vCard = new ContactVCardService(
             context, contacts,
-            new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024),
+            new ContactAvatarService(context, new FixedUploadLimits(64L * 1024 * 1024),
                 writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer, store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
                 source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source),
             new UnlimitedLimits(),
@@ -439,25 +440,23 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
     private static async Task<Guid> SeedPhotoAsync(OdysseyContext context)
     {
         var photoId = Guid.NewGuid();
-        context.Photos.Add(new Photo { PhotoId = photoId, FileId = SeedFile(context) });
+        context.Photos.Add(new Photo { PhotoId = photoId, StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = new string('a', 64), });
         await context.SaveChangesAsync();
         return photoId;
     }
 
     private static Guid SeedFile(OdysseyContext context)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
             FileName = "file.jpg",
             ContentType = "image/jpeg",
             SizeBytes = 3,
-            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blobContent)),
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
             UploadedAtUtc = DateTime.UtcNow,
         });
         return fileId;
@@ -533,18 +532,16 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
     /// <summary>A real photo (and its image file) tagging the contact, so the FK chain is genuine.</summary>
     private static async Task SeedPhotoTagAsync(OdysseyContext context, Guid contactId)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
             FileName = "tag.jpg",
             ContentType = "image/jpeg",
             SizeBytes = 3,
-            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blobContent)),
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
             UploadedAtUtc = DateTime.UtcNow,
         });
 
@@ -552,7 +549,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
         context.Photos.Add(new Photo
         {
             PhotoId = photoId,
-            FileId = fileId,
+            StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = new string('a', 64),
             People = [new PhotoPerson { PhotoId = photoId, ContactId = contactId }],
         });
         await context.SaveChangesAsync();
@@ -577,7 +574,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private static DbContextOptions<OdysseyContext> OptionsFor(string connectionString) =>
         new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .Options;
 
     private sealed class UnlimitedLimits : IImportExportLimitsLookup

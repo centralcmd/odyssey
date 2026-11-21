@@ -18,10 +18,9 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Issue #362 on MariaDB: the migration's seed, CHECKs and keys (AC 20), and the rename's one atomic save — a
-/// <c>409 rename-busy</c> commits nothing, name included (AC 17), which EF InMemory cannot show.
+/// Issue #362 on MariaDB: the migration's seed, CHECKs and keys (AC 20), which EF InMemory cannot show.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
 {
     [SkippableFact]
@@ -94,43 +93,6 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         }
     }
 
-    [SkippableFact]
-    public async Task A_busy_rename_commits_nothing_and_a_clean_one_commits_name_and_job_together()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await using var provider = await BuildProviderAsync();
-        var photoId = await CreatePhotoAsync(provider);
-        var fileId = await FileIdAsync(provider, photoId);
-        await ShareAsync(provider, fileId);
-        var before = await JobAsync(provider, photoId);
-
-        using (var scope = provider.CreateScope())
-        {
-            var interfering = new InterferingObserver(provider, photoId, times: int.MaxValue);
-            var busy = await Assert.ThrowsAsync<FileRenameBusyException>(() => Files(scope, interfering)
-                .UpdateFileMetadataAsync(fileId, new UpdateFileMetadataRequest { FileName = "Never.jpg" }));
-            Assert.Equal(409, busy.StatusCode);
-            Assert.Equal(FileService.RenameAttempts, interfering.Calls);
-        }
-
-        Assert.Equal("p.jpg", await FileNameAsync(provider, fileId));
-        var afterBusy = await JobAsync(provider, photoId);
-        // Only the interfering writes landed: the rename's own Generation bump, priority and name never did.
-        Assert.Equal(before.Generation + FileService.RenameAttempts, afterBusy.Generation);
-        Assert.Equal(before.Priority, afterBusy.Priority);
-
-        using (var scope = provider.CreateScope())
-        {
-            var interfering = new InterferingObserver(provider, photoId, times: 1);
-            await Files(scope, interfering).UpdateFileMetadataAsync(fileId, new UpdateFileMetadataRequest { FileName = "Once.jpg" });
-        }
-
-        Assert.Equal("Once.jpg", await FileNameAsync(provider, fileId));
-        var afterRename = await JobAsync(provider, photoId);
-        Assert.Equal(afterBusy.Generation + 2, afterRename.Generation);
-        Assert.Equal(PhotoThumbnailJobPriority.Background, afterRename.Priority);
-    }
-
     private sealed class EmptyMetadataExtractor : IPhotoMetadataExtractor
     {
         public PhotoMetadata Extract(byte[] content) => PhotoMetadata.Empty;
@@ -191,69 +153,10 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         Assert.Equal("UnboundFeature", error.Check);
     }
 
-    private static FileService Files(IServiceScope scope, IFileRenameObserver interfering) => new(
-        scope.ServiceProvider.GetRequiredService<OdysseyContext>(),
-        new FileValidationService(),
-        TimeProvider.System,
-        // The interference runs after the thumbnail observer has read the job, so it lands between read and save.
-        [new PhotoThumbnailRenameObserver(scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>()), interfering]);
-
-    /// <summary>Bumps the job's token from another connection before each save, like a worker's concurrent claim.</summary>
-    private sealed class InterferingObserver(ServiceProvider provider, Guid photoId, int times) : IFileRenameObserver
-    {
-        public int Calls { get; private set; }
-
-        public async Task OnFileRenamingAsync(Guid fileId, CancellationToken cancellationToken)
-        {
-            Calls++;
-            if (Calls > times)
-            {
-                return;
-            }
-
-            using var scope = provider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            await context.Database.ExecuteSqlRawAsync(
-                "UPDATE PhotoThumbnailJobs SET Generation = Generation + 1 WHERE PhotoId = {0}", [photoId], cancellationToken);
-        }
-
-        public bool Owns(Type entityType) => false;
-    }
-
     private static async Task<PhotoThumbnailJobEntry> JobAsync(ServiceProvider provider, Guid photoId)
     {
         using var scope = provider.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<OdysseyContext>().PhotoThumbnailJobs.AsNoTracking().SingleAsync(j => j.PhotoId == photoId);
-    }
-
-    private static async Task<Guid> FileIdAsync(ServiceProvider provider, Guid photoId)
-    {
-        using var scope = provider.CreateScope();
-        return await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId!.Value).SingleAsync();
-    }
-
-    /// <summary>
-    /// Attaches the photo's file to a journal entry. Since PR #441 a file only a photo names is hidden from
-    /// <c>FileService</c>; the Files-store rename that re-renders a photo's thumbnails is one of a shared file.
-    /// </summary>
-    private static async Task ShareAsync(ServiceProvider provider, Guid fileId)
-    {
-        using var scope = provider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var entry = new JournalEntry
-        {
-            JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "Shared", Content = "",
-            EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
-        };
-        context.JournalEntries.Add(entry);
-        context.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entry.JournalEntryId, FileId = fileId, CreatedAt = DateTime.UtcNow });
-        await context.SaveChangesAsync();
-    }
-
-    private static async Task<string> FileNameAsync(ServiceProvider provider, Guid fileId)
-    {
-        using var scope = provider.CreateScope();
-        return await scope.ServiceProvider.GetRequiredService<OdysseyContext>().FileMetadata.Where(f => f.Id == fileId).Select(f => f.FileName).SingleAsync();
     }
 
     private static async Task<Guid> AddThumbnailRowAsync(ServiceProvider provider, Guid photoId)
@@ -289,12 +192,32 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         return stored.Id;
     }
 
-    /// <summary>A legacy photo (issue #428): this file tests the rename observer, which only a file rename reaches.</summary>
+    /// <summary>A photo naming a committed original row (the bytes are never read here), with its pending job.</summary>
     private static async Task<Guid> CreatePhotoAsync(ServiceProvider provider)
     {
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var (photo, _) = PhotoTestData.StageLegacyPhoto(context, [1, 2, 3], userId: "user");
+        var volume = new FileStorageVolume { Id = Guid.NewGuid(), Name = $"v{Guid.NewGuid():N}"[..20], LastSeenAtUtc = DateTime.UtcNow };
+        var hash = Convert.ToHexString(SHA256.HashData([1, 2, 3])).ToLowerInvariant();
+        var original = new StoredObject
+        {
+            Id = Guid.NewGuid(),
+            VolumeId = volume.Id,
+            FeatureKey = PhotoOriginalStorage.FeatureKey,
+            RelativePath = $"photo-originals/2024/1/{Guid.NewGuid():N}.jpg",
+            SizeBytes = 3,
+            Sha256Hash = hash,
+            State = StoredObjectState.Committed,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        var photo = new Photo
+        {
+            PhotoId = Guid.NewGuid(), StoredObjectId = original.Id, FileName = "p.jpg", ContentType = "image/jpeg",
+            SizeBytes = 3, Sha256Hash = hash, CreatedByUserId = "user", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        context.FileStorageVolumes.Add(volume);
+        context.StoredObjects.Add(original);
+        context.Photos.Add(photo);
         await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageEnqueueAsync(photo, default);
         await context.SaveChangesAsync();
         return photo.PhotoId;
@@ -309,8 +232,6 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
             options.UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
         services.AddScoped<IContactLookup, ContactLookup>();
         services.AddScoped<IFileLookup, FileLookup>();
-        services.AddScoped<IFileReferenceGuard, FileReferenceGuard>();
-        services.AddScoped<IImageContentReader, ImageContentReader>();
         services.AddSingleton<IJournalLimitsLookup>(new StubJournalLimitsLookup());
         services.AddSingleton<IPhotoMetadataExtractor>(new EmptyMetadataExtractor());
         services.AddScoped<PhotoMetadataService>();

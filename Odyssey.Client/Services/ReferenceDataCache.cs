@@ -138,7 +138,9 @@ public sealed class ReferenceDataCache(
     private IReadOnlyList<T>? Unwrap<T>(bool isSuccess, List<T> items, string? error, string what)
     {
         if (isSuccess)
+        {
             return items;
+        }
 
         snackbar.Add($"Unable to load {what}: {error}", Severity.Error);
         return null;
@@ -155,12 +157,16 @@ public sealed class ReferenceDataCache(
         var items = await pending;
 
         if (items is not null)
+        {
             return new ReferenceDataLoad<T>(items, Failed: false);
+        }
 
         // Only clear the slot if it still holds the failed task: an Invalidate (or a retry that
         // already succeeded) may have replaced it while this one was in flight.
         if (ReferenceEquals(slot.Pending, pending))
+        {
             slot.Pending = null;
+        }
 
         return new ReferenceDataLoad<T>([], Failed: true);
     }

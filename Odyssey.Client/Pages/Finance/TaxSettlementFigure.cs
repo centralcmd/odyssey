@@ -24,7 +24,9 @@ public static class TaxSettlementFigure
     public static string Word(decimal? declared, decimal? settle)
     {
         if (declared is { } stated)
+        {
             return stated > 0 ? "additional tax to pay" : stated < 0 ? "refund" : "settled";
+        }
 
         return settle switch
         {

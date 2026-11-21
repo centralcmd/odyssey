@@ -28,7 +28,9 @@ public partial class AnalysisLog
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
 

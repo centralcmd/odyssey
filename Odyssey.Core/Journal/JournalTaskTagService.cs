@@ -11,7 +11,7 @@ namespace Odyssey.Core.Journal;
 
 /// <summary>
 /// CRUD for the module-local task tags: name search + archival-status filter + allowlisted sort,
-/// case-insensitive uniqueness among non-archived tags, and a delete-if-unused guard (in-use → 409).
+/// case-insensitive name uniqueness across active and archived tags, and a delete-if-unused guard (in-use → 409).
 /// </summary>
 public class JournalTaskTagService
 {
@@ -81,7 +81,7 @@ public class JournalTaskTagService
         };
 
         context.JournalTaskTags.Add(tag);
-        await context.SaveChangesAsync(cancellationToken);
+        await SaveGuardingDuplicateName(name, cancellationToken);
 
         return tag.Adapt<ExistingJournalTaskTag>();
     }
@@ -107,7 +107,7 @@ public class JournalTaskTagService
         tag.Color = HexColor.Normalize(request.Color);
         ApplyArchiveTransition(tag, request.Archived);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await SaveGuardingDuplicateName(name, cancellationToken);
 
         return tag.Adapt<ExistingJournalTaskTag>();
     }
@@ -131,20 +131,60 @@ public class JournalTaskTagService
         return true;
     }
 
-    // Case-insensitive uniqueness among non-archived tags, without a stored normalized column (see
-    // JournalTagService for the rationale): OrdinalIgnoreCase matches the *_ci relational collation.
+    /// <summary>
+    /// A task tag name is unique case-insensitively across ALL task tags, archived ones included: an archived tag
+    /// is not offered by the pickers, so reusing its name would put two tags with one name in the list the moment
+    /// the archived one is restored. The design system's picker refuses such a name with "“X” is an archived tag.
+    /// Restore it on the Task tags page to use it."; this is the server half.
+    /// </summary>
+    /// <remarks>
+    /// The comparison is <see cref="StringComparison.OrdinalIgnoreCase"/> rather than a database collation, so it
+    /// holds on the EF InMemory tiers, which have no collation at all. The unique index on <c>Name</c>
+    /// (<c>UniqueJournalAndTaskTagNames</c>) is the other half; this is what turns the violation into an explaining,
+    /// field-keyed <c>409</c>.
+    /// </remarks>
     private async Task EnsureNameAvailable(string name, Guid? excludeId, CancellationToken cancellationToken)
     {
-        var existingNames = await context.JournalTaskTags
-            .Where(t => t.Archived == null && (excludeId == null || t.JournalTaskTagId != excludeId))
-            .Select(t => t.Name)
-            .ToListAsync(cancellationToken);
+        // Materialised rather than compared in SQL: EF cannot translate OrdinalIgnoreCase, and the tag table is
+        // small reference data the pickers already load whole.
+        var clash = (await context.JournalTaskTags
+                .AsNoTracking()
+                .Where(t => excludeId == null || t.JournalTaskTagId != excludeId)
+                .Select(t => new { t.Name, t.Archived })
+                .ToListAsync(cancellationToken))
+            .FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
 
-        if (existingNames.Any(existing => string.Equals(existing, name, StringComparison.OrdinalIgnoreCase)))
+        if (clash is not null)
         {
-            throw new DomainConflictException($"A task tag named '{name}' already exists.");
+            throw DuplicateName(name, clash.Archived is not null);
         }
     }
+
+    /// <summary>
+    /// Saves, translating the unique index's duplicate-key error into the <b>same</b> field-keyed <c>409</c> the
+    /// pre-check throws, so the loser of a concurrent create or rename gets an answer the form can show.
+    /// </summary>
+    private async Task SaveGuardingDuplicateName(string name, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKeyOn(ex, "IX_JournalTaskTags_Name"))
+        {
+            // The failed write is still tracked; leaving it would flush on the next save. The winner's archived
+            // state is not known here, so the message takes the plain form.
+            context.ChangeTracker.Clear();
+            throw DuplicateName(name, archived: false);
+        }
+    }
+
+    // Keyed to `name` so the tag dialogs render it at the field rather than as an unattributed toast.
+    private static DomainConflictException DuplicateName(string name, bool archived) =>
+        new(archived
+                ? $"A task tag named '{name}' already exists but is archived. Restore it, or rename it, to reuse the name."
+                : $"A task tag named '{name}' already exists.",
+            nameof(NewJournalTaskTag.Name));
 
     private void ApplyArchiveTransition(JournalTaskTag tag, bool requestedArchived)
     {

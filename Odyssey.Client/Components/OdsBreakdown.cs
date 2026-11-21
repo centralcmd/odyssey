@@ -4,7 +4,7 @@ namespace Odyssey.Client.Components;
 /// Helpers that build <see cref="OdsBreakdownRow"/> lists for the page-Overview summary grids
 /// (Odyssey Design System · Components.jsx <c>odcTypeRows</c> / <c>odcStatusRows</c>). "By type"
 /// keeps only the types present (count &gt; 0) in registry order; "By status" shows every defined
-/// status including zero counts — matching the Contracts / Insurance breakdowns.
+/// status including zero counts — matching the Contracts breakdowns.
 /// </summary>
 public static class OdsBreakdown
 {

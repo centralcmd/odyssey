@@ -20,8 +20,8 @@ certainly a question — start a discussion and it can be turned into an issue f
 
 Most self-hosting questions are already answered:
 
-- [**README**](README.md) — running the stack (Docker Compose, Aspire), the `.env`
-  file, demo data and the seeded logins.
+- [**README**](README.md) and [**`docs/getting-started.md`**](docs/getting-started.md) — running
+  the stack (Docker Compose, Aspire), the `.env` file, mail setup, demo data and the seeded logins.
 - [**`docs/deployment.md`**](docs/deployment.md) — the supported production deployment: the
   `.env.prod` values, TLS, the bootstrap administrator, backups, the Data Protection key ring,
   upload size limits and the security checklist.
@@ -46,7 +46,8 @@ Two things that come up often enough to answer here:
 ## What helps a question get answered
 
 - Which way you are running it — Compose, Aspire, `dotnet run`, or the released images — and the
-  version from `GET /api/healthz`.
+  version from `GET /api/healthz` (through the client's nginx; directly against the API, as
+  under Aspire, it is `http://localhost:5188/healthz`).
 - What you expected and what happened instead.
 - The relevant log lines from the container that failed (`docker compose logs api`), with
   anything secret removed.

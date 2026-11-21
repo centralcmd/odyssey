@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -15,20 +16,6 @@ public class ContractSmartTagTransactionsApiClientTests
 {
     private static readonly Guid ContractId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-    private sealed class RecordingHandler(string body, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(status)
-            {
-                Content = new StringContent(body, Encoding.UTF8, status == HttpStatusCode.OK ? "application/json" : "application/problem+json"),
-            });
-        }
-    }
-
     private const string Envelope = """
         {
           "scope": { "from": "2026-01-01T00:00:00Z", "toExclusive": null, "smartTagCount": 2, "partyContactCount": 1, "emptyReason": 2 },
@@ -37,9 +24,9 @@ public class ContractSmartTagTransactionsApiClientTests
         }
         """;
 
-    private static (IContractsApiClient Client, RecordingHandler Handler) Create()
+    private static (IContractsApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        var handler = new RecordingHandler(Envelope);
+        var handler = new RecordingHttpHandler(Envelope);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new ContractsApiClient(api), handler);
     }
@@ -92,7 +79,7 @@ public class ContractSmartTagTransactionsApiClientTests
     [InlineData(HttpStatusCode.Forbidden)]
     public async Task A_refusal_is_a_failed_result_carrying_the_status_and_the_problem(HttpStatusCode status)
     {
-        var handler = new RecordingHandler("""{"title":"Not Found","status":404,"detail":"Contract ID x not found."}""", status);
+        var handler = new RecordingHttpHandler("""{"title":"Not Found","status":404,"detail":"Contract ID x not found."}""", status, RecordingHttpHandler.ProblemMediaType);
         var client = new ContractsApiClient(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
 
         var result = await client.ListSmartTagTransactionsAsync(ContractId, page: 1, pageSize: 10);
@@ -101,6 +88,8 @@ public class ContractSmartTagTransactionsApiClientTests
         Assert.Null(result.Value);
         Assert.Equal(status, result.Status);
         if (status == HttpStatusCode.NotFound)
+        {
             Assert.Equal("Contract ID x not found.", result.Problem?.Detail);
+        }
     }
 }

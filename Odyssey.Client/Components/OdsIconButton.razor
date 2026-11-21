@@ -7,18 +7,31 @@
       sm = 28px · md = 36px (default) · lg = 44px (touch target).
 
     AriaLabel is REQUIRED — the button shows no text.
+
+    Busy (issue #517) marks an action in progress, such as the per-calendar export while its summary loads: a
+    spinner replaces the glyph, and the button keeps its accessible name and its focus, carries
+    aria-disabled="true" and aria-busy="true", and swallows clicks. Never a native disabled, which would drop it
+    from the tab order and lose focus mid-action.
 *@
 
-<MudIconButton Icon="@Icon"
+@* One element in both states, so the button keeps focus when it turns busy and back. *@
+<MudIconButton Icon="@(Busy ? null : Icon)"
                Size="@MudSize"
                Color="@(Danger ? Color.Error : Color.Default)"
-               Href="@Href"
+               Href="@(Busy ? null : Href)"
                ButtonType="@Type"
                Disabled="@Disabled"
-               OnClick="OnClick"
+               OnClick="HandleClickAsync"
                aria-label="@AriaLabel"
-               Class="@Class"
-               @attributes="UserAttributes" />
+               aria-disabled="@(Busy ? "true" : null)"
+               aria-busy="@(Busy ? "true" : null)"
+               Class="@ButtonClass"
+               @attributes="UserAttributes">
+    @if (Busy)
+    {
+        <span class="odc-iconbtn-spinner" aria-hidden="true"></span>
+    }
+</MudIconButton>
 
 @code {
     /// <summary>An @Icons.Material.Filled.* SVG constant — a Material ligature ("edit") renders no glyph.</summary>
@@ -40,12 +53,19 @@
 
     [Parameter] public bool Disabled { get; set; }
 
+    /// <summary>An action in progress: spinner, aria-disabled and aria-busy, clicks ignored, focus and name kept.</summary>
+    [Parameter] public bool Busy { get; set; }
+
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
     [Parameter] public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string? ButtonClass => Busy ? $"{Class} odc-iconbtn-busy".TrimStart() : Class;
+
+    private Task HandleClickAsync(MouseEventArgs e) => Busy ? Task.CompletedTask : OnClick.InvokeAsync(e);
 
     private Size MudSize => Size switch
     {

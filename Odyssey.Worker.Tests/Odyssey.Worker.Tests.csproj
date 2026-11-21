@@ -17,12 +17,21 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <!-- The independent oracle for metadata removal, as in Odyssey.Core.Tests: never on a runtime path. -->
     <PackageReference Include="MetadataExtractor" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Thumbnails\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The file store's test host, for the demo-file seeder over a temp volume. -->
+    <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
+    <Compile Include="..\TestShared\SourceLint.cs" Link="TestShared\SourceLint.cs" />
+    <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

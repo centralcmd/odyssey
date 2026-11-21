@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -811,7 +812,7 @@ public class AuthorizationPolicyTests
     [Fact]
     public void RoleClaimSeeder_reconciles_against_RoleClaimMap_and_nothing_else()
     {
-        var source = File.ReadAllText(SeederSourcePath());
+        var source = SourceTree.ReadAllText("Odyssey.MigrationService", "RoleClaimSeeder.cs");
 
         Assert.Contains("RolePermissions.RoleClaimMap", source, StringComparison.Ordinal);
 
@@ -995,20 +996,6 @@ public class AuthorizationPolicyTests
             + "loses access. Roles that would: " + string.Join(", ", gaps));
     }
 
-    private static string SeederSourcePath()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir, "Odyssey.MigrationService", "RoleClaimSeeder.cs");
-            if (File.Exists(candidate) && File.Exists(Path.Combine(dir, "Odyssey.sln")))
-                return candidate;
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        throw new InvalidOperationException("Could not locate RoleClaimSeeder.cs from " + AppContext.BaseDirectory);
-    }
-
     // ── Background jobs (issue #409 §3.1, S1, A1/S5, A-N4) ───────────────────────────────────────────────
 
     /// <summary>
@@ -1027,6 +1014,7 @@ public class AuthorizationPolicyTests
         Assert.Equal([PermissionClaims.FileStorageRead], claims[Dtos.Application.JobType.FileStorageMaintenance]);
         Assert.Equal([PermissionClaims.PhotosUpdate], claims[Dtos.Application.JobType.PhotoThumbnails]);
         Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.NewsFeedFetch]);
+        Assert.Equal([PermissionClaims.CalendarUpdate], claims[Dtos.Application.JobType.RecurrenceKeyBackfill]);
         Assert.Equal(PermissionClaims.SystemSettingsUpdate, Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim);
         Assert.DoesNotContain(DeclaredClaims(), claim => claim.StartsWith("file-storage.", StringComparison.Ordinal)
             && claim != PermissionClaims.FileStorageRead);
@@ -1043,6 +1031,7 @@ public class AuthorizationPolicyTests
         Assert.Equal(PermissionClaims.FileStorageRead, claims[Dtos.Application.JobType.FileStorageMaintenance]);
         Assert.Equal(PermissionClaims.PhotosRead, claims[Dtos.Application.JobType.PhotoThumbnails]);
         Assert.Equal(PermissionClaims.NewsFeedsUpdate, claims[Dtos.Application.JobType.NewsFeedFetch]);
+        Assert.Equal(PermissionClaims.CalendarRead, claims[Dtos.Application.JobType.RecurrenceKeyBackfill]);
     }
 
     /// <summary>

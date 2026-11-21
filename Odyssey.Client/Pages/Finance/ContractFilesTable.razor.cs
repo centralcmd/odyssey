@@ -12,6 +12,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContractFilesTable
 {
+    private OdsConfirm _confirm = default!;
+
     /// <summary>The owning contract id (the download/update/detach route's <c>{id}</c>).</summary>
     [Parameter, EditorRequired] public Guid ContractId { get; set; }
 
@@ -40,7 +42,9 @@ public partial class ContractFilesTable
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         _contacts = [.. await ReferenceData.ContactsAsync()];
         _issuerOptions = OdsContactOptions.Active(_contacts);
@@ -86,7 +90,10 @@ public partial class ContractFilesTable
     {
         var option = ContactCreator.Begin(text, kind);
         if (option is not null)
+        {
             _issuerOptions = [.. _issuerOptions, option];
+        }
+
         return option;
     }
 
@@ -111,13 +118,7 @@ public partial class ContractFilesTable
             });
         }
 
-        menu.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileId.ToString(), "File ID copied.")),
-        });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileId.ToString(), OdsCopied.Id("File")))));
 
         return menu;
     }
@@ -126,10 +127,11 @@ public partial class ContractFilesTable
     {
         var result = await Contracts.DownloadFileAsync(ContractId, file.FileId);
         if (result.OrToast(Snackbar, "Download failed") is not { } content)
+        {
             return;
+        }
 
-        var contentType = content.ContentType ?? file.ContentType ?? "application/octet-stream";
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, file.FileName, file.ContentType);
     }
 
     private EventCallback<OdsRecordSaveEventArgs> SaveAction =>
@@ -183,7 +185,9 @@ public partial class ContractFilesTable
             || patch.IssuedAt != file.IssuedAt || issuedBy != file.IssuedBy;
 
         if (!nameChanged && !linkChanged)
+        {
             return;
+        }
 
         // The existing description is sent back unchanged so a rename doesn't wipe it (the service
         // overwrites it). Fail() keeps the edit dialog open with what the user typed (issue #252).
@@ -209,7 +213,10 @@ public partial class ContractFilesTable
             // A rename in the same save has already landed; re-read so the row shows it while the
             // dialog stays open for the part that did not.
             if (nameChanged)
+            {
                 await RefreshFilesAsync();
+            }
+
             return;
         }
 
@@ -233,15 +240,16 @@ public partial class ContractFilesTable
 
     private async Task ConfirmDetachAsync(ContractFileItem file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach document",
-            $"Detach '{file.FileName}'? The file itself is kept in your files.",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileName}'? The file itself is kept in your files.", "Detach", "link_off");
 
-        if (confirmed != true)
+        if (!confirmed)
+        {
             return;
+        }
 
         if ((await Contracts.DetachFileAsync(ContractId, file.FileId)).Toast(Snackbar, "Detach failed", "Document detached."))
+        {
             await OnChanged.InvokeAsync();
+        }
     }
 }

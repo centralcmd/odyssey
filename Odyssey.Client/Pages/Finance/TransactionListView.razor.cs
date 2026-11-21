@@ -60,23 +60,14 @@ public partial class TransactionListView
     private Guid _editKey;
     private bool _editOpen;
 
-    /// <summary>
-    /// Whether the component is running interactively. The claim load is skipped off-browser, because
-    /// resolving the principal is an HTTP call that has no business running during prerender.
-    /// </summary>
-    /// <remarks>
-    /// A swappable seam for the same reason <c>Settings.InteractiveCheck</c> is one: a bUnit host is
-    /// not a browser either, so a hard <c>OperatingSystem.IsBrowser()</c> would make the permission
-    /// gating — the whole point of this component — untestable. Being <c>static</c> it is
-    /// process-wide, so a test class that moves it must restore it and must not run in parallel with
-    /// another that does (see <c>TransactionLedgerCollection</c>).
-    /// </remarks>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
+        {
             return;
+        }
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canUpdate = user.HasPermission(PermissionClaims.TransactionsUpdate);
@@ -98,7 +89,9 @@ public partial class TransactionListView
     private Task AttachAsync(ExistingTransaction t)
     {
         if (!_canUpdate)
+        {
             return Task.CompletedTask;
+        }
 
         _attachTransaction = t;
         _attachKey = Guid.NewGuid();
@@ -109,7 +102,9 @@ public partial class TransactionListView
     private Task EditAsync(ExistingTransaction t)
     {
         if (!_canUpdate)
+        {
             return Task.CompletedTask;
+        }
 
         _editTransaction = t;
         _editKey = Guid.NewGuid();
@@ -120,7 +115,9 @@ public partial class TransactionListView
     private async Task SetStatusAsync(ExistingTransaction t, TransactionStatus status)
     {
         if (!_canUpdate || t.Status == status)
+        {
             return;
+        }
 
         if ((await Transactions.UpdateAsync(t.TransactionId, TransactionRowMenu.StatusPatch(t, status)))
             .Toast(Snackbar, "Update failed", "Transaction updated."))
@@ -132,11 +129,15 @@ public partial class TransactionListView
     private async Task HandleDeleteAsync(object key)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var transaction = Rows.FirstOrDefault(t => t.TransactionId.Equals(key));
         if (transaction is null)
+        {
             return;
+        }
 
         if ((await Transactions.DeleteAsync(transaction.TransactionId))
             .Toast(Snackbar, "Delete failed", "Transaction deleted."))
@@ -146,7 +147,7 @@ public partial class TransactionListView
     }
 
     private Task CopyIdAsync(Guid transactionId) =>
-        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
+        Clipboard.CopyAsync(transactionId.ToString(), OdsCopied.Id("Transaction"));
 
     private async Task ChangedAsync()
     {

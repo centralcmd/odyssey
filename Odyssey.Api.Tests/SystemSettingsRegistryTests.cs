@@ -306,7 +306,10 @@ public class SystemSettingsRegistryTests
         //
         // +1 in issue #508: NewsOpmlMaxImportMegabytes, an import size cap like the eight megabyte caps above, through
         // the same Megabytes helper (amendment v5). The entry cap beside it is a count cap on the ordinary claim.
-        Assert.Equal(33, audited.Count);
+        //
+        // +1 in the design-system sync of November 2026: NewsImageMaxSizeKb, the largest image the worker
+        // downloads and keeps from an untrusted feed host — a decoding-surface bound, not a plain count.
+        Assert.Equal(34, audited.Count);
         Assert.All(SystemSettingsRegistry.All, descriptor =>
             Assert.Equal(
                 descriptor.RequiredClaim == PermissionClaims.SystemSettingsSecurityUpdate,

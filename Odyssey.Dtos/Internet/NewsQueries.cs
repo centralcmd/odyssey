@@ -4,7 +4,14 @@ namespace Odyssey.Dtos.Internet;
 
 // The two news list queries (issue #470 §5.1, §5.2). The page size is bounded by NewsLimits.MaxPageSize rather than
 // the shared ListDefaults.MaxLimit; it is checked in Validate, the JobRunsQueryParams precedent, because hiding the base
-// Limit with a second property of the same name would give model binding two members to bind.
+// Limit with a second property of the same name would give model binding two members to bind. The tag list is not one of
+// them: it takes the shared tag-list contract and its ListDefaults bounds unchanged.
+
+/// <summary>News-tags list query: filter by archival status, as the journal and photo tag lists do.</summary>
+public sealed class NewsTagsQueryParams : QueryParams<NewsTagSortBy>
+{
+    public ArchivalStatus? Status { get; set; }
+}
 
 /// <summary><c>GET /api/news-feeds</c>.</summary>
 public sealed class NewsFeedsQueryParams : QueryParams<NewsFeedSortBy>, IValidatableObject
@@ -53,8 +60,12 @@ public sealed class NewsArticlesQueryParams : QueryParams<NewsArticleSortBy>, IV
 
     public Guid[]? TagIds { get; set; }
 
-    /// <summary>Sent only when exactly one of Unread and Read is selected.</summary>
+    /// <summary>The older single read-state filter. Prefer <see cref="Statuses"/>; sending both is a <c>400</c>.</summary>
     public bool? IsRead { get; set; }
+
+    /// <summary>Status members, OR'ed; absent or empty means every article.</summary>
+    [EnumFilter(typeof(NewsArticleReadStatus), 3)]
+    public NewsArticleReadStatus[]? Statuses { get; set; }
 
     public DateTimeOffset? From { get; set; }
 
@@ -75,6 +86,11 @@ public sealed class NewsArticlesQueryParams : QueryParams<NewsArticleSortBy>, IV
         if (Cursor is not null && Offset != 0)
         {
             yield return new ValidationResult("Send either a cursor or an offset, not both.", [nameof(Cursor)]);
+        }
+
+        if (IsRead is not null && Statuses is { Length: > 0 })
+        {
+            yield return new ValidationResult("Send either isRead or statuses, not both.", [nameof(Statuses)]);
         }
 
         if (SortBy == NewsArticleSortBy.Relevance && string.IsNullOrWhiteSpace(Search))

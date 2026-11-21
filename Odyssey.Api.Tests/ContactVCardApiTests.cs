@@ -15,7 +15,7 @@ using Odyssey.Api.Tests.Infrastructure;
 namespace Odyssey.Api.Tests;
 
 /// <summary>vCard import/export endpoints (issue #338): permission matrix and endpoint contracts.</summary>
-public class ContactVCardApiTests
+public class ContactVCardApiTests(ContactVCardApiTests.Host host) : SharedApiHostTests<ContactVCardApiTests.Host>(host)
 {
     private const string ActorUserId = "contact-vcard-actor-id";
     private const string BasePath = "/api/contacts";
@@ -30,9 +30,9 @@ public class ContactVCardApiTests
     [Fact]
     public async Task ExportOne_ReturnsVCardWithNoSniff()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var id = await SeedContactAsync(factory, "Acme");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{BasePath}/{id}/vcard");
 
@@ -50,8 +50,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task ExportOne_MissingContact_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{BasePath}/{Guid.NewGuid()}/vcard");
 
@@ -61,8 +61,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task ExportOne_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync($"{BasePath}/{Guid.NewGuid()}/vcard");
 
@@ -75,9 +75,9 @@ public class ContactVCardApiTests
         // contacts.read is the ONLY claim: the coordinates ride the export beside the street address they
         // locate (a product decision, PR #510). AuthorizationPolicyTests.Contacts_read_implies_locations_read
         // pins the role mapping that keeps this safe.
-        await using var factory = new ApiFactory([PermissionClaims.ContactsRead]);
+        var factory = Factory;
         var id = await SeedContactAsync(factory, "Acme", geocoded: true);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor([PermissionClaims.ContactsRead]);
 
         var single = await client.GetStringAsync($"{BasePath}/{id}/vcard");
         var bulk = await client.GetStringAsync($"{BasePath}/vcard");
@@ -95,10 +95,10 @@ public class ContactVCardApiTests
     [Fact]
     public async Task ExportAll_NoFilters_ReturnsEveryContact()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SeedContactAsync(factory, "Acme");
         await SeedContactAsync(factory, "Globex");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{BasePath}/vcard");
 
@@ -110,10 +110,10 @@ public class ContactVCardApiTests
     [Fact]
     public async Task ExportFiltered_BySearch_ReturnsOnlyMatching()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SeedContactAsync(factory, "Acme");
         await SeedContactAsync(factory, "Globex");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{BasePath}/vcard?search=acme");
 
@@ -125,8 +125,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task ExportMany_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync($"{BasePath}/vcard");
 
@@ -138,8 +138,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_ValidVCard_CreatesContact()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var vcf = Vcard("UID:api-import-1", "FN:Ada Lovelace", "N:Lovelace;Ada;;;");
         var result = await ImportAsync(client, vcf);
@@ -156,9 +156,9 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_ExportedFile_IsIdempotent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var id = await SeedContactAsync(factory, "Acme");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var exported = await (await client.GetAsync($"{BasePath}/{id}/vcard")).Content.ReadAsStringAsync();
         var result = await ImportAsync(client, exported);
@@ -174,8 +174,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_MissingContactType_IsSkippedWithReason()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var result = await ImportAsync(client, Vcard("UID:no-type", "FN:Nobody"));
 
@@ -187,8 +187,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_MalformedFile_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await PostVCardAsync(client, "this is not a vcard", "notes.vcf");
 
@@ -198,8 +198,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_WrongContentType_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await PostVCardAsync(client, Vcard("UID:x1", "FN:X", "ORG:X"), "data.vcf", contentType: "application/json");
 
@@ -209,8 +209,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_NonVcfExtension_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await PostVCardAsync(client, Vcard("UID:x2", "FN:X", "ORG:X"), "data.txt");
 
@@ -220,8 +220,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_OctetStreamContentType_IsAccepted()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await PostVCardAsync(
             client, Vcard("UID:octet-1", "FN:Acme", "ORG:Acme"), "cal.vcf", contentType: "application/octet-stream");
@@ -232,8 +232,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_EmptyFile_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await PostVCardAsync(client, "", "empty.vcf");
 
@@ -245,8 +245,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_ConfiguredEntryCap_RejectsOverCap_AcceptsAtCap()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         // The export cap must be lowered alongside import (or the round-trip rule — export ≤ import,
         // §9 — rejects this: export defaults to unlimited, which always exceeds a finite import).
         (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
@@ -269,11 +269,11 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Export_ConfiguredExportRowCap_RejectsOverCap_AcceptsAtCap()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
+        var factory = Factory;
         await SeedContactAsync(factory, "One");
         await SeedContactAsync(factory, "Two");
         await SeedContactAsync(factory, "Three");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
         {
             ContactVCardMaxExportRows = new CapacityLimit { Value = 2 },
@@ -299,14 +299,14 @@ public class ContactVCardApiTests
         // row-count cap above (total output size isn't knowable until it's generated) — once writing
         // the next chunk would cross it, the stream stops, leaving the body with fewer vCards than
         // X-Odyssey-Export-Rows already promised.
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsSecurityUpdate]);
+        var factory = Factory;
         var legalName = "Bulky " + new string('x', 700);
         for (var i = 0; i < 2000; i++)
         {
             await SeedContactAsync(factory, $"{legalName} {i}");
         }
 
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsSecurityUpdate]);
         (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
         {
             ContactVCardMaxExportMegabytes = 1,
@@ -327,8 +327,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_UnlimitedEntryCap_AcceptsBatchAboveAConfiguredFiniteCap()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         // First tighten to a finite cap (export set alongside, or the round-trip rule rejects it — see
         // the previous test), then explicitly widen back to unlimited.
         (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
@@ -383,8 +383,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_WithOnlyCreateClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ContactsCreate, PermissionClaims.ContactsRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.ContactsCreate, PermissionClaims.ContactsRead]);
 
         var response = await PostVCardAsync(client, Vcard("UID:p1", "FN:X", "ORG:X"), "x.vcf");
 
@@ -394,8 +394,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_WithOnlyUpdateClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ContactsUpdate, PermissionClaims.ContactsRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.ContactsUpdate, PermissionClaims.ContactsRead]);
 
         var response = await PostVCardAsync(client, Vcard("UID:p2", "FN:X", "ORG:X"), "x.vcf");
 
@@ -405,8 +405,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_WithBothCreateAndUpdateClaims_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await PostVCardAsync(client, Vcard("UID:p3", "FN:Acme", "ORG:Acme"), "x.vcf");
 
@@ -416,8 +416,8 @@ public class ContactVCardApiTests
     [Fact]
     public async Task Import_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(null);
 
         var response = await PostVCardAsync(client, Vcard("UID:p4", "FN:X", "ORG:X"), "x.vcf");
 
@@ -508,6 +508,9 @@ public class ContactVCardApiTests
         return id;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

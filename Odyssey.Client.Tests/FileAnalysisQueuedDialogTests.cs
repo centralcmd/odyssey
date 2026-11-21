@@ -28,7 +28,6 @@ namespace Odyssey.Client.Tests;
 /// auto-matches, the client-owned terminal copy and sent line, and the POST refusals. The poll delay runs on a
 /// <see cref="FakeTimeProvider"/>, so nothing here sleeps.
 /// </summary>
-[Collection(FileAnalysisDialogCollection.Name)]
 public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
 {
     private const string ServerText = "SERVER-SUPPLIED TEXT THAT MUST NEVER RENDER";
@@ -49,7 +48,7 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
 
     public FileAnalysisQueuedDialogTests()
     {
-        FileAnalysisDialog.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton<TimeProvider>(time);
@@ -92,7 +91,6 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        FileAnalysisDialog.InteractiveCheck = OperatingSystem.IsBrowser;
         await ctx.DisposeAsync();
     }
 
@@ -206,7 +204,9 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
         Assert.DoesNotContain(FileAnalysisJobCopy.TakingLonger, Text(cut));
 
         for (var i = 0; i < 31; i++)
+        {
             Advance(TimeSpan.FromSeconds(2), cut);
+        }
 
         cut.WaitForAssertion(() => Assert.Contains(FileAnalysisJobCopy.TakingLonger, Text(cut)));
     }
@@ -503,11 +503,4 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
             builder.CloseComponent();
         }
     }
-}
-
-/// <summary>Serialises the classes that flip <see cref="FileAnalysisDialog.InteractiveCheck"/>, a process-wide seam.</summary>
-[CollectionDefinition(Name)]
-public sealed class FileAnalysisDialogCollection
-{
-    public const string Name = "FileAnalysisDialog";
 }

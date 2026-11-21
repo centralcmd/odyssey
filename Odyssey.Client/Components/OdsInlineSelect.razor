@@ -90,7 +90,9 @@
     private async Task Pick(string value)
     {
         if (value != Value)
+        {
             await ValueChanged.InvokeAsync(value);
+        }
         await _popup.CloseAsync();
     }
 }

@@ -6,7 +6,7 @@ namespace Odyssey.Dtos.Finance;
 /// A slim, response-only projection of the contact a real-estate property names as its homeowner
 /// association (issue #217). It crosses from the contact domain into a <c>properties.read</c> response,
 /// so it carries three members and nothing else — no organization number, notes, addresses, emails,
-/// phones, aliases or avatar. <see cref="ExistingContact"/> is deliberately not reused.
+/// phones, aliases or avatar. <see cref="Odyssey.Dtos.Journal.ExistingContact"/> is deliberately not reused.
 ///
 /// <para>
 /// Never accepted on a write: the request carries only

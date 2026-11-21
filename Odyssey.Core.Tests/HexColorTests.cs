@@ -3,7 +3,9 @@ using Odyssey.Core;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 using Odyssey.TestShared;
+using Odyssey.Testing;
 using Xunit;
+using DataAnnotations = System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Core.Tests;
 
@@ -63,13 +65,48 @@ public class HexColorTests
         Assert.True(properties.Count >= 7, $"Scan set unexpectedly small ({properties.Count}).");
 
         var unbounded = properties
-            .Where(property => property.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.StringLengthAttribute), false)
-                .Cast<System.ComponentModel.DataAnnotations.StringLengthAttribute>()
+            .Where(property => property.GetCustomAttributes(typeof(DataAnnotations.StringLengthAttribute), false)
+                .Cast<DataAnnotations.StringLengthAttribute>()
                 .All(length => length.MaximumLength != HexColor.Length))
             .Select(property => $"{property.DeclaringType!.Name}.{property.Name}")
             .ToList();
 
         Assert.Empty(unbounded);
+    }
+
+    /// <summary>
+    /// The whole corpus against the attribute stack each <c>[HexColor]</c> DTO property actually carries
+    /// (<c>[StringLength]</c> included), as model validation runs it: exactly one error, the shared message.
+    /// This is what lets the HTTP tier keep only representatives (<c>TagColorApiTests</c>,
+    /// <c>AlbumIconColorApiTests</c>) — it proves wiring per endpoint, this proves the corpus per property.
+    /// An empty string on a <c>[Required]</c> property is the required-field case, not this rule.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(HexColorNegativeCorpus.TheoryData), MemberType = typeof(HexColorNegativeCorpus))]
+    public void Every_HexColor_property_reports_one_shared_error_for_every_corpus_value(string value)
+    {
+        var properties = typeof(HexColor).Assembly.GetTypes()
+            .SelectMany(type => type.GetProperties())
+            .Where(property => property.IsDefined(typeof(HexColorAttribute), inherit: false))
+            .ToList();
+        Assert.True(properties.Count >= 7, $"Scan set unexpectedly small ({properties.Count}).");
+
+        foreach (var property in properties)
+        {
+            if (value.Length == 0 && property.IsDefined(typeof(DataAnnotations.RequiredAttribute), inherit: false))
+            {
+                continue;
+            }
+
+            var results = new List<DataAnnotations.ValidationResult>();
+            var context = new DataAnnotations.ValidationContext(new object()) { MemberName = property.Name };
+            var attributes = property.GetCustomAttributes(typeof(DataAnnotations.ValidationAttribute), inherit: false)
+                .Cast<DataAnnotations.ValidationAttribute>();
+
+            Assert.False(DataAnnotations.Validator.TryValidateValue(value, context, results, attributes),
+                $"{property.DeclaringType!.Name}.{property.Name}");
+            Assert.Equal([HexColor.InvalidMessage], results.Select(result => result.ErrorMessage));
+        }
     }
 
     [Fact]
@@ -135,14 +172,18 @@ public class HexColorTests
         var worst = double.MaxValue;
         var worstFill = string.Empty;
         for (var r = 0; r < 256; r += 3)
-        for (var g = 0; g < 256; g += 3)
-        for (var b = 0; b < 256; b += 3)
+        {
+            for (var g = 0; g < 256; g += 3)
+            {
+                for (var b = 0; b < 256; b += 3)
         {
             var fill = $"#{r:X2}{g:X2}{b:X2}";
             var ratio = HexColor.ContrastRatio(fill, HexColor.TextOn(fill));
             if (ratio < worst)
             {
                 (worst, worstFill) = (ratio, fill);
+            }
+        }
             }
         }
 
@@ -241,7 +282,7 @@ public class HexColorTests
     {
         var files = CoreFiles();
         var assigners = files
-            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\bDisplayColor\s*=[^=>]"))
+            .Where(path => Regex.IsMatch(SourceLint.StripComments(File.ReadAllText(path)), @"\bDisplayColor\s*=[^=>]"))
             .Select(Path.GetFileName)
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -256,9 +297,9 @@ public class HexColorTests
     [Fact]
     public void There_is_one_hex_colour_implementation()
     {
-        var root = SolutionRoot();
+        var root = SourceTree.Root;
         var files = new[] { "Odyssey.Dtos", "Odyssey.Core", "Odyssey.Api", "Odyssey.Client" }
-            .SelectMany(project => SourceFiles(Path.Combine(root, project), "*.cs", "*.razor"))
+            .SelectMany(project => SourceTree.Files(project, "*.cs", "*.razor"))
             .ToList();
         Assert.True(files.Count > 200, $"Scan set unexpectedly small ({files.Count}).");
 
@@ -270,7 +311,7 @@ public class HexColorTests
             // NewsEntityPrepass reads hexadecimal character references (&#x2014;) in feed XML (issue #470 §8.6), not
             // colours; OpmlTextReader is its chunked twin for OPML imports (issue #508 §7.5).
             .Where(path => Path.GetFileName(path) is not ("NewsEntityPrepass.cs" or "OpmlTextReader.cs"))
-            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\[0-9A-Fa-f\]\{6\}|\[0-9a-fA-F\]\{6\}|\[A-Fa-f0-9\]\{6\}|\\p\{XDigit\}|IsAsciiHexDigit|IsHexDigit"))
+            .Where(path => Regex.IsMatch(SourceLint.StripComments(File.ReadAllText(path)), @"\[0-9A-Fa-f\]\{6\}|\[0-9a-fA-F\]\{6\}|\[A-Fa-f0-9\]\{6\}|\\p\{XDigit\}|IsAsciiHexDigit|IsHexDigit"))
             .Select(path => Path.GetRelativePath(root, path))
             .ToList();
 
@@ -284,10 +325,10 @@ public class HexColorTests
     [Fact]
     public void The_palette_is_declared_once()
     {
-        var root = SolutionRoot();
+        var root = SourceTree.Root;
         var exempt = new[] { "ColorPalette.cs", "OdysseyTheme.cs" };
         var files = new[] { "Odyssey.Dtos", "Odyssey.Core", "Odyssey.Api", "Odyssey.Client", "Odyssey.Context", "Odyssey.TestData" }
-            .SelectMany(project => SourceFiles(Path.Combine(root, project), "*.cs", "*.razor"))
+            .SelectMany(project => SourceTree.Files(project, "*.cs", "*.razor"))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}"))
             .Where(path => !exempt.Contains(Path.GetFileName(path)))
             .ToList();
@@ -313,28 +354,8 @@ public class HexColorTests
 
     private static List<string> CoreFiles()
     {
-        var files = SourceFiles(Path.Combine(SolutionRoot(), "Odyssey.Core"), "*.cs").ToList();
+        var files = SourceTree.Files("Odyssey.Core").ToList();
         Assert.True(files.Count > 50, $"Scan set unexpectedly small ({files.Count}).");
         return files;
-    }
-
-    private static IEnumerable<string> SourceFiles(string root, params string[] patterns) =>
-        patterns.SelectMany(pattern => Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
-
-    private static string StripComments(string code) =>
-        Regex.Replace(Regex.Replace(code, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline),
-            @"//.*?$", string.Empty, RegexOptions.Multiline);
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Solution root not found.");
     }
 }

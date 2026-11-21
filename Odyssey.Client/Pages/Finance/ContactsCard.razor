@@ -262,6 +262,8 @@
                                  OnDetachAndDelete="DetachAndDeleteAsync" />
 }
 
+<OdsConfirm @ref="_confirm" />
+
 @code {
     // Inline render fragments are Razor syntax, so these cannot live in the code-behind.
 
@@ -293,11 +295,17 @@
     private RenderFragment? ReachMeta(ExistingContact c)
     {
         if (Primary(c.EmailAddresses, e => e.IsPrimary) is { } email)
+        {
             return IconMeta("mail", email.Value);
+        }
         if (Primary(c.PhoneNumbers, p => p.IsPrimary) is { } phone)
+        {
             return IconMeta("call", phone.Value);
+        }
         if (Primary(c.Addresses, a => a.IsPrimary) is { } address)
+        {
             return IconMeta("location_on", string.Join(", ", new[] { address.Line1, address.City }.Where(v => !string.IsNullOrWhiteSpace(v))));
+        }
         return null;
     }
 
@@ -331,9 +339,13 @@
     private static string? LifecycleChip(ExistingContact c)
     {
         if (c.Type == ContactType.Person && c.PersonDetails?.DateOfDeath is { } died)
+        {
             return $"Deceased {died:d MMM yyyy}";
+        }
         if (c.Type == ContactType.Organization && c.OrganizationDetails?.DissolvedDate is { } dissolved)
+        {
             return $"Dissolved {dissolved:d MMM yyyy}";
+        }
         return null;
     }
 

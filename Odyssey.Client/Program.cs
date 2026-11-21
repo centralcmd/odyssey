@@ -101,6 +101,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredServ
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddScoped<Odyssey.Client.Services.IPageStateService, Odyssey.Client.Services.PageStateService>();
 builder.Services.AddScoped<Odyssey.Client.Services.IClipboardService, Odyssey.Client.Services.ClipboardService>();
+builder.Services.AddSingleton<Odyssey.Client.Services.IRenderInteractivity, Odyssey.Client.Services.BrowserRenderInteractivity>();
 // Scoped is app-lifetime in WASM, which is the point: currencies, tags and contacts are fetched once
 // per session instead of once per dialog open (issue #372).
 builder.Services.AddScoped<Odyssey.Client.Services.IReferenceDataCache, Odyssey.Client.Services.ReferenceDataCache>();

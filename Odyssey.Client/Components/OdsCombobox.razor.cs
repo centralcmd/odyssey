@@ -3,8 +3,40 @@ using Microsoft.JSInterop;
 
 namespace Odyssey.Client.Components;
 
-public partial class OdsCombobox : IDisposable
+public partial class OdsCombobox : IDisposable, IHandleEvent
 {
+    /// <summary>
+    /// Events re-render this component as ComponentBase does — except the wrapper's key presses and keystrokes. Its
+    /// keydown (Home and End, issue #520) and input handlers (the typed text it tracks) change nothing it renders, so a
+    /// keystroke costs no render of the field, and of its long option list, mid-typing.
+    /// </summary>
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem item, object? arg)
+    {
+        var task = item.InvokeAsync(arg);
+        if (arg is Microsoft.AspNetCore.Components.Web.KeyboardEventArgs or ChangeEventArgs)
+        {
+            return task;
+        }
+
+        var pending = task.Status is not (TaskStatus.RanToCompletion or TaskStatus.Canceled);
+        StateHasChanged();
+        return pending ? RenderAfterAsync(task) : Task.CompletedTask;
+    }
+
+    private async Task RenderAfterAsync(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch when (task.IsCanceled)
+        {
+            return;
+        }
+
+        StateHasChanged();
+    }
+
     /// <summary>Selected option value. Bindable via @bind-Value.</summary>
     [Parameter] public string? Value { get; set; }
 
@@ -111,8 +143,35 @@ public partial class OdsCombobox : IDisposable
     /// <summary>Async announcement while a request is pending.</summary>
     [Parameter] public string SearchingText { get; set; } = "Searching…";
 
-    /// <summary>Async announcement for N rows, e.g. <c>n => $"{n} places found"</c>.</summary>
+    /// <summary>
+    /// The announcement for N rows, e.g. <c>n => $"{n} places found"</c>. In async mode it words the status line; in
+    /// local mode, setting it adds that same polite status line, saying how many rows the typed text matches (DS
+    /// Combobox <c>countText</c>, issue #520 v3 §I).
+    /// </summary>
     [Parameter] public Func<int, string>? ResultsText { get; set; }
+
+    /// <summary>
+    /// Home and End move the highlight to the first and last row while the list is open (issue #520 v3 §I, AC 14). Off
+    /// by default: in an editable combobox they otherwise move the caret, which the other pickers keep.
+    /// </summary>
+    [Parameter] public bool HomeEndKeys { get; set; }
+
+    /// <summary>
+    /// List every matching row rather than MudAutocomplete's first ten, so the arrow keys, Home and End reach the whole
+    /// list and the announced count is the count shown (the time-zone picker, issue #520 AX7).
+    /// </summary>
+    [Parameter] public bool AllRows { get; set; }
+
+    /// <summary>
+    /// A constrained field's blur with typed text that names no option (issue #520 v3 §E): the host shows its error.
+    /// Text naming an option's label exactly picks that option instead.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnUnmatchedText { get; set; }
+
+    /// <summary>The local empty state worded with the typed query — "No time zone matches “xyz”." — in place of <see cref="EmptyText"/>.</summary>
+    [Parameter] public Func<string, string>? EmptyTextFor { get; set; }
+
+    private string LocalEmptyText => EmptyTextFor?.Invoke(_lastQuery) ?? EmptyText;
 
     /// <summary>Async announcement when a request fails.</summary>
     [Parameter] public string ErrorText { get; set; } = "Couldn’t load results";
@@ -163,7 +222,9 @@ public partial class OdsCombobox : IDisposable
             _resolving = value;
             var option = await ResolveAsync(value);
             if (option is not null)
+            {
                 _known[value] = option;
+            }
         }
     }
 
@@ -197,7 +258,10 @@ public partial class OdsCombobox : IDisposable
     public void Dispose()
     {
         if (_async is null)
+        {
             return;
+        }
+
         _async.Changed -= OnAsyncChanged;
         _async.Dispose();
     }
@@ -229,7 +293,9 @@ public partial class OdsCombobox : IDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (string.IsNullOrEmpty(InputId))
+        {
             return;
+        }
 
         var describedBy = string.IsNullOrEmpty(AriaDescribedBy) ? null : AriaDescribedBy;
         try
@@ -269,7 +335,57 @@ public partial class OdsCombobox : IDisposable
     private void OnTyped(ChangeEventArgs e)
     {
         if (FreeText)
+        {
             _typed = e.Value?.ToString();
+        }
+        else
+        {
+            _query = e.Value?.ToString();
+        }
+    }
+
+    // A constrained field's typed query, until a row is picked: what OnUnmatchedText reports on blur.
+    private string? _query;
+
+    /// <summary>
+    /// The text typed into a constrained (non-<see cref="FreeText"/>) field that names no option, or null — what a host
+    /// checks on Save, since free text never becomes a value (issue #520 v3 §E).
+    /// </summary>
+    public string? UnmatchedText
+    {
+        get
+        {
+            var text = _query?.Trim();
+            if (string.IsNullOrEmpty(text) || string.Equals(text, Selected?.Label, StringComparison.OrdinalIgnoreCase)
+                || Options.Any(o => !Unpickable(o) && string.Equals(o.Label, text, StringComparison.OrdinalIgnoreCase)))
+            {
+                return null;
+            }
+
+            return text;
+        }
+    }
+
+    // A constrained field on blur (issue #520 v3 §E): a query naming exactly one option's label picks it, and one naming
+    // none is handed to OnUnmatchedText — after the user has left, so typing never re-renders the host.
+    private async Task CheckQueryAsync()
+    {
+        var text = _query?.Trim();
+        if (FreeText || string.IsNullOrEmpty(text) || string.Equals(text, Selected?.Label, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (Options.FirstOrDefault(o => !Unpickable(o) && string.Equals(o.Label, text, StringComparison.OrdinalIgnoreCase)) is { } exact)
+        {
+            await OnSelected(exact);
+            return;
+        }
+
+        if (OnUnmatchedText.HasDelegate)
+        {
+            await OnUnmatchedText.InvokeAsync(text);
+        }
     }
 
     // FreeText: the query IS an answer. Committing it on blur is what separates "suggests" from
@@ -277,19 +393,28 @@ public partial class OdsCombobox : IDisposable
     private Task CommitTyped(Microsoft.AspNetCore.Components.Web.FocusEventArgs _)
     {
         if (!FreeText)
-            return Task.CompletedTask;
+        {
+            return CheckQueryAsync();
+        }
+
         var text = _typed?.Trim();
         // Typing the current value's own label again is not a change, and a "Create …" caption is never
         // a name.
         if (string.IsNullOrEmpty(text)
             || string.Equals(text, Selected?.Label, StringComparison.OrdinalIgnoreCase)
             || text.StartsWith($"{CreateLabel} \"", StringComparison.Ordinal))
+        {
             return Task.CompletedTask;
+        }
+
         var hit = Options.FirstOrDefault(o => !o.Disabled
                                               && string.Equals(o.Label, text, StringComparison.OrdinalIgnoreCase));
         var next = hit?.Value ?? text;
         if (string.Equals(next, Value, StringComparison.Ordinal))
+        {
             return Task.CompletedTask;
+        }
+
         _typed = null;
         Value = next;
         return ValueChanged.InvokeAsync(Value);
@@ -316,7 +441,10 @@ public partial class OdsCombobox : IDisposable
     {
         await OnSelected(null);
         if (string.IsNullOrEmpty(InputId))
+        {
             return;
+        }
+
         try { await Js.InvokeVoidAsync("odsFocusById", InputId); }
         catch { /* JS unavailable (e.g. teardown) */ }
     }
@@ -335,7 +463,10 @@ public partial class OdsCombobox : IDisposable
     private string ItemClass(OdsOption option)
     {
         if (!IsCreateRow(option))
+        {
             return "odc-combo-item";
+        }
+
         var first = _firstCreateValue is not null && string.Equals(_firstCreateValue, option.Value, StringComparison.Ordinal);
         return first ? "odc-combo-item odc-combo-create first" : "odc-combo-item odc-combo-create";
     }
@@ -367,7 +498,7 @@ public partial class OdsCombobox : IDisposable
 
     /// <summary>Whether the rows are capped at MudAutocomplete's default ten — never with groups or a footer, which
     /// would otherwise cut off the last group and the footer row itself.</summary>
-    private int? MaxItems => HasRowExtras ? null : 10;
+    private int? MaxItems => HasRowExtras || AllRows ? null : 10;
 
     internal static bool IsHeadingRow(OdsOption option) => option.Value.StartsWith(HeadingPrefix, StringComparison.Ordinal);
 
@@ -406,7 +537,10 @@ public partial class OdsCombobox : IDisposable
         {
             var members = list.Where(o => string.Equals(o.Group, group.Key, StringComparison.Ordinal)).ToList();
             if (members.Count == 0)
+            {
                 continue;
+            }
+
             arranged.Add(new OdsOption($"{HeadingPrefix}{group.Key}", group.Label));
             var ordered = members.Where(o => !o.IsNote).Concat(members.Where(o => o.IsNote)).ToList();
             _groupOpeners[ordered[0].Value] = group.Label;
@@ -421,7 +555,9 @@ public partial class OdsCombobox : IDisposable
     private void AppendFooter(List<OdsOption> rows)
     {
         if (FooterOption is { } footer)
+        {
             rows.Add(new OdsOption(FooterValue, footer.Label) { Icon = footer.Icon, AriaLabel = footer.AriaLabel });
+        }
     }
 
     private Task<IEnumerable<OdsOption>> Search(string? text, CancellationToken token) =>
@@ -433,7 +569,9 @@ public partial class OdsCombobox : IDisposable
         // Opening on a chosen value searches its label; that is not a query the user typed.
         var query = text ?? string.Empty;
         if (Selected is { } current && string.Equals(query, current.Label, StringComparison.Ordinal))
+        {
             query = string.Empty;
+        }
 
         _createRows.Clear();
         _firstCreateValue = null;
@@ -481,10 +619,19 @@ public partial class OdsCombobox : IDisposable
     private IEnumerable<OdsOption> SearchLocal(string? text)
     {
         var query = text ?? string.Empty;
+        // Opening a full list on its chosen value searches that value's label; that is not a query the user typed, so the
+        // whole list is offered (the async mode's rule, for a picker that lists every row).
+        if (AllRows && Selected is { } current && string.Equals(query, current.Label, StringComparison.Ordinal))
+        {
+            query = string.Empty;
+        }
+
         _lastQuery = query.Trim();
         var matches = Arrange(Options
             .Where(o => o.IsNote || string.IsNullOrWhiteSpace(query)
-                        || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase)));
+                        || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase)
+                        || (o.SearchKey?.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase) ?? false)));
+        UpdateLocalStatus(query);
 
         _createRows.Clear();
         _firstCreateValue = null;
@@ -513,7 +660,69 @@ public partial class OdsCombobox : IDisposable
         }
 
         AppendFooter(matches);
+        _rowCount = matches.Count;
         return matches;
+    }
+
+    // Local mode's status line (issue #520 v3 §I): the count once the user has typed; nothing for an empty list (the
+    // popover's empty row speaks that) or for the unfiltered list a bare open shows.
+    private string _localStatus = string.Empty;
+
+    // The rows the latest local search returned: the highlight's range for Home and End.
+    private int _rowCount;
+
+    private void UpdateLocalStatus(string query)
+    {
+        if (ResultsText is null)
+        {
+            return;
+        }
+
+        var typed = !string.IsNullOrWhiteSpace(query) && !string.Equals(query, Selected?.Label, StringComparison.Ordinal);
+        var next = typed && _resultCount > 0 ? ResultsText(_resultCount) : string.Empty;
+        if (string.Equals(next, _localStatus, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _localStatus = next;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // MudAutocomplete 9 moves its highlight only through a non-public SelectItemAsync(index) — the method its own arrow
+    // keys use. It is reached by reflection, kept through trimming by the DynamicDependency below, and a MudBlazor that
+    // renames it leaves Home and End as plain caret keys rather than failing.
+    private static readonly System.Reflection.MethodInfo? SelectItem =
+        typeof(MudBlazor.MudAutocomplete<OdsOption>).GetMethod(
+            "SelectItemAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public,
+            [typeof(int)]);
+
+    /// <summary>The row Home or End moves the highlight to, or null for any other key or a closed list.</summary>
+    internal static int? HomeEndTarget(string key, int rowCount, int? maxItems) =>
+        rowCount == 0 ? null : key switch
+        {
+            "Home" => 0,
+            "End" => Math.Min(rowCount, maxItems ?? int.MaxValue) - 1,
+            _ => null,
+        };
+
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(
+        System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(MudBlazor.MudAutocomplete<OdsOption>))]
+    private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (!HomeEndKeys || _auto is not { Open: true } auto || HomeEndTarget(e.Key, _rowCount, MaxItems) is not { } index)
+        {
+            return;
+        }
+
+        try
+        {
+            if (SelectItem?.Invoke(auto, [index]) is Task moved)
+            {
+                await moved;
+            }
+        }
+        catch (Exception) { /* best-effort: teardown, or no JS runtime under bUnit */ }
     }
 
     private async Task OnSelected(OdsOption? option)
@@ -522,7 +731,17 @@ public partial class OdsCombobox : IDisposable
         // here — MudAutocomplete coerces a typed value that matches one by label. Ignoring it keeps the
         // selection where it was rather than silently accepting a row the user was told they can't pick.
         if (_restoring || Unpickable(option))
+        {
             return;
+        }
+
+        // A constrained field that cannot be cleared never becomes empty: MudAutocomplete coerces the text being typed
+        // into a null value, and passing that up made the host re-render with the stored value, which put its label
+        // back into the input under the user's fingers (the calendar's time-zone picker, issue #520).
+        if (option is null && !Clearable && !FreeText)
+        {
+            return;
+        }
 
         // The footer row is an action, not a value: it hands over the typed text and leaves the value alone, so the
         // field is put back to what it held.
@@ -532,12 +751,16 @@ public partial class OdsCombobox : IDisposable
             var text = _lastQuery;
             await RestoreAsync();
             if (FooterOption is { } footer)
+            {
                 await footer.OnSelect(text);
+            }
+
             return;
         }
 
         // A pick supersedes whatever was typed to find it.
         _typed = null;
+        _query = null;
 
         if (option is not null && IsCreateRow(option))
         {
@@ -547,14 +770,20 @@ public partial class OdsCombobox : IDisposable
             var text = payload[(split + 1)..];
             var created = OnCreate?.Invoke(text, kind);
             if (created is not null)
+            {
                 _known[created.Value] = created;
+            }
+
             Value = created?.Value;
         }
         else
         {
             // A row from a server page is not in Options; keep it so the trigger can still name it.
             if (option is not null && IsAsync)
+            {
                 _known[option.Value] = option;
+            }
+
             Value = option?.Value;
         }
         await ValueChanged.InvokeAsync(Value);
@@ -564,7 +793,10 @@ public partial class OdsCombobox : IDisposable
     private async Task RestoreAsync()
     {
         if (_auto is null)
+        {
             return;
+        }
+
         _restoring = true;
         try { await _auto.SelectOptionAsync(Selected!); }
         catch (Exception) { /* best-effort: teardown, or no JS runtime under bUnit */ }

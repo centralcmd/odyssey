@@ -8,6 +8,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class BudgetItemsSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter] public Guid BudgetId { get; set; }
     [Parameter] public string? BudgetName { get; set; }
     [Parameter] public List<ExistingBudgetItem> Items { get; set; } = new();
@@ -67,9 +69,15 @@ public partial class BudgetItemsSection
     protected override void OnParametersSet()
     {
         if (Editing == _seededFor)
+        {
             return;
+        }
+
         if (Editing)
+        {
             SeedDrafts();
+        }
+
         _seededFor = Editing;
     }
 
@@ -81,9 +89,14 @@ public partial class BudgetItemsSection
             var income = Items.Where(i => i.CategoryType == BudgetCategoryType.Income).ToList();
             var expense = Items.Where(i => i.CategoryType == BudgetCategoryType.Expense).ToList();
             if (income.Count > 0)
+            {
                 yield return new ItemGroup("Income", BudgetCategoryType.Income, income);
+            }
+
             if (expense.Count > 0)
+            {
                 yield return new ItemGroup("Expenses", BudgetCategoryType.Expense, expense);
+            }
         }
     }
 
@@ -94,9 +107,15 @@ public partial class BudgetItemsSection
     private decimal? ItemActual(ExistingBudgetItem item)
     {
         if (!HasReport)
+        {
             return null;
+        }
+
         if (!ActualByTag.TryGetValue(item.TransactionTagId, out var sum))
+        {
             return 0m;
+        }
+
         return item.CategoryType == BudgetCategoryType.Income ? sum : Math.Abs(sum);
     }
 
@@ -108,7 +127,9 @@ public partial class BudgetItemsSection
         _drafts.Clear();
         _draftErrors.Clear();
         foreach (var item in Items)
+        {
             _drafts[item.BudgetItemId] = new Draft(item);
+        }
     }
 
     private Draft GetDraft(ExistingBudgetItem item)
@@ -162,7 +183,9 @@ public partial class BudgetItemsSection
     private async Task SaveItem(ExistingBudgetItem item)
     {
         if (!CanUpdate)
+        {
             return;
+        }
 
         var draft = GetDraft(item);
         if (draft.TransactionTagId is not { } tagId || tagId == Guid.Empty)
@@ -199,7 +222,9 @@ public partial class BudgetItemsSection
 
             _draftErrors.Remove(item.BudgetItemId);
             if (result.Toast(Snackbar, "Unable to save item"))
+            {
                 await OnChanged.InvokeAsync();
+            }
         }
         finally
         {
@@ -218,7 +243,9 @@ public partial class BudgetItemsSection
     private void AddItem()
     {
         if (!CanCreate)
+        {
             return;
+        }
 
         _editItem = null;
         _dialogUsedTagIds = UsedTagIds();
@@ -229,7 +256,9 @@ public partial class BudgetItemsSection
     private void EditItem(ExistingBudgetItem item)
     {
         if (!CanUpdate)
+        {
             return;
+        }
 
         _editItem = item;
         _dialogUsedTagIds = UsedTagIds(item.BudgetItemId);
@@ -246,27 +275,32 @@ public partial class BudgetItemsSection
             _isOpen = true;
             // A new row needs a draft before the batch grid can bind to it.
             if (Editing)
+            {
                 SeedDrafts();
+            }
         }
     }
 
     private async Task DeleteItem(ExistingBudgetItem item)
     {
         if (!CanDelete || _isBusy)
+        {
             return;
+        }
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete budget item",
-            $"Delete '{item.Tag.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed != true)
+        var confirmed = await _confirm.AskAsync("Delete budget item", $"Delete '{item.Tag.Name}'? This cannot be undone.", "Delete");
+        if (!confirmed)
+        {
             return;
+        }
 
         _isBusy = true;
         try
         {
             if ((await BudgetItems.DeleteAsync(item.BudgetItemId)).Toast(Snackbar, "Unable to delete item", "Budget item deleted."))
+            {
                 await OnChanged.InvokeAsync();
+            }
         }
         finally
         {
@@ -275,7 +309,7 @@ public partial class BudgetItemsSection
     }
 
     private Task CopyItemId(ExistingBudgetItem item) =>
-        Clipboard.CopyAsync(item.BudgetItemId.ToString(), "Budget item ID copied.");
+        Clipboard.CopyAsync(item.BudgetItemId.ToString(), OdsCopied.Id("Budget item"));
 
     // A tag can be planned for by one item only per budget; the picker marks the others "in use"
     // rather than hiding them, and always exempts the row's own current tag.

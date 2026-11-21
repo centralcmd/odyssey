@@ -212,20 +212,31 @@ public class DiskReconciliationTests : FileStorageTestBase
         Assert.Null((await VolumeRowAsync(host)).ReconciliationHaltedAtUtc);
     }
 
+    /// <summary>
+    /// The threshold is max(floor, 1 % of the live rows). At the production floor of 100 the ratio term only dominates
+    /// above 10,000 live rows, so this lowers the floor (and the folders per tick) to show the same crossing on a small
+    /// volume: 1,000 live rows give a ratio term of 10 over a floor of 5. Eight orphans are above the floor but below the
+    /// ratio, so only the ratio term keeps the volume running; fifteen are above both.
+    /// </summary>
     [Theory]
-    [InlineData(250, true)]
-    [InlineData(150, false)]
+    [InlineData(15, true)]
+    [InlineData(8, false)]
     public async Task The_ratio_term_sets_the_threshold_on_a_large_volume_across_a_restart(int orphans, bool halted)
     {
-        var host = await NewHostAsync();
-        await SeedLiveRowsAsync(host, 20_000);
+        const int floor = 5;
+        const int liveRows = 1_000;
+        const int foldersPerTick = 8;
+        Assert.InRange(orphans, floor + 1, int.MaxValue); // every case is above the floor alone
+        var host = await NewSmallLimitHostAsync(floor, foldersPerTick);
+        await SeedLiveRowsAsync(host, liveRows);
         for (var i = 0; i < orphans; i++)
         {
-            PlantOrphan($"test-files/{i % 200:x2}/{i / 200:x2}/o/f.jpg");
+            PlantOrphan($"test-files/{i:x2}/00/o/f.jpg");
         }
 
-        await ReconcileAsync(host); // ≤ 256 folders: this pass spans two ticks
-        var restarted = await NewHostAsync();
+        await ReconcileAsync(host); // more folders than one tick visits: this pass spans the restart
+        Assert.Equal(1, (await VolumeRowAsync(host)).ReconciliationPass);
+        var restarted = await NewSmallLimitHostAsync(floor, foldersPerTick);
         await RunPassAsync(restarted);
 
         var volume = await VolumeRowAsync(restarted);
@@ -371,6 +382,17 @@ public class DiskReconciliationTests : FileStorageTestBase
         File.WriteAllText(path, content);
         return path;
     }
+
+    private Task<FileStorageTestHost> NewSmallLimitHostAsync(int breakerFloor, int foldersPerTick) =>
+        NewHostAsync(new Dictionary<string, string> { ["primary"] = Root("primary") },
+            TestStorageFeatures.All.ToDictionary(f => f.Key, _ => "primary"),
+            configureServices: services => services.AddScoped(provider =>
+            {
+                var sweeper = ActivatorUtilities.CreateInstance<FileStorageSweeper>(provider);
+                sweeper.BreakerFloorOrphans = breakerFloor;
+                sweeper.ReconcileFolderLimit = foldersPerTick;
+                return sweeper;
+            }));
 
     private static Task ReconcileAsync(FileStorageTestHost host) =>
         InScopeAsync(host, sp => sp.GetRequiredService<FileStorageSweeper>().ReconcileAsync(default));

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,7 +16,7 @@ using JournalTaskStatus = Odyssey.Dtos.Journal.JournalTaskStatus;
 
 namespace Odyssey.Api.Tests;
 
-public class JournalTasksApiTests
+public class JournalTasksApiTests(JournalTasksApiTests.Host host) : SharedApiHostTests<JournalTasksApiTests.Host>(host)
 {
     private const string ActorUserId = "tasks-actor-id";
     private const string Path = "/api/tasks";
@@ -39,8 +40,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(null);
 
         var response = await client.GetAsync(Path);
 
@@ -50,8 +51,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_Guest_WithoutTaskClaims_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync(Path);
 
@@ -61,8 +62,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Mutations_WithReadOnlyPermission_ReturnForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var post = await client.PostAsJsonAsync(Path, NewTask());
         Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
@@ -76,8 +77,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Post_Get_Update_Delete_RoundTrip()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, NewTask(title: "Pay rent"));
         Assert.Equal(HttpStatusCode.Created, post.StatusCode);
@@ -108,8 +109,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Get_UnknownTask_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}/{Guid.NewGuid()}");
 
@@ -121,8 +122,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task PatchStatus_ToDone_StampsCompletedAt_ThenBack_ClearsIt()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewTask());
 
@@ -142,8 +143,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Put_StatusChange_UnknownTask_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}",
             new UpdateJournalTask { Title = "Ghost", Status = JournalTaskStatus.Done });
@@ -154,8 +155,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Archived_TasksHiddenByDefault_ReachableViaStatusFilter()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewTask(title: "Old chore"));
         await SetStatusAsync(client, id, JournalTaskStatus.Archived);
@@ -172,8 +173,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task PatchPosition_MovesTaskAndReSequencesColumnGapFree()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // Four Backlog tasks land at positions 0,1,2,3 in creation order.
         var a = await CreateAsync(client, NewTask(title: "A"));
@@ -200,8 +201,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task PatchPosition_TargetBeyondEnd_ClampsToLastSlot()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var a = await CreateAsync(client, NewTask(title: "A"));
         var b = await CreateAsync(client, NewTask(title: "B"));
@@ -220,8 +221,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Put_Reposition_UnknownTask_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}",
             new UpdateJournalTask { Title = "Ghost", Position = 0 });
@@ -234,8 +235,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Post_UnknownTag_ReturnsUnprocessableEntity()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, NewTask(tagIds: [Guid.NewGuid()]));
 
@@ -245,9 +246,9 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_FilteredByTag_ReturnsMatchingSubset()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var tagId = await SeedJournalTaskTagAsync(factory, "Urgent");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var tagged = await CreateAsync(client, NewTask(title: "Fix leak", tagIds: [tagId]));
         var untagged = await CreateAsync(client, NewTask(title: "Someday"));
@@ -260,9 +261,9 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Post_PdfAttachment_IsLinkedByIdOnly()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "spec.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var id = await CreateAsync(client, NewTask(attachmentFileIds: [pdfId]));
 
@@ -274,9 +275,9 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Post_LinkingAttachment_WithoutFilesReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "spec.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, NewTask(attachmentFileIds: [pdfId]));
 
@@ -288,8 +289,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Post_WithNestedForeignObjects_DoesNotCreateTagsOrAttachments()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var body = new
         {
@@ -317,8 +318,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_Search_MatchesTitleAndContent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var byTitle = await CreateAsync(client, NewTask(title: "Renew passport"));
         var byContent = await CreateAsync(client, NewTask(title: "Errand", content: "remember the passport photos"));
@@ -336,8 +337,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_Summary_Content_IsReturnedWhole()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var longContent = new string('x', 250);
 
@@ -355,9 +356,9 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Author_DisplayName_Resolves_When_The_User_Exists()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await factory.SeedActorUserAsync(displayName: "Ada L.");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewTask(title: "Mine"));
 
@@ -371,8 +372,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Author_DisplayName_IsUnknownUser_When_The_User_Is_Unresolvable()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewTask(title: "Orphan"));
 
@@ -385,9 +386,9 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Author_NoProfileName_And_NoUsersRead_ReturnsUnknownUser_NotEmail()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var userName = await factory.SeedActorUserAsync();
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewTask(title: "Mine"));
 
@@ -400,8 +401,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_LimitAboveMaximum_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}?limit=100000");
 
@@ -411,8 +412,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_NegativeOffset_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}?offset=-1");
 
@@ -426,8 +427,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Status_IsDerivedFromTimestamps()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewTask());
         var backlog = (await client.GetFromJsonAsync<ExistingJournalTask>($"{Path}/{id}"))!;
@@ -460,8 +461,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Put_FieldOnly_PreservesStatusStartedAtAndPosition()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // Two tasks moved to Doing → b ends up in Doing at Position 1.
         var a = await CreateAsync(client, NewTask(title: "A"));
@@ -490,8 +491,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task Put_DiffsLinkSets_AddsRemovesTagsAndAttachments()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var tagA = await SeedJournalTaskTagAsync(factory, "A");
         var tagB = await SeedJournalTaskTagAsync(factory, "B");
@@ -517,8 +518,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task UpdatePosition_OnDoneTask_IsNoOp()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client, NewTask());
         await SetStatusAsync(client, id, JournalTaskStatus.Done);
@@ -532,8 +533,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task ChangingStatus_ClosesGap_InSourceColumn()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var t0 = await CreateAsync(client, NewTask(title: "T0")); // Backlog pos 0
         var t1 = await CreateAsync(client, NewTask(title: "T1")); // Backlog pos 1
@@ -552,8 +553,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_UnknownSortKey_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.GetAsync($"{Path}?sortBy=NotAKey");
 
@@ -563,8 +564,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_SortByTitle_OrdersAscending()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         await CreateAsync(client, NewTask(title: "Banana"));
         await CreateAsync(client, NewTask(title: "Apple"));
@@ -578,8 +579,8 @@ public class JournalTasksApiTests
     [Fact]
     public async Task List_WithNonZeroOffset_ReturnsRequestedWindow()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // All land in Backlog with positions 0,1,2 in creation order; default sort is Position ascending.
         await CreateAsync(client, NewTask(title: "First"));
@@ -680,9 +681,8 @@ public class JournalTasksApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -692,14 +692,13 @@ public class JournalTasksApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateDomainContext)
@@ -713,4 +712,7 @@ public class JournalTasksApiTests
             services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(databaseName));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

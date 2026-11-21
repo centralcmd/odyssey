@@ -136,14 +136,15 @@ public partial class LocationsPage
     /// <summary>The credits line's sources — recomputed when the rows change, not on every render.</summary>
     private IReadOnlyList<LocationAttribution> Credits { get; set; } = [];
 
-    /// <summary>The interactivity check, as a seam for bUnit.</summary>
-    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
+        {
             return;
+        }
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreate = user.HasPermission(PermissionClaims.LocationsCreate);
@@ -243,7 +244,9 @@ public partial class LocationsPage
             ReferencedQuery,
             ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
         _locations = result.ItemsOrToast(Snackbar, "locations");
@@ -271,7 +274,9 @@ public partial class LocationsPage
     {
         var hidesArchived = _statusFilter.Count == 1 && _statusFilter.Contains(nameof(ArchivalStatus.Active));
         if (!hidesArchived || string.IsNullOrWhiteSpace(_searchString) || _archivedCount is 0)
+        {
             return false;
+        }
         // The archived-match hint honours the two #383 filters too, so it never points at a row they hide.
         var archived = await Locations.ListAsync(1, 1, _searchString, [nameof(ArchivalStatus.Archived)],
             hasCoordinates: HasCoordinatesQuery, referenced: ReferencedQuery);
@@ -300,7 +305,9 @@ public partial class LocationsPage
         {
             _linkAdvisories.Remove(open);
             if (FindRow(open)?.WeatherPoint is { } wp)
+            {
                 _weatherReads.Forget(wp.WeatherPointId);
+            }
         }
 
         _expandedId = _expandedId == id ? null : id;
@@ -311,8 +318,8 @@ public partial class LocationsPage
         l,
         new LocationRowClaims(_canUpdate, _canDelete),
         edit: EventCallback.Factory.Create(this, () => EditClicked(l)),
-        copyCoordinates: EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), "Coordinates copied.")),
-        copyId: EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), "ID copied.")),
+        copyCoordinates: EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), OdsCopied.Value("Coordinates"))),
+        copyId: EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), OdsCopied.Id("Location"))),
         toggleArchive: EventCallback.Factory.Create(this, () => SetArchived(l, l.Archived is null)),
         merge: EventCallback.Factory.Create(this, () => MergeClicked(l)),
         delete: EventCallback.Factory.Create(this, () => DeleteClicked(l)),
@@ -337,29 +344,37 @@ public partial class LocationsPage
         var merged = l.MergedIntoLocationId is not null;
         var items = new List<OdsMenuItem>();
         if (claims.CanUpdate && !merged)
+        {
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit location", AriaLabel = $"Edit location {l.Name}", OnClick = edit });
+        }
 
         if (l.HasCoordinates && !merged)
+        {
             items.Add(new OdsMenuItem
             {
                 Icon = "my_location", Label = "Copy coordinates", AriaLabel = $"Copy coordinates of {l.Name}",
                 TrailingIcon = "content_copy", OnClick = copyCoordinates,
             });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", AriaLabel = $"Copy ID of {l.Name}", TrailingIcon = "content_copy", OnClick = copyId,
-        });
+        }
+
+        items.Add(OdsMenuItem.CopyId(copyId, $"Copy ID of {l.Name}"));
 
         // The weather-point items sit directly after Copy ID (issue #388 §3).
         if (weather is { Count: > 0 } && !merged)
+        {
             items.AddRange(weather);
+        }
 
         if (claims.CanUpdate && !merged && l.Archived is null)
+        {
             items.Add(new OdsMenuItem { Icon = "call_merge", Label = "Merge into…", AriaLabel = $"Merge into… — {l.Name}", OnClick = merge });
+        }
 
         var archive = claims.CanUpdate && !merged;
         if (archive || claims.CanDelete)
+        {
             items.Add(new OdsMenuItem { Divider = true });
+        }
 
         if (archive)
         {
@@ -374,7 +389,9 @@ public partial class LocationsPage
         }
 
         if (claims.CanDelete)
+        {
             items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", AriaLabel = $"Delete {l.Name}", Danger = true, OnClick = delete });
+        }
 
         return items;
     }
@@ -397,7 +414,10 @@ public partial class LocationsPage
     {
         var index = rows.ToList().FindIndex(r => r.LocationId == id);
         if (index < 0)
+        {
             return null;
+        }
+
         return index + 1 < rows.Count ? rows[index + 1].LocationId
             : index > 0 ? rows[index - 1].LocationId
             : null;
@@ -467,7 +487,10 @@ public partial class LocationsPage
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusPending)
+        {
             return;
+        }
+
         _focusPending = false;
         try
         {
@@ -503,12 +526,16 @@ public partial class LocationsPage
         foreach (var id in targets)
         {
             if (rows.FirstOrDefault(l => l.LocationId == id) is { } loaded)
+            {
                 _mergeTargets[id] = loaded.Name;
+            }
         }
 
         var missing = targets.Where(id => !_mergeTargets.ContainsKey(id)).ToList();
         if (missing.Count == 0)
+        {
             return;
+        }
 
         try
         {
@@ -521,9 +548,14 @@ public partial class LocationsPage
                 MergeTargetConcurrency, ct);
 
             if (ct.IsCancellationRequested)
+            {
                 return;
+            }
+
             foreach (var (id, name) in names)
+            {
                 _mergeTargets[id] = name;
+            }
 
             StateHasChanged();
         }
@@ -577,7 +609,9 @@ public partial class LocationsPage
     private async Task CopyAsync(string text, string message)
     {
         if (await Clipboard.CopyAsync(text, message))
+        {
             Announce(message);
+        }
     }
 
     private void Announce(string message)
@@ -626,7 +660,10 @@ public partial class LocationsPage
         Snackbar.Add($"{saved.Name} saved.", Severity.Success);
         var index = _locations.FindIndex(l => l.LocationId == saved.LocationId);
         if (index >= 0)
+        {
             _locations[index] = saved;
+        }
+
         Credits = LocationVisuals.Credits(_locations);
         Announce($"{saved.Name} saved.");
         await LoadCounts();
@@ -659,7 +696,9 @@ public partial class LocationsPage
     private async Task SetArchived(ExistingLocation l, bool archived)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         var result = await Locations.UpdateAsync(l.LocationId, WithArchived(l, archived));
         var message = archived
@@ -667,7 +706,9 @@ public partial class LocationsPage
             : $"{l.Name} restored.";
         var outcome = result.IsSuccess ? ApiResult.Success(result.Status) : ApiResult.Failure(result.Status, result.Problem!);
         if (!outcome.Toast(Snackbar, archived ? "Unable to archive location" : "Unable to restore location", message))
+        {
             return;
+        }
 
         Announce(message);
         await Task.WhenAll(LoadLocations(), LoadCounts());
@@ -731,7 +772,10 @@ public partial class LocationsPage
     internal static IReadOnlyList<OdsMenuItem> BuildWeatherLinkActions(ExistingLocation l, bool canLink, EventCallback link, EventCallback unlink)
     {
         if (!canLink || l.MergedIntoLocationId is not null)
+        {
             return [];
+        }
+
         return l.WeatherPoint is null
             ? [new OdsMenuItem { Icon = "wb_sunny", Label = "Link weather point…", AriaLabel = $"Link a weather point to {l.Name}", OnClick = link }]
             :
@@ -813,9 +857,15 @@ public partial class LocationsPage
 
         var index = _locations.FindIndex(l => l.LocationId == place.LocationId);
         if (index >= 0)
+        {
             _locations[index] = fresh;
+        }
+
         if (_pinned?.LocationId == place.LocationId)
+        {
             _pinned = fresh;
+        }
+
         StateHasChanged();
     }
 
@@ -842,7 +892,9 @@ public partial class LocationsPage
     private async Task OpenDeepLinkAsync()
     {
         if (OpenId is not { } id)
+        {
             return;
+        }
 
         if (_locations.All(l => l.LocationId != id))
         {

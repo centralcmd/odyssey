@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -195,7 +196,7 @@ public class FileAnalysisRuntimeSwitchSourceTests
                 var index = text.IndexOf(literal, StringComparison.OrdinalIgnoreCase);
                 if (index >= 0)
                 {
-                    violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, index)} — {literal}");
+                    violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, index)} — {literal}");
                 }
             }
         }

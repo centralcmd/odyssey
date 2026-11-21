@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// An album's icon and colour (issue #404): the write validation, the read normalisation on detail and
 /// list, full-replacement <c>PUT</c> semantics, guard order and the unchanged claim gates.
 /// </summary>
-public class AlbumIconColorApiTests
+public class AlbumIconColorApiTests(AlbumIconColorApiTests.Host host) : SharedApiHostTests<AlbumIconColorApiTests.Host>(host)
 {
     private const string ActorUserId = "album-icon-actor-id";
     private const string Path = "/api/albums";
@@ -32,7 +32,7 @@ public class AlbumIconColorApiTests
     [Fact]
     public async Task Create_stores_the_icon_and_upper_cases_the_colour_and_both_reads_return_them()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var created = await CreateAlbum(client, new NewPhotoAlbum { Name = "Lofoten", Icon = "landscape", Color = "#006b5a" });
@@ -52,7 +52,7 @@ public class AlbumIconColorApiTests
     [Fact]
     public async Task Put_sets_a_new_icon_and_upper_cases_a_new_colour()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var album = await CreateAlbum(client, new NewPhotoAlbum { Name = "A" });
 
@@ -71,7 +71,7 @@ public class AlbumIconColorApiTests
     [Fact]
     public async Task Put_with_null_or_omitted_icon_and_colour_clears_both()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var first = await CreateAlbum(client, new NewPhotoAlbum { Name = "A", Icon = "home", Color = "#15803D" });
@@ -96,7 +96,7 @@ public class AlbumIconColorApiTests
     [MemberData(nameof(InvalidIcons))]
     public async Task An_invalid_icon_is_one_400_on_Icon_that_echoes_nothing_and_persists_nothing(string icon)
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var existing = await CreateAlbum(client, new NewPhotoAlbum { Name = "Keep", Icon = "home" });
 
@@ -113,22 +113,17 @@ public class AlbumIconColorApiTests
         Assert.Equal(1, await AlbumCountAsync(factory));
     }
 
-    public static TheoryData<string> InvalidColors()
-    {
-        var data = new TheoryData<string>();
-        foreach (var value in HexColorNegativeCorpus.All)
-        {
-            data.Add(value);
-        }
-
-        return data;
-    }
+    // Representatives only — the full HexColorNegativeCorpus runs in Odyssey.Core.Tests against the
+    // attribute stack on every [HexColor] property (HexColorTests) and the shared TagColorGuard the album
+    // service calls. A control character reaches [HexColor] and the never-echoes check; an over-long value
+    // reaches [StringLength], which must report the same single message.
+    public static TheoryData<string> InvalidColors() => [.. TagColorApiTests.RepresentativeInvalidColors];
 
     [Theory]
     [MemberData(nameof(InvalidColors))]
     public async Task An_invalid_colour_is_one_400_on_Color_that_echoes_nothing_and_persists_nothing(string color)
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var existing = await CreateAlbum(client, new NewPhotoAlbum { Name = "Keep", Color = "#0369A1" });
 
@@ -148,7 +143,7 @@ public class AlbumIconColorApiTests
     [Fact]
     public async Task An_invalid_icon_with_an_unknown_photo_or_foreign_cover_is_the_400_not_the_422()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
         var existing = await CreateAlbum(client, new NewPhotoAlbum { Name = "Keep" });
         var unknownPhoto = Guid.NewGuid();
@@ -169,7 +164,7 @@ public class AlbumIconColorApiTests
     [Fact]
     public async Task A_stored_unknown_icon_and_invalid_colour_read_as_null_on_detail_and_list()
     {
-        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        var factory = Factory.ForCaller(Claims);
         var id = await SeedAlbumAsync(factory, icon: "<script>retired</script>", color: "#12345Z");
         using var client = factory.CreateClient();
 
@@ -242,4 +237,7 @@ public class AlbumIconColorApiTests
         post.EnsureSuccessStatusCode();
         return (await post.Content.ReadFromJsonAsync<ExistingPhotoAlbum>())!;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([], ActorUserId);
 }

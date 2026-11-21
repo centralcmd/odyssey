@@ -7,7 +7,6 @@
 @inject ITaskApiClient Tasks
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
@@ -198,6 +197,7 @@
                       @bind-Open="_dialogOpen"
                       Task="_editTask"
                       TagOptions="_tagOptions"
+                      ArchivedTagNames="_archivedTagNames"
                       OnSaved="OnTaskSaved" />
 }
 
@@ -216,3 +216,5 @@
                            Attach="AttachOne"
                            OnAttached="OnTaskFilesAttached" />
 }
+
+<OdsConfirm @ref="_confirm" />

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -104,7 +105,7 @@ public class LocalTimeZoneDateHandlingTests
     {
         using var zone = LocalTimeZoneScope.UseTokyo();
         await using var context = TestContextFactory.Create();
-        var service = new TaxStatementService(context, new FixedTimeProvider(Now));
+        var service = new TaxStatementService(context, new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewTaxStatement
         {
@@ -158,7 +159,7 @@ public class LocalTimeZoneDateHandlingTests
     {
         using var zone = LocalTimeZoneScope.UseTokyo();
         await using var context = TestContextFactory.Create();
-        var service = new TaxStatementService(context, new FixedTimeProvider(Now));
+        var service = new TaxStatementService(context, new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewTaxStatement
         {
@@ -194,7 +195,7 @@ public class LocalTimeZoneDateHandlingTests
     {
         using var zone = LocalTimeZoneScope.UseTokyo();
         await using var context = TestContextFactory.Create();
-        var service = new TaxStatementService(context, new FixedTimeProvider(Now));
+        var service = new TaxStatementService(context, new FakeTimeProvider(Now));
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(new NewTaxStatement
         {
@@ -216,7 +217,7 @@ public class LocalTimeZoneDateHandlingTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new CalendarEventService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new CalendarEventService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewCalendarEvent
         {
@@ -253,7 +254,7 @@ public class LocalTimeZoneDateHandlingTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewRecurrencePattern
         {
@@ -282,8 +283,8 @@ public class LocalTimeZoneDateHandlingTests
         }, "user-id", claims: LocationClaims.Trusted);
 
         Assert.NotNull(updated);
-        AssertUtc(Utc(2026, 10, 3, 0), updated!.StartDateTime);
-        AssertUtc(Utc(2026, 10, 4, 0), updated.EndDateTime);
-        AssertUtc(Utc(2026, 10, 3, 0), updated.RecurrenceEndDate);
+        AssertUtc(Utc(2026, 10, 3, 0), updated!.Pattern.StartDateTime);
+        AssertUtc(Utc(2026, 10, 4, 0), updated.Pattern.EndDateTime);
+        AssertUtc(Utc(2026, 10, 3, 0), updated.Pattern.RecurrenceEndDate);
     }
 }

@@ -226,7 +226,10 @@ public static class OdsDonutPalette
     public static string ColorFor(OdsDonutSlice slice, int index, IReadOnlyList<string>? colors)
     {
         if (!string.IsNullOrEmpty(slice.Color))
+        {
             return slice.Color;
+        }
+
         var palette = colors is { Count: > 0 } ? colors : Default;
         return palette[index % palette.Count];
     }
@@ -246,8 +249,8 @@ public sealed record OdsOption(string Value, string Label)
 
     /// <summary>
     /// Secondary text after the label on an option row — a type ("Person", "Property"), an account
-    /// number. What tells two same-named records apart in a picker, which is the whole job of the
-    /// insurance link pickers. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
+    /// number. What tells two same-named records apart in a picker, which is the whole job of an
+    /// entity picker. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
     /// </summary>
     public string? Sub { get; init; }
 
@@ -257,6 +260,12 @@ public sealed record OdsOption(string Value, string Label)
     /// <c>OdsCombobox</c>.
     /// </summary>
     public string? Note { get; init; }
+
+    /// <summary>
+    /// Further text a local <c>OdsCombobox</c> search matches besides <see cref="Label"/> (issue #520 v3 §I) — a time
+    /// zone's city, so "new york" finds <c>America/New_York</c>. Never shown.
+    /// </summary>
+    public string? SearchKey { get; init; }
 
     /// <summary>
     /// Renders the row as unselectable. Always pair it with <see cref="Note"/> saying why: a row that
@@ -383,6 +392,20 @@ public sealed record OdsTabItem(string Value, string Label);
 /// <summary>One item in a <see cref="OdsMenu"/> — a normal item, a divider, or a group header.</summary>
 public sealed class OdsMenuItem
 {
+    /// <summary>
+    /// The "Copy ID" row every record menu ends with (Odyssey Design System · ActionMenu): the
+    /// fingerprint glyph, the label and the trailing <c>content_copy</c> affordance. The caller
+    /// supplies what copying does.
+    /// </summary>
+    public static OdsMenuItem CopyId(EventCallback onClick, string? ariaLabel = null) => new()
+    {
+        Icon = "fingerprint",
+        TrailingIcon = "content_copy",
+        Label = "Copy ID",
+        AriaLabel = ariaLabel,
+        OnClick = onClick,
+    };
+
     /// <summary>Visible label. Omitted for dividers / headers.</summary>
     public string? Label { get; set; }
 
@@ -494,9 +517,17 @@ public static class OdsFileUploadDefaults
     /// <summary>Format a byte count as "B / KB / MB". Null shows "—".</summary>
     public static string FmtSize(long? bytes)
     {
-        if (bytes is null) return "—";
+        if (bytes is null)
+        {
+            return "—";
+        }
+
         var b = bytes.Value;
-        if (b < 1024) return $"{b} B";
+        if (b < 1024)
+        {
+            return $"{b} B";
+        }
+
         if (b < 1024 * 1024)
         {
             var kb = b / 1024.0;
@@ -509,8 +540,16 @@ public static class OdsFileUploadDefaults
     public static string GuessKind(string name)
     {
         var ext = (name.Contains('.') ? name[(name.LastIndexOf('.') + 1)..] : string.Empty).ToLowerInvariant();
-        if (ext is "jpg" or "jpeg" or "png" or "heic" or "webp" or "gif" or "tiff") return "Receipt";
-        if (ext == "pdf") return "Statement";
+        if (ext is "jpg" or "jpeg" or "png" or "heic" or "webp" or "gif" or "tiff")
+        {
+            return "Receipt";
+        }
+
+        if (ext == "pdf")
+        {
+            return "Statement";
+        }
+
         return "Document";
     }
 }

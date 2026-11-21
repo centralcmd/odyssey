@@ -14,7 +14,7 @@ namespace Odyssey.Api.Tests;
 /// The property estimate endpoints over HTTP (issue #167, AC 12-14, 17, 27): the value and currency
 /// rules, the duplicate-date conflict, the null-body <c>current</c> contract, and route-owned writes.
 /// </summary>
-public class PropertyEstimatesApiTests
+public class PropertyEstimatesApiTests(PropertyEstimatesApiTests.Host host) : SharedApiHostTests<PropertyEstimatesApiTests.Host>(host)
 {
     private const string ActorUserId = "property-estimates-actor-id";
 
@@ -26,7 +26,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Post_ValidEstimate_ReturnsCreated_AndIsListedAndCurrent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -48,7 +48,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Post_NegativeValue_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -62,7 +62,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Post_ForeignCurrency_ReturnsBadRequestNamingThePropertyCurrency()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory, currencyCode: "USD");
         using var client = factory.CreateClient();
 
@@ -77,7 +77,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Post_OmittedCurrency_IsStoredAsThePropertyCurrency()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory, currencyCode: "EUR");
         using var client = factory.CreateClient();
 
@@ -93,7 +93,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Post_DuplicateEffectiveFrom_ReturnsCreatedThenConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -113,7 +113,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Current_WithNoEstimates_ReturnsOkWithAJsonNullBody()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -127,7 +127,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Current_WithOnlyAFutureEstimate_ReturnsOkWithAJsonNullBody_AndAsOfReachesIt()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var future = DateTime.UtcNow.Date.AddYears(1);
         await SeedEstimateAsync(factory, propertyId, 5000m, future);
@@ -146,7 +146,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task UnknownProperty_ReturnsNotFound_OnReadsAndCreate()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
@@ -165,7 +165,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Post_WithOwnerIdsInTheBody_WritesToTheRoutedPropertyOnly()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var routed = await SeedPropertyAsync(factory, "Routed");
         var other = await SeedPropertyAsync(factory, "Other");
         var accountId = await SeedAccountAsync(factory);
@@ -195,7 +195,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task PutAndDelete_ViaAnotherProperty_ReturnNotFound_AndMutateNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var owner = await SeedPropertyAsync(factory, "Owner");
         var intruder = await SeedPropertyAsync(factory, "Intruder");
         var estimateId = await SeedEstimateAsync(factory, owner, 1000m, JanFirst);
@@ -216,7 +216,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task PutAndDelete_ViaTheOwningProperty_Succeed()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var owner = await SeedPropertyAsync(factory);
         var estimateId = await SeedEstimateAsync(factory, owner, 1000m, JanFirst);
         using var client = factory.CreateClient();
@@ -233,7 +233,7 @@ public class PropertyEstimatesApiTests
     [Fact]
     public async Task Put_OntoAnotherEstimatesDate_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var owner = await SeedPropertyAsync(factory);
         await SeedEstimateAsync(factory, owner, 1000m, JanFirst);
         var second = await SeedEstimateAsync(factory, owner, 2000m, JanFirst.AddMonths(6));
@@ -265,6 +265,9 @@ public class PropertyEstimatesApiTests
         return accountId;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

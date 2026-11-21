@@ -83,6 +83,13 @@ public partial class OdsFileUpload
 
     [Parameter] public string? Id { get; set; }
 
+    /// <summary>Ids of text outside the picker that describes it (a note before it), joined before the error's own.</summary>
+    [Parameter] public string? DescribedBy { get; set; }
+
+    private string? DropDescribedBy =>
+        string.Join(' ', new[] { DescribedBy, string.IsNullOrEmpty(Error) ? null : ErrorId }.Where(id => !string.IsNullOrEmpty(id)))
+            is { Length: > 0 } ids ? ids : null;
+
     /// <summary>The error's own id, so the dropzone can name it in <c>aria-describedby</c>.</summary>
     private string ErrorId => $"{Id ?? _fallbackId}-err";
 
@@ -113,7 +120,10 @@ public partial class OdsFileUpload
     private Task Commit(List<OdsUploadFile> next)
     {
         if (!Controlled)
+        {
             _internal = next;
+        }
+
         return FilesChanged.InvokeAsync(next);
     }
 
@@ -123,7 +133,9 @@ public partial class OdsFileUpload
     private Task OnFilesChanged(IReadOnlyList<IBrowserFile> incoming)
     {
         if (incoming is null || incoming.Count == 0)
+        {
             return Task.CompletedTask;
+        }
 
         // Multiple=false is a genuine single-file field: a new pick/drop REPLACES the current file
         // rather than accumulating (the old logic ignored the flag and silently piled files up).

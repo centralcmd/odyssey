@@ -71,7 +71,9 @@ public partial class TaskListRow : IAsyncDisposable
     {
         // Wait out the list's reload: the neighbour's menu does not exist until the rows are back.
         if (!_pendingFocus || (_filesOpen && _files is null))
+        {
             return;
+        }
 
         _pendingFocus = false;
         var neighbour = _focusAfterRemoval;
@@ -105,7 +107,9 @@ public partial class TaskListRow : IAsyncDisposable
     {
         _filesOpen = !_filesOpen;
         if (_filesOpen)
+        {
             await LoadFilesAsync();
+        }
     }
 
     private async System.Threading.Tasks.Task LoadFilesAsync()
@@ -127,9 +131,13 @@ public partial class TaskListRow : IAsyncDisposable
         {
             _files = null;
             if (Task.AttachmentCount > 0)
+            {
                 await LoadFilesAsync();
+            }
             else
+            {
                 _filesOpen = false;
+            }
         }
     }
 
@@ -186,11 +194,7 @@ public partial class TaskListRow : IAsyncDisposable
             Icon = "event_note", Label = "Export as iCalendar",
             OnClick = EventCallback.Factory.Create(this, () => OnExport.InvokeAsync(Task)),
         });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => OnCopyId.InvokeAsync(Task.JournalTaskId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => OnCopyId.InvokeAsync(Task.JournalTaskId))));
 
         if (CanUpdate)
         {

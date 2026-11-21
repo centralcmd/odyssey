@@ -1,0 +1,18 @@
+@*
+    A recurrence key backfill run's detail (issue #519 §11): series keyed, series that failed and are retried next tick,
+    and rows detached to standalone events, each a labelled number. Counts only — never a series, a title or a date; a
+    nulled count (no calendar.read) reads "Not shown" through N. The tiles reuse the other bodies' meta grid; the
+    frontend spec (#520) owns any richer presentation.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Series keyed")">@N(Keys.SeriesKeyed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Series retried")">@N(Keys.SeriesKeyFailures)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Rows detached")">@N(Keys.KeyRowsDetached)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private RecurrenceKeyBackfillJobRunDetail Keys => (RecurrenceKeyBackfillJobRunDetail)Run;
+}

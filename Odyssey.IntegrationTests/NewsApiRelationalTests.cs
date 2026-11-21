@@ -18,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// indexes and Guid ordering, the literal <c>LIKE</c> escapes, and API writes landing while a fetch holds its lease.
 /// None of it is observable on EF InMemory.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
 {
     private static readonly DateTime Base = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
@@ -33,7 +33,7 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
         }
 
         return new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connection, ServerVersion.AutoDetect(connection), mySql => mySql.EnableRetryOnFailure())
+            .UseMySql(connection, ServerVersion.AutoDetect(connection), OdysseyDatabaseRetry.Configure)
             .AddInterceptors(new NewsQueryCommandInterceptor(statementSeconds))
             .Options);
     }

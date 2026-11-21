@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Xml.Linq;
@@ -11,6 +12,8 @@ using Odyssey.Core.Internet.News.Opml;
 using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
+using Odyssey.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests.Internet;
@@ -200,7 +203,7 @@ public sealed class NewsOpmlServiceTests : IDisposable
 
         Assert.Equal(3, document.Feeds.Count);
         Assert.Equal(["Alpha", "Beta"], document.Folders);
-        Assert.Contains(logs.Lines, l => l.Contains("(filtered)", StringComparison.Ordinal) && l.Contains(": 3 feeds", StringComparison.Ordinal));
+        Assert.Contains(logs.Messages, l => l.Contains("(filtered)", StringComparison.Ordinal) && l.Contains(": 3 feeds", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -519,8 +522,8 @@ public sealed class NewsOpmlServiceTests : IDisposable
             Feed("https://secret-import.example/rss", text: "Secret Import Title", category: "/SecretImportTag"),
             Feed("ftp://secret-invalid.example/")));
 
-        Assert.Equal(2, logs.Lines.Count);
-        foreach (var line in logs.Lines)
+        Assert.Equal(2, logs.Messages.Count);
+        foreach (var line in logs.Messages)
         {
             foreach (var secret in new[] { "secret", "Secret", "token", ".opml" })
             {
@@ -541,20 +544,39 @@ public sealed class NewsOpmlServiceTests : IDisposable
         }
     }
 
-    [Fact]
+    /// <summary>
+    /// AC 28 at its stated volume, Release PR only: the 100,000-feed file is a perf-tier test (<see cref="PerfTier"/>). The
+    /// per-PR run keeps the same import, its truncation and the memory bound on 5,000 feeds below.
+    /// </summary>
+    [SkippableFact]
+    [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
     public async Task AC28_A_60_MB_file_with_100000_distinct_feeds_stays_under_the_memory_target()
+    {
+        PerfTier.SkipUnlessRequested();
+        await AssertDistinctFeedsImportUnderTheMemoryTargetAsync(feeds: 100_000, minimumBytes: 60_000_000, minimumSamples: 57);
+    }
+
+    [Fact]
+    public async Task AC28_A_3_MB_file_with_5000_distinct_feeds_stays_under_the_memory_target()
+    {
+        await AssertDistinctFeedsImportUnderTheMemoryTargetAsync(feeds: 5_000, minimumBytes: 3_000_000, minimumSamples: 2);
+    }
+
+    private async Task AssertDistinctFeedsImportUnderTheMemoryTargetAsync(int feeds, long minimumBytes, int minimumSamples)
     {
         // The file is generated as it is read, so the only large thing alive is what the import keeps.
         var padding = new string('p', 520);
-        var lines = Enumerable.Range(0, 100_000)
+        var lines = Enumerable.Range(0, feeds)
             .Select(i => $"<outline text=\"Feed {i} {padding}\" xmlUrl=\"https://f{i}.example/rss\" category=\"/A,/B\"/>\n");
-        await using var stream = new LineStream("<opml version=\"2.0\"><body>\n", lines, "</body></opml>");
+        var probe = new HeapProbe();
+        await using var stream = new LineStream("<opml version=\"2.0\"><body>\n", lines, "</body></opml>", probe);
 
-        var (result, peak) = await MeasurePeakAsync(() => Import().ImportAsync(stream, true, "user-1", CancellationToken.None));
+        var (result, peak) = await MeasurePeakAsync(probe, () => Import().ImportAsync(stream, true, "user-1", CancellationToken.None));
 
-        Assert.True(stream.BytesRead > 60_000_000, $"only {stream.BytesRead} bytes were generated");
-        Assert.Equal((100_000, NewsSettings.Defaults.MaxFeeds), (result.Feeds, result.Created));
+        Assert.True(stream.BytesRead > minimumBytes, $"only {stream.BytesRead} bytes were generated");
+        Assert.Equal((feeds, NewsSettings.Defaults.MaxFeeds), (result.Feeds, result.Created));
         Assert.True(result.ItemsTruncated);
+        Assert.True(probe.Samples >= minimumSamples, $"only {probe.Samples} heap samples were taken");
         Assert.True(peak < 50L * 1024 * 1024, $"peak {peak / (1024 * 1024)} MB above the baseline");
     }
 
@@ -563,42 +585,111 @@ public sealed class NewsOpmlServiceTests : IDisposable
     {
         var chunk = new string('a', 59_999) + ">";
         var lines = Enumerable.Range(0, 1_000).Select(_ => chunk);
-        await using var stream = new LineStream("<opml><body><outline xmlUrl=\"https://x.example/\" text=\"", lines, "\"/></body></opml>");
+        // The import refuses this file after about 76 KB, long before a MiB clock would tick, so this stream samples
+        // every 16 KiB and the test asserts the probe actually saw the work.
+        var probe = new HeapProbe();
+        await using var stream = new LineStream(
+            "<opml><body><outline xmlUrl=\"https://x.example/\" text=\"", lines, "\"/></body></opml>", probe, 16 * 1024);
 
-        var (error, peak) = await MeasurePeakAsync(() => Assert.ThrowsAsync<NewsException>(() =>
+        var (error, peak) = await MeasurePeakAsync(probe, () => Assert.ThrowsAsync<NewsException>(() =>
             Import().ImportAsync(stream, true, "user-1", CancellationToken.None)));
 
         Assert.Equal(NewsErrorCodes.OpmlUnreadable, error.Code);
+        Assert.True(probe.Samples >= 4, $"only {probe.Samples} heap samples were taken");
         Assert.True(peak < 50L * 1024 * 1024, $"peak {peak / (1024 * 1024)} MB above the baseline");
     }
 
     /// <summary>
     /// The test-time allocation probe: the live heap sampled under forced collections while the work runs. The class
-    /// sits in a non-parallel collection so no other test's allocations reach the process-wide heap figure, and the
-    /// probe samples every 5 ms so a short-lived spike is not stepped over.
+    /// sits in a non-parallel collection so no other test's allocations reach the process-wide heap figure.
+    ///
+    /// <para>
+    /// Samples are clocked two ways. <see cref="LineStream"/> takes one per MiB the import reads (or the interval a
+    /// test passes), so how often the probe samples follows the import's progress, whatever a collection costs, and a
+    /// background sampler covers work that reads nothing (the save at the end). The background sampler waits at least four times as long as its last
+    /// collection took. A full collection costs in proportion to the whole live heap, which in the full suite holds
+    /// everything the earlier test classes left behind, and it suspends the work thread. Sampling
+    /// <see cref="GC.GetTotalMemory(bool)"/> with <c>true</c> every 5 ms, which repeats collections until the figure
+    /// settles, made the 100,000-feed import take 18 s alone and over 14 minutes in the suite, past CI's hang timeout.
+    /// </para>
     /// </summary>
-    private static async Task<(T Result, long Peak)> MeasurePeakAsync<T>(Func<Task<T>> work)
+    private static async Task<(T Result, long Peak)> MeasurePeakAsync<T>(HeapProbe probe, Func<Task<T>> work)
     {
-        var baseline = GC.GetTotalMemory(forceFullCollection: true);
-        var peak = 0L;
         using var stop = new CancellationTokenSource();
         var sampler = Task.Run(async () =>
         {
             while (!stop.IsCancellationRequested)
             {
-                peak = Math.Max(peak, GC.GetTotalMemory(forceFullCollection: true) - baseline);
-                await Task.Delay(5);
+                var cost = probe.Sample();
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(5, cost.TotalMilliseconds * 4)), stop.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         });
 
         var result = await Task.Run(work);
         await stop.CancelAsync();
         await sampler;
-        return (result, peak);
+        probe.Sample();
+        GC.KeepAlive(result);
+        return (result, probe.Peak);
+    }
+
+    /// <summary>The live heap above a baseline taken at construction, each sample one blocking full collection.</summary>
+    private sealed class HeapProbe
+    {
+        private readonly Lock gate = new();
+        private readonly long baseline = GC.GetTotalMemory(forceFullCollection: true);
+        private long peak;
+        private int samples;
+
+        /// <summary>How many samples were taken, so a test can fail on a probe that never saw its work.</summary>
+        public int Samples
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return samples;
+                }
+            }
+        }
+
+        public long Peak
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return peak;
+                }
+            }
+        }
+
+        public TimeSpan Sample()
+        {
+            var started = Stopwatch.GetTimestamp();
+            GC.Collect();
+            var live = GC.GetTotalMemory(forceFullCollection: false) - baseline;
+            lock (gate)
+            {
+                peak = Math.Max(peak, live);
+                samples++;
+            }
+
+            return Stopwatch.GetElapsedTime(started);
+        }
     }
 
     /// <summary>A stream generated line by line, so a large test file is never held in memory.</summary>
-    private sealed class LineStream(string head, IEnumerable<string> lines, string tail) : Stream
+    private sealed class LineStream(
+        string head, IEnumerable<string> lines, string tail, HeapProbe? probe = null, long sampleEveryBytes = 1024 * 1024)
+        : Stream
     {
         private readonly IEnumerator<string> source = new[] { head }.Concat(lines).Append(tail).GetEnumerator();
         private byte[] current = [];
@@ -632,7 +723,13 @@ public sealed class NewsOpmlServiceTests : IDisposable
             var n = Math.Min(count, current.Length - offset);
             Array.Copy(current, offset, buffer, index, n);
             offset += n;
+            var before = BytesRead;
             BytesRead += n;
+            if (probe is not null && before / sampleEveryBytes != BytesRead / sampleEveryBytes)
+            {
+                probe.Sample();
+            }
+
             return n;
         }
 
@@ -666,18 +763,5 @@ public sealed class NewsOpmlServiceTests : IDisposable
         public Task<NewsSettings> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult(Settings);
 
         public Task<IReadOnlyList<NewsPrivateHostGrant>> GetAllowListAsync(CancellationToken cancellationToken = default) => Task.FromResult(Grants);
-    }
-
-    private sealed class RecordingLogger : ILogger
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            Lines.Add(formatter(state, exception));
     }
 }

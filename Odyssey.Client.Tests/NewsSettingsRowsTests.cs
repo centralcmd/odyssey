@@ -20,8 +20,7 @@ namespace Odyssey.Client.Tests;
 /// confirm-before-save. The two OPML import rows close the group (issue #509 §4.2, AC 20), the size cap first: the entry cap on the ordinary claim, the size
 /// cap on the security one (amendment v5).
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class NewsSettingsRowsTests : IDisposable
+public class NewsSettingsRowsTests
 {
     private static readonly string[] NewsKeys =
     [
@@ -29,8 +28,6 @@ public class NewsSettingsRowsTests : IDisposable
         "newsImageStoreMaxGiB", "newsTextStoreMaxGiB", "newsFeedMaxArticlesPerDay", "newsFeedMaxImageMbPerDay",
         Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes", "newsOpmlMaxImportEntries",
     ];
-
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
 
     private static IReadOnlyList<string> Rendered(IRenderedComponent<Settings> page) =>
         [.. NewsKeys.Where(key => page.FindAll($"#ss-ttl-{key}").Count == 1)];
@@ -42,7 +39,9 @@ public class NewsSettingsRowsTests : IDisposable
 
         Assert.Equal(MudBlazor.Icons.Material.Filled.RssFeed, section.Icon);
         Assert.Equal(NewsKeys, section.Items.Select(i => i.Key));
-        string[] security = [Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes"];
+        // The image size limit bounds what the worker downloads from an untrusted host, so it takes the
+        // security claim like the allow-list and the OPML size cap (design system · system-settings-data.js).
+        string[] security = ["newsImageMaxSizeKb", Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes"];
         Assert.All(section.Items.Where(i => security.Contains(i.Key)), item => Assert.Equal(Settings.SettingClaim.Security, item.Claim));
         Assert.All(section.Items.Where(i => !security.Contains(i.Key)),
             item => Assert.Equal(Settings.SettingClaim.Count, item.Claim));
@@ -98,7 +97,7 @@ public class NewsSettingsRowsTests : IDisposable
         var page = ctx.Render<Settings>();
 
         Assert.Equal("2048", page.Find("#ss-in-newsImageMaxSizeKb").GetAttribute("max"));
-        Assert.Contains($"At most {2048.ToString("N0", CultureInfo.CurrentCulture)} KB", page.Markup, StringComparison.Ordinal);
+        Assert.Contains($"Up to {2048.ToString("N0", CultureInfo.CurrentCulture)} KB", page.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain(Settings.MaxToken, page.Markup, StringComparison.Ordinal);
     }
 
@@ -212,21 +211,34 @@ public class NewsSettingsRowsTests : IDisposable
         foreach (var property in properties.Values.Where(p => p.PropertyType == typeof(int)))
         {
             if (property.Name.EndsWith("Ceiling", StringComparison.Ordinal))
+            {
                 property.SetValue(dto, 1_000_000);
+            }
             else if (property.Name.EndsWith("Floor", StringComparison.Ordinal))
+            {
                 property.SetValue(dto, 1);
+            }
         }
 
         foreach (var item in Settings.AllItems)
         {
             if (item.Field is not { } field || !properties.TryGetValue(field, out var property))
+            {
                 continue;
+            }
+
             if (property.PropertyType == typeof(int))
+            {
                 property.SetValue(dto, Math.Max(item.Min, 1));
+            }
             else if (property.PropertyType == typeof(decimal))
+            {
                 property.SetValue(dto, item.DecimalMin);
+            }
             else if (property.PropertyType == typeof(string) && !item.AllowEmpty)
+            {
                 property.SetValue(dto, "x");
+            }
         }
 
         dto.EmailSmtpHost = "smtp.old.test";

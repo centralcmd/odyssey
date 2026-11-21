@@ -21,6 +21,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class AccountsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ───────────────────────────────────────────────────────────────
     private List<ExistingAccount> _accounts  = [];
     // Server-computed rollup backing the overview donuts + header count/balance (issue #372). It
@@ -113,7 +115,9 @@ public partial class AccountsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -215,7 +219,9 @@ public partial class AccountsCard
             }
 
             if (!result.IsSuccess)
+            {
                 return;
+            }
 
             _totals = result.Value;
             BuildProblems();
@@ -237,7 +243,9 @@ public partial class AccountsCard
     {
         _problems = new();
         if (_totals is null)
+        {
             return;
+        }
 
         var main = _totals.MainCurrencyCode;
         foreach (var unconverted in _totals.UnconvertedAccounts)
@@ -314,7 +322,9 @@ public partial class AccountsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
 
@@ -385,7 +395,10 @@ public partial class AccountsCard
     private async Task<IReadOnlyCollection<Guid>> LoadAccountFileIds()
     {
         if (_uploadAccount is null)
+        {
             return [];
+        }
+
         var result = await Accounts.ListFilesAsync(_uploadAccount.AccountId);
         return [.. result.ValueOr([]).Select(f => f.FileMetadata.Id)];
     }
@@ -393,7 +406,10 @@ public partial class AccountsCard
     private async Task<bool> AttachAccountFileAsync(AttachDocumentItem item)
     {
         if (_uploadAccount is null)
+        {
             return false;
+        }
+
         return (await Accounts.AttachFileAsync(_uploadAccount.AccountId, AttachDocumentRequests.Account(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
@@ -401,7 +417,9 @@ public partial class AccountsCard
     private void AddFile(ExistingAccount account)
     {
         if (!CanAttachFiles)
+        {
             return;
+        }
 
         _uploadAccount = account;
         _uploadKey = Guid.NewGuid();
@@ -411,7 +429,9 @@ public partial class AccountsCard
     private async Task OnFilesUploaded(IReadOnlyList<AttachDocumentItem> _)
     {
         if (_uploadAccount is null)
+        {
             return;
+        }
 
         // Expand the account and force its files section to reload by changing its @key.
         _expandedId = _uploadAccount.AccountId;
@@ -427,7 +447,9 @@ public partial class AccountsCard
     private void EditClicked(ExistingAccount account)
     {
         if (!_canUpdateAccounts)
+        {
             return;
+        }
 
         _editAccount = account;
         _editAccountKey = Guid.NewGuid();
@@ -448,7 +470,11 @@ public partial class AccountsCard
 
     private void AddClicked()
     {
-        if (!_canCreateAccounts) return;
+        if (!_canCreateAccounts)
+        {
+            return;
+        }
+
         _createAccountKey = Guid.NewGuid();
         _createAccountOpen = true;
     }
@@ -479,7 +505,11 @@ public partial class AccountsCard
 
     private void AddEstimate(ExistingAccount account)
     {
-        if (!_canWriteEstimates) return;
+        if (!_canWriteEstimates)
+        {
+            return;
+        }
+
         _estimateAccount = account;
         _estimateKey = Guid.NewGuid();
         _estimateOpen = true;
@@ -495,7 +525,7 @@ public partial class AccountsCard
     }
 
     private Task CopyAccountId(Guid accountId) =>
-        Clipboard.CopyAsync(accountId.ToString(), "Account ID copied.");
+        Clipboard.CopyAsync(accountId.ToString(), OdsCopied.Id("Account"));
 
     // Builds the API update payload from an account as it currently stands, overriding
     // only the lifecycle fields the row-menu toggles touch (close/reopen, archive).
@@ -515,7 +545,11 @@ public partial class AccountsCard
 
     private async Task ToggleCloseAccount(ExistingAccount account)
     {
-        if (!_canUpdateAccounts) return;
+        if (!_canUpdateAccounts)
+        {
+            return;
+        }
+
         var targetClosed = account.Closed is null ? (DateTime?)DateTime.UtcNow : null;
         var update = ToNewAccount(account, targetClosed, account.Archived is not null);
         if ((await Accounts.UpdateAsync(account.AccountId, update)).Toast(Snackbar, "Update failed",
@@ -529,7 +563,11 @@ public partial class AccountsCard
 
     private async Task ToggleArchive(ExistingAccount account)
     {
-        if (!_canUpdateAccounts) return;
+        if (!_canUpdateAccounts)
+        {
+            return;
+        }
+
         var targetArchived = account.Archived is null;
         var update = ToNewAccount(account, account.Closed, targetArchived);
         if ((await Accounts.UpdateAsync(account.AccountId, update)).Toast(Snackbar, "Update failed",
@@ -545,13 +583,16 @@ public partial class AccountsCard
 
     private async Task ConfirmDeleteAccount(ExistingAccount account)
     {
-        if (!_canDeleteAccounts) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete account",
-            $"Delete '{account.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed == true)
+        if (!_canDeleteAccounts)
+        {
+            return;
+        }
+
+        var confirmed = await _confirm.AskAsync("Delete account", $"Delete '{account.Name}'? This cannot be undone.", "Delete");
+        if (confirmed)
+        {
             await DeleteAccount(account);
+        }
     }
 
     private async Task DeleteAccount(ExistingAccount account)
@@ -568,9 +609,6 @@ public partial class AccountsCard
             await LoadTotals();
         }
     }
-
-    // ── Display helpers ───────────────────────────────────────────────────────
-    private static string GetAccountTypeLabel(AccountType type) => AccountTypeVisuals.Label(type);
 
     // ── Record-card presentation ──────────────────────────────────────────────────
 
@@ -603,7 +641,7 @@ public partial class AccountsCard
 
     private static string? EstimateFoot(ExistingAccount a) =>
         a.CurrentEstimatedValueEffectiveFrom is { } from
-            ? $"in force since {from.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)} · in net worth"
+            ? $"in force since {OdsDates.Long(from)} · in net worth"
             : "in net worth";
 
     private static string BalanceFoot(ExistingAccount a) =>
@@ -649,13 +687,7 @@ public partial class AccountsCard
             items.Add(new OdsMenuItem { Icon = "monitor", Label = "New estimate", OnClick = EventCallback.Factory.Create(this, () => AddEstimate(account)) });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyAccountId(account.AccountId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyAccountId(account.AccountId))));
 
         if (_canUpdateAccounts)
         {
@@ -684,8 +716,16 @@ public partial class AccountsCard
 
     private static string GetStatusLabel(ExistingAccount a)
     {
-        if (a.Archived != null) return "Archived";
-        if (a.Closed   != null) return "Closed";
+        if (a.Archived != null)
+        {
+            return "Archived";
+        }
+
+        if (a.Closed   != null)
+        {
+            return "Closed";
+        }
+
         return "Open";
     }
 
@@ -693,8 +733,16 @@ public partial class AccountsCard
     // AccountStatusChip: Open (income) · Closed (pending) · Archived (outline).
     private static OdsChipTone GetStatusChipTone(ExistingAccount a)
     {
-        if (a.Archived != null) return OdsChipTone.Outline;
-        if (a.Closed   != null) return OdsChipTone.Pending;
+        if (a.Archived != null)
+        {
+            return OdsChipTone.Outline;
+        }
+
+        if (a.Closed   != null)
+        {
+            return OdsChipTone.Pending;
+        }
+
         return OdsChipTone.Income;
     }
 
@@ -702,15 +750,19 @@ public partial class AccountsCard
     // present. Consolidates the formerly-separate Opened / Closed tiles under the Status tile.
     private static string GetLifecycle(ExistingAccount a)
     {
-        var parts = new List<string> { $"Opened {a.Opened.ToString("MMM dd, yyyy")}" };
-        if (a.Closed   is { } closed)   parts.Add($"Closed {closed.ToString("MMM dd, yyyy")}");
-        if (a.Archived is { } archived) parts.Add($"Archived {archived.ToString("MMM dd, yyyy")}");
+        var parts = new List<string> { $"Opened {OdsDates.Long(a.Opened)}" };
+        if (a.Closed   is { } closed)
+        {
+            parts.Add($"Closed {OdsDates.Long(closed)}");
+        }
+
+        if (a.Archived is { } archived)
+        {
+            parts.Add($"Archived {OdsDates.Long(archived)}");
+        }
+
         return string.Join(" · ", parts);
     }
-
-    private static string GetTypeMaterialIcon(AccountType type) => AccountTypeVisuals.MaterialIcon(type);
-    private static string GetTypeFgColor(AccountType type)      => AccountTypeVisuals.FgColor(type);
-    private static string GetTypeBgColor(AccountType type)      => AccountTypeVisuals.BgColor(type);
 
     // ── Balance display ───────────────────────────────────────────────────────
     private static string BalanceColor(decimal balance) => balance switch
@@ -732,7 +784,9 @@ public partial class AccountsCard
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
         if (_minorUnitsCache.TryGetValue(key, out var cached))
+        {
             return cached;
+        }
 
         _currenciesByCode.TryGetValue(key, out var currency);
         var units = OdsMoney.MinorUnitsOf(currency);

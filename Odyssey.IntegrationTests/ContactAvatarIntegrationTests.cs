@@ -16,7 +16,7 @@ using Odyssey.Core.Imaging;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 
 namespace Odyssey.IntegrationTests;
@@ -40,7 +40,7 @@ namespace Odyssey.IntegrationTests;
 /// property; collapsing the two implementations into one removes it, not just a test.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contact_avatars";
@@ -125,7 +125,6 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
                 (await context.StoredObjects.AsNoTracking().SingleAsync(o => o.Id == firstObjectId)).State);
             Assert.Equal(1, await context.FileMetadata.CountAsync());
             Assert.Equal(1, await CommittedImagesAsync(context));
-            Assert.Equal(0, await context.FileBlob.CountAsync());
         }
 
         await DropAsync();
@@ -290,7 +289,8 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
             // destroy the thing it points at — and the contact's own delete still succeeds.
             Assert.False(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
             Assert.True(await context.FileMetadata.AnyAsync(fm => fm.Id == pdfId));
-            Assert.Equal(1, await context.FileBlob.CountAsync());
+            Assert.Equal(StoredObjectState.Committed, (await context.StoredObjects.AsNoTracking().SingleAsync(o =>
+                o.Id == context.FileMetadata.Where(fm => fm.Id == pdfId).Select(fm => fm.FinanceStoredObjectId).Single())).State);
         }
 
         await DropAsync();
@@ -440,7 +440,6 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
             // no-cache makes revalidation the HOT path, so touching the LONGBLOB to answer a conditional
             // request would make every return visit pay full materialisation for a body it never sends.
             Assert.DoesNotContain(interceptor.Commands, sql => sql.Contains("`Content`", StringComparison.Ordinal));
-            Assert.DoesNotContain(interceptor.Commands, sql => sql.Contains("FileBlob", StringComparison.Ordinal));
         }
 
         await DropAsync();
@@ -484,7 +483,6 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
     // temp volume on the same database.
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
-            FileServiceFor(context),
             new FixedUploadLimits(64L * 1024 * 1024),
             logger: NullLogger<ContactAvatarService>.Instance,
             writer: TestFileStores.For(context).Writer,
@@ -545,18 +543,17 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
     /// <summary>Points a contact at a non-image file — the anomaly the release rule exists to survive.</summary>
     private static async Task<Guid> MisPointAsync(OdysseyContext context, Guid contactId)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = "%PDF-1.7 tax statement"u8.ToArray() };
+        var blobContent = "%PDF-1.7 tax statement"u8.ToArray();
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
             FileName = "tax-statement.pdf",
             ContentType = "application/pdf",
-            SizeBytes = blob.Content.LongLength,
+            SizeBytes = blobContent.LongLength,
             Sha256Hash = new string('c', 64),
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
             UploadedAtUtc = DateTime.UtcNow,
         };
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(metadata);
 
         var contact = await context.Contacts.SingleAsync(c => c.ContactId == contactId);
@@ -569,13 +566,12 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 
     private static async Task InsertOrphanFileAsync(OdysseyContext context, Guid fileId)
     {
-        var blobId = Guid.NewGuid();
+        var objectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: StoredFileAreas.ContactAvatarFeatureKey);
+        await context.SaveChangesAsync();
         await context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO `FileBlob` (`Id`, `Content`) VALUES ({0}, {1})", blobId, new byte[] { 1, 2, 3 });
-        await context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO `FileMetadata` (`Id`, `FileName`, `ContentType`, `SizeBytes`, `Sha256Hash`, `FileBlobId`, `UploadedAtUtc`) "
+            "INSERT INTO `FileMetadata` (`Id`, `FileName`, `ContentType`, `SizeBytes`, `Sha256Hash`, `ContactAvatarStoredObjectId`, `UploadedAtUtc`) "
             + "VALUES ({0}, 'contact-avatar.png', 'image/png', 3, {1}, {2}, UTC_TIMESTAMP())",
-            fileId, new string('d', 64), blobId);
+            fileId, new string('d', 64), objectId);
     }
 
     private static string Flatten(Exception exception)

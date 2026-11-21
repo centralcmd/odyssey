@@ -19,8 +19,32 @@ public partial class ManageCalendarsDialog
     [Parameter] public IReadOnlyList<ExistingCalendar> Calendars { get; set; } = [];
     [Parameter] public EventCallback OnChanged { get; set; }
 
-    /// <summary>Export a calendar as an .ics file (per-row download action). Handled by the page.</summary>
+    /// <summary>Export a calendar as an .ics file (per-row download action). Handled by the page, which asks for the
+    /// summary and starts the download; the row's button stays busy until that settles (issue #517 E3).</summary>
     [Parameter] public EventCallback<ExistingCalendar> OnExport { get; set; }
+
+    private Guid? _exportBusyId;
+    private OdsLiveAnnouncer? _announcer;
+
+    private async Task ExportAsync(ExistingCalendar calendar)
+    {
+        if (_exportBusyId is not null)
+        {
+            _ = _announcer?.Announce(CalendarIcsExport.AlreadyPreparing);
+            return;
+        }
+
+        _exportBusyId = calendar.CalendarId;
+        _ = _announcer?.Announce(CalendarIcsExport.Preparing);
+        try
+        {
+            await OnExport.InvokeAsync(calendar);
+        }
+        finally
+        {
+            _exportBusyId = null;
+        }
+    }
 
     /// <summary>The Icon field's help line.</summary>
     public const string IconHelp = "Shown wherever this calendar is listed.";

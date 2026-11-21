@@ -48,7 +48,7 @@ public class NewsFeedsPageTests
         var context = new NewsPageTestContext(claims);
         context.News.Setup(n => n.ListFeedsAsync(1, NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(Page(feeds)));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
         return context;
     }
 
@@ -91,7 +91,7 @@ public class NewsFeedsPageTests
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync((int page, int _, string? _, Guid? _, NewsFeedState? _, IReadOnlyCollection<NewsFeedHealth>? _, NewsFeedSortBy? _, bool? _, CancellationToken _) =>
                 Ok(Page(page == 1 ? first : second)));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -105,7 +105,7 @@ public class NewsFeedsPageTests
         await using var context = new NewsPageTestContext();
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => Ok(Page(Enumerable.Range(0, NewsLimits.MaxPageSize).Select(i => Feed($"F{i}")))));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -121,7 +121,7 @@ public class NewsFeedsPageTests
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync((int page, int _, string? _, Guid? _, NewsFeedState? _, IReadOnlyCollection<NewsFeedHealth>? _, NewsFeedSortBy? _, bool? _, CancellationToken _) =>
                 page == 1 ? Ok(Page(Enumerable.Range(0, NewsLimits.MaxPageSize).Select(i => Feed($"F{i}")))) : Fail<PagedResult<ExistingNewsFeed>>(HttpStatusCode.InternalServerError));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -136,7 +136,7 @@ public class NewsFeedsPageTests
         await using var context = new NewsPageTestContext();
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), It.IsAny<int>(), null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Busy<PagedResult<ExistingNewsFeed>>());
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -186,7 +186,7 @@ public class NewsFeedsPageTests
     }
 
     [Fact]
-    public async Task By_status_rows_sum_to_the_feed_count_and_need_attention_stays_in_the_sub_line()
+    public async Task By_status_shows_the_status_filter_members_and_its_total_is_the_feed_count()
     {
         var feeds = new[]
         {
@@ -200,15 +200,67 @@ public class NewsFeedsPageTests
 
         cut.WaitForAssertion(() => Assert.Contains("4 feeds · 2 need attention", cut.Markup, StringComparison.Ordinal));
         var byStatus = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "By status");
-        Assert.Equal(["Active", "Paused", "Archived"], byStatus.Instance.Rows!.Select(r => r.Label));
-        Assert.Equal(feeds.Length, byStatus.Instance.Rows!.Sum(r => (int)r.Count));
+        Assert.Equal(
+            ["Active", "Paused", "Archived", "Needs attention", "Healthy", "Pending first fetch", "Failing", "Storage limit reached", "Gone", "Quarantined"],
+            byStatus.Instance.Rows!.Select(r => r.Label));
+        Assert.Equal([2, 1, 1, 2, 0, 0, 1, 1, 0, 0], byStatus.Instance.Rows!.Select(r => (int)r.Count));
+        // The rows overlap, so the total is the feed count, not their sum.
+        Assert.Equal(feeds.Length, byStatus.Instance.TotalValue);
+        Assert.Equal(OdsBreakdown.Tone("pending"), byStatus.Instance.Rows!.Single(r => r.Label == "Paused").IconColor);
+    }
+
+    [Fact]
+    public async Task The_status_filter_ors_within_a_group_and_ands_lifecycle_with_health()
+    {
+        var feeds = new[]
+        {
+            Feed("Failing live", f => f.Health = NewsFeedHealth.Failing),
+            Feed("Healthy live"),
+            Feed("Gone archived", f => { f.ArchivedAtUtc = Now.UtcDateTime; f.Health = NewsFeedHealth.Gone; }),
+        };
+        await using var context = Context(feeds);
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Equal(2, CardNames(cut).Count));
+
+        var status = cut.FindComponents<OdsMultiSelect>().Single(m => m.Instance.Options == NewsVisuals.StatusOptions);
+        await cut.InvokeAsync(() => status.Instance.ValuesChanged.InvokeAsync(["active", NewsVisuals.NeedsAttentionKey]));
+        cut.WaitForAssertion(() => Assert.Equal(["Failing live"], CardNames(cut)));
+
+        await cut.InvokeAsync(() => status.Instance.ValuesChanged.InvokeAsync([NewsVisuals.NeedsAttentionKey]));
+        cut.WaitForAssertion(() => Assert.Equal(2, CardNames(cut).Count));
+
+        await cut.InvokeAsync(() => status.Instance.ValuesChanged.InvokeAsync(["active", "archived", nameof(NewsFeedHealth.Healthy)]));
+        cut.WaitForAssertion(() => Assert.Equal(["Healthy live"], CardNames(cut)));
+    }
+
+    [Fact]
+    public async Task Attention_lists_each_feed_that_needs_it_and_review_reveals_it_on_this_page()
+    {
+        var gone = Feed("Gone one", f => { f.ArchivedAtUtc = Now.UtcDateTime; f.Health = NewsFeedHealth.Gone; });
+        var failing = Feed("Failing one", f => f.Health = NewsFeedHealth.Failing);
+        await using var context = Context([gone, failing, Feed("Fine")]);
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Equal(2, CardNames(cut).Count));
+
+        var header = cut.FindComponent<PageHeader>();
+        Assert.Equal("Attention", header.Instance.ProblemsLabel);
+        var problems = header.Instance.Problems!.ToList();
+        Assert.Equal(["Failing one", "Gone one"], problems.Select(p => p.Lead));
+        Assert.Equal([PageHeaderSeverity.Warning, PageHeaderSeverity.Error], problems.Select(p => p.Severity));
+        Assert.Equal("Review Gone one", problems[1].ActionAriaLabel);
+
+        await cut.InvokeAsync(() => problems[1].OnView.InvokeAsync());
+
+        cut.WaitForAssertion(() => Assert.Equal(3, CardNames(cut).Count));
+        Assert.Equal("true", cut.Find($"#nf-{gone.Id} .odc-record-trigger").GetAttribute("aria-expanded"));
+        Assert.Contains(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsNewsFocusCard");
     }
 
     [Fact]
     public async Task By_tags_counts_feeds_per_tag_plus_no_tag()
     {
-        var tech = new ExistingNewsTag { Id = Guid.NewGuid(), Name = "Tech" };
-        await using var context = Context([Feed("A", f => f.TagIds = [tech.Id]), Feed("B")], tags: [tech]);
+        var tech = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Tech" };
+        await using var context = Context([Feed("A", f => f.TagIds = [tech.NewsTagId]), Feed("B")], tags: [tech]);
         var cut = context.Render<NewsFeedsPage>();
 
         cut.WaitForAssertion(() => Assert.Equal(2, CardNames(cut).Count));
@@ -262,7 +314,7 @@ public class NewsFeedsPageTests
         Assert.Equal("Text storage quota is full. An administrator can raise it in Settings.", cut.Find($"#{describedBy}").TextContent.Trim());
 
         Expand(cut, feed);
-        cut.WaitForAssertion(() => Assert.Contains("Storage limit", cut.Find(".nw-facts").TextContent, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll($"#nf-{feed.Id} .odc-infotile"), t => t.TextContent.Contains("Storage limit", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -279,17 +331,17 @@ public class NewsFeedsPageTests
 
         Expand(cut, feed);
 
-        cut.WaitForAssertion(() => Assert.Contains("Settings", cut.Markup, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Contains("Check every", cut.Markup, StringComparison.Ordinal));
         Assert.DoesNotContain("fetch.example", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Feed URL", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Last result", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("www.example-site.test", cut.Markup, StringComparison.Ordinal);
-        Assert.Empty(cut.FindAll($"#nf-{feed.Id} .odc-record-ctl button[aria-label^='Actions for']"));
-        Assert.DoesNotContain("To delete this feed, archive it first.", cut.Markup, StringComparison.Ordinal);
+        // A reader still gets View articles, and nothing else.
+        Assert.Equal(["View articles"], MenuLabels(cut, feed));
     }
 
     [Fact]
-    public async Task With_news_feeds_update_the_url_shows_masked_until_show_full_address()
+    public async Task With_news_feeds_update_the_whole_url_is_a_link_and_its_tile_menu_copies_it()
     {
         var feed = Feed("Example News", f => f.Management!.LastErrorMessage = "fetch.example answered 503");
         await using var context = Context([feed]);
@@ -298,39 +350,29 @@ public class NewsFeedsPageTests
 
         Expand(cut, feed);
 
-        cut.WaitForAssertion(() => Assert.Contains("https://fetch.example/feed.xml?…", cut.Find(".nw-feedurl-text").TextContent, StringComparison.Ordinal));
-        Assert.DoesNotContain("s3cret", cut.Markup, StringComparison.Ordinal);
-        Assert.Contains("(query hidden)", cut.Find(".nw-feedurl").TextContent, StringComparison.Ordinal);
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find($"#nf-{feed.Id} .nw-tile.wide a.nw-link-url")));
+        var link = cut.Find($"#nf-{feed.Id} a.nw-link-url");
+        Assert.Equal(feed.Management!.Url, link.QuerySelector("bdi")!.TextContent);
+        Assert.Contains("s3cret", link.TextContent, StringComparison.Ordinal);
+        Assert.Equal("_blank", link.GetAttribute("target"));
+        Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
+        Assert.Equal("no-referrer", link.GetAttribute("referrerpolicy"));
+        Assert.Contains("(opens in a new tab)", link.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Show full address", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("fetch.example answered 503", cut.Markup, StringComparison.Ordinal);
-        var toggle = cut.FindAll(".nw-feedurl button").Single(b => b.TextContent.Contains("Show full address", StringComparison.Ordinal));
-        Assert.Equal("false", toggle.GetAttribute("aria-pressed"));
-
-        toggle.Click();
-
-        cut.WaitForAssertion(() => Assert.Contains("s3cret", cut.Find(".nw-feedurl-text").TextContent, StringComparison.Ordinal));
-        Assert.Equal("true", cut.FindAll(".nw-feedurl button").Single(b => b.TextContent.Contains("Show full address", StringComparison.Ordinal)).GetAttribute("aria-pressed"));
+        Assert.NotNull(cut.Find($"#nf-{feed.Id} .nw-tile-menu button[aria-label='Actions for the feed URL of Example News']"));
     }
 
     [Fact]
-    public async Task The_archive_first_sentence_shows_only_to_a_caller_with_both_claims_on_a_non_archived_feed()
+    public async Task No_archive_first_note_is_shown()
     {
         var quarantined = Feed("Q", f => f.Health = NewsFeedHealth.Quarantined);
-        await using (var both = Context([quarantined]))
-        {
-            var cut = both.Render<NewsFeedsPage>();
-            cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
-            Expand(cut, quarantined);
-            cut.WaitForAssertion(() => Assert.Contains("To delete this feed, archive it first. Archive is in the ⋯ menu on this card.", cut.Markup, StringComparison.Ordinal));
-        }
-
-        await using (var updateOnly = Context([quarantined], [PermissionClaims.NewsRead, PermissionClaims.NewsFeedsUpdate]))
-        {
-            var cut = updateOnly.Render<NewsFeedsPage>();
-            cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
-            Expand(cut, quarantined);
-            cut.WaitForAssertion(() => Assert.Contains("Settings", cut.Markup, StringComparison.Ordinal));
-            Assert.DoesNotContain("To delete this feed, archive it first.", cut.Markup, StringComparison.Ordinal);
-        }
+        await using var both = Context([quarantined]);
+        var cut = both.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+        Expand(cut, quarantined);
+        cut.WaitForAssertion(() => Assert.Contains("Check every", cut.Markup, StringComparison.Ordinal));
+        Assert.DoesNotContain("archive it first", cut.Markup, StringComparison.Ordinal);
     }
 
     // ── Menu ─────────────────────────────────────────────────────────────────────────────────────
@@ -348,10 +390,11 @@ public class NewsFeedsPageTests
         var cut = context.Render<NewsFeedsPage>();
         cut.WaitForAssertion(() => Assert.Equal(4, CardNames(cut).Count));
 
-        Assert.Equal(["Edit", "Tags…", "Refresh now", "Pause", "Archive"], MenuLabels(cut, active));
-        Assert.Equal(["Edit", "Tags…", "Resume", "Archive"], MenuLabels(cut, paused));
-        Assert.Equal(["Edit", "Tags…", "Pause", "Release from quarantine", "Archive"], MenuLabels(cut, quarantined));
-        Assert.Equal(["Tags…", "Unarchive", "Delete…"], MenuLabels(cut, archived));
+        // View articles first; Delete… on any feed, archived or not; the tags live in the Edit dialog.
+        Assert.Equal(["View articles", "Edit", "Refresh now", "Pause", "Archive", "Delete…"], MenuLabels(cut, active));
+        Assert.Equal(["View articles", "Edit", "Resume", "Archive", "Delete…"], MenuLabels(cut, paused));
+        Assert.Equal(["View articles", "Edit", "Pause", "Release from quarantine", "Archive", "Delete…"], MenuLabels(cut, quarantined));
+        Assert.Equal(["View articles", "Unarchive", "Delete…"], MenuLabels(cut, archived));
         Assert.Empty(cut.FindAll(".mud-menu-item.mud-disabled, .mud-menu-item[aria-disabled=true]"));
     }
 
@@ -431,23 +474,28 @@ public class NewsFeedsPageTests
     [Fact]
     public async Task Delete_needs_the_acknowledgement_and_a_202_removes_the_card()
     {
-        var feed = Feed("Example News", f => { f.ArchivedAtUtc = Now.UtcDateTime; f.IsActive = false; f.Health = NewsFeedHealth.Archived; });
+        // A live feed: there is no archive-first step.
+        var feed = Feed("Example News");
         await using var context = Context([feed]);
-        context.State.Setup(s => s.LoadAsync<NewsFeedsPage.NewsFeedsPageState>(NewsFeedsPage.PageStateKey))
-            .ReturnsAsync(new NewsFeedsPage.NewsFeedsPageState { Statuses = ["archived"] });
         context.News.Setup(n => n.DeleteFeedAsync(feed.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult.Success(HttpStatusCode.Accepted));
         var cut = context.Render<NewsFeedsPage>();
         cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
 
         ClickMenu(cut, feed, "Delete…");
         cut.WaitForAssertion(() => Assert.Contains("and its 311 articles? This cannot be undone.", cut.Find("#nf-del-desc").TextContent, StringComparison.Ordinal));
-        Assert.Equal("Example News", cut.Find("#nf-del-desc em").TextContent.Trim());
+        Assert.Equal("Example News", cut.Find("#nf-del-desc strong").TextContent.Trim());
+        Assert.Contains("Delete “Example News”?", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("I understand this cannot be undone", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("true", cut.Find("#nf-del-confirm").GetAttribute("aria-disabled"));
-        Assert.Contains("Tick the box above to delete.", cut.Markup, StringComparison.Ordinal);
+        // aria-disabled alone gives no reason: the visible hint is the button's description.
+        Assert.Equal("nf-del-reason", cut.Find("#nf-del-confirm").GetAttribute("aria-describedby"));
+        Assert.Equal("Tick the box above to delete.", cut.Find("#nf-del-reason").TextContent.Trim());
         cut.Find("#nf-del-confirm").Click();
         context.News.Verify(n => n.DeleteFeedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
 
         cut.Find("#nf-del-ack").Change(true);
+        Assert.Null(cut.Find("#nf-del-confirm").GetAttribute("aria-describedby"));
+        Assert.Empty(cut.FindAll("#nf-del-reason"));
         cut.Find("#nf-del-confirm").Click();
 
         cut.WaitForAssertion(() => Assert.Empty(CardNames(cut)));
@@ -459,14 +507,14 @@ public class NewsFeedsPageTests
     // ── Create flow ──────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task A_created_feed_is_expanded_pending_polled_and_its_first_state_change_announced_once()
+    public async Task A_created_feed_is_expanded_pending_and_check_again_reads_it_once()
     {
         var created = Feed("Example News", f => { f.Health = NewsFeedHealth.Pending; f.LastCheckedAtUtc = null; f.LastSuccessAtUtc = null; });
         await using var context = Context([Feed("Other")]);
         context.News.Setup(n => n.CreateFeedAsync(It.IsAny<NewNewsFeed>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(created));
-        var polls = 0;
+        var reads = 0;
         context.News.Setup(n => n.GetFeedAsync(created.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => ++polls < 2 ? Ok(created) : Ok(created with { Health = NewsFeedHealth.Healthy }));
+            .ReturnsAsync(() => ++reads < 2 ? Ok(created) : Ok(created with { Health = NewsFeedHealth.Healthy }));
         var cut = context.Render<NewsFeedsPage>();
         cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
 
@@ -479,95 +527,35 @@ public class NewsFeedsPageTests
         cut.WaitForAssertion(() => Assert.Equal(2, CardNames(cut).Count));
         Assert.Contains("Pending first fetch", cut.Find($"#nf-{created.Id} .odc-newshealth").TextContent, StringComparison.Ordinal);
         Assert.Equal("true", cut.Find($"#nf-{created.Id} .odc-record-trigger").GetAttribute("aria-expanded"));
-        Assert.Contains(cut.FindAll($"#nf-{created.Id} button"), b => b.TextContent.Contains("Stop checking", StringComparison.Ordinal));
-        Assert.Contains(cut.FindAll($"#nf-{created.Id} button"), b => b.TextContent.Contains("Check again", StringComparison.Ordinal));
-
-        context.Time.Advance(NewsFeedsPage.PollInterval);
-        cut.WaitForAssertion(() => Assert.Equal(1, polls));
-        context.Time.Advance(NewsFeedsPage.PollInterval);
-        cut.WaitForAssertion(() => Assert.Contains("Example News: fetched", Polite(cut), StringComparison.Ordinal));
-        context.Time.Advance(NewsFeedsPage.PollInterval * 3);
-        Assert.Equal(2, polls);
-    }
-
-    [Fact]
-    public async Task A_poll_that_reaches_two_minutes_says_so()
-    {
-        var created = Feed("Example News", f => f.Health = NewsFeedHealth.Pending);
-        await using var context = Context([]);
-        context.News.Setup(n => n.CreateFeedAsync(It.IsAny<NewNewsFeed>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(created));
-        context.News.Setup(n => n.GetFeedAsync(created.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(created));
-        var cut = context.Render<NewsFeedsPage>();
-        cut.WaitForAssertion(() => Assert.Contains("No feeds yet", cut.Markup, StringComparison.Ordinal));
-
-        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
-        cut.Find($"input#{NewsFeedDialog.UrlId}, #{NewsFeedDialog.UrlId} input").Input("https://example.com/feed.xml");
-        Assert.True(await cut.InvokeAsync(() => cut.FindComponent<NewsFeedDialog>().FindComponent<OdsFormDialog>().Instance.OnSubmit!()));
-
-        for (var i = 0; i < 12; i++)
-        {
-            context.Time.Advance(NewsFeedsPage.PollInterval);
-        }
-
-        cut.WaitForAssertion(() => Assert.Contains("Example News hasn't been fetched yet. Check again later.", Polite(cut), StringComparison.Ordinal));
+        Assert.Contains("Not fetched yet.", cut.Find($"#nf-{created.Id}").TextContent, StringComparison.Ordinal);
+        // No polling: nothing reads the feed until Check again, and there is no Stop checking.
         Assert.DoesNotContain(cut.FindAll($"#nf-{created.Id} button"), b => b.TextContent.Contains("Stop checking", StringComparison.Ordinal));
+        Assert.Equal(0, reads);
+
+        CheckAgain(cut, created);
+        cut.WaitForAssertion(() => Assert.Contains("Example News: still waiting for the first fetch.", Polite(cut), StringComparison.Ordinal));
+        CheckAgain(cut, created);
+        cut.WaitForAssertion(() => Assert.Contains("Example News: Healthy.", Polite(cut), StringComparison.Ordinal));
+        Assert.Equal(2, reads);
+        Assert.Contains("Healthy", cut.Find($"#nf-{created.Id} .odc-newshealth").TextContent, StringComparison.Ordinal);
     }
 
-    // ── Use new address ──────────────────────────────────────────────────────────────────────────
+    private static void CheckAgain(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, ExistingNewsFeed feed) =>
+        cut.FindAll($"#nf-{feed.Id} button").First(b => b.TextContent.Contains("Check again", StringComparison.Ordinal)).Click();
 
     [Fact]
-    public async Task Use_new_address_sends_one_put_with_the_suggested_url_and_the_version()
+    public async Task A_moved_feed_shows_no_suggestion_block()
     {
         var feed = Feed("Example News", f => f.Management!.SuggestedUrl = "https://fetch.example/new.xml");
         await using var context = Context([feed]);
-        UpdateNewsFeed? sent = null;
-        context.News.Setup(n => n.UpdateFeedAsync(feed.Id, It.IsAny<UpdateNewsFeed>(), It.IsAny<CancellationToken>()))
-            .Callback((Guid _, UpdateNewsFeed u, CancellationToken _) => sent = u)
-            .ReturnsAsync(() => Ok(Feed("Example News", f => { f.Id = feed.Id; f.Management!.Url = "https://fetch.example/new.xml"; })));
-        var cut = context.Render<NewsFeedsPage>();
-        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
-        Expand(cut, feed);
-        cut.WaitForAssertion(() => Assert.Contains("This feed has moved to", cut.Markup, StringComparison.Ordinal));
-        Assert.NotNull(cut.Find(".nw-moved a[href='https://fetch.example/new.xml'][rel='noopener noreferrer']"));
-
-        cut.FindAll("button").First(b => b.TextContent.Contains("Use new address", StringComparison.Ordinal)).Click();
-
-        cut.WaitForAssertion(() => Assert.Contains("Feed address updated", cut.Find(".mud-snackbar").TextContent, StringComparison.Ordinal));
-        Assert.DoesNotContain("Feed address updated", Polite(cut), StringComparison.Ordinal);
-        Assert.Equal("https://fetch.example/new.xml", sent!.Url);
-        Assert.Equal(feed.Version, sent.Version);
-        context.News.Verify(n => n.UpdateFeedAsync(It.IsAny<Guid>(), It.IsAny<UpdateNewsFeed>(), It.IsAny<CancellationToken>()), Times.Once);
-        Assert.DoesNotContain("This feed has moved to", cut.Markup, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task Use_new_address_is_absent_without_the_update_claim()
-    {
-        var feed = Feed("Example News", f => f.Management!.SuggestedUrl = "https://fetch.example/new.xml");
-        // A management block without the claim cannot happen on the wire, but the button still keys on the claim.
-        await using var context = Context([feed], [PermissionClaims.NewsRead]);
         var cut = context.Render<NewsFeedsPage>();
         cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
         Expand(cut, feed);
 
-        cut.WaitForAssertion(() => Assert.Contains("This feed has moved to", cut.Markup, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll($"#nf-{feed.Id} .odc-infotile")));
+        Assert.DoesNotContain("has moved", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Contains("Use new address", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public async Task A_409_on_use_new_address_opens_the_reload_flow()
-    {
-        var feed = Feed("Example News", f => f.Management!.SuggestedUrl = "https://fetch.example/new.xml");
-        await using var context = Context([feed]);
-        context.News.Setup(n => n.UpdateFeedAsync(feed.Id, It.IsAny<UpdateNewsFeed>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Fail<ExistingNewsFeed>(HttpStatusCode.Conflict, NewsErrorCodes.FeedChanged));
-        var cut = context.Render<NewsFeedsPage>();
-        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
-        Expand(cut, feed);
-
-        cut.FindAll("button").First(b => b.TextContent.Contains("Use new address", StringComparison.Ordinal)).Click();
-
-        cut.WaitForAssertion(() => Assert.Contains("This feed was changed elsewhere. Reload it to see the latest settings.", cut.Markup, StringComparison.Ordinal));
+        Assert.DoesNotContain("fetch.example/new.xml", cut.Markup, StringComparison.Ordinal);
     }
 
     // ── Routes and keys ──────────────────────────────────────────────────────────────────────────

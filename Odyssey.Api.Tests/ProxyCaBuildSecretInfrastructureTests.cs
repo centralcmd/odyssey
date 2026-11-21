@@ -1,4 +1,5 @@
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -61,7 +62,7 @@ public class ProxyCaBuildSecretInfrastructureTests
     [MemberData(nameof(BuildDockerfiles))]
     public void EveryBuildStage_GuardsItsRestoreWithTheOptionalCaSecret(string dockerfile)
     {
-        var text = RepositoryRoot.ReadAllText(dockerfile);
+        var text = SourceTree.ReadAllText(dockerfile);
 
         var mount = text.IndexOf(SecretMount, StringComparison.Ordinal);
         var tmpfs = text.IndexOf(TmpfsMount, StringComparison.Ordinal);
@@ -89,7 +90,7 @@ public class ProxyCaBuildSecretInfrastructureTests
     [InlineData("Odyssey.Worker/Dockerfile", "apk add --no-cache icu-libs")]
     public void TheRuntimeStage_GuardsItsPackageInstallTheSameWay(string dockerfile, string install)
     {
-        var text = RepositoryRoot.ReadAllText(dockerfile);
+        var text = SourceTree.ReadAllText(dockerfile);
 
         var apk = text.IndexOf(install, StringComparison.Ordinal);
         Assert.True(apk >= 0, $"{dockerfile} no longer runs `{install}`.");
@@ -120,7 +121,7 @@ public class ProxyCaBuildSecretInfrastructureTests
     [MemberData(nameof(BuildDockerfiles))]
     public void NoDockerfile_PromotesTheCaVariableToAnEnv(string dockerfile)
     {
-        var text = RepositoryRoot.ReadAllText(dockerfile);
+        var text = SourceTree.ReadAllText(dockerfile);
 
         Assert.DoesNotContain("ENV SSL_CERT_FILE", text, StringComparison.Ordinal);
         Assert.Contains("export SSL_CERT_FILE=", text, StringComparison.Ordinal);
@@ -136,7 +137,7 @@ public class ProxyCaBuildSecretInfrastructureTests
     [MemberData(nameof(BuildDockerfiles))]
     public void EveryDockerfileUsingMounts_PinsTheBuildKitFrontend(string dockerfile)
     {
-        var text = RepositoryRoot.ReadAllText(dockerfile);
+        var text = SourceTree.ReadAllText(dockerfile);
 
         // The directive is only honoured as the very first line of the file.
         Assert.StartsWith("# syntax=docker/dockerfile:1", text, StringComparison.Ordinal);
@@ -150,8 +151,8 @@ public class ProxyCaBuildSecretInfrastructureTests
     [Fact]
     public void TheCaOverride_SuppliesTheSecretToEveryServiceTheBaseStackBuilds()
     {
-        var overrideFile = RepositoryRoot.ReadAllText("docker-compose.ca.yml");
-        var baseFile = RepositoryRoot.ReadAllText("docker-compose.yml");
+        var overrideFile = SourceTree.ReadAllText("docker-compose.ca.yml");
+        var baseFile = SourceTree.ReadAllText("docker-compose.yml");
 
         foreach (var service in new[] { "migrations", "api", "client", "worker" })
         {
@@ -174,10 +175,10 @@ public class ProxyCaBuildSecretInfrastructureTests
     public void TheCaOverride_IsNotAFilenameComposeLoadsImplicitly()
     {
         Assert.False(
-            File.Exists(Path.Combine(RepositoryRoot.Path, "docker-compose.override.yml")),
+            File.Exists(Path.Combine(SourceTree.Root, "docker-compose.override.yml")),
             "An implicitly-loaded override now exists; check it does not pull in the CA secret.");
 
-        var workflow = RepositoryRoot.ReadAllText(".github/workflows/e2e.yml");
+        var workflow = SourceTree.ReadAllText(".github/workflows/e2e.yml");
         Assert.DoesNotContain("docker-compose.ca.yml", workflow, StringComparison.Ordinal);
     }
 

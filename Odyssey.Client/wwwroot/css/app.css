@@ -464,6 +464,20 @@ html:not([data-theme='dark']) { --user-text-l: min(l, 0.48); }
   margin-top: 1px;
 }
 
+/* Compact variant (design system · account-signals.css): the PageHeader problem rows and any
+   inline mini-alert. Same severity tints, a tighter box. */
+.alert.compact {
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  align-items: center;
+}
+
+.alert.compact .alert-icon {
+  font-size: 18px;
+  margin-top: 0;
+}
+
 .alert .alert-body {
   flex: 1 1 auto;
   min-width: 0;
@@ -580,18 +594,6 @@ html:not([data-theme='dark']) { --user-text-l: min(l, 0.48); }
 }
 .aam-group-pill.asset { background: var(--finance-income-soft); color: var(--finance-income); }
 .aam-group-pill.liability { background: var(--finance-expense-soft); color: var(--finance-expense); }
-
-/* ---- Add-file: locked account context strip ---- */
-.efm-context {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; border-radius: 10px;
-  background: var(--mud-palette-background);
-  border: 1px solid var(--mud-palette-lines-default);
-}
-.efm-context-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 9px; }
-.efm-context-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.efm-context-acct { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: var(--mud-palette-text-primary); }
-.efm-context-facts { font-size: 0.75rem; color: var(--mud-palette-text-secondary); }
 
 /* ---- Add-file: per-file validity editor ----
    Rendered beneath each row via OdsFileUpload's RenderFileExtra slot. The dropzone /

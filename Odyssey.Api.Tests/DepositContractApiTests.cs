@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
@@ -30,7 +31,7 @@ namespace Odyssey.Api.Tests;
 /// case. AC 18 (deleting a <c>Custodian</c> contact cascades) runs the relational-only contact-delete
 /// cleanup and lives in <c>Odyssey.IntegrationTests</c>.
 /// </remarks>
-public class DepositContractApiTests
+public class DepositContractApiTests(DepositContractApiTests.Host host) : SharedApiHostTests<DepositContractApiTests.Host>(host)
 {
     private const string Path = "/api/contracts";
 
@@ -46,7 +47,7 @@ public class DepositContractApiTests
     [Fact]
     public async Task CreateDeposit_Returns201_AndReadsBackAsDeposit()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, new NewContract
@@ -74,7 +75,7 @@ public class DepositContractApiTests
     [Fact]
     public async Task DepositParties_TakeDepositorAndCustodian_AndRefuseLender()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var accountId = await SeedAccountAsync(factory);
         var bankId = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
@@ -118,7 +119,7 @@ public class DepositContractApiTests
     [Fact]
     public async Task RetypingADepositWithADepositor_ToLoan_Returns422_AndWritesNothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var accountId = await SeedAccountAsync(factory);
         using var client = factory.CreateClient();
 
@@ -158,7 +159,7 @@ public class DepositContractApiTests
     [Fact]
     public async Task Summary_CountsADeposit_AndPutsItsInterestInTheIncomingSplit()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using (var scope = factory.Services.CreateScope())
         {
             // The currency reference data the term's CurrencyCode is validated against is model seed.
@@ -262,15 +263,13 @@ public class DepositContractApiTests
         return contactId;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, "deposit-contract-actor", configuration: null, configureServices: services =>
         {
             services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+            services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
         });
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
 }

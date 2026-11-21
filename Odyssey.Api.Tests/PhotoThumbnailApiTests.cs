@@ -22,7 +22,7 @@ namespace Odyssey.Api.Tests;
 /// Issue #362 §4.3–§4.4 over HTTP: the thumbnail endpoint (headers, conditional requests, one 404 for every miss),
 /// its claim gate, the journal-embed readiness rule, and the stats worker state's claim gate.
 /// </summary>
-public sealed class PhotoThumbnailApiTests
+public sealed class PhotoThumbnailApiTests(PhotoThumbnailApiTests.Host host) : SharedApiHostTests<PhotoThumbnailApiTests.Host>(host)
 {
     private static readonly byte[] WebP = [.. "RIFF\0\0\0\0WEBPVP8 "u8, 1, 2, 3, 4];
 
@@ -33,7 +33,7 @@ public sealed class PhotoThumbnailApiTests
     [Fact]
     public async Task A_ready_thumbnail_is_served_inline_with_a_strong_etag_and_revalidation_headers()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.PhotosRead]);
+        var factory = Factory.ForCaller([PermissionClaims.PhotosRead]);
         var photoId = await SeedPhotoWithThumbnailsAsync(factory);
         using var client = factory.CreateClient();
 
@@ -54,7 +54,7 @@ public sealed class PhotoThumbnailApiTests
     [Fact]
     public async Task Medium_and_small_are_distinct_objects()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.PhotosRead]);
+        var factory = Factory.ForCaller([PermissionClaims.PhotosRead]);
         var photoId = await SeedPhotoWithThumbnailsAsync(factory);
         using var client = factory.CreateClient();
 
@@ -69,7 +69,7 @@ public sealed class PhotoThumbnailApiTests
     [Fact]
     public async Task A_matching_if_none_match_is_a_304_without_opening_the_file()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.PhotosRead]);
+        var factory = Factory.ForCaller([PermissionClaims.PhotosRead]);
         var photoId = await SeedPhotoWithThumbnailsAsync(factory);
         using var client = factory.CreateClient();
         var etag = (await client.GetAsync(ThumbnailPath(photoId))).Headers.ETag!;
@@ -92,7 +92,7 @@ public sealed class PhotoThumbnailApiTests
     [Fact]
     public async Task Unknown_photo_not_ready_and_other_feature_object_are_the_same_404()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.PhotosRead]);
+        var factory = Factory.ForCaller([PermissionClaims.PhotosRead]);
         var ready = await SeedPhotoWithThumbnailsAsync(factory);
         var notReady = await SeedPhotoAsync(factory);
         var foreign = await SeedPhotoAsync(factory);
@@ -130,7 +130,7 @@ public sealed class PhotoThumbnailApiTests
     [InlineData("?size=3")]
     public async Task A_missing_or_unknown_size_is_400(string query)
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.PhotosRead]);
+        var factory = Factory.ForCaller([PermissionClaims.PhotosRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/photos/{Guid.NewGuid()}/thumbnail{query}");
@@ -141,15 +141,13 @@ public sealed class PhotoThumbnailApiTests
     [Fact]
     public async Task The_endpoint_needs_photos_read()
     {
-        await using (var anonymous = FileStorageApiFactory.Create(null))
+        using (var client = Factory.AnonymousClient())
         {
-            using var client = anonymous.CreateClient();
             Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(ThumbnailPath(Guid.NewGuid()))).StatusCode);
         }
 
-        await using (var unclaimed = FileStorageApiFactory.Create([PermissionClaims.FilesRead, PermissionClaims.JournalRead]))
+        using (var client = Factory.ClientFor([PermissionClaims.FilesRead, PermissionClaims.JournalRead]))
         {
-            using var client = unclaimed.CreateClient();
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(ThumbnailPath(Guid.NewGuid()))).StatusCode);
         }
     }
@@ -159,16 +157,14 @@ public sealed class PhotoThumbnailApiTests
     [Fact]
     public async Task Stats_carry_the_worker_state_only_for_a_settings_reader()
     {
-        await using (var admin = new OdysseyApiFactory([PermissionClaims.PhotosRead, PermissionClaims.SystemSettingsRead]))
+        using (var client = Factory.ClientFor([PermissionClaims.PhotosRead, PermissionClaims.SystemSettingsRead]))
         {
-            using var client = admin.CreateClient();
             var stats = await client.GetFromJsonAsync<PhotoLibraryStats>("/api/photos/stats");
             Assert.Equal(ThumbnailWorkerState.NotRunning, stats!.ThumbnailWorkerState);
         }
 
-        await using (var user = new OdysseyApiFactory([PermissionClaims.PhotosRead]))
+        using (var client = Factory.ClientFor([PermissionClaims.PhotosRead]))
         {
-            using var client = user.CreateClient();
             var stats = await client.GetFromJsonAsync<PhotoLibraryStats>("/api/photos/stats");
             Assert.Null(stats!.ThumbnailWorkerState);
         }
@@ -188,7 +184,7 @@ public sealed class PhotoThumbnailApiTests
     [InlineData(false)]
     public async Task A_journal_photo_is_thumbnail_ready_only_for_a_photos_reader_on_every_action(bool photosRead)
     {
-        await using var factory = new JournalFactory(photosRead ? [.. JournalClaims, PermissionClaims.PhotosRead] : JournalClaims);
+        var factory = Factory;
         var photoId = await SeedPhotoAsync(factory);
         var entryId = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
@@ -210,7 +206,7 @@ public sealed class PhotoThumbnailApiTests
             await context.SaveChangesAsync();
         }
 
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(photosRead ? [.. JournalClaims, PermissionClaims.PhotosRead] : JournalClaims, actorUserId: JournalFactory.Actor);
         var detail = await client.GetFromJsonAsync<ExistingJournalEntry>($"{JournalPath}/{entryId}");
         var list = await client.GetPagedItemsAsync<ExistingJournalEntry>(JournalPath);
         // Re-sending the link the entry holds needs no photos.read (change-only).
@@ -260,66 +256,15 @@ public sealed class PhotoThumbnailApiTests
         }
     }
 
-    // ── Rename busy over HTTP (AC 17) ─────────────────────────────────────────────
-
-    [Fact]
-    public async Task A_rename_that_keeps_losing_to_a_worker_write_is_a_409_with_retry_after()
-    {
-        await using var factory = new JournalFactory(
-            [PermissionClaims.FilesRead, PermissionClaims.FilesUpdate],
-            services => services.AddScoped<IFileRenameObserver, AlwaysInterfering>());
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, JournalFactory.Actor, "Before.jpg");
-        var photoId = Guid.NewGuid();
-        using (var scope = factory.Services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            context.Photos.Add(new Photo { PhotoId = photoId, FileId = fileId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-            context.PhotoThumbnailJobs.Add(new PhotoThumbnailJobEntry
-            {
-                PhotoId = photoId, State = PhotoThumbnailJobState.Done, NextAttemptAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
-            });
-            // Also an attachment: since PR #441 a file only a photo names is hidden from /api/files, so the Files-store
-            // rename that re-renders a photo's thumbnails is one of a file shared with an attachment.
-            context.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = Guid.NewGuid(), FileId = fileId, CreatedAt = DateTime.UtcNow });
-            await context.SaveChangesAsync();
-        }
-
-        using var client = factory.CreateClient();
-        var response = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata", new Odyssey.Dtos.Finance.UpdateFileMetadataRequest { FileName = "After.jpg" });
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal(TimeSpan.FromSeconds(1), response.Headers.RetryAfter?.Delta);
-        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Contains("rename-busy", problem.RootElement.ToString(), StringComparison.Ordinal);
-        // That the name is kept is a property of one atomic save, which EF InMemory does not have; it is asserted on
-        // MariaDB (PhotoThumbnailRelationalTests and the rename scenarios rerun in Odyssey.IntegrationTests).
-    }
-
-    /// <summary>A worker write that lands between every load and save of the rename (a separate context, so a real token conflict).</summary>
-    private sealed class AlwaysInterfering(IServiceScopeFactory scopes) : IFileRenameObserver
-    {
-        public async Task OnFileRenamingAsync(Guid fileId, CancellationToken cancellationToken)
-        {
-            using var scope = scopes.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var photoId = await context.Photos.Where(p => p.FileId == fileId).Select(p => p.PhotoId).SingleAsync(cancellationToken);
-            var job = await context.PhotoThumbnailJobs.SingleAsync(j => j.PhotoId == photoId, cancellationToken);
-            job.Generation++;
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        public bool Owns(Type entityType) => false;
-    }
-
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task The_api_resolves_the_rename_observer_and_hosts_no_thumbnail_job()
+    public void The_api_resolves_the_thumbnail_service_and_hosts_no_thumbnail_job()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.PhotosRead]);
+        var factory = Factory;
         using var scope = factory.Services.CreateScope();
 
-        Assert.Contains(scope.ServiceProvider.GetServices<IFileRenameObserver>(), o => o is PhotoThumbnailRenameObserver);
+        Assert.NotNull(scope.ServiceProvider.GetService<PhotoThumbnailService>());
         Assert.Null(factory.Services.GetService<PhotoThumbnailJob>());
         Assert.Null(factory.Services.GetService<IPhotoThumbnailRenderer>());
         Assert.DoesNotContain(
@@ -328,6 +273,9 @@ public sealed class PhotoThumbnailApiTests
     }
 
     // ── Seeding ───────────────────────────────────────────────────────────────
+
+    /// <summary>The class's shared host: the store's own, with every caller's claims sent per request.</summary>
+    public sealed class Host() : FileStorageApiFactory([]);
 
     private static PhotoThumbnail Thumbnail(Guid photoId, ThumbnailSize size, Guid storedObjectId) => new()
     {
@@ -349,14 +297,7 @@ public sealed class PhotoThumbnailApiTests
 
     private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory)
     {
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, "thumbnail-uploader");
-        var photoId = Guid.NewGuid();
-        await WithScopeAsync(factory, async (context, _) =>
-        {
-            context.Photos.Add(new Photo { PhotoId = photoId, FileId = fileId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-            await context.SaveChangesAsync();
-        });
-        return photoId;
+        return await PhotoTestSupport.SeedPhotoAsync(factory, "thumbnail-uploader");
     }
 
     private static async Task<Guid> SeedPhotoWithThumbnailsAsync(WebApplicationFactory<Program> factory)

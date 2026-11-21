@@ -21,7 +21,7 @@ public class UserProfile
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public Guid UserProfileId { get; set; }
 
-    /// <summary>FK to <see cref="ApplicationUser.Id"/>; unique (1:1) with cascade delete.</summary>
+    /// <summary>FK to <c>ApplicationUser.Id</c>; unique (1:1) with cascade delete.</summary>
     [Required]
     public string UserId { get; set; } = string.Empty;
 

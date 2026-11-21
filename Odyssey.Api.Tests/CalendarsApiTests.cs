@@ -12,7 +12,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class CalendarsApiTests
+public class CalendarsApiTests(CalendarsApiTests.Host host) : SharedApiHostTests<CalendarsApiTests.Host>(host)
 {
     private const string ActorUserId = "calendars-actor-id";
     private const string Path = "/api/calendars";
@@ -26,7 +26,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -37,7 +37,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task List_WithoutCalendarClaims_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -48,7 +48,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Create_Then_List_ReturnsCalendar()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Personal", "#0369A1");
@@ -62,7 +62,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Create_DuplicateName_CaseInsensitive_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "Bills", "#F59E0B");
@@ -74,7 +74,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Create_CustomColor_IsAcceptedAndStoredUpperCase()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Custom", Color = "#c2185b" });
@@ -89,7 +89,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Update_ToCustomColor_IsAcceptedAndStoredUpperCase()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var calendar = await CreateAsync(client, "Work", "#15803D");
 
@@ -105,7 +105,7 @@ public class CalendarsApiTests
     [InlineData(CalendarIcons.Default)]
     public async Task Update_UnknownOrDefaultIcon_ReturnsBadRequestAndKeepsTheIcon(string icon)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var post = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Work", Color = "#15803D", Icon = "work" });
         var calendar = (await post.Content.ReadFromJsonAsync<ExistingCalendar>())!;
@@ -120,7 +120,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Update_InvalidColor_ReturnsBadRequestAndKeepsTheColor()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var calendar = await CreateAsync(client, "Work", "#15803D");
 
@@ -134,7 +134,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Create_WithIcon_RoundTripsAndPutWithoutIconResetsToDefault()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Work", Color = "#15803D", Icon = "work" });
@@ -156,7 +156,7 @@ public class CalendarsApiTests
     [InlineData(TagIcons.Default)]
     public async Task Create_UnknownOrDefaultIcon_ReturnsBadRequestKeyedOnIcon(string icon)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Custom", Color = "#15803D", Icon = icon });
@@ -168,7 +168,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Create_InvalidColor_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Custom", Color = "#12345" });
@@ -179,7 +179,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Rename_ToExistingName_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "Personal", "#0369A1");
@@ -194,7 +194,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Delete_EmptyCalendar_ReturnsNoContent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Ephemeral", "#4A5670");
@@ -206,7 +206,7 @@ public class CalendarsApiTests
     [Fact]
     public async Task Delete_CalendarWithEvents_ReturnsConflict_NotServerError()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateAsync(client, "InUse", "#B23B3B");
@@ -231,7 +231,7 @@ public class CalendarsApiTests
         return (await post.Content.ReadFromJsonAsync<ExistingCalendar>())!;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateCalendarContext)
@@ -245,4 +245,7 @@ public class CalendarsApiTests
             services.AddDbContext<CalendarContext>(options => options.UseInMemoryDatabase(calendarDatabaseName));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

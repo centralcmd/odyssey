@@ -209,11 +209,13 @@ public static class ApiProblemExtensions
         {
             var problem = await response.Content.ReadFromJsonAsync<ApiProblem>(Options);
             if (problem is not null)
+            {
                 return problem with
                 {
                     Status = problem.Status ?? (int)response.StatusCode,
                     ReasonFallback = response.ReasonPhrase,
                 };
+            }
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {

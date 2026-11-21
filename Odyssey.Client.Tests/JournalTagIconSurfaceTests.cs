@@ -160,7 +160,7 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// All four tag pages are the one <c>OdsTagAdmin</c> with icons on (the design system's
+    /// All five tag pages are the one <c>OdsTagAdmin</c> with icons on (the design system's
     /// <c>createTagsPage</c> with <c>icons: true</c>), and each helper names the records its icon is drawn on.
     /// </summary>
     [Theory]
@@ -168,6 +168,7 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     [InlineData("Pages/Journal/JournalTagsPage.razor", "journal entry")]
     [InlineData("Pages/Journal/TaskTagsPage.razor", "task")]
     [InlineData("Pages/Photos/PhotoTagsPage.razor", "photo")]
+    [InlineData("Pages/Internet/NewsTagsPage.razor", "feed and article")]
     public void Every_tag_page_turns_icons_on_and_names_its_records(string page, string noun)
     {
         var source = File.ReadAllText(Path.Combine(ClientSource.Root, page));

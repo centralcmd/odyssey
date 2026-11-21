@@ -118,7 +118,9 @@ public class FileSizeFormattingTests
         var keys = OdsFileUploadDefaults.Kinds.Select(k => k.Key).ToHashSet();
 
         foreach (var name in new[] { "a.jpg", "a.pdf", "a.txt" })
+        {
             Assert.Contains(OdsFileUploadDefaults.GuessKind(name), keys);
+        }
     }
 
     [Fact]

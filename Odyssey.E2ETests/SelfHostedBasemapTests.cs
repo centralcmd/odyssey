@@ -29,13 +29,17 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
     public async Task InitializeAsync()
     {
         if (!fixture.Available)
+        {
             return;
+        }
 
         await SessionGate.WaitAsync();
         try
         {
             if (browserContext is not null)
+            {
                 return;
+            }
 
             playwright = await Playwright.CreateAsync();
             browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
@@ -58,7 +62,10 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
             var light = await page.EvaluateAsync<string?>(
                 "async () => { const r = await fetch('/api/api/map-styles', { credentials: 'include' }); return r.ok ? (await r.json()).lightStyleUrl : null; }");
             if (light != "/maps/self-hosted-light.json")
+            {
                 notSelfHosted = $"The stack does not serve the self-hosted basemap (light style: {light ?? "unavailable"}); bring it up with docker-compose.selfhosted-basemap.yml.";
+            }
+
             await page.CloseAsync();
         }
         finally
@@ -73,9 +80,15 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         if (notSelfHosted is null)
+        {
             return;
+        }
+
         if (Environment.GetEnvironmentVariable(Declared) == "1")
+        {
             Assert.Fail(notSelfHosted);
+        }
+
         Skip.If(true, notSelfHosted);
     }
 
@@ -90,9 +103,13 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
         var statuses = new List<(string Url, int Status)>();
         // Events keep arriving while the assertions run (tiles in flight), so every read takes a snapshot.
         var gate = new object();
-        page.Request += (_, r) => { lock (gate) requests.Add(r); };
-        page.Response += (_, r) => { lock (gate) statuses.Add((r.Url, r.Status)); };
-        int StyleRequests() { lock (gate) return requests.Count(r => r.Url.Contains("/maps/self-hosted-", StringComparison.Ordinal)); }
+        page.Request += (_, r) => { lock (gate) { requests.Add(r); } };
+        page.Response += (_, r) => { lock (gate) { statuses.Add((r.Url, r.Status)); } };
+        int StyleRequests() { lock (gate)
+            {
+                return requests.Count(r => r.Url.Contains("/maps/self-hosted-", StringComparison.Ordinal));
+            }
+        }
 
         await OpenAsync(page, "Cabin");
         // Each zoom step settles before the next (a step rounds from the current zoom), so the map has
@@ -142,9 +159,13 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
             var path = new Uri(request.Url).AbsolutePath;
             var cookie = (await request.AllHeadersAsync()).ContainsKey("cookie");
             if (path == "/basemap/basemap.pmtiles" && cookie)
+            {
                 basemapCookies++;
+            }
             else if (path.StartsWith("/maps/", StringComparison.Ordinal))
+            {
                 Assert.False(cookie, $"{path} went out with a cookie.");
+            }
         }
 
         Assert.True(basemapCookies > 0, "No basemap range request was seen carrying the session cookie.");
@@ -185,7 +206,9 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
         var trigger = page.Locator(".odc-record-trigger", new PageLocatorOptions { HasText = "Cabin" }).First;
         await trigger.WaitForAsync(new LocatorWaitForOptions { Timeout = 60_000 });
         if (await trigger.GetAttributeAsync("aria-expanded") != "true")
+        {
             await trigger.ClickAsync();
+        }
 
         // Well inside the 15 s load timeout: the failure is the archive's, reported as soon as it happens.
         await Expect(page.Locator(".loc-map-state")).ToContainTextAsync("couldn't load", new() { Timeout = 10_000 });
@@ -216,7 +239,10 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
         var trigger = page.Locator(".odc-record-trigger", new PageLocatorOptions { HasText = location }).First;
         await trigger.WaitForAsync(new LocatorWaitForOptions { Timeout = 60_000 });
         if (await trigger.GetAttributeAsync("aria-expanded") != "true")
+        {
             await trigger.ClickAsync();
+        }
+
         await Expect(page.Locator(".loc-map-caption")).ToBeVisibleAsync(new() { Timeout = 30_000 });
     }
 

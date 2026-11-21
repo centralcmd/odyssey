@@ -11,6 +11,7 @@ using Odyssey.Core.Journal.Geocoding;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -20,7 +21,7 @@ namespace Odyssey.Api.Tests;
 /// by in-process fakes — the provider mapping itself is covered in <c>Odyssey.Core.Tests</c> against
 /// recorded responses — so nothing here leaves the test host.
 /// </summary>
-public class LocationsApiTests
+public class LocationsApiTests(LocationsApiTests.Host host) : SharedApiHostTests<LocationsApiTests.Host>(host)
 {
     private const string Path = "/api/locations";
 
@@ -68,8 +69,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Unauthenticated_is_401()
     {
-        await using var factory = new ApiFactory(null);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(Path)).StatusCode);
     }
@@ -77,13 +78,12 @@ public class LocationsApiTests
     [Fact]
     public async Task Read_only_reads_the_list_and_a_location_but_cannot_write_or_search()
     {
-        var store = new ApiFactory(ReadWrite);
-        await using var _ = store;
-        using var writer = store.CreateClient();
+        var store = Factory;
+        using var writer = store.ClientFor(ReadWrite);
         var cabin = await CreateAsync(writer, Cabin());
 
-        await using var factory = new ApiFactory(ReadOnly, sharingStoreWith: store);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Path)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Path}/{cabin.LocationId}")).StatusCode);
@@ -96,8 +96,8 @@ public class LocationsApiTests
     [Fact]
     public async Task No_location_claim_is_403_on_read()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ContactsRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.ContactsRead]);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Path)).StatusCode);
     }
@@ -107,8 +107,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Create_returns_201_with_a_location_header_and_the_stored_shape()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.PostAsJsonAsync(Path, Cabin() with { Latitude = 59.912734m, Longitude = 10.750271m });
 
@@ -126,8 +126,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Coordinates_are_returned_on_get_and_list_for_every_source()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var geocoded = await CreateAsync(client, Cabin());
         var manual = await CreateAsync(client, Cabin("Mooring") with
         {
@@ -154,8 +154,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Responses_never_carry_the_attribution_user_ids_and_attribution_matches_source()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, Cabin());
         var manual = await CreateAsync(client, Cabin("Mooring") with { Source = LocationSource.Manual, SourceReference = null });
 
@@ -176,8 +176,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Archive_restore_and_the_status_filter()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var cabin = await CreateAsync(client, Cabin());
         await CreateAsync(client, Cabin("Home"));
 
@@ -196,8 +196,8 @@ public class LocationsApiTests
     [Fact]
     public async Task An_unknown_status_value_is_400()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Path}?status=Bogus")).StatusCode);
     }
@@ -205,8 +205,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Put_on_an_unknown_id_is_404_not_an_upsert()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var cabin = await CreateAsync(client, Cabin());
 
         var response = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}", Update(cabin));
@@ -217,8 +217,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Get_unknown_is_404_echoing_only_the_id()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var id = Guid.NewGuid();
 
         var response = await client.GetAsync($"{Path}/{id}");
@@ -230,12 +230,12 @@ public class LocationsApiTests
     [Fact]
     public async Task Delete_needs_locations_delete_and_removes_an_unused_place()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.LocationsDelete]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([.. ReadWrite, PermissionClaims.LocationsDelete]);
         var cabin = await CreateAsync(client, Cabin());
 
-        await using var withoutDelete = new ApiFactory(ReadWrite, sharingStoreWith: factory);
-        using var updater = withoutDelete.CreateClient();
+        var withoutDelete = Factory;
+        using var updater = withoutDelete.ClientFor(ReadWrite);
         Assert.Equal(HttpStatusCode.Forbidden, (await updater.DeleteAsync($"{Path}/{cabin.LocationId}")).StatusCode);
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Path}/{cabin.LocationId}")).StatusCode);
@@ -245,8 +245,8 @@ public class LocationsApiTests
     [Fact]
     public async Task A_duplicate_name_is_409_keyed_name()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, Cabin());
 
         var response = await client.PostAsJsonAsync(Path, Cabin("Cabín"));
@@ -304,8 +304,8 @@ public class LocationsApiTests
     [MemberData(nameof(InvalidBodies))]
     public async Task An_invalid_body_is_400_keyed_on_the_field(string field, object body)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.PostAsJsonAsync(Path, body);
 
@@ -318,8 +318,8 @@ public class LocationsApiTests
     [MemberData(nameof(InvalidBodies))]
     public async Task An_invalid_update_body_is_400_keyed_on_the_field(string field, object body)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var created = await CreateAsync(client, Cabin("Target"));
 
         var response = await client.PutAsJsonAsync($"{Path}/{created.LocationId}", body);
@@ -345,8 +345,8 @@ public class LocationsApiTests
     [MemberData(nameof(BoundaryBodies))]
     public async Task A_value_exactly_at_a_limit_is_accepted(string because, object body)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var response = await client.PostAsJsonAsync(Path, body);
 
@@ -356,8 +356,8 @@ public class LocationsApiTests
     [Fact]
     public async Task Renaming_onto_another_locations_name_is_a_409_keyed_name()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, Cabin());
         var home = await CreateAsync(client, Cabin("Home"));
 
@@ -371,8 +371,8 @@ public class LocationsApiTests
     [Fact]
     public async Task An_out_of_range_limit_is_400()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Path}?limit=-1")).StatusCode);
     }
@@ -380,8 +380,8 @@ public class LocationsApiTests
     [Fact]
     public async Task List_search_matches_the_address()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         await CreateAsync(client, Cabin());
         await CreateAsync(client, Cabin("Home") with { AddressText = "Storgata 1, 0155 Oslo", Description = null });
 
@@ -575,7 +575,7 @@ public class LocationsApiTests
     [Fact]
     public async Task No_log_line_anywhere_in_the_host_contains_the_query_or_the_stored_values()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, new FakeSources(), new Dictionary<string, string?>
         {
             ["Logging:LogLevel:Default"] = "Trace",
@@ -622,7 +622,7 @@ public class LocationsApiTests
     [Fact]
     public async Task The_geocoding_clients_write_no_HttpClient_log_lines_while_an_ordinary_client_does()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, configuration: new Dictionary<string, string?>
         {
             ["Logging:LogLevel:Default"] = "Trace",
@@ -666,7 +666,7 @@ public class LocationsApiTests
     }
 
     /// <summary>In-process stand-ins for the two providers. They record the query they receive.</summary>
-    private sealed class FakeSources
+    public sealed class FakeSources
     {
         public bool Fail { get; init; }
 
@@ -712,7 +712,7 @@ public class LocationsApiTests
         }
     }
 
-    private sealed class ApiFactory(
+    public class ApiFactory(
         IReadOnlyCollection<string>? permissions,
         FakeSources? sources = null,
         IReadOnlyDictionary<string, string?>? configuration = null,
@@ -736,4 +736,7 @@ public class LocationsApiTests
                 extra?.Invoke(services);
             },
             sharingStoreWith);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

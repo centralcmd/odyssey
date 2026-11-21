@@ -143,6 +143,9 @@ builder
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     // Host.CreateApplicationBuilder reads DOTNET_ENVIRONMENT, not the ASPNETCORE name.
     .WithEnvironment("DOTNET_ENVIRONMENT", apiEnvironment)
+    // The worker seeds the demo files and photos (DemoDataGate: Development/Testing only), under the migrations
+    // job's flag: the half of the demo seed with bytes, which only a host with the file volumes can write.
+    .WithEnvironment("Seed__DemoData", seedDemoData)
     // The same trust bundle as the API: the worker makes the scheduled outbound HTTPS calls (MET, Frost).
     .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
     .WithFileStorage(fileStorageSettings)
@@ -169,8 +172,8 @@ ForwardOptionalSetting(api, "FileStorage__MaxFileSizeBytes", "Aspire:FileStorage
 // Nothing is forwarded to MIGRATIONS. The sender identity (issue #421), the file-analysis tuning
 // values (#434) and the switch, model and destination (#439) are all settings edited in the UI, and
 // the migrations job's only interest in them was SystemSettingsConfigAdoption — the one-time
-// carry-over of a value an older release had configured, removed because no deployment ever ran a
-// release it could upgrade from. FileAnalysis:ApiKey and Legal:PseudonymizationSecret are absent for
+// carry-over of a value an older release had configured, removed before any production database
+// existed (a setting moved out of configuration from now on needs that step again). FileAnalysis:ApiKey and Legal:PseudonymizationSecret are absent for
 // a different reason: both live in the encrypted secret store (issue #445), which configuration never
 // feeds. Outside Production an unset pseudonymization secret still falls back to the fixed
 // development value, so the Aspire stack's delete flow works with nothing configured.

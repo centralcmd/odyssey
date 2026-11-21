@@ -45,7 +45,9 @@ public class PmtilesBundleIntegrityTests
         Assert.Contains($"pmtiles@{Version}", readme, StringComparison.Ordinal);
         Assert.DoesNotContain(Regex.Matches(readme, @"pmtiles@(?<v>\d+\.\d+\.\d+)").Select(m => m.Groups["v"].Value), v => v != Version);
         foreach (var row in PinnedFiles)
+        {
             Assert.Contains((string)row[1], readme, StringComparison.Ordinal);
+        }
     }
 
     [Theory]

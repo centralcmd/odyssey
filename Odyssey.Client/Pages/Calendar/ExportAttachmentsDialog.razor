@@ -1,0 +1,132 @@
+@*
+    ExportAttachmentsDialog — the commit step a calendar, event or series export gets when its summary reports
+    attachments (issue #522 v3 §A; Odyssey Design System · Calendar CalExportAttachmentsModal). The aggregate exports
+    never open it.
+
+      • Allowed: "Include attachments (‹n› documents, ‹p› photos, ‹size›)", ticked by default; the EXIF advisory sits
+        beside it and describes it. Unticking it exports with attachments=omit.
+      • Forbidden (the include summary was 403 calendar_ics_export_attachments_forbidden): the box is unticked and
+        aria-disabled (focusable, the change swallowed — never native disabled) with its help line, a non-live Warning
+        explains, the action reads "Export without attachments" and names the Warning, and the change is announced once.
+
+    Focus starts on Cancel, not on the checkbox (v4 "Focus").
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="download" Title="@TitleContent"
+          Subtitle="@SubtitleContent" TitleLevel="2" InitialFocus="OdsModalInitialFocus.Cancel" RequiredLegend="false"
+          ReturnFocusToId="@ReturnFocusToId" Class="cal-exp-att">
+    <ChildContent>
+        <OdsLiveAnnouncer @ref="_announcer" />
+        <div class="ods-modal-body cal-exp-att-body">
+            <div class="@($"cal-exp-att-check{(Forbidden ? " is-disabled" : null)}")">
+                <OdsCheckbox Id="@CheckboxId" Checked="_include" CheckedChanged="@(v => _include = v)" AriaDisabled="Forbidden"
+                             Label="@CheckboxLabel" aria-describedby="@CheckboxDescribedBy" />
+                @if (Forbidden)
+                {
+                    <p id="@HelpId" class="cal-exp-att-help">@CalendarIcsExport.AttachmentsForbiddenHelp(Noun)</p>
+                }
+            </div>
+            @if (Forbidden)
+            {
+                <div id="@WarningId">
+                    <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">@CalendarIcsExport.AttachmentsForbiddenWarning(Noun)</OdsAlert>
+                </div>
+            }
+            else if (Summary?.PhotoCount > 0)
+            {
+                <div id="@AdvisoryId" class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>@CalendarIcsExport.ExifAdvisory</span>
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" data-dialog-cancel="true" OnClick="CancelAsync">Cancel</OdsButton>
+        <OdsButton id="@ExportButtonId" Variant="OdsButtonVariant.Filled" Icon="download"
+                   aria-describedby="@(Forbidden ? WarningId : null)" OnClick="ExportAsync">@(_include ? "Export" : "Export without attachments")</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    internal const string CheckboxId = "cal-exp-att-include";
+    internal const string HelpId = "cal-exp-att-help";
+    internal const string WarningId = "cal-exp-att-warn";
+    internal const string AdvisoryId = "cal-exp-att-exif";
+    internal const string ExportButtonId = "cal-exp-att-export";
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>"Export “Team”" or "Export the series “Standup”".</summary>
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+    /// <summary>"One event, as an iCalendar (.ics) file." — what the export carries.</summary>
+    [Parameter] public string What { get; set; } = string.Empty;
+
+    /// <summary>"calendar", "event" or "series".</summary>
+    [Parameter] public string Noun { get; set; } = "calendar";
+
+    /// <summary>The include summary; when <see cref="Forbidden"/>, the omit summary (no attachment counts).</summary>
+    [Parameter] public CalendarIcsExportSummary? Summary { get; set; }
+
+    /// <summary>The include summary was refused: the caller may not export a kind that is attached.</summary>
+    [Parameter] public bool Forbidden { get; set; }
+
+    /// <summary>Raised with the mode the user chose; the dialog closes itself first.</summary>
+    [Parameter] public EventCallback<IcsAttachmentsMode> OnExport { get; set; }
+
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    private OdsLiveAnnouncer? _announcer;
+    private bool _include = true;
+    private bool _previousOpen;
+    private bool _announcePending;
+    private int _announcerWaits;
+
+    private RenderFragment TitleContent => @<text>@Title</text>;
+
+    private RenderFragment SubtitleContent => @<text>@What</text>;
+
+    private string CheckboxLabel => Forbidden || Summary is null
+        ? CalendarIcsExport.IncludeAttachments
+        : CalendarIcsExport.IncludeAttachmentsLabel(Summary);
+
+    private string? CheckboxDescribedBy => Forbidden ? HelpId : Summary?.PhotoCount > 0 ? AdvisoryId : null;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !_previousOpen)
+        {
+            // Ticked by default; a refused include is shown unticked (v3 §A).
+            _include = !Forbidden;
+            _announcePending = Forbidden;
+            _announcerWaits = 0;
+        }
+
+        _previousOpen = Open;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The announcer lives in the portaled body, which can mount a render after this component: wait for it.
+        if (_announcePending && _announcer is not null)
+        {
+            _announcePending = false;
+            await _announcer.Announce(CalendarIcsExport.AttachmentsForbiddenAnnouncement(Noun));
+        }
+        else if (_announcePending && _announcerWaits++ < 3)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private Task CancelAsync() => OpenChanged.InvokeAsync(false);
+
+    private async Task ExportAsync()
+    {
+        var mode = _include && !Forbidden ? IcsAttachmentsMode.Include : IcsAttachmentsMode.Omit;
+        await OpenChanged.InvokeAsync(false);
+        await OnExport.InvokeAsync(mode);
+    }
+}

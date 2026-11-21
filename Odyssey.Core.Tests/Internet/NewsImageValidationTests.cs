@@ -3,7 +3,7 @@ using Odyssey.Core.Imaging;
 using Odyssey.Core.Internet.News.Images;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Profiles;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 
 namespace Odyssey.Core.Tests.Internet;

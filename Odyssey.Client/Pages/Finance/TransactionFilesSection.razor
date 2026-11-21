@@ -72,6 +72,8 @@
                        FileName="@_preview.FileName" />
 }
 
+<OdsConfirm @ref="confirm" />
+
 @code {
     [Parameter] public Guid TransactionId { get; set; }
 
@@ -149,10 +151,14 @@
         var menu = new List<OdsMenuItem>();
 
         if (CanDownload && IsPreviewable(file.FileMetadata.ContentType))
+        {
             menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", OnClick = EventCallback.Factory.Create(this, () => PreviewFileAsync(file)) });
+        }
 
         if (CanDownload)
+        {
             menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadFileAsync(file)) });
+        }
 
         return menu;
     }

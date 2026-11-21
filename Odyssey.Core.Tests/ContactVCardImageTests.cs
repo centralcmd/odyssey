@@ -9,7 +9,8 @@ using Odyssey.Core.Imaging;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -29,7 +30,6 @@ public class ContactVCardImageTests
 {
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
-            new FileService(context, new FileValidationService()),
             new FixedUploadLimits(64L * 1024 * 1024),
             writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
             store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
@@ -191,7 +191,7 @@ public class ContactVCardImageTests
 
         // A recording handler standing in for every outbound path: if the importer ever dereferenced a
         // PHOTO URL, something would have to make a request, and nothing in this service may.
-        var recorder = new RecordingHandler();
+        var recorder = new RecordingHttpHandler();
         using var http = new HttpClient(recorder);
 
         var result = await ImportAsync(vCard, Card("urn:uuid:ssrf", "PHOTO:https://attacker.example/x.png"));
@@ -438,17 +438,5 @@ public class ContactVCardImageTests
         }
 
         return count;
-    }
-
-    /// <summary>Records every outbound request, so "never dereferenced" is an assertion rather than a claim.</summary>
-    private sealed class RecordingHandler : HttpMessageHandler
-    {
-        public List<Uri?> Requests { get; } = [];
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            Requests.Add(request.RequestUri);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-        }
     }
 }

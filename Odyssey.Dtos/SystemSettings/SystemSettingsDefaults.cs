@@ -50,10 +50,13 @@ public static class SystemSettingsDefaults
     public const string ContactVCardMaxImportEntries = Unlimited;
     public const int ContactVCardMaxImportMegabytes = 64;
     public const int ContactVCardMaxExportMegabytes = 64;
-    public const int CalendarIcsMaxExportEvents = 2000;
-    public const int CalendarIcsMaxImportEvents = 2000;
-    public const int CalendarIcsMaxImportMegabytes = 64;
-    public const int CalendarIcsMaxExportMegabytes = 64;
+    // The calendar surface streams its export and its import (issue #516), so it ships like the task and
+    // journal ones: unlimited on counts and at its 10 GB ceiling on size. The byte caps, the component caps and
+    // the batch size bound memory now, not the count.
+    public const string CalendarIcsMaxExportEvents = Unlimited;
+    public const string CalendarIcsMaxImportEvents = Unlimited;
+    public const int CalendarIcsMaxImportMegabytes = 10240;
+    public const int CalendarIcsMaxExportMegabytes = 10240;
     // The task surface ships unlimited on counts and at its 10 GB ceiling on size: its files carry attached files
     // inline, and a mostly single-user instance should not meet an arbitrary cap moving its own board.
     public const string TaskIcsMaxExportTasks = Unlimited;
@@ -167,6 +170,9 @@ public static class SystemSettingsDefaults
     public const int JournalEntryMaxLinksPerKind = 50;
     public const int JournalTaskMaxLinksPerKind = 50;
 
+    /// <summary>Files, and separately photos, one calendar event or series may link (issue #521 §4).</summary>
+    public const int CalendarEventMaxLinksPerKind = 50;
+
     /// <summary>
     /// The shipped upload cap, in megabytes. Matches the 64 MB that
     /// <c>FileStorage:MaxFileSizeBytes</c> pins in <c>appsettings.json</c>, so a default install sees
@@ -198,10 +204,10 @@ public static class SystemSettingsDefaults
     public const int FileAnalysisMatchTimeoutSeconds = 60;
 
     /// <summary>
-    /// Blob prefix read for photo metadata extraction, in megabytes. <strong>16 is the ceiling</strong>
-    /// and it is a compiled assumption about MariaDB's default <c>max_allowed_packet</c> (16 MiB),
-    /// which this repository pins nowhere — see <c>docs/deployment.md</c>. Extraction reads a full
-    /// <c>byte[]</c> of this size per photo, so it is also a per-upload memory multiplier.
+    /// Prefix of the upload stream read for photo metadata extraction, in megabytes (issue #428 moved the
+    /// read from the database to the upload before it is stored). <strong>16 is the ceiling</strong>:
+    /// extraction reads a full <c>byte[]</c> of this size per photo, so it is a per-upload memory
+    /// multiplier — see <c>docs/deployment.md</c>.
     /// </summary>
     public const int PhotoMetadataReadMegabytes = 8;
 

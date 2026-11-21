@@ -9,7 +9,7 @@
     /healthz through the assembly's informational version.
   -->
   <PropertyGroup>
-    <Version>0.45.0</Version> <!-- x-release-please-version -->
+    <Version>0.48.0</Version> <!-- x-release-please-version -->
   </PropertyGroup>
 
   <!--
@@ -25,6 +25,32 @@
   -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Code-style rules in .editorconfig are checked by the build, not only in the IDE, so a rule there
+    is a rule the code follows (braces on every if/else/for/foreach/while body, IDE0011, among them).
+    Analyzers do not see the C# inside .razor files; those follow the same rules by review.
+  -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!--
+    XML doc comments are compiled so a stale reference breaks the build: a <see cref> or <paramref>
+    naming a type, member or parameter that was removed or renamed (CS1574, CS1734), badly formed
+    XML (CS1570) and a doc comment on nothing (CS1587). Without this the compiler never reads doc
+    comments, and they drifted unchecked until a review found ~50 of them (PR #555).
+    Three doc warnings are silenced because they say nothing about staleness:
+      * CS1591 — a public member has no doc comment. Comments are used sparingly here, by design.
+      * CS1573 — a <param> tag is missing for one parameter when others have one (~490 sites).
+      * CS0419 — a cref names an overloaded method without picking one. It still links.
+    A cref to a type in a project this one cannot reference (Core naming an Api type) cannot
+    resolve; write it as <c>Name</c> instead.
+  -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573;CS0419</NoWarn>
   </PropertyGroup>
 
   <!--

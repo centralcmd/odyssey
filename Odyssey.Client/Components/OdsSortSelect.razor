@@ -11,10 +11,9 @@
     natural default direction and the typed direction label (OdsSortHelpers): Text → "A → Z" /
     "Z → A"; Number → "Low → High" / "High → Low"; Date → "Oldest first" / "Newest first";
     Status → "Defined order" / "Reversed". Changing the field applies its natural default direction;
-    the toggle flips it. With ONE field the dropdown is omitted — a static "Sort by <field>" label +
-    the direction toggle render instead (never a one-option dropdown). The static label keeps the
-    trigger's bordered box, minus the chevron and the pointer, so it lines up with the filter bar's
-    other controls while reading as fixed.
+    the toggle flips it. A one-field page still shows the same field-select trigger (with its single
+    option) + the direction toggle, so every list page's sort control looks and works the same
+    (design system · SortSelect README).
 
     Direction is always conveyed as TEXT (the typed label + the aria word), never by the arrow alone.
 
@@ -26,18 +25,6 @@
 
 @if (_field is not null)
 {
-    @if (_single)
-    {
-        <div class="odc-sortsel single @Class">
-            <span class="odc-sortsel-static">
-                <span class="odc-sortsel-prefix">@Label</span>
-                <span class="odc-sortsel-val">@_field.Label</span>
-            </span>
-            @DirectionToggle
-        </div>
-    }
-    else
-    {
         <div class="odc-sortsel split @Class">
             <div class="odc-sortsel-field">
                 <OdsPopupMenu @ref="_popup"
@@ -67,7 +54,6 @@
             </div>
             @DirectionToggle
         </div>
-    }
 }
 
 @code {
@@ -101,8 +87,6 @@
 
     protected override void OnParametersSet() => _current = Sort;
 
-    private bool _single => Fields.Count <= 1;
-
     // The effective current sort: the bound value when its key is known, else the first field's
     // natural default. A header click can activate a sortable column outside the curated list — we
     // reflect it honestly (the raw key as a text field) rather than showing the wrong field.
@@ -112,7 +96,9 @@
         {
             var first = Fields.Count > 0 ? Fields[0] : null;
             if (_current?.Key is not { } key)
+            {
                 return first;
+            }
             return Fields.FirstOrDefault(f => f.Key == key)
                 ?? new OdsSortField<TRow> { Key = key, Label = Capitalize(key), Type = OdsSortType.Text };
         }
@@ -193,14 +179,18 @@
     private async Task PickField(OdsSortField<TRow> option)
     {
         if (_field is null || option.Key != _field.Key)
+        {
             await Emit(new OdsTableSort(option.Key, OdsSortHelpers.DefaultDir(option)));
+        }
         await _popup.CloseAsync();
     }
 
     private Task Flip()
     {
         if (_field is null)
+        {
             return Task.CompletedTask;
+        }
         var next = _dir == OdsSortDirection.Asc ? OdsSortDirection.Desc : OdsSortDirection.Asc;
         return Emit(new OdsTableSort(_field.Key, next));
     }

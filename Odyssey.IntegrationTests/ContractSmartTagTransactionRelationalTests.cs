@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// a party count above <see cref="ListDefaults.MaxFilterArrayLength"/>. The EF InMemory provider
 /// evaluates LINQ in memory, so none of the translation is observable on the fast tiers.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_smart_tag_transactions";
@@ -255,7 +255,9 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
         await using (var reader = await command.ExecuteReaderAsync())
         {
             while (await reader.ReadAsync())
+            {
                 rows.Add((reader.GetString(0), reader.GetString(1)));
+            }
         }
 
         Assert.Equal(
@@ -350,13 +352,10 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
         var builder = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
         if (interceptor is not null)
+        {
             builder = builder.AddInterceptors(interceptor);
+        }
 
         return new OdysseyContext(builder.Options);
     }
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 }

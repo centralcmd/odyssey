@@ -272,7 +272,10 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
             // prove the claim for it. A caller missing a needed claim gets a 403 — never a silent
             // downgrade to the refused delete.
             var permitted = new HashSet<ContactDeleteBlockerClass>();
-            if (User.HasPermission(PermissionClaims.ContractsUpdate)) permitted.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            if (User.HasPermission(PermissionClaims.ContractsUpdate))
+            {
+                permitted.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            }
 
             var detached = await contactService.Delete(id, detachBlockingLinks: true, permitted, cancellationToken);
             if (detached is null)

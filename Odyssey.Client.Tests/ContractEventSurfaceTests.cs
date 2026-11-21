@@ -999,10 +999,11 @@ public class ContractEventSurfaceTests
 
         cut.Find("button[aria-label='Delete Doomed']").Click();
 
-        // MudBlazor's message box renders into the provider in the same tree; confirming it lets
-        // DeleteAsync run on past its await.
-        var confirm = cut.FindAll("button").First(b => b.TextContent.Trim() == "Delete");
-        confirm.Click();
+        // The OdsConfirm prompt names the entry; its danger button lets DeleteAsync run on past its await.
+        cut.WaitForAssertion(() => Assert.True(cut.FindComponent<OdsConfirmDialog>().Instance.Open));
+        Assert.Equal("Delete event?", cut.FindComponent<OdsConfirmDialog>().Instance.Title);
+        Assert.Contains("Remove “Doomed” from this contract's log?", cut.Find(".odc-confirm-body").TextContent, StringComparison.Ordinal);
+        cut.FindAll(".ods-modal button").Single(b => b.TextContent.Trim().EndsWith("Delete", StringComparison.Ordinal)).Click();
         cut.WaitForAssertion(() => Assert.Single(announced));
 
         Assert.Equal("Event deleted. 1 entry in the log.", announced[0]);
@@ -1010,6 +1011,42 @@ public class ContractEventSurfaceTests
         var focusCall = Assert.Single(
             ctx.JSInterop.Invocations, i => i.Identifier == "focusHeading");
         Assert.Equal("con-events-heading", Assert.Single(focusCall.Arguments));
+    }
+
+    /// <summary>Cancel on the delete prompt deletes nothing and announces nothing.</summary>
+    [Fact]
+    public async Task Cancelling_the_delete_prompt_deletes_nothing()
+    {
+        var ctx = NewContext();
+        var announced = new List<string>();
+        var client = new Mock<IContractsApiClient>();
+        client
+            .Setup(c => c.ListEventsAsync(
+                ContractId, null, null, null, null, null, null,
+                It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ApiResult<PagedResult<ExistingContractEvent>>.Success(
+                new PagedResult<ExistingContractEvent>
+                {
+                    Items = [Event(title: "Doomed")],
+                    Offset = 0,
+                    Limit = ContractEventsSection.PageSize,
+                    TotalCount = 1,
+                },
+                HttpStatusCode.OK));
+        ctx.Services.AddSingleton(client.Object);
+
+        var cut = ctx.Render<SectionHost>(p => p
+            .Add(h => h.Contract, Lease())
+            .Add(h => h.OnAnnounce, EventCallback.Factory.Create<string>(this, announced.Add)));
+        await cut.InvokeAsync(() => cut.FindComponent<ContractEventsSection>().Instance.ReloadAsync());
+
+        cut.Find("button[aria-label='Delete Doomed']").Click();
+        cut.WaitForAssertion(() => Assert.True(cut.FindComponent<OdsConfirmDialog>().Instance.Open));
+        cut.FindAll(".ods-modal button").Single(b => b.TextContent.Trim() == "Cancel").Click();
+
+        cut.WaitForAssertion(() => Assert.False(cut.FindComponent<OdsConfirmDialog>().Instance.Open));
+        client.Verify(c => c.DeleteEventAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Empty(announced);
     }
 
     /// <summary>
@@ -1073,7 +1110,9 @@ public class ContractEventSurfaceTests
 
         var start = css.IndexOf(selector + " {", StringComparison.Ordinal);
         if (start < 0)
+        {
             start = css.IndexOf(selector, StringComparison.Ordinal);
+        }
 
         Assert.True(start >= 0, $"No rule for '{selector}' in odyssey-components.css.");
 

@@ -137,7 +137,9 @@
                 .Where(d => !SmartTagScopeRules.IsOutOfRange(d))
                 .ToList();
             if (points.Count == 0)
+            {
                 return null;
+            }
 
             const double Day = 86_400_000;
             double lo = points.Min(Ms), hi = points.Max(Ms);

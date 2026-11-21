@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
@@ -11,7 +12,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class JournalTaskTagsApiTests
+public class JournalTaskTagsApiTests(JournalTaskTagsApiTests.Host host) : SharedApiHostTests<JournalTaskTagsApiTests.Host>(host)
 {
     private const string ActorUserId = "task-tags-actor-id";
     private const string Path = "/api/task-tags";
@@ -32,7 +33,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -43,7 +44,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task List_WithoutTagClaims_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -54,7 +55,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task Create_Then_List_ReturnsTag()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Urgent");
@@ -66,7 +67,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task Create_DuplicateName_CaseInsensitive_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "Urgent");
@@ -78,7 +79,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task Delete_UnusedTag_ReturnsNoContent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Ephemeral");
@@ -90,7 +91,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task Delete_TagInUse_ReturnsConflict_NotServerError()
     {
-        await using var factory = new ApiFactory(ReadWriteWithTasks);
+        var factory = Factory.ForCaller(ReadWriteWithTasks);
         using var client = factory.CreateClient();
 
         var tag = await CreateAsync(client, "Linked");
@@ -109,7 +110,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task Rename_And_Archive_ViaPut()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "Wrok");
@@ -136,7 +137,7 @@ public class JournalTaskTagsApiTests
     [Fact]
     public async Task Rename_ToExistingName_ReturnsConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "Urgent");
@@ -148,6 +149,42 @@ public class JournalTaskTagsApiTests
         Assert.Equal(HttpStatusCode.Conflict, put.StatusCode);
     }
 
+    // ── An archived tag's name is taken (the design system's createBlocked rule) ──
+
+    [Fact]
+    public async Task Create_NameOfArchivedTag_ReturnsConflict_KeyedToName()
+    {
+        var factory = Factory.ForCaller(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var old = await CreateAsync(client, "Old garden");
+        (await client.PutAsJsonAsync($"{Path}/{old.JournalTaskTagId}", new UpdateJournalTaskTag { Name = "Old garden", Archived = true }))
+            .EnsureSuccessStatusCode();
+
+        var dup = await client.PostAsJsonAsync(Path, new NewJournalTaskTag { Name = "OLD GARDEN" });
+
+        Assert.Equal(HttpStatusCode.Conflict, dup.StatusCode);
+        using var body = JsonDocument.Parse(await dup.Content.ReadAsStringAsync());
+        var message = Assert.Single(body.RootElement.GetProperty("errors").GetProperty("Name").EnumerateArray()).GetString();
+        Assert.Equal("A task tag named 'OLD GARDEN' already exists but is archived. Restore it, or rename it, to reuse the name.", message);
+    }
+
+    [Fact]
+    public async Task Rename_ToArchivedTagName_ReturnsConflict()
+    {
+        var factory = Factory.ForCaller(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var old = await CreateAsync(client, "Retired");
+        (await client.PutAsJsonAsync($"{Path}/{old.JournalTaskTagId}", new UpdateJournalTaskTag { Name = "Retired", Archived = true }))
+            .EnsureSuccessStatusCode();
+        var other = await CreateAsync(client, "Current");
+
+        var put = await client.PutAsJsonAsync($"{Path}/{other.JournalTaskTagId}", new UpdateJournalTaskTag { Name = "retired" });
+
+        Assert.Equal(HttpStatusCode.Conflict, put.StatusCode);
+    }
+
     private static async Task<ExistingJournalTaskTag> CreateAsync(HttpClient client, string name, string? description = null)
     {
         var post = await client.PostAsJsonAsync(Path, new NewJournalTaskTag { Name = name, Description = description });
@@ -155,7 +192,10 @@ public class JournalTaskTagsApiTests
         return (await post.Content.ReadFromJsonAsync<ExistingJournalTaskTag>())!;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateDomainContext)

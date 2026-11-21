@@ -24,7 +24,7 @@ public class FileServiceTests : FileStorage.FileStorageTestBase
         var sp = scope.ServiceProvider;
         var context = sp.GetRequiredService<OdysseyContext>();
         var service = new FileService(
-            context, new FileValidationService(), Clock, observers: null,
+            context, new FileValidationService(),
             writer: sp.GetRequiredService<StoredFileWriter>(), store: sp.GetRequiredService<IObjectStore>(),
             source: sp.GetRequiredService<StoredFileContentSource>());
         return (scope, context, service);
@@ -294,7 +294,7 @@ public class FileServiceTests : FileStorage.FileStorageTestBase
     }
 
     [Fact]
-    public async Task DeleteFileAsync_RemovesFileAndBlob()
+    public async Task DeleteFileAsync_RemovesTheRowAndReleasesTheFile()
     {
         var (scope, context, fileService) = await NewFileServiceAsync();
         await using var disposeScope = scope;
@@ -306,7 +306,6 @@ public class FileServiceTests : FileStorage.FileStorageTestBase
 
         Assert.True(deleted);
         Assert.Null(await fileService.GetFileMetadataAsync(uploaded.Id));
-        Assert.Equal(0, context.FileBlob.Count());
         // The file on disk is released for erasure after the deletion grace, never deleted under the row (issue #448).
         Assert.Equal(StoredObjectState.PendingDelete, context.StoredObjects.AsNoTracking().Single().State);
     }

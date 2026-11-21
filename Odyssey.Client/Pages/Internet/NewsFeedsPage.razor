@@ -8,8 +8,9 @@
     Feeds — the household's feed list (issue #473 §3.3; Odyssey Design System · ui_kits/web/NewsFeeds.jsx). The page
     holds the FULL set (GET /api/news-feeds?state=All in pages of NewsLimits.MaxPageSize, at most five requests) and
     filters and sorts it client-side, as Accounts does; OdsInfiniteList shows it in its in-memory mode with a "Load N
-    at a time" select. The header's Overview has By tags and By status — the three statuses are disjoint, so the tile
-    sums to the feed count; "need attention" overlaps them and lives in the sub-line.
+    at a time" select. The Status filter is one mixed list (lifecycle OR, health OR, the two groups AND); the Overview's
+    By status shows the same members, which overlap, so its total is the feed count. The "Attention" problems list
+    every feed that needs attention, and Review reveals it on this page.
 
     No visible divider sits above the list; an sr-only h2 keeps the outline and is never a focus target. Where focus
     would go "to the list" it goes to the first card's header, else the visible empty-state heading (§6.6).
@@ -21,6 +22,7 @@
 <div class="nw-page" id="@RootId">
 <MudStack Spacing="4">
     <PageHeader Title="Feeds" Icon="@Icons.Material.Filled.RssFeed"
+                Problems="Problems" ProblemsLabel="Attention"
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true"
                 PrimaryActionText="New feed" OnPrimaryAction="NewFeedClicked" ShowPrimaryAction="_canCreate"
@@ -31,7 +33,7 @@
             {
                 <div class="odc-summary-grid">
                     <OdsBreakdownTile Label="By tags" Rows="TagRows" Empty="No tagged feeds." />
-                    <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No feeds." />
+                    <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No feeds." TotalValue="@_feeds.Count" />
                 </div>
             }
         </OverviewContent>
@@ -109,10 +111,8 @@
                     <NewsFeedCard @key="feed.Id" Feed="feed" TagsById="_tagsById" Menu="MenuFor(feed)"
                                   Open="@(_openId == feed.Id)" OnToggle="open => OnToggle(feed, open)"
                                   Highlight="@(_revealId == feed.Id)"
-                                  Busy="@_busyIds.Contains(feed.Id)" CanUpdate="_canUpdate" CanDelete="_canDelete"
-                                  Polling="@_polls.ContainsKey(feed.Id)" PollExpired="@_pollExpired.Contains(feed.Id)"
-                                  OnCheckAgain="CheckAgainAsync" OnStopChecking="StopChecking"
-                                  OnUseNewAddress="UseNewAddressAsync" OnCopied="Say" />
+                                  Busy="@_busyIds.Contains(feed.Id)"
+                                  OnCheckAgain="CheckAgainAsync" OnCopied="Say" />
                 </RenderItem>
             </OdsInfiniteList>
         </div>
@@ -134,39 +134,27 @@
                            ReturnFocusToId="@ActionMenuId" Closed="OnImportClosedAsync" />
 }
 
-@if (_tagsFeed is { } tagsFeed)
-{
-    <OdsFormDialog @key="_tagsKey" Open="_tagsOpen" OpenChanged="OnTagsOpenChanged"
-                   Icon="local_offer" RequiredLegend="false"
-                   Title="@($"Tags for “{tagsFeed.DisplayTitle}”")"
-                   SubmitLabel="Save" SubmitIcon="check" OnSubmit="SaveFeedTagsAsync">
-        <OdsTagMultiSelect Label="Tags" Value="_tagsDraft" ValueChanged="v => { _tagsDraft = v; _tagsError = null; }"
-                           Options="@NewsVisuals.TagPickerOptions(_tags, tagsFeed.TagIds)"
-                           Noun="news tag" NounPlural="news tags" Error="@_tagsError"
-                           Help="Every article from this feed carries these tags too." />
-    </OdsFormDialog>
-}
-
 @if (_deleting is { } deleting)
 {
     <OdsModal @key="_deleteKey" Open="_deleteOpen" OpenChanged="OnDeleteOpenChanged"
               Icon="delete" IconTone="OdsModalTone.Error" Role="OdsModalRole.AlertDialog"
               InitialFocus="OdsModalInitialFocus.Cancel" RequiredLegend="false" DescribedById="nf-del-desc">
-        <Title>Delete feed?</Title>
+        <Title>@($"Delete “{deleting.DisplayTitle}”?")</Title>
         <ChildContent>
             @if (_deleteError is { } error)
             {
                 <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@error</OdsAlert>
             }
             <p class="nw-dialog-line" id="nf-del-desc">
-                Delete <em lang="@deleting.Language"><bdi>@deleting.DisplayTitle</bdi></em>@($" and its {NewsFeedback.Count(deleting.ArticleCount, "article", "articles")}? This cannot be undone.")
+                Delete <strong lang="@deleting.Language"><bdi>@deleting.DisplayTitle</bdi></strong>@($" and its {NewsFeedback.Count(deleting.ArticleCount, "article", "articles")}? This cannot be undone.")
             </p>
-            <OdsCheckbox Id="nf-del-ack" Label="I understand this deletes the feed and all its articles"
+            <OdsCheckbox Id="nf-del-ack" Label="I understand this cannot be undone"
                          Checked="_deleteAck" CheckedChanged="v => _deleteAck = v" />
         </ChildContent>
         <Footer>
             <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseDelete" data-dialog-cancel="true">Cancel</OdsButton>
-            <span class="nw-pending-actions">
+            @* aria-disabled says nothing about why, so the reason is visible beside it and is its description. *@
+            <span class="nw-del-actions">
                 <OdsButton id="nf-del-confirm" Variant="OdsButtonVariant.Danger" Icon="delete" Loading="_deleteBusy"
                            AriaDisabled="@(!_deleteAck)" aria-describedby="@(_deleteAck ? null : "nf-del-reason")"
                            OnClick="DeleteAsync">Delete feed</OdsButton>

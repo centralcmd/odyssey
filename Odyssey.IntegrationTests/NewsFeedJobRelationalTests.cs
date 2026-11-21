@@ -9,7 +9,7 @@ using Odyssey.Core.Internet.News.Files;
 using Odyssey.Core.Internet.News.Jobs;
 using Odyssey.Testing.FileStorage;
 using Odyssey.Testing.News;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 using static Odyssey.Testing.News.NewsFeedFixtures;
 
@@ -21,7 +21,7 @@ namespace Odyssey.IntegrationTests;
 /// bucket's <c>FOR UPDATE</c>, and the foreign keys the purge and the edit must respect (the RESTRICT key to
 /// <c>StoredObjects</c> among them). Two harnesses over one database are two worker replicas.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public sealed class NewsFeedJobRelationalTests(MariaDbFixture fixture) : IAsyncDisposable
 {
     private const string FeedUrl = "https://news.example.com/rss";
@@ -49,7 +49,7 @@ public sealed class NewsFeedJobRelationalTests(MariaDbFixture fixture) : IAsyncD
         }
 
         var harness = await NewsJobHarness.CreateAsync(
-            options => options.UseMySql(connection, ServerVersion.AutoDetect(connection), mySql => mySql.EnableRetryOnFailure()),
+            options => options.UseMySql(connection, ServerVersion.AutoDetect(connection), OdysseyDatabaseRetry.Configure),
             volume.FullName, clock, server, bucketCapacity, throttleSpacing: throttleSpacing);
         harnesses.Add(harness);
         return harness;

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
@@ -203,13 +204,13 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
                 item.ItemTags.Add(new JournalTaskTagLink { JournalTaskTagId = tag.JournalTaskTagId });
             }
 
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-            var file = new FileMetadata
+            var picture = new Photo
             {
-                Id = Guid.NewGuid(), FileName = $"p{i}.jpg", ContentType = "image/jpeg", SizeBytes = 3,
-                Sha256Hash = Guid.NewGuid().ToString("N"), UploadedAtUtc = now, FileBlobId = blob.Id, FileBlob = blob,
+                PhotoId = Guid.NewGuid(),
+                StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: Odyssey.Core.Journal.Originals.PhotoOriginalStorage.FeatureKey),
+                FileName = $"p{i}.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = StoredFileFixtures.Sha256([1, 2, 3]),
+                CreatedAt = now, UpdatedAt = now,
             };
-            var picture = new Photo { PhotoId = Guid.NewGuid(), FileId = file.Id, CreatedAt = now, UpdatedAt = now };
             foreach (var tag in photo.AsEnumerable().Reverse())
             {
                 picture.Tags.Add(new PhotoTagLink { PhotoTagId = tag.PhotoTagId });
@@ -217,8 +218,6 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             context.JournalEntries.Add(entry);
             context.JournalTasks.Add(item);
-            context.FileBlob.Add(blob);
-            context.FileMetadata.Add(file);
             context.Photos.Add(picture);
             (entryId, taskId, photoId) = (entry.JournalEntryId, item.JournalTaskId, picture.PhotoId);
         }
@@ -246,7 +245,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
         new(context, new FileLookup(context), new StubJournalLimitsLookup());
 
     private static PhotoService Photos(OdysseyContext context) =>
-        new(context, new ContactLookup(context), new FileReferenceGuard(context), null!,
+        new(context, new ContactLookup(context), null!,
             new StubJournalLimitsLookup(), NullLogger<PhotoService>.Instance,
             new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(context, null!, TimeProvider.System),
             null!, null!, new FixedUploadLimits(64L * 1024 * 1024));
@@ -266,7 +265,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     private async Task RecreateAsync()
     {
         await DropAsync();
-        await using (var server = ServerContext())
+        await using (var server = fixture.CreateOdysseyContext())
         {
             await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
         }
@@ -277,14 +276,10 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
     private async Task DropAsync()
     {
-        await using var server = ServerContext();
+        await using var server = fixture.CreateOdysseyContext();
         await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
     }
 
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 
     private sealed class CommandCounter : DbCommandInterceptor
     {

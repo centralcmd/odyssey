@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// raw JSON so each wire form (bare day, <c>Z</c>, offset) reaches the binder exactly as a client
 /// would send it.
 /// </summary>
-public class ContractSmartTagScopeApiTests
+public class ContractSmartTagScopeApiTests(ContractSmartTagScopeApiTests.Host host) : SharedApiHostTests<ContractSmartTagScopeApiTests.Host>(host)
 {
     private const string Path = "/api/contracts";
 
@@ -32,7 +32,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task Create_copies_the_term_days_into_the_scope()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "\"2021-03-01T09:30:00\"", "\"2026-08-31T00:00:00\"");
@@ -51,7 +51,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task Create_without_an_end_date_leaves_the_scope_open_at_the_end()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "\"2021-03-01\"", "null");
@@ -65,7 +65,7 @@ public class ContractSmartTagScopeApiTests
     {
         // AC 2a: the create copy reads the term AS STORED — the same reading the backfill's DATE()
         // takes — so a created and a backfilled contract with the same stored row agree.
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "\"2021-03-01T00:30:00+02:00\"", "null");
@@ -78,7 +78,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task A_one_off_contract_is_created_with_an_open_scope()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await PostRawAsync(client, Path,
@@ -100,7 +100,7 @@ public class ContractSmartTagScopeApiTests
     public async Task A_scope_date_is_stored_and_returned_as_its_utc_calendar_day(
         string wire, int year, int month, int day)
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "null");
 
@@ -115,7 +115,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task A_term_edit_that_carries_the_scope_forward_leaves_it_unchanged()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "null");
 
@@ -135,7 +135,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task Omitting_both_scope_fields_opens_the_scope()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "\"2026-08-31\"");
 
@@ -151,7 +151,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task A_scope_outside_the_term_is_accepted()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "\"2026-08-31\"");
 
@@ -166,7 +166,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task An_inverted_scope_is_a_422_keyed_on_the_end_and_nothing_is_written()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "\"2026-08-31\"");
 
@@ -185,7 +185,7 @@ public class ContractSmartTagScopeApiTests
     [Fact]
     public async Task A_same_day_scope_is_valid()
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "null");
 
@@ -200,7 +200,7 @@ public class ContractSmartTagScopeApiTests
     [InlineData("smartTagScopeStart", "\"0001-01-01\"")]
     public async Task A_scope_date_before_1900_is_a_400_keyed_on_the_field(string field, string wire)
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "null");
 
@@ -219,7 +219,7 @@ public class ContractSmartTagScopeApiTests
     [InlineData("null", "\"9999-12-31T15:00:00\"")]
     public async Task The_bounds_themselves_are_accepted(string start, string end)
     {
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "null");
 
@@ -234,7 +234,7 @@ public class ContractSmartTagScopeApiTests
     {
         // Passes the [Range] as bound (00:00 local on 1900-01-01 is not below the floor) but is
         // 1899-12-31 in UTC — the service re-checks after normalisation.
-        await using var factory = new OdysseyApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var created = await CreateAsync(client, "\"2021-03-01\"", "null");
 
@@ -250,7 +250,7 @@ public class ContractSmartTagScopeApiTests
     public async Task The_scope_cannot_be_written_without_contracts_update()
     {
         // The action-level policy runs before the action, so the contract need not exist.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.ContractsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ContractsRead]);
         using var client = factory.CreateClient();
 
         var response = await PutScopeAsync(client, Guid.NewGuid(), "\"2021-03-01\"", "null");
@@ -304,4 +304,7 @@ public class ContractSmartTagScopeApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         return await context.Contracts.AsNoTracking().SingleAsync(c => c.ContractId == contractId);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

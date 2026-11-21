@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Coverage settings for CI (ci.yml passes this file only on a push to main, where the coverage
+  badge reads the result). Only the production assemblies are measured: the shared demo-data
+  generators and the test assemblies themselves would otherwise count as covered code.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[Odyssey.*]*</Include>
+          <Exclude>[Odyssey.*Tests]*,[Odyssey.*Tests.*]*,[Odyssey.TestData]*,[Odyssey.AppHost]*</Exclude>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

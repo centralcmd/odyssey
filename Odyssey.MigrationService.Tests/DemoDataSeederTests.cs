@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
 using Odyssey.Context.Legal;
@@ -18,14 +19,41 @@ using Xunit;
 
 namespace Odyssey.MigrationService.Tests;
 
-public class DemoDataSeederTests
+/// <summary>
+/// The demo seeder. A full seed is the expensive step, so the tests that only READ a seeded database share one of two
+/// class fixtures — <see cref="SeededOnce"/>, a fresh database after one run, and <see cref="SeededTwice"/>, one after two
+/// runs for the assertions that a re-run moves nothing — while every test that mutates the database, or asserts what a
+/// single fresh run on its own does to a prepared state, still builds its own.
+/// </summary>
+public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, DemoDataSeederTests.SeededTwice seededTwice)
+    : IClassFixture<DemoDataSeederTests.SeededOnce>, IClassFixture<DemoDataSeederTests.SeededTwice>
 {
+    /// <summary>A fresh database after one seeder run, shared read-only by the tests that only look at its rows.</summary>
+    public sealed class SeededOnce() : SeededDatabase(runs: 1);
+
+    /// <summary>A fresh database after two seeder runs, for the read-only tests that also pin idempotency.</summary>
+    public sealed class SeededTwice() : SeededDatabase(runs: 2);
+
+    public abstract class SeededDatabase(int runs) : IAsyncLifetime
+    {
+        public ServiceProvider Provider { get; private set; } = null!;
+
+        public async Task InitializeAsync()
+        {
+            Provider = BuildProvider(out var seeder);
+            for (var run = 0; run < runs; run++)
+            {
+                await seeder.ExecuteAsync(CancellationToken.None);
+            }
+        }
+
+        public async Task DisposeAsync() => await Provider.DisposeAsync();
+    }
+
     [Fact]
     public async Task Seeds_users_with_roles_and_full_finance_dataset()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -63,16 +91,12 @@ public class DemoDataSeederTests
         Assert.Equal(expected.TransactionTagLinks.Count, await finance.TransactionTagLinks.CountAsync());
         Assert.Equal(expected.TaxStatements.Count, await finance.TaxStatements.CountAsync());
         Assert.Equal(expected.TaxStatementTags.Count, await finance.TaxStatementTags.CountAsync());
-        Assert.Equal(expected.TaxStatementFiles.Count, await finance.TaxStatementFiles.CountAsync());
-        // The contact images are ordinary Files-store rows and land in the same two tables, but they are
-        // carried separately on the data set because Contact.AvatarFileId is a real FK and contacts are
-        // seeded before the rest of the store (issue #86 §13).
-        Assert.Equal(
-            expected.FileMetadata.Count + expected.ContactAvatarFiles.Count,
-            await finance.FileMetadata.CountAsync());
-        Assert.Equal(
-            expected.FileBlobs.Count + expected.ContactAvatarBlobs.Count,
-            await finance.FileBlob.CountAsync());
+        // Everything with bytes is the worker's DemoFileSeeder's: this job has no file volumes, so it writes no
+        // file, no photo and no row that names one — and leaves every contact without an image.
+        Assert.Equal(0, await finance.TaxStatementFiles.CountAsync());
+        Assert.Equal(0, await finance.FileMetadata.CountAsync());
+        Assert.Equal(0, await finance.StoredObjects.CountAsync());
+        Assert.False(await finance.Contacts.AnyAsync(c => c.AvatarFileId != null));
 
         // Every seeded contact has a non-null, unique ExternalUid (issue #338 §6, AC #9).
         // Contacts moved to OdysseyContext (issue #325 follow-up).
@@ -151,10 +175,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_instruments_with_valid_identities_and_manual_closes_only()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -186,9 +207,7 @@ public class DemoDataSeederTests
         // Before the term label these were four fee kinds that resolved to TWO in-force values, with
         // the rest silently superseded. Named, each is its own series — which is the whole point. The
         // card's purchase APR is a seventh labelled term, and is left out here.
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -231,11 +250,8 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_a_paused_contract_carrying_an_in_force_periodic_fee()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        // Idempotent: a second run must not duplicate the row or move its stamp.
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
+        // Idempotent: the fixture's second run must not duplicate the row or move its stamp.
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -281,11 +297,8 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_a_spread_across_the_signature_lifecycle()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        // Idempotent: a second run must not duplicate a row or move a stamp.
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
+        // Idempotent: the fixture's second run must not duplicate a row or move a stamp.
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -340,9 +353,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_contracts_both_with_and_without_a_reference_number()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -372,9 +383,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_each_contract_with_the_smart_tag_scope_copied_from_its_term()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -406,10 +415,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_property_event_logs_across_both_types_and_both_sources()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -433,7 +439,9 @@ public class DemoDataSeederTests
             var dtoType = (Odyssey.Dtos.Finance.PropertyEventType)e.Type;
             Assert.True(Odyssey.Dtos.Finance.PropertyEventTypeMatrix.IsLegal(properties[e.PropertyId], dtoType), e.Title);
             if (Odyssey.Dtos.Finance.PropertyEventTypeMatrix.IsSystemOnly(dtoType))
+            {
                 Assert.Equal(ContractEventSource.System, e.Source);
+            }
         });
 
         // The shared table's other branch is untouched by the property seed.
@@ -443,11 +451,8 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_contract_event_logs_covering_the_states_the_surface_draws()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        // Idempotent: a second run must not duplicate a single entry.
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
+        // Idempotent: the fixture's second run must not duplicate a single entry.
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -502,16 +507,14 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_an_income_bearing_contract_the_rollup_reports()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
         var service = new ContractSummaryService(
             context,
-            new FixedTimeProvider(DemoDataDefaults.AnchorDate),
+            new FakeTimeProvider(DemoDataDefaults.AnchorDate),
             new AnchorSettingsLookup());
 
         var summary = await service.GetSummary("USD");
@@ -529,11 +532,6 @@ public class DemoDataSeederTests
         // direction were a rename of the existing figure.
         Assert.NotNull(summary.RunRate.Monthly);
         Assert.NotNull(summary.RunRate.NetMonthly);
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     /// <summary>
@@ -559,9 +557,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_journal_module_dataset()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -572,11 +568,12 @@ public class DemoDataSeederTests
         Assert.Equal(expected.JournalEntries.Count, await journal.JournalEntries.CountAsync());
         Assert.Equal(expected.JournalEntryTags.Count, await journal.JournalEntryTags.CountAsync());
         Assert.Equal(expected.JournalEntryContacts.Count, await journal.JournalEntryContacts.CountAsync());
-        Assert.Equal(expected.JournalEntryPhotos.Count, await journal.JournalEntryPhotos.CountAsync());
-        Assert.Equal(expected.JournalEntryAttachments.Count, await journal.JournalEntryAttachments.CountAsync());
         Assert.Equal(expected.JournalTasks.Count, await journal.JournalTasks.CountAsync());
         Assert.Equal(expected.JournalTaskTagLinks.Count, await journal.JournalTaskTagLinks.CountAsync());
-        Assert.Equal(expected.JournalTaskAttachments.Count, await journal.JournalTaskAttachments.CountAsync());
+        // The photo and attachment links name rows only the worker's demo-file seeder writes.
+        Assert.Equal(0, await journal.JournalEntryPhotos.CountAsync());
+        Assert.Equal(0, await journal.JournalEntryAttachments.CountAsync());
+        Assert.Equal(0, await journal.JournalTaskAttachments.CountAsync());
 
         // A journal entry with at least one contact, photo and attachment exists (rich example).
         Assert.True(await journal.JournalEntries.AnyAsync(), "expected seeded journal entries");
@@ -596,129 +593,23 @@ public class DemoDataSeederTests
         Assert.Equal(entryUids.Count, entryUids.Distinct().Count());
     }
 
+    /// <summary>The photo library is the worker's DemoFileSeeder's in full (Odyssey.Worker.Tests): every photo owns its bytes.</summary>
     [Fact]
-    public async Task Seeds_photos_module_dataset()
+    public async Task Seeds_no_photo_library()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var photos = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var expected = DemoDataSet.Build();
-
-        Assert.Equal(expected.Photos.Count, await photos.Photos.CountAsync());
-        Assert.Equal(expected.PhotoTags.Count, await photos.PhotoTags.CountAsync());
-        Assert.Equal(expected.PhotoTagLinks.Count, await photos.PhotoTagLinks.CountAsync());
-        Assert.Equal(expected.PhotoPeople.Count, await photos.PhotoPeople.CountAsync());
-        Assert.Equal(expected.PhotoAlbums.Count, await photos.PhotoAlbums.CountAsync());
-        Assert.Equal(expected.PhotoAlbumItems.Count, await photos.PhotoAlbumItems.CountAsync());
-    }
-
-    /// <summary>
-    /// A legacy database whose photo link rows were written by an <em>older</em> generator: the
-    /// deterministic surrogate key is the same, but the natural key it points at has since changed.
-    /// </summary>
-    /// <remarks>
-    /// Found in the wild. The demo generator's Landlord contact id changed, so a database seeded before
-    /// that carries a <c>PhotoPerson</c> with today's <c>PhotoPersonId</c> but yesterday's
-    /// <c>ContactId</c>. The seed's guards were keyed on the natural pair while the table's uniqueness
-    /// is on the surrogate key, so the row read as "new" and the insert died on a duplicate primary key
-    /// — taking the whole migrations job down with it. The same shape applies to
-    /// <c>PhotoTagLinks</c> and <c>PhotoAlbumItems</c>, which is why all three are asserted here.
-    /// </remarks>
-    [Fact]
-    public async Task Reseeds_over_link_rows_whose_surrogate_key_survived_a_changed_natural_key()
-    {
-        await using var provider = BuildProvider(out var seeder);
-        await seeder.ExecuteAsync(CancellationToken.None);
-
-        using (var scope = provider.CreateScope())
-        {
-            var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-
-            // Repoint each link row's natural key while keeping its primary key — exactly what an
-            // older generation of the generator leaves behind.
-            foreach (var person in journal.PhotoPeople)
-            {
-                person.ContactId = Guid.NewGuid();
-            }
-
-            foreach (var link in journal.PhotoTagLinks)
-            {
-                link.PhotoTagId = Guid.NewGuid();
-            }
-
-            foreach (var item in journal.PhotoAlbumItems)
-            {
-                item.PhotoId = Guid.NewGuid();
-            }
-
-            await journal.SaveChangesAsync();
-        }
-
-        var expected = DemoDataSet.Build();
-
-        // The whole assertion is "this does not throw": a duplicate-key insert here fails the
-        // migrations job, and since issue #290 that keeps the API down behind it.
-        await seeder.ExecuteAsync(CancellationToken.None);
-
-        using (var scope = provider.CreateScope())
-        {
-            var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-
-            // No row is duplicated: the surrogate keys were already taken, so nothing is re-inserted.
-            Assert.Equal(expected.PhotoPeople.Count, await journal.PhotoPeople.CountAsync());
-            Assert.Equal(expected.PhotoTagLinks.Count, await journal.PhotoTagLinks.CountAsync());
-            Assert.Equal(expected.PhotoAlbumItems.Count, await journal.PhotoAlbumItems.CountAsync());
-        }
-    }
-
-    // Reproduces the existing-deployment case: the journal unification backfill has created library
-    // Photos for the legacy journal files, so only those exist. The record-level idempotent seed must
-    // still add the standalone demo photos/tags/albums (not skip the whole seed).
-    [Fact]
-    public async Task Reseeds_standalone_photo_data_when_only_journal_photos_exist()
-    {
-        await using var provider = BuildProvider(out var seeder);
-        await seeder.ExecuteAsync(CancellationToken.None);
-        var expected = DemoDataSet.Build();
-
-        using (var scope = provider.CreateScope())
-        {
-            var photos = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var journalPhotoIds = await journal.JournalEntryPhotos.Select(p => p.PhotoId).ToListAsync();
-
-            // Drop everything except the journal-linked photos (simulating a backfill-only library).
-            photos.PhotoAlbumItems.RemoveRange(photos.PhotoAlbumItems);
-            photos.PhotoTagLinks.RemoveRange(photos.PhotoTagLinks);
-            photos.PhotoPeople.RemoveRange(photos.PhotoPeople);
-            photos.PhotoAlbums.RemoveRange(photos.PhotoAlbums);
-            photos.PhotoTags.RemoveRange(photos.PhotoTags);
-            photos.Photos.RemoveRange(photos.Photos.Where(p => !journalPhotoIds.Contains(p.PhotoId)));
-            await photos.SaveChangesAsync();
-            Assert.Equal(journalPhotoIds.Distinct().Count(), await photos.Photos.CountAsync());
-            Assert.Equal(0, await photos.PhotoTags.CountAsync());
-        }
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-
-        using (var scope = provider.CreateScope())
-        {
-            var photos = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            Assert.Equal(expected.Photos.Count, await photos.Photos.CountAsync());
-            Assert.Equal(expected.PhotoTags.Count, await photos.PhotoTags.CountAsync());
-            Assert.Equal(expected.PhotoAlbums.Count, await photos.PhotoAlbums.CountAsync());
-        }
+        Assert.Equal(0, await photos.Photos.CountAsync());
+        Assert.Equal(0, await photos.PhotoTags.CountAsync());
+        Assert.Equal(0, await photos.PhotoAlbums.CountAsync());
     }
 
     [Fact]
     public async Task Seeds_complete_profile_for_each_demo_user()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var app = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -754,8 +645,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_the_house_and_the_car_as_properties_not_as_accounts()
     {
-        await using var provider = BuildProvider(out var seeder);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -787,10 +677,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_the_demo_properties_once_and_deterministically()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -830,10 +717,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_the_demo_locations_once_one_per_source_and_one_archived()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -943,9 +827,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_legal_acceptances_that_satisfy_the_compliance_rule_for_every_demo_user()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var app = scope.ServiceProvider.GetRequiredService<OdysseyContext>();

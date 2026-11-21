@@ -28,7 +28,7 @@ namespace Odyssey.IntegrationTests;
 /// sentinel the seeder clears is the same value the assertion later compares against.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class BootstrapAdminRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_bootstrap_admin";

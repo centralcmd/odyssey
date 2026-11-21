@@ -20,7 +20,7 @@ namespace Odyssey.IntegrationTests;
 /// suppressed, so this is the only tier that proves the transactional code path actually runs (and
 /// commits successfully) against a real relational engine, not just that it compiles.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactVCardIntegrationTests(MariaDbFixture fixture)
 {
     /// <summary>
@@ -30,7 +30,6 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
-            new FileService(context, new FileValidationService()),
             new FixedUploadLimits(64L * 1024 * 1024),
             writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
             store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
@@ -107,7 +106,7 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
         // The context under test retries, which is what makes the transactional assertion below
         // meaningful — an execution strategy rejects an ambient transaction it did not open itself.
         var retryingOptions = new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .Options;
 
         await using (var migrating = new OdysseyContext(migrationOptions))

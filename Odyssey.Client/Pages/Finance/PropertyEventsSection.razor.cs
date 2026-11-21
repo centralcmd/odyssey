@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -23,6 +24,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// </remarks>
 public partial class PropertyEventsSection : IAsyncDisposable
 {
+    private OdsConfirm _confirm = default!;
+
     /// <summary>Rows per page — the design system's <c>pageSize</c> default.</summary>
     public const int PageSize = 25;
 
@@ -106,7 +109,9 @@ public partial class PropertyEventsSection : IAsyncDisposable
             // A different record means a different log, read from its first page; the same record
             // re-read after a property write keeps the reader's page.
             if (_loadedPropertyId != Property.PropertyId)
+            {
                 _page = 1;
+            }
 
             _loadedPropertyId = Property.PropertyId;
             _loadedUpdatedAt = Property.UpdatedAt;
@@ -114,7 +119,9 @@ public partial class PropertyEventsSection : IAsyncDisposable
         }
 
         if (NewEventRequestToken is not { } token || token == _handledNewEventToken)
+        {
             return;
+        }
 
         _handledNewEventToken = token;
         OpenNew();
@@ -146,7 +153,9 @@ public partial class PropertyEventsSection : IAsyncDisposable
         var response = await _listLoader.RunAsync(ct =>
             Properties.ListEventsAsync(Property.PropertyId, page: _page, pageSize: PageSize, ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var page = response.Value.PagedOrToast(Snackbar, "events");
 
@@ -170,7 +179,9 @@ public partial class PropertyEventsSection : IAsyncDisposable
     private async Task GoToPageAsync(int page)
     {
         if (page == _page)
+        {
             return;
+        }
 
         _page = page;
         await LoadAsync();
@@ -185,19 +196,20 @@ public partial class PropertyEventsSection : IAsyncDisposable
 
     private async Task DeleteAsync(ExistingPropertyEvent ev)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete event?",
-            $"Remove “{ev.Title}” from this property's log? This can’t be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete event?", $"Remove “{ev.Title}” from this property's log? This can’t be undone.", "Delete");
 
-        if (confirmed != true)
+        if (!confirmed)
+        {
             return;
+        }
 
         var ok = (await Properties.DeleteEventAsync(Property.PropertyId, ev.PropertyEventId))
             .Toast(Snackbar, "Unable to delete event", "Event deleted.");
 
         if (!ok)
+        {
             return;
+        }
 
         await LoadAsync();
 

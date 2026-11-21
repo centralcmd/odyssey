@@ -17,14 +17,14 @@ using static Odyssey.Api.Tests.News.NewsApiTestSupport;
 namespace Odyssey.Api.Tests.News;
 
 /// <summary>News tags, the status endpoint, the manual run and the claim gate of every news endpoint (issue #470 §5.4, §5.5).</summary>
-public sealed class NewsTagsStatusApiTests
+public sealed class NewsTagsStatusApiTests(NewsTagsStatusApiTests.Host host) : SharedApiHostTests<NewsTagsStatusApiTests.Host>(host)
 {
     private const string Tags = "/api/news-tags";
 
     [Fact]
     public async Task Tags_are_created_updated_archived_and_a_duplicate_name_in_any_case_is_409()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         using var client = factory.CreateClient();
 
         var created = await client.PostAsJsonAsync(Tags, new NewNewsTag { Name = "  World ", Icon = null, Color = "#a1b2c3" });
@@ -38,18 +38,51 @@ public sealed class NewsTagsStatusApiTests
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Tags, new NewNewsTag { Name = "" })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Tags, new NewNewsTag { Name = "X", Color = "red" })).StatusCode);
 
-        var updated = await (await client.PutAsJsonAsync($"{Tags}/{tag.Id}", new UpdateNewsTag { Name = "Earth", Description = "Planet" })).ReadAsync<ExistingNewsTag>();
+        var updated = await (await client.PutAsJsonAsync($"{Tags}/{tag.NewsTagId}", new UpdateNewsTag { Name = "Earth", Description = "Planet" })).ReadAsync<ExistingNewsTag>();
         Assert.Equal(("Earth", "Planet", (string?)null), (updated.Name, updated.Description, updated.Color));
-        var archived = await (await client.PostAsync($"{Tags}/{tag.Id}/archive", null)).ReadAsync<ExistingNewsTag>();
-        Assert.True(archived.Archived);
-        Assert.False((await (await client.PostAsync($"{Tags}/{tag.Id}/unarchive", null)).ReadAsync<ExistingNewsTag>()).Archived);
+        Assert.Null(updated.Archived);
+
+        // Archive and restore ride on the full-replacement PUT, as on every tag resource.
+        var archived = await (await client.PutAsJsonAsync($"{Tags}/{tag.NewsTagId}", new UpdateNewsTag { Name = "Earth", Archived = true })).ReadAsync<ExistingNewsTag>();
+        Assert.NotNull(archived.Archived);
+        var rearchived = await (await client.PutAsJsonAsync($"{Tags}/{tag.NewsTagId}", new UpdateNewsTag { Name = "Earth", Archived = true })).ReadAsync<ExistingNewsTag>();
+        Assert.Equal(archived.Archived, rearchived.Archived);
+        Assert.Null((await (await client.PutAsJsonAsync($"{Tags}/{tag.NewsTagId}", new UpdateNewsTag { Name = "Earth" })).ReadAsync<ExistingNewsTag>()).Archived);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"{Tags}/{tag.NewsTagId}/archive", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"{Tags}/{Guid.NewGuid()}", new UpdateNewsTag { Name = "Y" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_list_is_paged_searched_filtered_and_sorted_like_every_tag_list()
+    {
+        var factory = Factory.ForCaller(AllNewsClaims);
+        await factory.WithContextAsync(async context =>
+        {
+            context.NewsTags.Add(new NewsTag { NewsTagId = Guid.NewGuid(), Name = "Bravo", NameKey = "bravo", Description = "Sport", CreatedAtUtc = Base, UpdatedAtUtc = Base });
+            context.NewsTags.Add(new NewsTag { NewsTagId = Guid.NewGuid(), Name = "Alpha", NameKey = "alpha", CreatedAtUtc = Base, UpdatedAtUtc = Base });
+            context.NewsTags.Add(new NewsTag { NewsTagId = Guid.NewGuid(), Name = "Charlie", NameKey = "charlie", ArchivedAtUtc = Base, CreatedAtUtc = Base, UpdatedAtUtc = Base });
+            await context.SaveChangesAsync();
+        });
+        using var client = factory.CreateClient();
+
+        var page = await (await client.GetAsync($"{Tags}?offset=0&limit=2")).ReadAsync<PagedResult<ExistingNewsTag>>();
+        Assert.Equal(3, page.TotalCount);
+        Assert.Equal(["Alpha", "Bravo"], page.Items.Select(t => t.Name));
+
+        var desc = await (await client.GetAsync($"{Tags}?sortBy=Name&sortDir=Desc")).ReadAsync<PagedResult<ExistingNewsTag>>();
+        Assert.Equal(["Charlie", "Bravo", "Alpha"], desc.Items.Select(t => t.Name));
+
+        var archived = await (await client.GetAsync($"{Tags}?status=Archived")).ReadAsync<PagedResult<ExistingNewsTag>>();
+        Assert.Equal(["Charlie"], archived.Items.Select(t => t.Name));
+
+        var searched = await (await client.GetAsync($"{Tags}?search=sport")).ReadAsync<PagedResult<ExistingNewsTag>>();
+        Assert.Equal(["Bravo"], searched.Items.Select(t => t.Name));
     }
 
     [Fact]
     public async Task AC71_All_500_tags_come_back_in_one_response_and_the_501st_is_422()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.WithContextAsync(async context =>
         {
             for (var i = 0; i < NewsLimits.MaxTags; i++)
@@ -61,24 +94,21 @@ public sealed class NewsTagsStatusApiTests
         });
         using var client = factory.CreateClient();
 
-        Assert.Equal(NewsLimits.MaxTags, (await (await client.GetAsync(Tags)).ReadAsync<List<ExistingNewsTag>>()).Count);
+        Assert.Equal(NewsLimits.MaxTags, (await (await client.GetAsync($"{Tags}?limit={NewsLimits.MaxTags}")).ReadAsync<PagedResult<ExistingNewsTag>>()).Items.Count);
         var refused = await client.PostAsJsonAsync(Tags, new NewNewsTag { Name = "One more" });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
         Assert.Equal(NewsErrorCodes.TagLimit, (await refused.ProblemAsync()).Code());
     }
 
     [Fact]
-    public async Task AC9_A_tag_in_use_is_409_with_counts_and_a_detach_without_news_update_is_403_and_changes_nothing()
+    public async Task AC9_A_tag_in_use_is_409_with_counts_and_changes_nothing()
     {
-        await using var admin = new OdysseyApiFactory(AllNewsClaims);
+        var admin = Factory.ForCaller(AllNewsClaims);
         var tag = await admin.SeedTagAsync("Used");
         var feed = await admin.SeedFeedAsync();
         var article = (await admin.SeedArticlesAsync(feed, 1))[0];
         await admin.TagFeedAsync(feed, tag);
         await admin.TagArticleAsync(article, tag);
-        await using var tagsOnly = new OdysseyApiFactory(
-            [PermissionClaims.NewsRead, PermissionClaims.NewsTagsDelete, PermissionClaims.NewsFeedsUpdate], sharingStoreWith: admin);
-        using var limited = tagsOnly.CreateClient();
         using var client = admin.CreateClient();
 
         var inUse = await client.DeleteAsync($"{Tags}/{tag}");
@@ -87,20 +117,26 @@ public sealed class NewsTagsStatusApiTests
         Assert.Equal(NewsErrorCodes.TagInUse, problem.Code());
         Assert.Equal((1, 1), (problem.GetProperty("feedCount").GetInt32(), problem.GetProperty("articleCount").GetInt32()));
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await limited.DeleteAsync($"{Tags}/{tag}?detachLinks=true")).StatusCode);
-        Assert.Equal(2, await admin.WithContextAsync(async c => await c.NewsFeedTags.CountAsync() + await c.NewsArticleTags.CountAsync()));
+        // There is no detach any more: the query string is ignored and the tag still refuses.
+        Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"{Tags}/{tag}?detachLinks=true")).StatusCode);
+        Assert.Equal(3, await admin.WithContextAsync(async c => await c.NewsTags.CountAsync() + await c.NewsFeedTags.CountAsync() + await c.NewsArticleTags.CountAsync()));
+    }
 
-        var version = await admin.WithContextAsync(c => c.NewsFeeds.Where(f => f.NewsFeedId == feed).Select(f => f.SettingsVersion).SingleAsync());
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Tags}/{tag}?detachLinks=true")).StatusCode);
-        Assert.Equal(0, await admin.WithContextAsync(async c => await c.NewsTags.CountAsync() + await c.NewsFeedTags.CountAsync() + await c.NewsArticleTags.CountAsync()));
-        Assert.NotEqual(version, await admin.WithContextAsync(c => c.NewsFeeds.Where(f => f.NewsFeedId == feed).Select(f => f.SettingsVersion).SingleAsync()));
+    [Fact]
+    public async Task An_unused_tag_deletes_and_then_is_404()
+    {
+        var admin = Factory.ForCaller(AllNewsClaims);
+        var tag = await admin.SeedTagAsync("Unused");
+        using var client = admin.CreateClient();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Tags}/{tag}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"{Tags}/{tag}")).StatusCode);
     }
 
     [Fact]
     public async Task AC42_AC58_Status_answers_200_with_the_resolved_text_quota_its_reached_flag_and_feed_titles()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.NewsTextStoreMaxGiB, "1");
         var feed = await factory.SeedFeedAsync(state: s => s.QuarantinedAtUtc = Base, articles: 4);
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
@@ -190,8 +226,6 @@ public sealed class NewsTagsStatusApiTests
         { "GET", $"/api/news-tags/{Guid.Empty}", PermissionClaims.NewsRead, null },
         { "POST", "/api/news-tags", PermissionClaims.NewsTagsCreate, new { name = "X" } },
         { "PUT", $"/api/news-tags/{Guid.Empty}", PermissionClaims.NewsTagsUpdate, new { name = "X" } },
-        { "POST", $"/api/news-tags/{Guid.Empty}/archive", PermissionClaims.NewsTagsUpdate, null },
-        { "POST", $"/api/news-tags/{Guid.Empty}/unarchive", PermissionClaims.NewsTagsUpdate, null },
         { "DELETE", $"/api/news-tags/{Guid.Empty}", PermissionClaims.NewsTagsDelete, null },
         { "GET", "/api/news-status", PermissionClaims.FileStorageRead, null },
     };
@@ -201,12 +235,12 @@ public sealed class NewsTagsStatusApiTests
     [MemberData(nameof(Gates))]
     public async Task AC2_Every_news_endpoint_is_403_without_its_claim(string method, string url, string claim, object? body)
     {
-        await using var without = new OdysseyApiFactory([.. AllNewsClaims.Where(c => c != claim)]);
-        await using var with = new OdysseyApiFactory([claim]);
+        // One store: the refused request writes nothing, so the permitted one sees what a fresh host would.
+        IReadOnlyCollection<string> without = [.. AllNewsClaims.Where(c => c != claim)], with = [claim];
 
-        foreach (var (factory, forbidden) in new[] { (without, true), (with, false) })
+        foreach (var (permissions, forbidden) in new[] { (without, true), (with, false) })
         {
-            using var client = factory.CreateClient();
+            using var client = Factory.ClientFor(permissions);
             using var request = new HttpRequestMessage(new HttpMethod(method), url) { Content = body is null ? null : JsonBody(body) };
             var status = (await client.SendAsync(request)).StatusCode;
             if (forbidden)
@@ -220,4 +254,7 @@ public sealed class NewsTagsStatusApiTests
             }
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

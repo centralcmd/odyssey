@@ -22,7 +22,7 @@ public class NewsSharedComponentTests
     // ── NewsFeedHealthChip ───────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(NewsFeedHealth.Pending, "Pending first fetch", null)]
+    [InlineData(NewsFeedHealth.Pending, "Pending first fetch", "info")]
     [InlineData(NewsFeedHealth.Healthy, "Healthy", "income")]
     [InlineData(NewsFeedHealth.Failing, "Failing", "warning")]
     [InlineData(NewsFeedHealth.Gone, "Gone", "error")]
@@ -40,8 +40,11 @@ public class NewsSharedComponentTests
         var classes = chip.ClassList.ToHashSet();
         Assert.Contains("odc-newshealth", classes);
         if (tone is not null)
+        {
             Assert.Contains(tone, classes);
-        Assert.DoesNotContain("info", classes);   // Tide and Sea stay brand-only
+        }
+        // Only Pending first fetch reads as info: waiting, not wrong.
+        Assert.Equal(health == NewsFeedHealth.Pending, classes.Contains("info"));
     }
 
     [Fact]

@@ -44,7 +44,7 @@ namespace Odyssey.IntegrationTests;
 /// points at them.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class UserDeletionRollbackTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_delete_rollback";
@@ -157,7 +157,7 @@ public class UserDeletionRollbackTests(MariaDbFixture fixture)
             options.UseMySql(
                 connectionString,
                 ServerVersion.AutoDetect(connectionString),
-                mySql => mySql.EnableRetryOnFailure()));
+                OdysseyDatabaseRetry.Configure));
 
         var identity = services.AddIdentityCore<ApplicationUser>()
             .AddRoles<IdentityRole>()

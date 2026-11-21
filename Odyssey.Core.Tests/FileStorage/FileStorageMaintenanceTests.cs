@@ -2,7 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Context;
+using System.Reflection;
 using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
+using Odyssey.Core.Internet.News.Files;
+using Odyssey.Core.Journal.Originals;
+using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Jobs;
 using Odyssey.Testing.FileStorage;
 using Xunit;
@@ -193,6 +198,27 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
     {
         await using var scope = host.Scope();
         return await scope.ServiceProvider.GetRequiredService<OdysseyContext>().FileStorageMaintenanceLeases.AsNoTracking().SingleAsync();
+    }
+
+    /// <summary>
+    /// Every production storage feature is <c>Graced</c>, so a release always passes through the one deletion delay an
+    /// administrator sets. A new feature fails here until it is added to the list, and one declared <c>Immediate</c>
+    /// fails until that is a decision. Restored after #550 deleted the test file it used to live in.
+    /// </summary>
+    [Fact]
+    public void Every_production_storage_feature_is_graced()
+    {
+        var features = typeof(PhotoOriginalStorage).Assembly.GetTypes()
+            .SelectMany(t => t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+            .Where(f => f.FieldType == typeof(StorageFeature))
+            .Select(f => (StorageFeature)f.GetValue(null)!)
+            .ToList();
+
+        Assert.Equal(
+            [StoredFileAreas.ContactAvatarFeatureKey, StoredFileAreas.FinanceFeatureKey, StoredFileAreas.JournalFeatureKey,
+             NewsArticleStorage.FeatureKey, PhotoOriginalStorage.FeatureKey, PhotoThumbnailStorage.FeatureKey],
+            features.Select(f => f.Key).Order(StringComparer.Ordinal));
+        Assert.All(features, f => Assert.Equal(StorageReleaseMode.Graced, f.ReleaseMode));
     }
 }
 

@@ -9,7 +9,7 @@ namespace Odyssey.Client.Pages.Finance;
 /// reason <see cref="AllocationLegend"/> was split out of <c>AccountsOverview</c>: a branch that
 /// lives as a private method on a component is checkable only by rendering the page, and
 /// <c>Home</c> cannot be rendered in a test — its <c>OnInitializedAsync</c> early-returns on
-/// <c>!OperatingSystem.IsBrowser()</c> and it exposes no <c>InteractiveCheck</c> seam.
+/// <c>!OperatingSystem.IsBrowser()</c> rather than reading <c>IRenderInteractivity</c>.
 /// </summary>
 /// <remarks>
 /// These are the branches a source-lint cannot reach. A lint proves the page asks the server for its
@@ -134,11 +134,15 @@ internal static class DashboardFigures
     internal static string? CompositionNote(NetWorthHistory? history, Func<decimal, string> formatMoney)
     {
         if (!PropertiesContribute(history))
+        {
             return null;
+        }
 
         var last = history!.Points[^1];
         if (last.PropertyValue is not { } propertyValue)
+        {
             return null;
+        }
 
         var count = last.ContributingPropertyCount;
         var accountsAlone = last.NetWorth - last.PropertyValue.Value;
@@ -190,9 +194,14 @@ internal static class DashboardFigures
         var mixed = attention.Count > 0 && information.Count > 0;
 
         foreach (var row in attention)
+        {
             row.Group = mixed ? NeedsAttentionGroup : null;
+        }
+
         foreach (var row in information)
+        {
             row.Group = mixed ? ForYourInformationGroup : null;
+        }
 
         return [.. attention, .. information];
     }
@@ -313,7 +322,9 @@ internal static class DashboardFigures
         bool deltaWithheld)
     {
         if (understatedLabels.Count == 0)
+        {
             return null;
+        }
 
         var subject = understatedLabels.Count == 1
             ? $"{understatedLabels[0]} is understated"
@@ -349,7 +360,9 @@ internal static class DashboardFigures
     internal static string? RevaluedNote(IReadOnlyList<string> revaluedLabels, bool anyAccount, bool anyProperty)
     {
         if (revaluedLabels.Count == 0)
+        {
             return null;
+        }
 
         var subject = revaluedLabels.Count == 1
             ? $"{revaluedLabels[0]} steps"
@@ -375,7 +388,9 @@ internal static class DashboardFigures
     internal static List<OdsLinePoint> BuildSeries(NetWorthHistory? history)
     {
         if (history is null || history.Points.Count == 0)
+        {
             return [];
+        }
 
         var series = new List<OdsLinePoint>(history.Points.Count);
         foreach (var point in history.Points)
@@ -425,7 +440,9 @@ internal static class DashboardFigures
         bool accountsOnly, bool propertiesContribute)
     {
         if (pointCount == 0 || string.IsNullOrEmpty(firstLabel) || string.IsNullOrEmpty(lastLabel))
+        {
             return accountsOnly ? "Net worth over time, accounts only" : "Net worth over time";
+        }
 
         var suffix = accountsOnly ? ", accounts only"
             : propertiesContribute ? ", including property estimates"

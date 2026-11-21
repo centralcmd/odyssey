@@ -157,7 +157,7 @@ public class AccountServiceTests
             ContentType = "application/pdf",
             SizeBytes = 1024,
             Sha256Hash = "hash",
-            FileBlobId = Guid.NewGuid(),
+            FinanceStoredObjectId = Guid.NewGuid(),
             UploadedAtUtc = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();

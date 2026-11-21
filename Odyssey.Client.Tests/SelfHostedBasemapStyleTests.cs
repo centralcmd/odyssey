@@ -115,7 +115,9 @@ public class SelfHostedBasemapStyleTests
     {
         var sprites = Path.Combine(Maps, "self-hosted", "sprites");
         foreach (var name in new[] { "ofm.json", "ofm.png", "ofm@2x.json", "ofm@2x.png" })
+        {
             Assert.True(new FileInfo(Path.Combine(sprites, name)).Length > 0, $"{name} is missing or empty.");
+        }
 
         Assert.Contains("CC0 1.0 Universal", File.ReadAllText(Path.Combine(sprites, "LICENSE.txt")), StringComparison.Ordinal);
         Assert.Contains("BSD 3-Clause", File.ReadAllText(Path.Combine(Maps, "self-hosted-dark.LICENSE.txt")), StringComparison.Ordinal);

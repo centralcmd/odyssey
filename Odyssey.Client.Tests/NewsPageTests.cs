@@ -79,7 +79,7 @@ public class NewsPageTests
         var context = new NewsPageTestContext(claims);
         context.News.Setup(n => n.GetCatalogueAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(catalogue ?? [CatalogueFeed("Example News", id: FeedId)]));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
         context.News.Setup(n => n.GetUnreadCountsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(counts ?? new NewsUnreadCounts { Total = articles.Count(a => !a.IsRead) }));
         context.News.Setup(n => n.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new NewsStatus()));
@@ -115,6 +115,33 @@ public class NewsPageTests
         return labels;
     }
 
+    /// <summary>The header's ⋯ "News actions" items, by label (the menu is closed again afterwards).</summary>
+    internal static List<string> NewsActions(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut)
+    {
+        var trigger = $"#{NewsPage.ActionMenuId} button";
+        if (cut.FindAll(trigger).Count == 0)
+        {
+            return [];
+        }
+
+        cut.Find(trigger).Click();
+        cut.WaitForElement(".mud-menu-item");
+        var labels = cut.FindAll(".mud-menu-item").Select(i => i.TextContent.Trim()).Where(t => t.Length > 0).ToList();
+        cut.Find(trigger).Click();
+        return labels;
+    }
+
+    /// <summary>Opens the header's ⋯ "News actions" and chooses <paramref name="label"/>.</summary>
+    internal static void ClickNewsAction(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, string label)
+    {
+        cut.Find($"#{NewsPage.ActionMenuId} button").Click();
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll(".mud-menu-item"), i => i.TextContent.Contains(label, StringComparison.Ordinal)));
+        cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains(label, StringComparison.Ordinal)).Click();
+    }
+
+    /// <summary>Opens the Mark all as read dialog from the header's ⋯ menu.</summary>
+    internal static void OpenMarkAll(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut) => ClickNewsAction(cut, "Mark all read…");
+
     internal static void ClickMenu(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, NewsArticleSummary article, string label)
     {
         cut.Find($"#nwa-{article.Id} .odc-record-ctl button[aria-label='Actions for {NewsArticleCard.TitleOf(article)}']").Click();
@@ -139,7 +166,7 @@ public class NewsPageTests
         var cut = context.Render<NewsPage>();
 
         cut.WaitForAssertion(() => Assert.Equal(["First", "Second"], CardNames(cut)));
-        Assert.Equal(false, sent!.IsRead);
+        Assert.Equal([NewsArticleReadStatus.Unread], sent!.Statuses);
         Assert.Equal(NewsArticleSortBy.Newest, sent.SortBy);
         Assert.Equal(OdsPageSizes.Batch[1], limit);
         Assert.Equal("Articles", cut.Find("h2.odc-sr-only").TextContent);
@@ -213,7 +240,7 @@ public class NewsPageTests
         cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
         Assert.DoesNotContain("attention", Polite(cut), StringComparison.Ordinal);
 
-        cut.Find("#nw-mark-all").Click();
+        OpenMarkAll(cut);
         cut.WaitForElement("#nw-markall-confirm").Click();
 
         cut.WaitForAssertion(() => Assert.Contains("1 feed needs attention", Polite(cut), StringComparison.Ordinal));

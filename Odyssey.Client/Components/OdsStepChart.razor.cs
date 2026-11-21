@@ -121,7 +121,11 @@ public partial class OdsStepChart : IAsyncDisposable
     private Task OnPlotWidth(double width) => InvokeAsync(() =>
     {
         var w = Math.Round(width);
-        if (w <= 0 || w == _vbW) return;
+        if (w <= 0 || w == _vbW)
+        {
+            return;
+        }
+
         _vbW = w;
         Layout();
         StateHasChanged();
@@ -130,7 +134,10 @@ public partial class OdsStepChart : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_widthObserver is not null)
+        {
             await _widthObserver.DisposeAsync();
+        }
+
         GC.SuppressFinalize(this);
     }
 
@@ -175,7 +182,11 @@ public partial class OdsStepChart : IAsyncDisposable
 
     private void OnPlotFocus()
     {
-        if (_hover is not null || Primary is not { } p) return;
+        if (_hover is not null || Primary is not { } p)
+        {
+            return;
+        }
+
         ShowHover((p.Id, p.InForce), byKey: true);
     }
 
@@ -187,11 +198,23 @@ public partial class OdsStepChart : IAsyncDisposable
             ClearHover();
             return;
         }
-        if (e.Key is not ("ArrowLeft" or "ArrowRight")) return;
+        if (e.Key is not ("ArrowLeft" or "ArrowRight"))
+        {
+            return;
+        }
+
         var order = KeyOrder;
-        if (order.Count == 0) return;
+        if (order.Count == 0)
+        {
+            return;
+        }
+
         var at = _hover is { } h ? order.IndexOf(h) : -1;
-        if (at < 0) at = order.Count - 1;
+        if (at < 0)
+        {
+            at = order.Count - 1;
+        }
+
         ShowHover(order[Math.Clamp(at + (e.Key == "ArrowRight" ? 1 : -1), 0, order.Count - 1)], byKey: true);
     }
 
@@ -200,7 +223,11 @@ public partial class OdsStepChart : IAsyncDisposable
     /// <summary>The change from the entry before, as the readout and the table state it; "—" for the first.</summary>
     private string ChangeText(Plot p, int i)
     {
-        if (i == 0) return "—";
+        if (i == 0)
+        {
+            return "—";
+        }
+
         var d = p.Pts[i].Value - p.Pts[i - 1].Value;
         return d == 0 ? "No change" : $"{(d > 0 ? "+" : "−")}{Format((decimal)Math.Abs(d))}";
     }
@@ -211,7 +238,10 @@ public partial class OdsStepChart : IAsyncDisposable
         get
         {
             if (_hover is not { } h || _plots.FirstOrDefault(q => q.Id == h.PlotId) is not { } p || h.Index >= p.Pts.Count)
+            {
                 return null;
+            }
+
             var pt = p.Pts[h.Index];
             var change = OdsLineChart.SpokenChange(ChangeText(p, h.Index), h.Index);
             var note = string.IsNullOrEmpty(pt.Note) ? "" : $". {pt.Note}";
@@ -222,7 +252,7 @@ public partial class OdsStepChart : IAsyncDisposable
     /// <summary>The hover readout's key line: the series (when several share the axis), the date, and whether it is scheduled.</summary>
     private string TipKey(Plot p, DateOnly date) =>
         $"{(_multi && !string.IsNullOrEmpty(p.Label) ? $"{p.Label} · " : "")}"
-        + date.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+        + OdsDates.LongUnpadded(date)
         + (IsScheduled(date) ? " · Scheduled" : "");
     private bool _multi;
     private bool _indexed;
@@ -239,7 +269,11 @@ public partial class OdsStepChart : IAsyncDisposable
     {
         get
         {
-            if (Primary is not { } p) return null;
+            if (Primary is not { } p)
+            {
+                return null;
+            }
+
             var last = p.Pts[p.InForce].Value;
             return (last, p.InForce > 0 ? p.Pts[p.InForce - 1].Value : null);
         }
@@ -271,7 +305,10 @@ public partial class OdsStepChart : IAsyncDisposable
 
         _plots.Clear();
         _multi = sets.Count > 1;
-        if (sets.Count == 0) return;
+        if (sets.Count == 0)
+        {
+            return;
+        }
 
         _indexed = Scale == OdsStepScale.Auto ? _multi : Scale == OdsStepScale.Indexed;
 
@@ -310,7 +347,10 @@ public partial class OdsStepChart : IAsyncDisposable
             {
                 var px = Sx(Days(s.Pts[j].Date));
                 var py = Sy(Plotted(s.Pts, s.Pts[j].Value));
-                if (j == 0 || Curve != OdsStepCurve.Step) walk.Add((px, py));
+                if (j == 0 || Curve != OdsStepCurve.Step)
+                {
+                    walk.Add((px, py));
+                }
                 else
                 {
                     walk.Add((px, walk[^1].Y));
@@ -318,7 +358,10 @@ public partial class OdsStepChart : IAsyncDisposable
                 }
             }
             if (Curve == OdsStepCurve.Smooth)
+            {
                 walk = Monotone(walk);
+            }
+
             walk.Add((Sx(_tMax), walk[^1].Y));
 
             var solid = Clip(walk, nowX, keepBelow: true);
@@ -388,9 +431,17 @@ public partial class OdsStepChart : IAsyncDisposable
 
     private string LegendMove(Plot p)
     {
-        if (p.Pts.Count < 2) return "no changes yet";
+        if (p.Pts.Count < 2)
+        {
+            return "no changes yet";
+        }
+
         var cur = p.Pts[p.InForce].Value;
-        if (_indexed) return FormatIndexed(MoveOf(p.Pts, cur));
+        if (_indexed)
+        {
+            return FormatIndexed(MoveOf(p.Pts, cur));
+        }
+
         var d = cur - p.Pts[0].Value;
         return $"{(d > 0 ? "+" : d < 0 ? "−" : "")}{Format((decimal)Math.Abs(d))}";
     }
@@ -425,7 +476,9 @@ public partial class OdsStepChart : IAsyncDisposable
     internal static List<(double X, double Y)> Monotone(IReadOnlyList<(double X, double Y)> pts, int samples = 16)
     {
         if (pts.Count < 3)
+        {
             return [.. pts];
+        }
 
         var k = pts.Count;
         var d = new double[k - 1];
@@ -439,7 +492,9 @@ public partial class OdsStepChart : IAsyncDisposable
         m[0] = d[0];
         m[k - 1] = d[k - 2];
         for (var i = 1; i < k - 1; i++)
+        {
             m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+        }
 
         for (var i = 0; i < k - 1; i++)
         {
@@ -507,7 +562,10 @@ public partial class OdsStepChart : IAsyncDisposable
                         : (bound, prev.Y + (p.Y - prev.Y) * ((bound - prev.X) / (p.X - prev.X))));
                 }
             }
-            if (inside) output.Add(p);
+            if (inside)
+            {
+                output.Add(p);
+            }
         }
         return output;
     }
@@ -532,7 +590,11 @@ public partial class OdsStepChart : IAsyncDisposable
             foreach (var date in _plots.SelectMany(p => p.Pts).Select(p => p.Date).Distinct().OrderBy(d => d))
             {
                 var px = Sx(Days(date));
-                if (px - lastX < 64 || Math.Abs(px - nowX) < 48) continue;
+                if (px - lastX < 64 || Math.Abs(px - nowX) < 48)
+                {
+                    continue;
+                }
+
                 sb.Append($"<text x=\"{F(px)}\" y=\"{F(YBot + 26)}\" text-anchor=\"middle\">{Enc(MonY(date))}</text>");
                 lastX = px;
             }
@@ -559,9 +621,13 @@ public partial class OdsStepChart : IAsyncDisposable
             var cy = F(Sy(Plotted(p.Pts, p.Pts[i].Value)));
             var color = Enc(p.Color);
             if (IsScheduled(p.Pts[i].Date))
+            {
                 sb.Append($"<circle cx=\"{cx}\" cy=\"{cy}\" r=\"4\" fill=\"var(--mud-palette-surface)\" stroke=\"{color}\" stroke-width=\"1.8\"></circle>");
+            }
             else
+            {
                 sb.Append($"<circle cx=\"{cx}\" cy=\"{cy}\" r=\"{(i == p.InForce ? 4 : 3)}\" fill=\"{color}\"></circle>");
+            }
         }
         return sb.ToString();
     }

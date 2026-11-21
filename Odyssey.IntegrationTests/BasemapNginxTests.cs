@@ -1,6 +1,6 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
@@ -104,9 +104,15 @@ public sealed class BasemapNginxFixture : IAsyncLifetime
             .WithBindMount(Path.Combine(Root, "Odyssey.Client", "nginx", "templates"), "/etc/nginx/templates", AccessMode.ReadOnly)
             .WithBindMount(html, "/usr/share/nginx/html", AccessMode.ReadOnly);
         foreach (var script in Directory.GetFiles(Path.Combine(Root, "Odyssey.Client", "nginx", "docker-entrypoint.d")))
+        {
             builder = builder.WithBindMount(script, "/docker-entrypoint.d/" + Path.GetFileName(script), AccessMode.ReadOnly);
+        }
+
         if (cacheParent is not null)
+        {
             builder = builder.WithBindMount(cacheParent, "/var/cache/nginx", AccessMode.ReadOnly);
+        }
+
         return builder;
     }
 
@@ -132,15 +138,30 @@ public sealed class BasemapNginxFixture : IAsyncLifetime
         File.Copy(Path.Combine(shipped, "Noto Sans Regular", "0-255.pbf"), Path.Combine(fonts, "0-255.pbf"));
         Directory.CreateDirectory(Path.Combine(Html, "maps", "self-hosted", "sprites"));
         foreach (var path in Directory.EnumerateFileSystemEntries(Html, "*", SearchOption.AllDirectories))
+        {
             File.SetUnixFileMode(path, Directory.Exists(path) ? (UnixFileMode)0b111_101_101 : (UnixFileMode)0b110_100_100);
+        }
+
         File.SetUnixFileMode(Html, (UnixFileMode)0b111_101_101);
     }
 
     public async Task DisposeAsync()
     {
-        if (nginx is not null) await nginx.DisposeAsync();
-        if (stub is not null) await stub.DisposeAsync();
-        if (network is not null) await network.DisposeAsync();
+        if (nginx is not null)
+        {
+            await nginx.DisposeAsync();
+        }
+
+        if (stub is not null)
+        {
+            await stub.DisposeAsync();
+        }
+
+        if (network is not null)
+        {
+            await network.DisposeAsync();
+        }
+
         Directory.Delete(Html, recursive: true);
         Directory.Delete(Work, recursive: true);
     }
@@ -150,7 +171,9 @@ public sealed class BasemapNginxFixture : IAsyncLifetime
         for (var d = AppContext.BaseDirectory; d is not null; d = Path.GetDirectoryName(d.TrimEnd(Path.DirectorySeparatorChar)))
         {
             if (File.Exists(Path.Combine(d, "Odyssey.sln")))
+            {
                 return d;
+            }
         }
 
         throw new InvalidOperationException("Could not locate the repository root.");
@@ -167,9 +190,21 @@ public sealed class BasemapNginxTests(BasemapNginxFixture fixture) : IClassFixtu
     private static HttpRequestMessage Ranged(string? range, string? cookie = BasemapNginxFixture.Good, string? forwardedFor = null, HttpMethod? method = null)
     {
         var request = new HttpRequestMessage(method ?? HttpMethod.Get, File);
-        if (range is not null) request.Headers.TryAddWithoutValidation("Range", range);
-        if (cookie is not null) request.Headers.TryAddWithoutValidation("Cookie", cookie);
-        if (forwardedFor is not null) request.Headers.TryAddWithoutValidation("X-Forwarded-For", forwardedFor);
+        if (range is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Range", range);
+        }
+
+        if (cookie is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Cookie", cookie);
+        }
+
+        if (forwardedFor is not null)
+        {
+            request.Headers.TryAddWithoutValidation("X-Forwarded-For", forwardedFor);
+        }
+
         return request;
     }
 

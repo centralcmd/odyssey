@@ -73,7 +73,9 @@ public class PropertySmartTagServiceTests
         var service = new PropertySmartTagService(context, new FakePropertyLimitsLookup(SmartTagCap));
         var propertyId = await SeedProperty(context);
         for (var i = 0; i < SmartTagCap; i++)
+        {
             await service.AddSmartTag(propertyId, await SeedTag(context, $"Tag {i}"));
+        }
 
         var oneTooMany = await SeedTag(context, "One too many");
 

@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using Odyssey.Core.Identity;
 
@@ -189,7 +190,7 @@ public sealed class FinanceFileAttributionGuardTests
             .ToList();
 
     private static string ControllerSource(Type controller) =>
-        RepositoryRoot.ReadAllText(Path.Combine("Odyssey.Api", "Controllers", $"{controller.Name}.cs"));
+        SourceTree.ReadAllText(Path.Combine("Odyssey.Api", "Controllers", $"{controller.Name}.cs"));
 
     /// <summary>
     /// Whether the action's body calls the enricher.

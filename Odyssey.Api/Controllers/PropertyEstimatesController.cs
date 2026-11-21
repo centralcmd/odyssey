@@ -40,7 +40,9 @@ public sealed class PropertyEstimatesController : ControllerBase
     {
         var estimates = await propertyEstimateService.GetHistory(propertyId, asOf, cancellationToken);
         if (estimates is null)
+        {
             return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
 
         return Ok(estimates);
     }
@@ -59,7 +61,9 @@ public sealed class PropertyEstimatesController : ControllerBase
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         if (!await propertyEstimateService.PropertyExists(propertyId, cancellationToken))
+        {
             return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
 
         var estimate = await propertyEstimateService.GetCurrent(propertyId, asOf, cancellationToken);
 
@@ -99,7 +103,9 @@ public sealed class PropertyEstimatesController : ControllerBase
     {
         var updated = await propertyEstimateService.Update(propertyId, estimateId, putEstimate, cancellationToken);
         if (!updated)
+        {
             return this.NotFoundProblem($"Estimate ID {estimateId} is not attached to property ID {propertyId}.");
+        }
 
         return NoContent();
     }
@@ -116,7 +122,9 @@ public sealed class PropertyEstimatesController : ControllerBase
     {
         var deleted = await propertyEstimateService.Delete(propertyId, estimateId, cancellationToken);
         if (!deleted)
+        {
             return this.NotFoundProblem($"Estimate ID {estimateId} is not attached to property ID {propertyId}.");
+        }
 
         return NoContent();
     }

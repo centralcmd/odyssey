@@ -33,7 +33,7 @@ else
 
     // Retry transient MariaDB failures. The migration/seed paths already wrap their work in an
     // execution strategy (CreateExecutionStrategy), so retries compose correctly here.
-    void EnableRetries(MySqlDbContextOptionsBuilder mySql) => mySql.EnableRetryOnFailure();
+    void EnableRetries(MySqlDbContextOptionsBuilder mySql) => OdysseyDatabaseRetry.Configure(mySql);
 
     // One context, one connection: identity, finance and journal are a single model with real foreign
     // keys between them, so they cannot be pointed at different databases. Resolved eagerly, outside

@@ -12,6 +12,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementFilesSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter, EditorRequired] public Guid StatementId { get; set; }
 
     /// <summary>Statement name — shown as the context line in the file viewer.</summary>
@@ -73,7 +75,9 @@ public partial class TaxStatementFilesSection
         _uploadLimits = await UploadLimits.GetAsync();
 
         if (files is null || files.Count == 0)
+        {
             return;
+        }
 
         var valid = new List<IBrowserFile>();
         foreach (var file in files)
@@ -93,7 +97,9 @@ public partial class TaxStatementFilesSection
         }
 
         if (valid.Count == 0)
+        {
             return;
+        }
 
         _isUploading = true;
         var uploaded = 0;
@@ -131,7 +137,9 @@ public partial class TaxStatementFilesSection
             }
 
             if (perFile.Count > 0)
+            {
                 Snackbar.Add(UploadFailureText.Several(perFile, itemised: perFile.Count <= 3), Severity.Error, o => o.RequireInteraction = true);
+            }
 
             if (uploaded > 0)
             {
@@ -150,7 +158,9 @@ public partial class TaxStatementFilesSection
         var attach = await TaxStatements.AttachFileAsync(
             StatementId, new AttachTaxStatementFileRequest { FileId = fileId, FileType = SelectedFileTypeEnum });
         if (!attach.IsSuccess)
+        {
             throw new InvalidOperationException($"Failed to attach document: {attach.Error}");
+        }
     }
 
     private IReadOnlyList<OdsMenuItem> BuildMenu(OdsFilesRow row)
@@ -159,12 +169,16 @@ public partial class TaxStatementFilesSection
         var menu = new List<OdsMenuItem>();
 
         if (CanDownload && PreviewableContentTypes.Contains(file.FileMetadata.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
             menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", OnClick = EventCallback.Factory.Create(this, () => PreviewAsync(file)) });
+        }
 
         if (CanDownload)
+        {
             menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)) });
+        }
 
-        menu.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), "File ID copied.")) });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), OdsCopied.Id("File")))));
 
         return menu;
     }
@@ -175,8 +189,7 @@ public partial class TaxStatementFilesSection
         if (content is null)
         { Snackbar.Add("Download failed.", Severity.Error); return; }
 
-        var contentType = content.ContentType ?? "application/octet-stream";
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileMetadata.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, file.FileMetadata.FileName);
     }
 
     // "Preview" opens the design-system file viewer (FilePreviewDialog), the same
@@ -207,12 +220,9 @@ public partial class TaxStatementFilesSection
 
     private async Task ConfirmDetachAsync(ExistingTaxStatementFile file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach document",
-            $"Detach '{file.FileMetadata.FileName}' from this tax statement?",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileMetadata.FileName}' from this tax statement?", "Detach", "link_off");
 
-        if (confirmed == true
+        if (confirmed
             && (await TaxStatements.DetachFileAsync(StatementId, file.FileMetadata.Id)).Toast(Snackbar, "Detach failed", "Document detached."))
         {
             await OnChanged.InvokeAsync();

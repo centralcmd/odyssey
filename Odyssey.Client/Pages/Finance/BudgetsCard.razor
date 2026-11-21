@@ -4,7 +4,6 @@
 @using Odyssey.Client.Authorization
 @attribute [Authorize(Policy = PermissionClaims.BudgetsRead)]
 @implements IDisposable
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
@@ -72,7 +71,7 @@
                     var expenseItemCount = budget.BudgetItems.Count(i => i.CategoryType == BudgetCategoryType.Expense);
                     var itemCount = budget.BudgetItems.Count;
                     var editingItems = _editingItemsId == budget.BudgetId;
-                    var period = $"{budget.StartDate:MMM dd, yyyy} → {budget.EndDate:MMM dd, yyyy}";
+                    var period = $"{OdsDates.Long(budget.StartDate)} → {OdsDates.Long(budget.EndDate)}";
 
                     @* The single meta line: period · base currency. *@
                     var meta = new List<RenderFragment?> { PeriodMeta(period), CurrencyMeta(budget.BaseCurrencyCode) };
@@ -127,12 +126,12 @@
 
                             <OdsInfoTile Icon="event" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm"
                                          Foot="@OdsInfoTile.Caption("plan period opens")">
-                                <Value>@LongDate(budget.StartDate)</Value>
+                                <Value>@OdsDates.Long(budget.StartDate)</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="event_busy" Label="End date" ValueVariant="OdsInfoTileVariant.Sm"
                                          Foot="@OdsInfoTile.Caption("plan period closes")">
-                                <Value>@LongDate(budget.EndDate)</Value>
+                                <Value>@OdsDates.Long(budget.EndDate)</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="payments" Label="Base currency" Foot="@OdsInfoTile.Caption("reporting currency")">
@@ -142,7 +141,7 @@
                             <OdsInfoTile Icon="@(archived ? "inventory_2" : "check_circle")" Label="Status"
                                          ValueVariant="OdsInfoTileVariant.Text"
                                          Tone="@(archived ? OdsInfoTileTone.Muted : OdsInfoTileTone.Income)"
-                                         Foot="@OdsInfoTile.Caption(budget.Archived is { } archivedAt ? $"since {LongDate(archivedAt)}" : "in the default list")">
+                                         Foot="@OdsInfoTile.Caption(budget.Archived is { } archivedAt ? $"since {OdsDates.Long(archivedAt)}" : "in the default list")">
                                 <Value>@(archived ? "Archived" : "Active")</Value>
                             </OdsInfoTile>
 
@@ -235,7 +234,6 @@
                                                    Meta="@($"{budget.TransactionCount} matched · in range and tagged")" />
                                 <div class="acct-txn-table acct-table-frame odc-scroll">
                                     <BudgetTransactionsSection @key="@($"txns:{budget.BudgetId}")"
-                                                               BudgetId="@budget.BudgetId"
                                                                StartDate="@budget.StartDate"
                                                                EndDate="@budget.EndDate"
                                                                TagIds="@BudgetTagIds(budget)"
@@ -293,6 +291,8 @@
                             OnRetryTags="LoadTransactionTags"
                             OnSaved="OnItemSaved" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // The two meta-line entries. An inline render fragment is Razor syntax, so it cannot live in the

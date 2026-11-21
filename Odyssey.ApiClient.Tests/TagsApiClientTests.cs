@@ -4,43 +4,24 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Internet;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
 
 /// <summary>
-/// The four tag resources share one client closed over their row type and bound to their route at
+/// The five tag resources share one client closed over their row type and bound to their route at
 /// registration. These pin that the binding actually reaches the right route — a
 /// <c>ITagsApiClient&lt;ExistingPhotoTag&gt;</c> wired to <c>api/journal-tags</c> would compile,
 /// deserialize, and quietly write to the wrong resource.
 /// </summary>
 public class TagsApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (ITagsApiClient<T> Client, RecordingHttpHandler Handler) Create<T>(string basePath)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        public HttpResponseMessage Response { get; set; } =
-            new(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""{"items":[],"offset":0,"limit":50,"totalCount":0}""",
-                                            System.Text.Encoding.UTF8, "application/json"),
-            };
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return Response;
-        }
-    }
-
-    private static (ITagsApiClient<T> Client, RecordingHandler Handler) Create<T>(string basePath)
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new TagsApiClient<T>(api, basePath), handler);
     }
@@ -49,6 +30,7 @@ public class TagsApiClientTests
     [InlineData("api/journal-tags")]
     [InlineData("api/task-tags")]
     [InlineData("api/photo-tags")]
+    [InlineData("api/news-tags")]
     public async Task Every_operation_stays_on_the_route_the_client_was_bound_to(string basePath)
     {
         var id = Guid.NewGuid();
@@ -85,6 +67,7 @@ public class TagsApiClientTests
     [InlineData("api/journal-tags")]
     [InlineData("api/task-tags")]
     [InlineData("api/photo-tags")]
+    [InlineData("api/news-tags")]
     public async Task The_icon_round_trips_on_every_journal_side_tag_route(string basePath)
     {
         var (client, handler) = Create<ExistingPhotoTag>(basePath);
@@ -132,7 +115,7 @@ public class TagsApiClientTests
     }
 
     /// <summary>
-    /// The real guard. The four tag clients are distinguished only by the base path handed to them at
+    /// The real guard. The five tag clients are distinguished only by the base path handed to them at
     /// registration, so the failure mode is a wiring mistake in <c>AddOdysseyApiClient()</c> — a client
     /// closed over one tag type pointed at another's route. That compiles, deserializes, and silently
     /// writes to the wrong resource.
@@ -148,9 +131,10 @@ public class TagsApiClientTests
     [InlineData(typeof(ExistingJournalTag), "/api/journal-tags")]
     [InlineData(typeof(ExistingJournalTaskTag), "/api/task-tags")]
     [InlineData(typeof(ExistingPhotoTag), "/api/photo-tags")]
+    [InlineData(typeof(ExistingNewsTag), "/api/news-tags")]
     public async Task The_registered_client_for_each_tag_type_targets_that_type_s_route(Type tagType, string expectedPath)
     {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         var services = new ServiceCollection();
         services.AddOdysseyApiClient();
         services.AddScoped(_ => new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
@@ -164,7 +148,7 @@ public class TagsApiClientTests
     }
 
     /// <summary>
-    /// <see cref="TagWrite"/> stands in for seven per-resource DTOs. It is only a valid substitute while
+    /// <see cref="TagWrite"/> stands in for nine per-resource DTOs. It is only a valid substitute while
     /// they all agree on their limits — so this asserts against the real DTOs rather than restating
     /// the numbers. If one resource ever diverges, this fails and the generic client should be split.
     /// </summary>
@@ -176,6 +160,8 @@ public class TagsApiClientTests
     [InlineData(typeof(UpdateJournalTag))]
     [InlineData(typeof(UpdateJournalTaskTag))]
     [InlineData(typeof(UpdatePhotoTag))]
+    [InlineData(typeof(NewNewsTag))]
+    [InlineData(typeof(UpdateNewsTag))]
     public void TagWrite_limits_match_the_DTOs_it_substitutes_for(Type dto)
     {
         Assert.Equal(TagWrite.MaxNameLength, MaxLengthOf(dto, "Name"));
@@ -238,6 +224,7 @@ public class TagsApiClientTests
     [InlineData("api/journal-tags")]
     [InlineData("api/task-tags")]
     [InlineData("api/photo-tags")]
+    [InlineData("api/news-tags")]
     public async Task The_color_round_trips_and_a_null_color_is_still_sent(string basePath)
     {
         var (client, handler) = Create<ExistingPhotoTag>(basePath);

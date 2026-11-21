@@ -9,7 +9,6 @@
 @inject Odyssey.ApiClient.Resources.IFileExportApiClient FileExport
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRuntime
-@inject IDialogService DialogService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
 
@@ -167,6 +166,8 @@
         <OdsButton Icon="download" Loading="_isExportingFiles" OnClick="ConfirmExport">Export</OdsButton>
     </Footer>
 </OdsModal>
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // ── Edit + delete (table-owned lifecycle) ──

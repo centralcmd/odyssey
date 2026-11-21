@@ -8,16 +8,23 @@
     opt-in, settings lists. Supports a string Label or a rich ChildContent label, a
     mixed ("select all") header state, and an AriaLabel for a label-less control
     (e.g. a dense row selector). Two-way bindable via @bind-Checked.
+
+    AriaDisabled is the focusable unavailable state (the OdsButton precedent): aria-disabled, the click's default
+    toggle prevented and the change swallowed, focus kept — for a choice that is shown but cannot be made, such as
+    "Include attachments" when the caller may not export them (issue #522 v3 §A). Native Disabled drops it from the
+    tab order and gives no reason.
 *@
 
 @inject IJSRuntime Js
 
-<label class="odc-check odc-checkbox @(Disabled ? "disabled" : null) @Class" for="@FieldId">
+<label class="odc-check odc-checkbox @(Disabled || AriaDisabled ? "disabled" : null) @Class" for="@FieldId">
     <input type="checkbox" id="@FieldId"
            @ref="_input"
            checked="@Checked"
            disabled="@Disabled"
+           aria-disabled="@(AriaDisabled ? "true" : null)"
            aria-label="@AriaLabel"
+           @onclick:preventDefault="AriaDisabled"
            @onchange="OnChange"
            @attributes="UserAttributes" />
     <span class="odc-check-box @(Mixed ? "mixed" : null)" aria-hidden="true">
@@ -53,6 +60,9 @@
 
     [Parameter] public bool Disabled { get; set; }
 
+    /// <summary>Shown, focusable, and not changeable: <c>aria-disabled</c>, the toggle prevented.</summary>
+    [Parameter] public bool AriaDisabled { get; set; }
+
     [Parameter] public string? Class { get; set; }
 
     [Parameter] public string? Id { get; set; }
@@ -75,7 +85,9 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (Mixed == _appliedMixed && !firstRender)
+        {
             return;
+        }
         _appliedMixed = Mixed;
         try { await Js.InvokeVoidAsync("odsSetIndeterminate", _input, Mixed); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
@@ -83,6 +95,10 @@
 
     private Task OnChange(ChangeEventArgs e)
     {
+        if (AriaDisabled)
+        {
+            return Task.CompletedTask;
+        }
         var next = e.Value is bool b ? b : !Checked;
         Checked = next;
         return CheckedChanged.InvokeAsync(next);

@@ -144,9 +144,13 @@ public partial class InstrumentPriceDialog
         {
             var result = await Instruments.GetAsync(lockedId);
             if (result is { IsSuccess: true, Value: { } instrument })
+            {
                 _locked = instrument;
+            }
             else
+            {
                 _lockedMissing = true;
+            }
         }
     }
 
@@ -156,7 +160,9 @@ public partial class InstrumentPriceDialog
         _focusSummary = false;
         _focusClose = false;
         if (target is null)
+        {
             return;
+        }
 
         try { await Js.InvokeVoidAsync("odsFocusById", target); }
         catch (JSException) { }
@@ -175,20 +181,31 @@ public partial class InstrumentPriceDialog
 
         var items = result.Value?.Items ?? [];
         foreach (var instrument in items)
+        {
             _known[instrument.InstrumentId.ToString()] = instrument;
+        }
+
         return [.. items.Select(InstrumentVisuals.OptionFor)];
     }
 
     private async Task<OdsOption?> ResolveInstrumentAsync(string value)
     {
         if (_known.TryGetValue(value, out var known))
+        {
             return InstrumentVisuals.OptionFor(known);
+        }
+
         if (!Guid.TryParse(value, out var id))
+        {
             return null;
+        }
 
         var result = await Instruments.GetAsync(id);
         if (result is not { IsSuccess: true, Value: { } instrument })
+        {
             return null;
+        }
+
         _known[value] = instrument;
         return InstrumentVisuals.OptionFor(instrument);
     }
@@ -229,18 +246,28 @@ public partial class InstrumentPriceDialog
     {
         var errors = new Dictionary<string, string>(StringComparer.Ordinal);
         if (instrumentId is null)
+        {
             errors["instrument"] = "Choose an instrument.";
+        }
 
         if (tradingDate is not { } date)
+        {
             errors["date"] = "Enter the trading date.";
+        }
         else if (today is { } now && date > now)
+        {
             errors["date"] = FutureDateMessage;
+        }
 
         var close = OdsMoneyText.Parse(closeText);
         if (close is not { } value || value < Min || value > Max)
+        {
             errors["close"] = PriceAboveZeroMessage;
+        }
         else if (!InstrumentPriceRules.HasAtMostDecimals(value))
+        {
             errors["close"] = DecimalsMessage;
+        }
 
         return errors;
     }
@@ -260,7 +287,9 @@ public partial class InstrumentPriceDialog
 
         var tradingDate = _tradingDate is { } picked ? DateOnly.FromDateTime(picked) : (DateOnly?)null;
         foreach (var (key, message) in Validate(SelectedInstrumentId, tradingDate, _close, _today))
+        {
             _errors[key] = message;
+        }
 
         if (_errors.Count > 0)
         {
@@ -324,7 +353,9 @@ public partial class InstrumentPriceDialog
             _ => null,
         };
         if (key is null || (key == "instrument" && FixedLabel is not null))
+        {
             return false;
+        }
 
         _errors[key] = message;
         return true;
@@ -333,7 +364,9 @@ public partial class InstrumentPriceDialog
     private async Task EditExistingAsync()
     {
         if (_duplicateId is not { } id || !_canUpdate)
+        {
             return;
+        }
 
         await OnEditExisting.InvokeAsync(id);
     }

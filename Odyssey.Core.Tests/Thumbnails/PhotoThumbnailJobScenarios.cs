@@ -554,12 +554,7 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
         var run = Job(host).RunOnceAsync(default);
         await UntilAsync(() => Renderer.Entered.IsSet, "the decode to start");
 
-        var fileId = await WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync());
-        await using (var scope = host.Scope())
-        {
-            await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId!.Value, default);
-            await scope.ServiceProvider.GetRequiredService<OdysseyContext>().SaveChangesAsync();
-        }
+        await StageRenameAsync(host, photoId);
 
         var running = await JobRowAsync(host, photoId);
         Assert.Equal((PhotoThumbnailJobState.Running, true), (running.State, running.RerunRequested));
@@ -700,8 +695,7 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
     {
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var fileId = await context.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync();
-        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId!.Value, default);
+        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameForPhotoAsync(photoId, default);
         await context.SaveChangesAsync();
     }
 
@@ -810,6 +804,16 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
         public Task<StoredObjectContent> OpenReadAsync(string featureKey, Guid storedObjectId, CancellationToken cancellationToken) =>
             factory.Store.OpenReadAsync(featureKey, storedObjectId, cancellationToken);
 
+        public Task<StoredObjectReservation> ReserveAndWriteAsync(string featureKey, object? layoutArgs, string? originalFileName,
+            string? suffix, string contentType, Stream content, long maxBytes, CancellationToken cancellationToken) =>
+            factory.Store.ReserveAndWriteAsync(featureKey, layoutArgs, originalFileName, suffix, contentType, content, maxBytes, cancellationToken);
+
+        public StoredObject AttachReserved(Odyssey.Context.OdysseyContext context, StoredObjectReservation reservation) =>
+            factory.Store.AttachReserved(context, reservation);
+
+        public Task AbandonReservationAsync(StoredObjectReservation reservation, CancellationToken cancellationToken) =>
+            factory.Store.AbandonReservationAsync(reservation, cancellationToken);
+
         public void StageRelease(StoredObject storedObject, bool immediate = false) => factory.Store.StageRelease(storedObject, immediate);
 
         public Task StageReleaseAsync(Guid storedObjectId, bool immediate, CancellationToken cancellationToken) =>
@@ -827,6 +831,16 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
 
         public Task<StoredObjectContent> OpenReadAsync(string featureKey, Guid storedObjectId, CancellationToken cancellationToken) =>
             factory.Store.OpenReadAsync(featureKey, storedObjectId, cancellationToken);
+
+        public Task<StoredObjectReservation> ReserveAndWriteAsync(string featureKey, object? layoutArgs, string? originalFileName,
+            string? suffix, string contentType, Stream content, long maxBytes, CancellationToken cancellationToken) =>
+            factory.Store.ReserveAndWriteAsync(featureKey, layoutArgs, originalFileName, suffix, contentType, content, maxBytes, cancellationToken);
+
+        public StoredObject AttachReserved(Odyssey.Context.OdysseyContext context, StoredObjectReservation reservation) =>
+            factory.Store.AttachReserved(context, reservation);
+
+        public Task AbandonReservationAsync(StoredObjectReservation reservation, CancellationToken cancellationToken) =>
+            factory.Store.AbandonReservationAsync(reservation, cancellationToken);
 
         public void StageRelease(StoredObject storedObject, bool immediate = false) => factory.Store.StageRelease(storedObject, immediate);
 

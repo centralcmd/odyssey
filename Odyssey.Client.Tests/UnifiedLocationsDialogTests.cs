@@ -52,18 +52,19 @@ public class UnifiedLocationsDialogTests
         var calls = new List<string>();
         var calendar = new Mock<ICalendarApiClient>();
         calendar.Setup(c => c.GetEventAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(existing);
-        calendar.Setup(c => c.UpdateEventAsync(It.IsAny<Guid>(), It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
+        calendar.Setup(c => c.UpdateEventWithResultAsync(It.IsAny<Guid>(), It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("event"))
-            .ReturnsAsync(writeResult ?? ApiResult.Success(HttpStatusCode.OK));
-        calendar.Setup(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CalendarWriteResults.Event(writeResult ?? ApiResult.Success(HttpStatusCode.OK)));
+        calendar.Setup(c => c.CreateEventWithResultAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("event"))
-            .ReturnsAsync(writeResult ?? ApiResult.Success(HttpStatusCode.Created));
+            .ReturnsAsync(CalendarWriteResults.Event(writeResult ?? ApiResult.Success(HttpStatusCode.Created)));
         var locations = Locations(Hytta());
         locations.Setup(l => l.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("place"))
             .ReturnsAsync(createResult ?? ApiResult<ExistingLocation>.Success(
                 new ExistingLocation { LocationId = StorgataId, Name = "Storgata" }, HttpStatusCode.Created));
         ctx.Services.AddSingleton(calendar.Object);
+        CalendarAttachmentServices.Add(ctx.Services);
         ctx.Services.AddSingleton(locations.Object);
         ctx.Services.AddSingleton(Mock.Of<IWeatherApiClient>());
 
@@ -99,7 +100,7 @@ public class UnifiedLocationsDialogTests
 
         Click(h.Cut, "Save changes");
 
-        h.Cut.WaitForAssertion(() => h.Calendar.Verify(c => c.UpdateEventAsync(It.IsAny<Guid>(),
+        h.Cut.WaitForAssertion(() => h.Calendar.Verify(c => c.UpdateEventWithResultAsync(It.IsAny<Guid>(),
             It.Is<NewCalendarEvent>(e => e.LocationId == Stored && e.Location == "Room 4B"), It.IsAny<CancellationToken>()), Times.Once));
     }
 
@@ -115,7 +116,7 @@ public class UnifiedLocationsDialogTests
 
         Click(h.Cut, "Save changes");
 
-        h.Cut.WaitForAssertion(() => h.Calendar.Verify(c => c.UpdateEventAsync(It.IsAny<Guid>(),
+        h.Cut.WaitForAssertion(() => h.Calendar.Verify(c => c.UpdateEventWithResultAsync(It.IsAny<Guid>(),
             It.Is<NewCalendarEvent>(e => e.LocationId == Stored), It.IsAny<CancellationToken>()), Times.Once));
     }
 
@@ -128,7 +129,7 @@ public class UnifiedLocationsDialogTests
         await h.Cut.InvokeAsync(() => h.Cut.FindComponent<OdsLocationSelect>().Instance.ValueChanged.InvokeAsync(null));
         Click(h.Cut, "Save changes");
 
-        h.Cut.WaitForAssertion(() => h.Calendar.Verify(c => c.UpdateEventAsync(It.IsAny<Guid>(),
+        h.Cut.WaitForAssertion(() => h.Calendar.Verify(c => c.UpdateEventWithResultAsync(It.IsAny<Guid>(),
             It.Is<NewCalendarEvent>(e => e.LocationId == null), It.IsAny<CancellationToken>()), Times.Once));
     }
 
@@ -146,7 +147,7 @@ public class UnifiedLocationsDialogTests
         Click(h.Cut, "Create event");
 
         h.Cut.WaitForAssertion(() => Assert.Equal(["place", "event"], h.Calls));
-        h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == StorgataId), It.IsAny<CancellationToken>()));
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.Is<NewCalendarEvent>(e => e.LocationId == StorgataId), It.IsAny<CancellationToken>()));
         h.Locations.Verify(l => l.CreateAsync(It.Is<NewLocation>(n => n.Name == "Storgata"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -187,7 +188,9 @@ public class UnifiedLocationsDialogTests
         {
             var text = announcer.Find("[role=status]").TextContent;
             if (spoken.Count == 0 || spoken[^1] != text)
+            {
                 spoken.Add(text);
+            }
         };
 
         Click(h.Cut, "Create event");

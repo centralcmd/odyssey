@@ -45,7 +45,7 @@ public class MergedProjectNamespaceLayoutTests
     /// types guarded a narrower surface than the rule it enforces. Confirmed by mutation during review
     /// of the PR that added this file: an <c>internal DomainNotFoundException</c> added to
     /// <c>Odyssey.Core.Journal</c> silently rebound every unqualified <c>throw</c> in that module to a
-    /// type not deriving from <see cref="DomainException"/> — turning 404s into 500s — while the build
+    /// type not deriving from <see cref="Odyssey.Core.DomainException"/> — turning 404s into 500s — while the build
     /// and this test both stayed green.
     ///
     /// Three kinds of type are filtered out, none of which the rule can speak about. A <b>nested</b> type

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Odyssey.Client.Services;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -34,21 +35,6 @@ public class SmartTagCapSourceTests
             .Select(file => (File: file, Text: File.ReadAllText(file)))
             .Where(pair => pair.Text.Contains("SmartTag", StringComparison.Ordinal));
 
-    /// <summary>
-    /// The same text with <c>//</c> comment bodies blanked, line numbers preserved. A lint a COMMENT can
-    /// trip is a bad lint: the note recording what the deleted constant used to be quotes it verbatim,
-    /// and that note is worth keeping.
-    /// </summary>
-    private static string WithoutLineComments(string text) =>
-        Regex.Replace(text, @"//[^\r\n]*", string.Empty);
-
-    /// <summary>
-    /// The same idea for Razor's own <c>@*…*@</c> block comments, which is where a markup file
-    /// explains itself. A lint that its own rationale trips teaches people to delete the rationale.
-    /// </summary>
-    private static string WithoutRazorComments(string text) =>
-        Regex.Replace(text, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
-
     [Fact]
     public void No_page_declares_its_own_smart_tag_cap_constant()
     {
@@ -57,9 +43,9 @@ public class SmartTagCapSourceTests
         foreach (var (file, text) in SmartTagPages())
         {
             foreach (Match match in Regex.Matches(
-                WithoutLineComments(text), @"const\s+int\s+Max(Tags|SmartTags)\w*\s*="))
+                SourceLint.StripComments(text), @"const\s+int\s+Max(Tags|SmartTags)\w*\s*="))
             {
-                offenders.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)}");
+                offenders.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)}");
             }
         }
 
@@ -82,9 +68,9 @@ public class SmartTagCapSourceTests
         foreach (var (file, text) in SmartTagPages())
         {
             foreach (Match match in Regex.Matches(
-                WithoutLineComments(text), @"[Tt]ag limit[^<@\r\n]*\b\d+\b"))
+                SourceLint.StripComments(text), @"[Tt]ag limit[^<@\r\n]*\b\d+\b"))
             {
-                offenders.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} ('{match.Value}')");
+                offenders.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} ('{match.Value}')");
             }
         }
 
@@ -142,10 +128,9 @@ public class SmartTagCapSourceTests
     [Fact]
     public void The_adder_popover_is_a_labelled_checkbox_panel_not_a_listbox()
     {
-        // Razor comments stripped first: the markup carries a comment explaining WHY the role is not
-        // listbox, and a lint its own rationale can trip is a bad lint — the same reason
-        // WithoutLineComments exists above.
-        var adder = WithoutRazorComments(File.ReadAllText(
+        // Comments stripped first: the markup carries a comment explaining WHY the role is not
+        // listbox, and a lint its own rationale can trip is a bad lint.
+        var adder = SourceLint.StripComments(File.ReadAllText(
             Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagAdder.razor")));
 
         Assert.Contains("PanelLabel=\"@GroupLabel\"", adder, StringComparison.Ordinal);

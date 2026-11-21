@@ -6,6 +6,7 @@ using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -31,7 +32,7 @@ namespace Odyssey.Api.Tests;
 /// value-comparison heuristic that stops firing the moment an admin sets a value back to its default.
 /// </para>
 /// </summary>
-public class FileAnalysisDegradedSettingsTests
+public class FileAnalysisDegradedSettingsTests(FileAnalysisDegradedSettingsTests.Host host) : SharedApiHostTests<FileAnalysisDegradedSettingsTests.Host>(host)
 {
     private const string DisclosurePath = "/api/file-analysis/disclosure";
 
@@ -70,7 +71,7 @@ public class FileAnalysisDegradedSettingsTests
     [Fact]
     public async Task EveryRowAbsent_ResolvesToTheCompiledDefaults_AndIsNotDegraded()
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         foreach (var key in SystemSettingsKeys.AllKeys)
         {
             await factory.RemoveSystemSettingAsync(key);
@@ -92,7 +93,7 @@ public class FileAnalysisDegradedSettingsTests
     [InlineData("   ")]
     public async Task ABlankModelRow_YieldsNull_NeverTheDefault(string stored)
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisModel, stored);
 
         using var scope = factory.Services.CreateScope();
@@ -117,7 +118,7 @@ public class FileAnalysisDegradedSettingsTests
     [InlineData("")]
     public async Task AnUnusableBaseUrlRow_YieldsNull_AndDoesNotFallBackToTheShippedHost(string stored)
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisBaseUrl, stored);
 
         using var scope = factory.Services.CreateScope();
@@ -136,7 +137,7 @@ public class FileAnalysisDegradedSettingsTests
     [Fact]
     public async Task ADegradedReadLogsTheKey_NeverTheStoredValue()
     {
-        await using var factory = new LoggingApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         await factory.SetSystemSettingAsync(
             SystemSettingsKeys.FileAnalysisBaseUrl, "http://apikey:s3cr3t@leaky-host.internal/secret-path");
 
@@ -168,7 +169,7 @@ public class FileAnalysisDegradedSettingsTests
     public async Task ADegradationInAnyOtherField_LeavesTheTargetUsable_ButStill503sTheDisclosure(
         string key, string stored)
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         await factory.EnableFileAnalysisAsync();
         await factory.SetSystemSettingAsync(key, stored);
 
@@ -192,7 +193,7 @@ public class FileAnalysisDegradedSettingsTests
     [Fact]
     public async Task ADegradedModel_Also503sTheDisclosureEndpoint()
     {
-        await using var factory = new OdysseyApiFactory(AnalysisClaims);
+        var factory = Factory.ForCaller(AnalysisClaims);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisModel, "");
         using var client = factory.CreateClient();
 
@@ -201,11 +202,21 @@ public class FileAnalysisDegradedSettingsTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : LoggingApiFactory([]);
+
     /// <summary>Captures the API's log output, for the no-leak assertion above.</summary>
-    private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
+    public class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
+
+        /// <summary>A shared host forgets the previous test's log lines.</summary>
+        public override async Task ResetStoreAsync()
+        {
+            await base.ResetStoreAsync();
+            Logs.Clear();
+        }
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {

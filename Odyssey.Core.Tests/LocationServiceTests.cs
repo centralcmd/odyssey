@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -308,7 +309,7 @@ public class LocationServiceTests
     public async Task The_audit_line_names_the_changed_fields_and_never_their_values()
     {
         using var context = TestContextFactory.CreateJournal();
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger<LocationService>();
         var service = new LocationService(context, logger: logger);
         var cabin = await service.Create(Cabin(), UserId);
 
@@ -319,10 +320,10 @@ public class LocationServiceTests
             Longitude = 9.2m,
         }, UserId, claims: LocationClaims.Trusted);
 
-        var update = Assert.Single(logger.Lines, line => line.Contains("updated", StringComparison.Ordinal));
+        var update = Assert.Single(logger.Messages, line => line.Contains("updated", StringComparison.Ordinal));
         Assert.Contains("[AddressText, Latitude, Longitude]", update);
         Assert.Contains(UserId, update);
-        foreach (var line in logger.Lines)
+        foreach (var line in logger.Messages)
         {
             Assert.DoesNotContain("Secret street", line);
             Assert.DoesNotContain("Fjellveien", line);
@@ -336,15 +337,15 @@ public class LocationServiceTests
     public async Task Archive_and_restore_are_audited_as_such()
     {
         using var context = TestContextFactory.CreateJournal();
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger<LocationService>();
         var service = new LocationService(context, logger: logger);
         var cabin = await service.Create(Cabin(), UserId);
 
         await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId, claims: LocationClaims.Trusted);
         await service.Update(cabin.LocationId, AsUpdate(cabin, archived: false), UserId, claims: LocationClaims.Trusted);
 
-        Assert.Contains(logger.Lines, line => line.Contains("archived by", StringComparison.Ordinal));
-        Assert.Contains(logger.Lines, line => line.Contains("restored by", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, line => line.Contains("archived by", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, line => line.Contains("restored by", StringComparison.Ordinal));
     }
 
     private sealed class StepClock(DateTimeOffset start) : TimeProvider
@@ -356,17 +357,5 @@ public class LocationServiceTests
             now = now.AddMinutes(1);
             return now;
         }
-    }
-
-    private sealed class RecordingLogger : ILogger<LocationService>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 }

@@ -13,7 +13,6 @@
 @inject IPhotoTagsApiClient PhotoTags
 @inject IAlbumsApiClient Albums
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -146,6 +145,7 @@
     <CreateJournalEntryDialog @key="_createKey"
                               @bind-Open="_createOpen"
                               TagOptions="_tagOptions"
+                              ArchivedTagNames="_archivedTagNames"
                               ContactOptions="_contactOptions"
                               OnSaved="OnEntryCreated" />
 }
@@ -156,6 +156,7 @@
                               @bind-Open="_editEntryOpen"
                               Entry="_editEntry"
                               TagOptions="_tagOptions"
+                              ArchivedTagNames="_archivedTagNames"
                               ContactOptions="_contactOptions"
                               OnSaved="OnEntryEdited" />
 }
@@ -183,6 +184,8 @@
 @* Edit dialog stays mounted and toggles via Open (@key resets its state when the target changes). *@
 <EditPhotoDialog @key="_editPhotoId" Open="_editPhotoId is not null" OpenChanged="v => { if (!v) _editPhotoId = null; }"
                  PhotoId="@(_editPhotoId ?? Guid.Empty)"
-                 TagOptions="_photoTagOptions" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
+                 TagOptions="_photoTagOptions" TagNameBlocked="_photoTagNameBlocked" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
                  CanCreateTags="_canCreatePhotoTags" CanCreateContacts="_canCreateContacts"
                  OnSaved="OnPhotoSaved" />
+
+<OdsConfirm @ref="_confirm" />

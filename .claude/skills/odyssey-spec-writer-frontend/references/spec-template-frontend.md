@@ -66,10 +66,14 @@ A table of every component the feature touches:
 ```markdown
 | Component | Reused / New | Notes |
 |---|---|---|
-| `OdsRecordTable` | Reused | List of policies, expand-to-detail |
+| `OdsRecordTable` | Reused | List of contracts, expand-to-detail |
 | `OdsModal` | Reused | The edit dialog |
-| `OdsTermRangeField` | **New** | No existing atom pairs two optional dates |
+| `OdsIbanField` | **New** | No existing atom formats and checksums an IBAN as it is typed |
 ```
+
+(`OdsIbanField` is a hypothetical name for illustration — it does not exist. Run the `ls` below
+before copying the shape: an earlier version of this example named a "new" date-range atom while
+`OdsDateRangePicker` already existed.)
 
 **Check before you claim "new".** `ls Odyssey.Client/Components/Ods*.razor` and the design system's
 component catalogue (README → Quick reference) between them cover most patterns. A genuinely new atom

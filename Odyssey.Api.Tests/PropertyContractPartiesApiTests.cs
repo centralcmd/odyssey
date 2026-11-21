@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using static Odyssey.Api.Tests.PropertyApiTestSupport;
 using ContextAccountType = Odyssey.Context.AccountType;
@@ -27,7 +29,7 @@ namespace Odyssey.Api.Tests;
 /// delete's evented cascade — all under EF InMemory, which is why the delete removes the party rows by
 /// hand rather than trusting the FK.
 /// </summary>
-public class PropertyContractPartiesApiTests
+public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Host host) : SharedApiHostTests<PropertyContractPartiesApiTests.Host>(host)
 {
     private const string ActorUserId = "property-parties-actor";
     private const string ContractsPath = "/api/contracts";
@@ -52,7 +54,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task AddParty_WithAProperty_Returns201_WithTheMinimalPropertyReference()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell", city: "Øyer", notes: "secret notes");
         var contractId = await SeedContractAsync(factory, "Cabin insurance", ContextContractType.Insurance);
         using var client = factory.CreateClient();
@@ -74,7 +76,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task GetContract_ProjectsThePropertyParty_AndLeaksNoDetailField()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell", city: "Øyer", notes: "secret notes");
         var contractId = await SeedContractAsync(factory, "Cabin insurance", ContextContractType.Insurance,
             (propertyId, ContextContractPartyRole.Insured));
@@ -101,7 +103,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task AddParty_WithAPropertyAndAnotherTarget_OrNoTarget_Returns400()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory);
         var accountId = await SeedAccountAsync(factory);
         var contactId = await SeedContactAsync(factory);
@@ -131,7 +133,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task AddParty_WithAnUnknownProperty_IsRefused_KeyedOnPropertyId_EchoingOnlyTheGuid()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var contractId = await SeedContractAsync(factory, "Other", ContextContractType.Other);
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
@@ -149,7 +151,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task AddParty_SamePropertyAndRoleTwice_Returns409_ButADifferentRoleSucceeds()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory);
         var contractId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan);
         using var client = factory.CreateClient();
@@ -172,7 +174,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task AddParty_WithARoleIllegalForTheType_Returns422_KeyedOnRole()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory);
         var contractId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan);
         using var client = factory.CreateClient();
@@ -189,7 +191,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task UpdateParty_FromAnAccountToAProperty_KeepsThePartyId_AndRecordsRemovedThenAdded()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory);
         var accountId = await SeedAccountAsync(factory);
         var contractId = await SeedContractAsync(factory, "Other", ContextContractType.Other);
@@ -221,14 +223,12 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task PartyWrites_WithoutContractsUpdate_Return403()
     {
-        await using var owner = new ApiFactory(FullAccess);
+        var owner = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(owner);
         var contractId = await SeedContractAsync(owner, "Cabin insurance", ContextContractType.Insurance,
             (propertyId, ContextContractPartyRole.Insured));
         var partyId = await ReadAsync(owner, c => c.ContractParties.Select(p => p.ContractPartyId).SingleAsync());
-        await using var reader = new ApiFactory(
-            [PermissionClaims.ContractsRead, PermissionClaims.PropertiesRead], owner);
-        using var client = reader.CreateClient();
+        using var client = owner.ClientFor([PermissionClaims.ContractsRead, PermissionClaims.PropertiesRead]);
         var body = new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Object };
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(PartiesPath(contractId), body)).StatusCode);
@@ -243,7 +243,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task AddParty_WithANestedPropertyObject_NeitherRenamesNorCreatesAProperty()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell");
         var contractId = await SeedContractAsync(factory, "Cabin insurance", ContextContractType.Insurance);
         using var client = factory.CreateClient();
@@ -267,7 +267,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task GetPropertyContracts_ReturnsOneRowPerContract_RolesInPartyOrder_OrderedByName_ArchivedIncluded()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var propertyId = await SeedPropertyAsync(factory);
         var otherPropertyId = await SeedPropertyAsync(factory, "Other house");
         var mortgageId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -293,7 +293,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task GetPropertyContracts_Returns404ForAnUnknownProperty_AndEmptyForAPropertyOnNoContract()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var loneId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
@@ -310,10 +310,9 @@ public class PropertyContractPartiesApiTests
     [InlineData(PermissionClaims.ContractsRead)]
     public async Task GetPropertyContracts_WithOnlyOneOfTheTwoClaims_Returns403(string onlyClaim)
     {
-        await using var owner = new ApiFactory(Reader);
+        var owner = Factory.ForCaller(Reader);
         var propertyId = await SeedPropertyAsync(owner);
-        await using var factory = new ApiFactory([onlyClaim], owner);
-        using var client = factory.CreateClient();
+        using var client = owner.ClientFor([onlyClaim]);
 
         var response = await client.GetAsync(PropertyContractsPath(propertyId));
 
@@ -325,7 +324,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task ContractCount_CountsDistinctContracts_OnListAndGet()
     {
-        await using var factory = new ApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         var propertyId = await SeedPropertyAsync(factory);
         var loneId = await SeedPropertyAsync(factory, "Lonely");
         await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -343,11 +342,10 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task ContractCount_WithoutContractsRead_IsNull_OnListAndGet()
     {
-        await using var owner = new ApiFactory(Reader);
+        var owner = Factory.ForCaller(Reader);
         var propertyId = await SeedPropertyAsync(owner);
         await SeedContractAsync(owner, "Mortgage", ContextContractType.Loan, (propertyId, ContextContractPartyRole.Collateral));
-        await using var guest = new ApiFactory([PermissionClaims.PropertiesRead], owner);
-        using var client = guest.CreateClient();
+        using var client = owner.ClientFor([PermissionClaims.PropertiesRead]);
 
         var page = await client.GetFromJsonAsync<PagedResult<ExistingProperty>>(PropertiesPath);
         Assert.Null(page!.Items.Single(p => p.PropertyId == propertyId).ContractCount);
@@ -359,7 +357,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task DeleteProperty_RemovesItsPartyRows_KeepsTheContractsAndTheirOtherParties()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory);
         var accountId = await SeedAccountAsync(factory);
         var contractId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -381,7 +379,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task DeleteProperty_OnTwoContracts_EventsEachRemoval_AndLogsEachRow_WithTheCallerAndOneTimestamp()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(FullAccess, services => services.AddSingleton<ILoggerProvider>(logs));
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell");
         var loanId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -428,7 +426,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task PartyWriteLogLine_ForAPropertyParty_NamesTheKindAndGuid_AndNoPropertyField()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(FullAccess, services => services.AddSingleton<ILoggerProvider>(logs));
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell", city: "Øyer");
         var contractId = await SeedContractAsync(factory, "Cover", ContextContractType.Insurance);
@@ -448,7 +446,7 @@ public class PropertyContractPartiesApiTests
     [Fact]
     public async Task TypeChange_BlockedByAPropertyParty_NamesThePropertyInTheBlockers()
     {
-        await using var factory = new ApiFactory(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell");
         var contractId = await SeedContractAsync(factory, "Cover", ContextContractType.Insurance,
             (propertyId, ContextContractPartyRole.Insured));
@@ -474,30 +472,19 @@ public class PropertyContractPartiesApiTests
 
     // ── Fixture ───────────────────────────────────────────────────────────────
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions, Action<IServiceCollection>? extra = null)
             : base(permissions, ActorUserId, configuration: null, configureServices: services => Configure(services, extra))
         {
         }
 
-        public ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory sharing)
-            : base(permissions, ActorUserId, configuration: null, configureServices: services => Configure(services, null),
-                sharingStoreWith: sharing)
-        {
-        }
-
         private static void Configure(IServiceCollection services, Action<IServiceCollection>? extra)
         {
             services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+            services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
             extra?.Invoke(services);
         }
-    }
-
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     private static async Task<Guid> SeedAccountAsync(OdysseyApiFactory factory)
@@ -576,4 +563,7 @@ public class PropertyContractPartiesApiTests
         await context.SaveChangesAsync();
         return contract.ContractId;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

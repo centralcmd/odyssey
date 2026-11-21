@@ -38,7 +38,9 @@ public sealed record PmtilesHeader
     public static PmtilesHeader Parse(ReadOnlySpan<byte> h)
     {
         if (h.Length < Length)
+        {
             throw new ArgumentException("A PMTiles header is 127 bytes.", nameof(h));
+        }
 
         static double E7(ReadOnlySpan<byte> b) => BinaryPrimitives.ReadInt32LittleEndian(b) / 10_000_000d;
         static ulong U64(ReadOnlySpan<byte> b) => BinaryPrimitives.ReadUInt64LittleEndian(b);

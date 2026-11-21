@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -74,7 +75,7 @@ public class ImportExportSettingsSourceTests
             var text = File.ReadAllText(file);
             foreach (Match match in HardCodedMegabyteHint.Matches(text))
             {
-                violations.Add($"{relative}:{ClientSource.LineAt(text, match.Index)} — {match.Value}");
+                violations.Add($"{relative}:{SourceLint.LineAt(text, match.Index)} — {match.Value}");
             }
         }
 
@@ -100,7 +101,7 @@ public class ImportExportSettingsSourceTests
             var text = File.ReadAllText(file);
             foreach (Match tag in CapacityFieldTag.Matches(text))
             {
-                var line = ClientSource.LineAt(text, tag.Index);
+                var line = SourceLint.LineAt(text, tag.Index);
                 foreach (var required in new[] { "Label=", "AriaLabelledBy=", "AriaDescribedBy=" })
                 {
                     if (!tag.Value.Contains(required, StringComparison.Ordinal))
@@ -148,11 +149,16 @@ public class ImportExportSettingsSourceTests
         var violations = new List<string>();
         foreach (Match tag in tags)
         {
-            var line = ClientSource.LineAt(text, tag.Index);
+            var line = SourceLint.LineAt(text, tag.Index);
             if (!tag.Value.Contains("LabelId=", StringComparison.Ordinal))
+            {
                 violations.Add($"Settings.razor:{line} — missing LabelId");
+            }
+
             if (!tag.Value.Contains("HelpId=", StringComparison.Ordinal))
+            {
                 violations.Add($"Settings.razor:{line} — missing HelpId");
+            }
         }
 
         Assert.True(violations.Count == 0,
@@ -244,7 +250,7 @@ public class ImportExportSettingsSourceTests
     [InlineData("taskIcsMaxExportTasks")]
     public void Every_export_count_SettingItem_omits_a_max_below_the_shared_capacity_ceiling(string key)
     {
-        var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Settings.razor.cs"));
+        var text = ClientSource.CodeBehind("Pages/Settings.razor.cs");
         var match = Regex.Match(text, $@"new\(""{key}"".*?\);", RegexOptions.Singleline);
 
         Assert.True(match.Success, $"Expected a {key} SettingItem in Settings.razor.cs.");
@@ -265,7 +271,17 @@ public class ImportExportSettingsSourceTests
     [InlineData("journalIcsMaxExportMegabytes")]
     public void Settings_catalog_contains_the_new_export_limit_key(string key)
     {
-        var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Settings.razor.cs"));
+        var text = ClientSource.CodeBehind("Pages/Settings.razor.cs");
         Assert.Contains($"\"{key}\"", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The calendar link cap is withheld from the fallback (issue #521 v3 §E): with no live value a dialog pre-checks
+    /// nothing rather than an invented cap the administrator may have lowered.
+    /// </summary>
+    [Fact]
+    public void The_import_limits_fallback_carries_no_calendar_link_cap()
+    {
+        Assert.Null(Odyssey.Client.Services.ImportLimitsCache.Fallback.CalendarEventMaxLinksPerKind);
     }
 }

@@ -19,7 +19,7 @@ namespace Odyssey.Context;
 /// principal lives in another model, so every reference across a context boundary was a bare key
 /// validated by a lookup service and swept by a guard on delete, with nothing stopping a write path
 /// that skipped both. Folding finance and journal together turned ten such columns into real foreign
-/// keys (see <c>ConfigureCrossModuleForeignKeys</c>); folding identity in turned the twenty-three
+/// keys (see <c>ConfigureCrossModuleForeignKeys</c>); folding identity in turned the
 /// user-attribution columns into real foreign keys too (see <c>ConfigureUserAttribution</c>),
 /// which is what finally lets a user deletion resolve them inside the transaction that deletes the
 /// account.
@@ -153,7 +153,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(modelBuilder);
 
-        // One IEntityTypeConfiguration per entity, under ModelConfiguration/ (issue #287 L5). The three
+        // One IEntityTypeConfiguration per entity, under ModelConfiguration/ (issue #287 L5). The
         // key sets below stay here instead: each spans many entities and is reviewed as a set, so
         // scattering it across the per-entity files would hide the one rule each set exists to state.
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OdysseyContext).Assembly);
@@ -270,15 +270,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(party => party.ContactId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // FileMetadata ← journal/photo. Cascade matches how every in-module attachment row already
+        // FileMetadata ← journal. Cascade matches how every in-module attachment row already
         // references the Files store (TransactionFile, AccountFile, TaxStatementFile, …): the link is
-        // meaningless without its file. A library Photo is a wrapper around exactly one file, so it goes
-        // the same way, sweeping its tag/person/album links and its journal-entry placements with it.
-        modelBuilder.Entity<Photo>()
-            .HasOne<FileMetadata>()
-            .WithMany()
-            .HasForeignKey(photo => photo.FileId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // meaningless without its file. A photo owns its original on the object store and has no key here.
 
         modelBuilder.Entity<JournalEntryAttachment>()
             .HasOne<FileMetadata>()
@@ -337,8 +331,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>
     private static void ConfigureUserAttribution(ModelBuilder modelBuilder)
     {
-        // Twenty-eight columns across twenty entities, naming the user who created, updated,
-        // attached, uploaded, requested or reviewed a row. They were bare strings for as long as identity lived in its own context, so
+        // The columns naming the user who created, updated, applied, attached, uploaded, requested or
+        // reviewed a row; UserAttributionForeignKeyTests (Odyssey.IntegrationTests) holds the full set. They were bare strings for as long as identity lived in its own context, so
         // deleting a user left every one of them pointing at an account that no longer existed — the
         // gap UserAdministrationService.DeleteAsync used to record as "data in the other contexts".
         //
@@ -364,6 +358,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<Photo>(modelBuilder, nameof(Photo.CreatedByUserId), nameof(Photo.UpdatedByUserId));
         DeclareUserAttribution<PhotoAlbum>(modelBuilder, nameof(PhotoAlbum.CreatedByUserId), nameof(PhotoAlbum.UpdatedByUserId));
         DeclareUserAttribution<RecurrencePattern>(modelBuilder, nameof(RecurrencePattern.CreatedByUserId), nameof(RecurrencePattern.UpdatedByUserId));
+        DeclareUserAttribution<RecurrenceExclusion>(modelBuilder, nameof(RecurrenceExclusion.CreatedByUserId));
 
         DeclareUserAttribution<AccountFile>(modelBuilder, nameof(AccountFile.AttachedByUserId));
         DeclareUserAttribution<ContractFile>(modelBuilder, nameof(ContractFile.AttachedByUserId));
@@ -394,10 +389,10 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// navigation-less foreign keys to <c>AspNetUsers</c> that null out when the account is deleted.
     /// </summary>
     /// <remarks>
-    /// A helper rather than twenty-two hand-written declarations because the on-delete behaviour is
+    /// A helper rather than dozens of hand-written declarations because the on-delete behaviour is
     /// the whole point of the block: one of them silently written as <c>Cascade</c> would delete a
     /// household's shared records the next time somebody removed a user, and a reviewer comparing
-    /// twenty-two near-identical statements is exactly who misses that.
+    /// a long run of near-identical statements is exactly who misses that.
     /// </remarks>
     private static void DeclareUserAttribution<TEntity>(
         ModelBuilder modelBuilder,
@@ -448,7 +443,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<TransactionFile> TransactionFiles { get; set; }
     public DbSet<AccountFile> AccountFiles { get; set; }
     public DbSet<FileMetadata> FileMetadata { get; set; }
-    public DbSet<FileBlob> FileBlob { get; set; }
     public DbSet<FileAnalysisJob> FileAnalysisJobs { get; set; }
     public DbSet<FileAnalysisCandidateTransaction> FileAnalysisCandidateTransactions { get; set; }
     public DbSet<FileAnalysisCandidateTag> FileAnalysisCandidateTags { get; set; }
@@ -509,6 +503,13 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<WeatherObservationCoverage> WeatherObservationCoverages { get; set; }
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
     public DbSet<RecurrencePattern> RecurrencePatterns { get; set; }
+    public DbSet<RecurrenceExclusion> RecurrenceExclusions { get; set; }
+
+    // Calendar event attachments (issue #521). CalendarLinkService is their only writer.
+    public DbSet<CalendarEventAttachment> CalendarEventAttachments { get; set; }
+    public DbSet<CalendarEventPhoto> CalendarEventPhotos { get; set; }
+    public DbSet<RecurrencePatternAttachment> RecurrencePatternAttachments { get; set; }
+    public DbSet<RecurrencePatternPhoto> RecurrencePatternPhotos { get; set; }
 
     // Contact aggregate (issue #325).
     public DbSet<Contact> Contacts { get; set; }
@@ -528,7 +529,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     /// <summary>
     /// A user's one profile picture (issue #94). Deliberately NOT in the domain file store: the pair
-    /// below shares no relationship with <see cref="FileMetadata"/>/<see cref="FileBlob"/> in either
+    /// below shares no relationship with <see cref="FileMetadata"/> in either
     /// direction, which is what keeps a face out of reach of every <c>files.*</c> claim and out of the
     /// admin file export.
     /// </summary>
@@ -576,29 +577,16 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PhotoThumbnailWorkerHeartbeat> PhotoThumbnailWorkerHeartbeats => Set<PhotoThumbnailWorkerHeartbeat>();
 
     /// <summary>
-    /// Photo originals on the object store (issue #428): the per-year bucket counter, the backfill's lease and its
-    /// parked failures. The originals themselves are <see cref="StoredObjects"/> named by <c>Photo.StoredObjectId</c>.
+    /// Photo originals on the object store (issue #428): the per-year bucket counter. The originals themselves are <see cref="StoredObjects"/> named by <c>Photo.StoredObjectId</c>.
     /// </summary>
     public DbSet<PhotoOriginalBucket> PhotoOriginalBuckets => Set<PhotoOriginalBucket>();
 
-    /// <inheritdoc cref="PhotoOriginalBuckets" />
-    public DbSet<PhotoOriginalBackfillLease> PhotoOriginalBackfillLeases => Set<PhotoOriginalBackfillLease>();
-
-    /// <inheritdoc cref="PhotoOriginalBuckets" />
-    public DbSet<PhotoOriginalBackfillFailure> PhotoOriginalBackfillFailures => Set<PhotoOriginalBackfillFailure>();
 
     /// <summary>
-    /// Files on the object store (issue #448): the per-feature bucket counter, the file move's lease and its parked
-    /// failures. The files themselves are <see cref="StoredObjects"/> named by one of <see cref="Odyssey.Context.FileMetadata"/>'s
+    /// Files on the object store (issue #448): the per-feature bucket counter. The files themselves are <see cref="StoredObjects"/> named by one of <see cref="Odyssey.Context.FileMetadata"/>'s
     /// three stored-object columns.
     /// </summary>
     public DbSet<StoredFileBucket> StoredFileBuckets => Set<StoredFileBucket>();
-
-    /// <inheritdoc cref="StoredFileBuckets" />
-    public DbSet<FileBlobBackfillLease> FileBlobBackfillLeases => Set<FileBlobBackfillLease>();
-
-    /// <inheritdoc cref="StoredFileBuckets" />
-    public DbSet<FileBlobBackfillFailure> FileBlobBackfillFailures => Set<FileBlobBackfillFailure>();
 
     /// <summary>
     /// The background-job run log (issue #409): one TPH table for every job's runs, bursts and held periods, and

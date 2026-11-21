@@ -58,7 +58,10 @@ public static class OdsSmartTagScope
         string? start = SmartTagScopeRules.IsOutOfRange(scope.Start) ? SmartTagScopeRules.OutOfRangeMessage : null;
         string? end = SmartTagScopeRules.IsOutOfRange(scope.End) ? SmartTagScopeRules.OutOfRangeMessage : null;
         if (start is null && end is null && SmartTagScopeRules.IsInverted(scope.Start, scope.End))
+        {
             end = SmartTagScopeRules.InvertedMessage;
+        }
+
         return (start, end);
     }
 
@@ -117,17 +120,28 @@ public static class OdsSmartTagScope
     {
         var (start, end) = scope.Days;
         if (term.IsOneOff)
+        {
             return start is not null || end is not null ? "one-off contract" : "one-off contract, no date rule";
+        }
+
         if (scope.SameAs(FromTerm(term)))
+        {
             return "same as the term";
+        }
 
         var ts = term.StartDate?.Date;
         var te = term.EndDate?.Date;
         var beyond = new List<string>(2);
         if (ts is { } termStart && (start is null || start < termStart))
+        {
             beyond.Add("before");
+        }
+
         if (te is { } termEnd && (end is null || end > termEnd))
+        {
             beyond.Add("after");
+        }
+
         return beyond.Count > 0 ? $"includes dates {string.Join(" and ", beyond)} the term" : "narrower than the term";
     }
 
@@ -136,10 +150,16 @@ public static class OdsSmartTagScope
     {
         var days = (int)Math.Round(Math.Abs((to - from).TotalDays), MidpointRounding.AwayFromZero);
         if (days < 62)
+        {
             return $"{days} day{(days == 1 ? "" : "s")}";
+        }
+
         var months = (int)Math.Round(days / 30.44, MidpointRounding.AwayFromZero);
         if (months < 24)
+        {
             return $"{months} months";
+        }
+
         return $"{(int)Math.Round(months / 12.0, MidpointRounding.AwayFromZero)} years";
     }
 }

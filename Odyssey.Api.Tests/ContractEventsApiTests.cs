@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Context.Authorization;
@@ -26,7 +27,7 @@ namespace Odyssey.Api.Tests;
 /// <c>contracts.delete</c> for the event delete), the attribution label the API edge resolves, and
 /// what model binding actually does with a body carrying fields the DTO does not declare.
 /// </remarks>
-public class ContractEventsApiTests
+public class ContractEventsApiTests(ContractEventsApiTests.Host host) : SharedApiHostTests<ContractEventsApiTests.Host>(host)
 {
     private const string ActorUserId = "contract-events-actor-id";
     private const string Path = "/api/contracts";
@@ -54,7 +55,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_ValidBody_Returns201WithTheStampedFieldsAndTheListLocation()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -75,7 +76,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_ToAMissingContract_Returns404()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         Assert.Equal(
@@ -90,7 +91,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_BodySupplyingTheAttributionFields_DoesNotOverrideTheServerStampedValues()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -125,7 +126,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_BodyCarryingUnrecognisedProperties_IgnoresThemAndTouchesNoOtherTable()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var contactId = await SeedContactAsync(factory);
@@ -160,7 +161,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_WithAFutureOccurredAt_Is400KeyedToOccurredAt()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -175,7 +176,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_WithAnOccurredAtInsideTheTolerance_Succeeds()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -191,7 +192,7 @@ public class ContractEventsApiTests
     [InlineData(null)]
     public async Task Post_WithNoTitle_Is400(string? title)
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -207,7 +208,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_WithAnOverLongTitle_Is400()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -226,14 +227,14 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_ReturnsAllThreeFreeTextFieldsToAPlainContractsReader()
     {
-        await using var writerFactory = await NewFactoryAsync(ReadWrite);
+        var writerFactory = Factory.ForCaller(ReadWrite);
         using var writer = writerFactory.CreateClient();
         var contractId = await CreateContractAsync(writer);
         (await writer.PostAsJsonAsync(Events(contractId), New())).EnsureSuccessStatusCode();
 
         // A SECOND principal, holding contracts.read alone, over the first one's data.
-        await using var readerFactory = new ApiFactory(ReadOnly, sharingStoreWith: writerFactory);
-        using var reader = readerFactory.CreateClient();
+        var readerFactory = Factory;
+        using var reader = readerFactory.ClientFor(ReadOnly);
 
         var items = await reader.GetPagedItemsAsync<ExistingContractEvent>(Events(contractId));
 
@@ -251,7 +252,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_ExposesADisplayLabelAndNeverTheRawUserId()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -271,7 +272,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_AuthorWithNoProfileNameAndNoUsersRead_IsUnknownUserNotAnEmail()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var userName = await factory.SeedActorUserAsync();
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -291,7 +292,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_AnEventWhoseAuthorIsGone_ReadsBackAsUnknownUser()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         (await client.PostAsJsonAsync(Events(contractId), New())).EnsureSuccessStatusCode();
@@ -318,7 +319,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task GetContract_NamesWhoAddedIt_AndNeverTheRawUserId()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -338,7 +339,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task PostContract_ReturnsWhoAddedIt_AndNeverTheRawUserId()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
 
@@ -389,7 +390,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task GetContract_WhoseAuthorIdNamesNoUser_ReadsAsUnknownUser()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await SeedContractDirectlyAsync(factory);
         using (var scope = factory.Services.CreateScope())
@@ -412,7 +413,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task GetContract_WithNoRecordedAuthor_ReturnsNullRatherThanUnknownUser()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await SeedContractDirectlyAsync(factory);
 
@@ -424,7 +425,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_OnAMissingContract_Returns404()
     {
-        await using var factory = await NewFactoryAsync(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(Events(Guid.NewGuid()))).StatusCode);
@@ -434,7 +435,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_DoesNotReturnAnotherContractsEvents()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var otherContractId = await CreateContractAsync(client, name: "Other agreement");
@@ -457,7 +458,7 @@ public class ContractEventsApiTests
     [InlineData("from=notADate")]
     public async Task Get_WithAnUnbindableOrOutOfRangeQuery_Is400(string query)
     {
-        await using var factory = await NewFactoryAsync(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
         var contractId = await SeedContractDirectlyAsync(factory);
 
@@ -473,7 +474,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task GetOneContract_DoesNotInlineItsEvents()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         (await client.PostAsJsonAsync(Events(contractId), New())).EnsureSuccessStatusCode();
@@ -489,7 +490,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Put_ReplacesEveryFieldAndClearsTheOmittedOnes()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var created = await PostEventAsync(client, contractId);
@@ -511,7 +512,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Put_DoesNotChangeTheAttributionOrTheCreationTimestamp()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -529,7 +530,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Put_AnEventOnAnotherContract_Is404()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var otherContractId = await CreateContractAsync(client, name: "Other agreement");
@@ -544,7 +545,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Put_AMissingEvent_Is404()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -558,7 +559,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Delete_RemovesTheEvent()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var created = await PostEventAsync(client, contractId);
@@ -572,7 +573,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Delete_AnEventOnAnotherContract_Is404AndKeepsIt()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var otherContractId = await CreateContractAsync(client, name: "Other agreement");
@@ -601,7 +602,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task DeleteContract_RemovesItsEventsAndLeavesAnotherContractsUntouched()
     {
-        await using var factory = await NewFactoryAsync([.. ReadWrite, PermissionClaims.ContractsDelete]);
+        var factory = Factory.ForCaller([.. ReadWrite, PermissionClaims.ContractsDelete]);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var survivingContractId = await CreateContractAsync(client, name: "Survivor");
@@ -623,7 +624,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_WithoutContractsRead_Is403()
     {
-        await using var factory = await NewFactoryAsync(EverythingButContractReadAndUpdate);
+        var factory = Factory.ForCaller(EverythingButContractReadAndUpdate);
         using var client = factory.CreateClient();
         var contractId = await SeedContractDirectlyAsync(factory);
 
@@ -642,7 +643,7 @@ public class ContractEventsApiTests
         string[] readAndDeleteButNotUpdate =
             [PermissionClaims.ContractsRead, PermissionClaims.ContractsCreate, PermissionClaims.ContractsDelete];
 
-        await using var factory = await NewFactoryAsync(readAndDeleteButNotUpdate);
+        var factory = Factory.ForCaller(readAndDeleteButNotUpdate);
         using var client = factory.CreateClient();
         var contractId = await SeedContractDirectlyAsync(factory);
         var eventId = Guid.NewGuid();
@@ -665,7 +666,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_WithoutTheClaimOnAMissingContract_Is403Not404()
     {
-        await using var factory = await NewFactoryAsync(EverythingButContractReadAndUpdate);
+        var factory = Factory.ForCaller(EverythingButContractReadAndUpdate);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Events(Guid.NewGuid()))).StatusCode);
@@ -674,7 +675,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task EveryEndpoint_Anonymous_Is401()
     {
-        await using var factory = await NewFactoryAsync(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
         var contractId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -747,7 +748,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Post_WithASourceInTheBody_IgnoresIt_AndReturnsUser()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
 
@@ -773,7 +774,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Put_OnASystemEvent_ReplacesTheBody_AndKeepsSourceSystem()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var recorded = await RecordASystemEventAsync(client, contractId);
@@ -796,7 +797,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Delete_OnASystemEvent_Returns204AndRemovesIt()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var recorded = await RecordASystemEventAsync(client, contractId);
@@ -812,7 +813,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task Get_WithASourceFilter_ReturnsOnlyThatKind_AndRejectsNonsense()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         await RecordASystemEventAsync(client, contractId);
@@ -846,7 +847,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task TermWrites_RecordEventsAttributedToTheCallingUser()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -870,13 +871,13 @@ public class ContractEventsApiTests
     [Fact]
     public async Task SystemEvents_AreGatedByTheSameTwoClaimsAsEveryOtherRow()
     {
-        await using var owner = await NewFactoryAsync(ReadWrite);
+        var owner = Factory.ForCaller(ReadWrite);
         using var ownerClient = owner.CreateClient();
         var contractId = await CreateContractAsync(ownerClient);
         var recorded = await RecordASystemEventAsync(ownerClient, contractId);
 
-        await using var stranger = new ApiFactory(EverythingButContractReadAndUpdate, sharingStoreWith: owner);
-        using var strangerClient = stranger.CreateClient();
+        var stranger = Factory;
+        using var strangerClient = stranger.ClientFor(EverythingButContractReadAndUpdate);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await strangerClient.GetAsync(Events(contractId))).StatusCode);
         Assert.Equal(
@@ -895,7 +896,7 @@ public class ContractEventsApiTests
     [Fact]
     public async Task ASystemEventWhoseAuthorIsGone_ReadsBackAsUnknownUser()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await factory.SeedActorUserAsync(displayName: "Jane Doe");
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
@@ -1110,7 +1111,7 @@ public class ContractEventsApiTests
         public Dictionary<string, string[]>? Errors { get; init; }
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(
             IReadOnlyCollection<string>? permissions,
@@ -1123,15 +1124,13 @@ public class ContractEventsApiTests
                 configureServices: services =>
                 {
                     services.RemoveAll<TimeProvider>();
-                    services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedNow));
+                    services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedNow));
                 },
                 sharingStoreWith: sharingStoreWith)
         {
         }
     }
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

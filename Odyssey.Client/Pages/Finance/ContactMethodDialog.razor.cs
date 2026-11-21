@@ -89,8 +89,6 @@ public partial class ContactMethodDialog
 
     private Dictionary<string, string> _errors = new(StringComparer.OrdinalIgnoreCase);
 
-    private IReadOnlyDictionary<string, string> Errors => _errors;
-
     private string LabelFieldId = default!;
 
     private string? Err(string key) => _errors.GetValueOrDefault(key);
@@ -102,7 +100,9 @@ public partial class ContactMethodDialog
     {
         LabelFieldId = $"ods-cmd-label-{Guid.NewGuid():N}";
         if (Kind != "address")
+        {
             return;
+        }
 
         // An address with no linked place (legacy) opens in hand entry, its fields as they are (issue #383 v5).
         var stored = Draft.Stored is { } a && a.LocationId != Guid.Empty ? await StoredFor(a) : null;
@@ -132,7 +132,10 @@ public partial class ContactMethodDialog
     private async Task<LocationUsage?> OthersBreakdownAsync(Guid locationId)
     {
         if (!Permissions.CanReadLocations)
+        {
             return null;
+        }
+
         var place = await Locations.GetAsync(locationId);
         return place.IsSuccess && place.Value?.Usage is { } usage
             ? usage with { Contacts = usage.Contacts is { } n ? Math.Max(0, n - 1) : null }
@@ -145,13 +148,18 @@ public partial class ContactMethodDialog
         foreach (var key in new[] { AddressBlockModel.AddressKey, AddressBlockModel.Line1Key, AddressBlockModel.Line2Key,
                                     AddressBlockModel.PostalCodeKey, AddressBlockModel.CityKey, AddressBlockModel.RegionKey,
                                     AddressBlockModel.CountryCodeKey })
+        {
             _errors.Remove(key);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusSummary)
+        {
             return;
+        }
+
         _focusSummary = false;
         try { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
         catch (Exception) { /* best-effort: no JS runtime under bUnit */ }
@@ -167,12 +175,17 @@ public partial class ContactMethodDialog
         _formAlert = null;
         _errors = Draft.Validate(Kind, ContactType);
         foreach (var (key, message) in block.Validate())
+        {
             _errors[key] = message;
+        }
+
         if (_errors.Count > 0)
         {
             _focusSummary = SummaryErrors.Count > 0;
             if (!_focusSummary)
+            {
                 await FocusFirstErrorAsync();
+            }
             // The submit is the form dialog's, not this component's event: re-render so the summary takes focus.
             StateHasChanged();
             return false;
@@ -222,27 +235,49 @@ public partial class ContactMethodDialog
         string FieldKey(string key) => block.Hand ? key : AddressBlockModel.AddressKey;
 
         if (problem?.ErrorFor("locationId") is not null)
+        {
             _errors[AddressBlockModel.AddressKey] = conflict
                 ? AddressBlockModel.ContactAlreadyHasAddress
                 : block.LocationIdMessage;
+        }
+
         if (problem?.ErrorFor("latitude") is not null || problem?.ErrorFor("source") is not null
             || problem?.ErrorFor("longitude") is not null || problem?.ErrorFor("timeZoneId") is not null
             || problem?.ErrorFor("sourceReference") is not null)
+        {
             _errors[AddressBlockModel.AddressKey] = AddressBlockModel.StagedAddressUnusable;
+        }
+
         if (problem?.ErrorFor("line1") is not null)
+        {
             _errors[FieldKey(AddressBlockModel.Line1Key)] = conflict
                 ? AddressBlockModel.DuplicateAddressMessage(Permissions.CanUpdateLocations)
                 : AddressBlockModel.ContactsNeedFullAddress;
+        }
+
         foreach (var key in new[] { AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey })
+        {
             if (problem?.ErrorFor(key) is { } message)
+            {
                 _errors.TryAdd(FieldKey(key), message);
+            }
+        }
+
         if (problem?.ErrorFor("label") is { } label)
+        {
             _errors["label"] = label;
+        }
+
         if (problem?.ErrorFor("applyTo") is { } applyTo)
+        {
             _formAlert = applyTo;
+        }
 
         if (_errors.Count == 0)
+        {
             _formAlert ??= problem?.Message ?? "The address couldn’t be saved.";
+        }
+
         _focusSummary = SummaryErrors.Count > 0;
     }
 
@@ -254,7 +289,9 @@ public partial class ContactMethodDialog
     protected override void OnParametersSet()
     {
         if (IsFirst)
+        {
             Draft.IsPrimary = true;
+        }
     }
 
     /// <summary>An address dialog whose block is still loading: Save is disabled until it exists.</summary>
@@ -265,7 +302,9 @@ public partial class ContactMethodDialog
         // An address is only ever written through its block. Before the block exists there is nothing to send,
         // and falling through to OnCommit (which refuses addresses) used to do nothing, silently (N2).
         if (Kind == "address")
+        {
             return _block is not null && await SubmitAddressAsync();
+        }
 
         _errors = Draft.Validate(Kind, ContactType);
         if (_errors.Count > 0)
@@ -275,11 +314,15 @@ public partial class ContactMethodDialog
         }
 
         if (OnCommit is null)
+        {
             return false;
+        }
 
         var ok = await OnCommit(Draft, AssignServerError);
         if (!ok && _errors.Count > 0)
+        {
             await FocusFirstErrorAsync();
+        }
 
         return ok;
     }
@@ -289,7 +332,9 @@ public partial class ContactMethodDialog
     private bool AssignServerError(string field, string message)
     {
         if (!OwnedFields.Contains(field, StringComparer.OrdinalIgnoreCase))
+        {
             return false;
+        }
 
         _errors[field] = message;
         return true;
@@ -300,7 +345,9 @@ public partial class ContactMethodDialog
     private async Task FocusFirstErrorAsync()
     {
         if (!_errors.ContainsKey("label"))
+        {
             return;
+        }
 
         try { await Js.InvokeVoidAsync("odsFocusById", LabelFieldId); }
         catch (Exception) { /* best-effort: no JS runtime under bUnit, and focus is not load-bearing */ }

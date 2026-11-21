@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
@@ -20,14 +21,14 @@ namespace Odyssey.Api.Tests;
 /// The queued analyze contract on the wire (issue #444 §6): <c>202</c> with a <c>Location</c> to the job, a
 /// <c>409</c> naming the open job, the job read's polling headers, and the run log's refusal of a manual run.
 /// </summary>
-public class FileAnalysisQueueApiTests
+public class FileAnalysisQueueApiTests(FileAnalysisQueueApiTests.Host host) : SharedApiHostTests<FileAnalysisQueueApiTests.Host>(host)
 {
     private static readonly string[] Claims = [PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisCreate];
 
     [Fact]
     public async Task Analyze_Is202_WithALocationToTheJob()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await factory.EnableFileAnalysisAsync();
         var (accountId, fileId, _) = await SeedStatementAsync(factory);
         using var client = factory.CreateClient();
@@ -45,7 +46,7 @@ public class FileAnalysisQueueApiTests
     [Fact]
     public async Task Analyze_WhileAJobIsOpen_Is409_NamingTheOpenJob()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await factory.EnableFileAnalysisAsync();
         var (accountId, fileId, accountFileId) = await SeedStatementAsync(factory);
         var openId = await SeedJobAsync(factory, accountFileId, ContextJobStatus.Queued);
@@ -63,7 +64,7 @@ public class FileAnalysisQueueApiTests
     [Fact]
     public async Task Analyze_AboveTheCeiling_Is422_WithTheLimit()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await factory.EnableFileAnalysisAsync();
         var (accountId, fileId, _) = await SeedStatementAsync(factory, FileAnalysisJobTiming.MaxAnalysisFileBytes + 1);
         using var client = factory.CreateClient();
@@ -82,7 +83,7 @@ public class FileAnalysisQueueApiTests
     public async Task ReadingAnOpenJob_AsksTheClientToPoll_AndForbidsCaching()
     {
         // Analysis is never enabled here: the job read answers with the switch off (issue #444 §6).
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         var (_, _, accountFileId) = await SeedStatementAsync(factory);
         var jobId = await SeedJobAsync(factory, accountFileId, ContextJobStatus.Queued);
         using var client = factory.CreateClient();
@@ -97,7 +98,7 @@ public class FileAnalysisQueueApiTests
     [Fact]
     public async Task ReadingAFinishedJob_CarriesNoRetryAfter()
     {
-        await using var factory = new OdysseyApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         var (_, _, accountFileId) = await SeedStatementAsync(factory);
         var jobId = await SeedJobAsync(factory, accountFileId, ContextJobStatus.Completed);
         using var client = factory.CreateClient();
@@ -162,7 +163,9 @@ public class FileAnalysisQueueApiTests
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == "USD"))
+        {
             context.Currencies.Add(new Currency { CurrencyCode = "USD", Name = "US Dollar", MinorUnits = 2, Symbol = "$" });
+        }
 
         var account = new Account
         {
@@ -174,17 +177,16 @@ public class FileAnalysisQueueApiTests
             CurrencyCode = "USD",
         };
         context.Accounts.Add(account);
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
             FileName = "statement.pdf",
             ContentType = "application/pdf",
             SizeBytes = sizeBytes,
-            Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
+            Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(blobContent)),
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         });
         var accountFile = new AccountFile
@@ -199,4 +201,7 @@ public class FileAnalysisQueueApiTests
         await context.SaveChangesAsync();
         return (account.AccountId, fileId, accountFile.Id);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

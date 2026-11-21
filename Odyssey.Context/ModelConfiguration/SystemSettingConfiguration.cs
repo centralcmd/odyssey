@@ -27,9 +27,9 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxExportRows, Value = SystemSettingsDefaults.ContactVCardMaxExportRows, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxImportEntries, Value = SystemSettingsDefaults.ContactVCardMaxImportEntries, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportEvents, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportEvents, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportEvents, Value = SystemSettingsDefaults.CalendarIcsMaxExportEvents, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportEvents, Value = SystemSettingsDefaults.CalendarIcsMaxImportEvents, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportMegabytes, Value = $"{SystemSettingsDefaults.CalendarIcsMaxImportMegabytes}", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportTasks, Value = SystemSettingsDefaults.TaskIcsMaxImportTasks, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportMegabytes, Value = "10240", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportRows, Value = SystemSettingsDefaults.JournalIcsMaxExportRows, UpdatedAt = seededAt },
@@ -38,7 +38,7 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // Export-side follow-up (post-#343): a "maximum export file size" per surface, plus a Tasks
             // export row cap (Tasks previously had none — see SystemSettingsKeys' doc comment).
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportMegabytes, Value = $"{SystemSettingsDefaults.CalendarIcsMaxExportMegabytes}", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportTasks, Value = SystemSettingsDefaults.TaskIcsMaxExportTasks, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
@@ -82,6 +82,7 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.PhotoMaxAlbumMembers, Value = "1000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalEntryMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalTaskMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarEventMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileStorageMaxUploadMegabytes, Value = "64", UpdatedAt = seededAt },
             // The last compiled-in tuning constants (issue #434). Every seed is today's effective
             // value, so a default install is behaviourally identical after the migration — with the

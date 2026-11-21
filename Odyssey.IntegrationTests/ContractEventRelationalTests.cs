@@ -27,7 +27,7 @@ namespace Odyssey.IntegrationTests;
 /// covered by name in <c>UserAttributionForeignKeyTests</c>, which reads <c>information_schema</c> over
 /// the whole set at once; here it is observed firing.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContractEventRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_events";
@@ -292,10 +292,5 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() =>
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
 }

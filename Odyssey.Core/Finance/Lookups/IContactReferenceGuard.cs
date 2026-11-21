@@ -118,7 +118,11 @@ public sealed record ContactDeleteBlockers(
         get
         {
             var classes = new HashSet<ContactDeleteBlockerClass>();
-            if (AnyContractBeneficiary) classes.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            if (AnyContractBeneficiary)
+            {
+                classes.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            }
+
             return classes;
         }
     }
@@ -145,7 +149,11 @@ public sealed record ContactLinkDetachPlan
         get
         {
             var classes = new HashSet<ContactDeleteBlockerClass>();
-            if (AnyContractBeneficiary) classes.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            if (AnyContractBeneficiary)
+            {
+                classes.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            }
+
             return classes;
         }
     }

@@ -26,7 +26,9 @@ public static class TermLabel
     public static string? Normalize(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
+        {
             return null;
+        }
 
         var span = raw.AsSpan().Trim();
         var builder = new System.Text.StringBuilder(span.Length);
@@ -36,7 +38,10 @@ public static class TermLabel
             if (char.IsWhiteSpace(ch))
             {
                 if (!lastWasSpace)
+                {
                     builder.Append(' ');
+                }
+
                 lastWasSpace = true;
                 continue;
             }

@@ -13,8 +13,8 @@
 	@compressible not path /basemap/*
 	encode @compressible zstd gzip
 
-	# The large-file routes — task and journal .ics export/import (attached files and photos travel
-	# inline), photos and the Files store — take bodies up to the API's 10 GB transport ceiling plus multipart envelope
+	# The large-file routes — task, journal and calendar .ics export/import (task and journal files carry attached
+	# files and photos inline; calendar files stream, issue #516), photos and the Files store — take bodies up to the API's 10 GB transport ceiling plus multipart envelope
 	# headroom, kept aligned with (and never tighter than) the inner nginx block for the same paths.
 	# Every other route, sign-in included, stays at 65 MiB. MiB, not MB: Caddy reads "MB" as 10^6
 	# bytes, and the old "65MB" sat below a 64 MiB file.
@@ -23,8 +23,8 @@
 	# transport ceiling (issue #421 Wave 4), so lowering one needs no change here. Raising the
 	# ceiling means raising this, nginx, and FILE_UPLOAD_MAX_BYTES — outermost first.
 	# See docs/deployment.md, "Upload size".
-	@largefiles path_regexp largefiles ^/api/api/(tasks/ics|journal-entries/([^/]+/)?vjournal|photos|files)(/|$)
-	@ordinary not path_regexp ^/api/api/(tasks/ics|journal-entries/([^/]+/)?vjournal|photos|files)(/|$)
+	@largefiles path_regexp largefiles ^/api/api/(tasks/ics|journal-entries/([^/]+/)?vjournal|calendars/[^/]+/ics|calendar-events/([^/]+/)?ics|recurrence-patterns/[^/]+/ics|photos|files)(/|$)
+	@ordinary not path_regexp ^/api/api/(tasks/ics|journal-entries/([^/]+/)?vjournal|calendars/[^/]+/ics|calendar-events/([^/]+/)?ics|recurrence-patterns/[^/]+/ics|photos|files)(/|$)
 	request_body @largefiles {
 		max_size 10241MiB
 	}
@@ -40,7 +40,8 @@
 	# Forward the original scheme/host so the API (via ForwardedHeaders) marks cookies Secure
 	# and generates correct https links. Caddy sets X-Forwarded-* automatically. The client
 	# container runs unprivileged nginx on 8080.
-	# A 10 GB upload or export can take a long time; only the large-file routes get an hour.
+	# A 10 GB upload or export can take a long time; only the large-file routes get an hour. Caddy streams responses
+	# without buffering them, so the API's export progress guard sees the real client's pace (issue #516).
 	reverse_proxy @largefiles client:8080 {
 		transport http {
 			read_timeout 1h

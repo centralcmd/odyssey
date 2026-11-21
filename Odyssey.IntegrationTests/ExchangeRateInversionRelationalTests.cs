@@ -10,23 +10,14 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Real-engine coverage for issue #472 release 1: <c>CK_ExchangeRates_RatePositive</c>, the pre-migration check
-/// that names the rows it would reject, and the summary's query shape. None of it can run on EF InMemory: it
+/// Real-engine coverage for issue #472 release 1: <c>CK_ExchangeRates_RatePositive</c>, a fresh database passing the
+/// pre-migration check, and the summary's query shape. None of it can run on EF InMemory: it
 /// enforces no CHECK, has no migrations and never invokes a command interceptor.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_exchange_rate_inversion";
-
-    /// <summary>The migration directly before <see cref="MigrationRunner.RatePositiveMigration"/>.</summary>
-    private static string PreviousMigration(OdysseyContext context)
-    {
-        var all = context.Database.GetMigrations().ToList();
-        var index = all.FindIndex(id => id.EndsWith("_" + MigrationRunner.RatePositiveMigration, StringComparison.Ordinal));
-        Assert.True(index > 0, "The CHECK migration must exist and not be the first.");
-        return all[index - 1];
-    }
 
     [SkippableFact] // AC 13
     public async Task The_database_refuses_a_zero_rate()
@@ -43,65 +34,6 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
                 "INSERT INTO ExchangeRates (ExchangeRateId, FromCurrencyCode, ToCurrencyCode, Rate, AsOf, CreatedAt) " +
                 "VALUES (UUID(), 'USD', 'EUR', 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))"));
             Assert.Contains("CK_ExchangeRates_RatePositive", error.ToString());
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
-
-    [SkippableFact] // AC 28
-    public async Task A_pending_check_migration_names_the_rows_it_would_reject_and_applies_nothing()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-
-        try
-        {
-            var bad = Enumerable.Range(0, 25).Select(_ => Guid.NewGuid()).ToList();
-            var good = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToList();
-            await using (var context = NewContext())
-            {
-                await context.Database.MigrateAsync(PreviousMigration(context));
-                var i = 0;
-                foreach (var (id, rate) in bad.Select((id, n) => (id, n == 0 ? -1m : 0m)).Concat(good.Select(id => (id, 1.5m))))
-                {
-                    await context.Database.ExecuteSqlRawAsync(
-                        "INSERT INTO ExchangeRates (ExchangeRateId, FromCurrencyCode, ToCurrencyCode, Rate, AsOf, CreatedAt) " +
-                        "VALUES ({0}, 'USD', 'EUR', {1}, UTC_TIMESTAMP(6) - INTERVAL {2} SECOND, UTC_TIMESTAMP(6))",
-                        id.ToString(), rate, i++);
-                }
-            }
-
-            // The 20 lowest of the bad ids, in the column's own (string) order; never a good one.
-            var expectedIds = bad.Select(id => id.ToString()).Order(StringComparer.Ordinal).Take(20).ToList();
-
-            await using (var context = NewContext())
-            {
-                var pendingBefore = (await context.Database.GetPendingMigrationsAsync()).ToList();
-
-                var error = await Assert.ThrowsAsync<NonPositiveExchangeRateException>(
-                    () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
-
-                Assert.Equal(25, error.TotalCount);
-                Assert.Equal(expectedIds, error.ExchangeRateIds);
-                Assert.Contains("CK_ExchangeRates_RatePositive", error.Message);
-                Assert.Contains("but 25 row(s) in ExchangeRates have Rate <= 0", error.Message);
-                Assert.Contains("The first 20 ids", error.Message);
-                Assert.All(expectedIds, id => Assert.Contains(id, error.Message));
-                Assert.All(good, id => Assert.DoesNotContain(id.ToString(), error.Message));
-                Assert.DoesNotContain("-1.0", error.Message); // ids only, never a rate
-                Assert.DoesNotContain("1.5", error.Message);
-                Assert.Equal(pendingBefore, await context.Database.GetPendingMigrationsAsync());
-            }
-
-            // Repaired, it migrates.
-            await using (var context = NewContext())
-            {
-                await context.Database.ExecuteSqlRawAsync("DELETE FROM ExchangeRates WHERE Rate <= 0");
-                await MigrationRunner.MigrateAsync(context, CancellationToken.None);
-                Assert.Empty(await context.Database.GetPendingMigrationsAsync());
-            }
         }
         finally
         {

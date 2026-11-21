@@ -12,6 +12,7 @@ using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Auth;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Auth;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -116,7 +117,7 @@ public class PageStructureAccessibilityTests
     public async Task Login_CredentialInputs_CarryTheirAutocompleteTokens()
     {
         await using var ctx = NewContext();
-        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized))));
+        AddAuthClient(ctx, new RecordingHttpHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized))));
 
         var login = ctx.Render<Login>();
 
@@ -135,7 +136,7 @@ public class PageStructureAccessibilityTests
     public async Task Login_TwoStepPhase_FocusesItsHeading_AndOffersTheOneTimeCodeToken()
     {
         await using var ctx = NewContext();
-        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        AddAuthClient(ctx, new RecordingHttpHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
         {
             Content = new StringContent("""{"detail":"RequiresTwoFactor"}""", Encoding.UTF8, "application/problem+json"),
         })));
@@ -156,7 +157,7 @@ public class PageStructureAccessibilityTests
     public async Task Register_EmailField_CarriesTheEmailToken()
     {
         await using var ctx = NewContext();
-        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
+        AddAuthClient(ctx, new RecordingHttpHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
         ctx.Services.AddSingleton(new Mock<ILegalApiClient>().Object);
 
         var register = ctx.Render<Register>();
@@ -171,7 +172,7 @@ public class PageStructureAccessibilityTests
     {
         await using var ctx = NewContext();
         var release = new TaskCompletionSource<HttpResponseMessage>();
-        AddAuthClient(ctx, new StubHandler(_ => release.Task));
+        AddAuthClient(ctx, new RecordingHttpHandler((_, _) => release.Task));
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("/confirm-email?userId=u1&code=c1");
 
         var page = ctx.Render<ConfirmEmail>();
@@ -194,7 +195,7 @@ public class PageStructureAccessibilityTests
     public async Task ConfirmEmail_AnIncompleteLinkOpensOnFailed_WithoutTakingArrivalFocus()
     {
         await using var ctx = NewContext();
-        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
+        AddAuthClient(ctx, new RecordingHttpHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
 
         var page = ctx.Render<ConfirmEmail>();
 
@@ -205,7 +206,7 @@ public class PageStructureAccessibilityTests
         Assert.Empty(FocusCalls(ctx));
     }
 
-    private static void AddAuthClient(BunitContext ctx, StubHandler handler)
+    private static void AddAuthClient(BunitContext ctx, RecordingHttpHandler handler)
     {
         ctx.Services.AddSingleton(sp => new AuthApiClient(
             new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }, new AntiforgeryTokenStore(sp)));
@@ -218,12 +219,6 @@ public class PageStructureAccessibilityTests
             .Where(i => i.Identifier.EndsWith("domWrapper.focus", StringComparison.Ordinal))
             .Select(i => ((ElementReference)i.Arguments[0]!).Id)
             .ToList();
-
-    private sealed class StubHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            respond(request);
-    }
 
     // ── §3 — modal name ───────────────────────────────────────────────────────────────────────
 
@@ -321,7 +316,10 @@ public class PageStructureAccessibilityTests
             builder.AddComponentParameter(4, nameof(OdsModal.HideHeader), HideHeader);
             builder.AddComponentParameter(5, nameof(OdsModal.AriaLabel), AriaLabel);
             if (Title is { } title)
+            {
                 builder.AddComponentParameter(6, nameof(OdsModal.Title), (RenderFragment)(b => b.AddContent(0, title)));
+            }
+
             builder.AddComponentParameter(7, nameof(OdsModal.ChildContent), (RenderFragment)(b => b.AddContent(0, "Body")));
             builder.CloseComponent();
         }

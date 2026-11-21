@@ -30,9 +30,31 @@ public static class ApiInteropExtensions
         where T : class
     {
         if (result.IsSuccess)
+        {
             return result.Value;
+        }
 
         snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
+        return null;
+    }
+
+    /// <summary>
+    /// <see cref="OrToast{T}(ApiResult{T}, ISnackbar, string)"/> with the toast's persistence chosen: with
+    /// <paramref name="requireInteraction"/> the error stays until dismissed (WCAG 2.2.1, 3.3.3), and it is keyed
+    /// uniquely, so a refusal identical to one still on screen is shown again rather than swallowed as a duplicate
+    /// (issue #517).
+    /// </summary>
+    public static T? OrToast<T>(this ApiResult<T> result, ISnackbar snackbar, string failureLead, bool requireInteraction)
+        where T : class
+    {
+        if (result.IsSuccess)
+        {
+            return result.Value;
+        }
+
+        snackbar.Add($"{failureLead}: {result.Error}", Severity.Error,
+            config => config.RequireInteraction = requireInteraction,
+            requireInteraction ? Guid.NewGuid().ToString("N") : null);
         return null;
     }
 
@@ -44,7 +66,9 @@ public static class ApiInteropExtensions
     public static T ValueOrToast<T>(this ApiResult<T> result, ISnackbar snackbar, string what, T fallback)
     {
         if (!result.IsSuccess)
+        {
             snackbar.Add($"Unable to load {what}: {result.Error}", Severity.Error);
+        }
 
         return result.ValueOr(fallback);
     }
@@ -67,7 +91,9 @@ public static class ApiInteropExtensions
     public static PagedLoad<T> PagedOrToast<T>(this ApiResult<PagedResult<T>> result, ISnackbar snackbar, string what)
     {
         if (!result.IsSuccess)
+        {
             snackbar.Add($"Unable to load {what}: {result.Error}", Severity.Error);
+        }
 
         return PagedLoad<T>.From(result);
     }
@@ -89,7 +115,9 @@ public static class ApiInteropExtensions
         if (result.IsSuccess)
         {
             if (!string.IsNullOrEmpty(successMessage))
+            {
                 snackbar.Add(successMessage, Severity.Success);
+            }
 
             return true;
         }
@@ -122,7 +150,9 @@ public static class ApiInteropExtensions
         if (result.IsSuccess)
         {
             if (!string.IsNullOrEmpty(successMessage))
+            {
                 snackbar.Add(successMessage, Severity.Success);
+            }
 
             return true;
         }

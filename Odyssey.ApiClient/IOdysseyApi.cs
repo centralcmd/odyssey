@@ -41,6 +41,13 @@ public interface IOdysseyApi
     Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct = default);
 
     /// <summary>
+    /// Sends a JSON write whose success may or may not carry a body: a <c>204</c> (or any empty body) is a success with
+    /// a <c>null</c> value, anything else is deserialized as <typeparamref name="T"/> (issue #519 v5 §3).
+    /// </summary>
+    Task<ApiResult<T?>> SendOptionalAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct = default)
+        where T : class;
+
+    /// <summary>
     /// GETs a file. <paramref name="defaultFileName"/> is used when the response carries no
     /// <c>Content-Disposition</c> filename.
     /// </summary>
@@ -95,7 +102,9 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var response = await http.GetAsync(url, ct);
             if (!response.IsSuccessStatusCode)
+            {
                 return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response), RetryAfterDelta = ApiRetryAfter.DeltaOf(response) };
+            }
 
             // Retry-After is read on success too: a polled job answers 200 with the interval to wait
             // before asking again (issue #445).
@@ -154,7 +163,9 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var response = await SendCoreAsync(method, url, body, ct);
             if (!response.IsSuccessStatusCode)
+            {
                 return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+            }
 
             return ApiResult<T>.Success(
                 await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location)
@@ -166,13 +177,37 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         }
     }
 
+    public async Task<ApiResult<T?>> SendOptionalAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct = default)
+        where T : class
+    {
+        try
+        {
+            using var response = await SendCoreAsync(method, url, body, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                return ApiResult<T?>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+            }
+
+            var hasBody = response.StatusCode != HttpStatusCode.NoContent && response.Content.Headers.ContentLength is not 0;
+            var value = hasBody ? await response.Content.ReadFromJsonAsync<T>(ct) : null;
+            return ApiResult<T?>.Success(value, response.StatusCode, response.Headers.Location)
+                with { RetryAfter = ApiRetryAfter.Of(response) };
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<T?>.Failure(ex);
+        }
+    }
+
     private async Task<HttpResponseMessage> SendCoreAsync(HttpMethod method, string url, object? body, CancellationToken ct)
     {
         // The request must stay alive until the send completes, hence the await inside the using
         // rather than returning the task.
         using var request = new HttpRequestMessage(method, url);
         if (body is not null)
+        {
             request.Content = JsonContent.Create(body, body.GetType());
+        }
 
         return await http.SendAsync(request, ct);
     }
@@ -184,7 +219,9 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
+            {
                 return ApiResult<ApiFile>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+            }
 
             var file = await ReadFileAsync(response, defaultFileName, ct);
 
@@ -221,11 +258,15 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var request = new HttpRequestMessage(method, url);
             if (body is not null)
+            {
                 request.Content = JsonContent.Create(body, body.GetType());
+            }
 
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
+            {
                 return ApiResult<ApiExportDownload>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+            }
 
             var file = await ReadFileAsync(response, defaultFileName, ct);
             return ApiResult<ApiExportDownload>.Success(new ApiExportDownload(file, ExportRows(response)), response.StatusCode);
@@ -245,14 +286,20 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
     // issue #343 §11: a missing header or a mismatched count both fail closed. A missing header has no
     // legitimate case to protect against here — every server-side surface that sets completenessMarker
     // on its call also always sends X-Odyssey-Export-Rows — so "absent" is treated exactly like "short",
-    // never as "unverifiable, allow it".
+    // never as "unverifiable, allow it". The header is the server's PLANNED count (issue #516 Non-Goal 7), so a row
+    // deleted mid-export also reads as short; that is deliberate, since "fewer than planned" cannot tell a concurrent
+    // delete from a cut-off transfer, and accepting actual <= declared would accept every truncated download.
     private static bool IsComplete(HttpResponseMessage response, ApiFile file, string completenessMarker)
     {
         if (!response.Headers.TryGetValues("X-Odyssey-Export-Rows", out var values))
+        {
             return false;
+        }
 
         if (!int.TryParse(values.FirstOrDefault(), out var declaredCount))
+        {
             return false;
+        }
 
         var body = System.Text.Encoding.UTF8.GetString(file.Bytes);
         var actualCount = 0;
@@ -292,7 +339,9 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
 
             using var response = await http.PostAsync(url, content, ct);
             if (!response.IsSuccessStatusCode)
+            {
                 return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+            }
 
             return ApiResult<T>.Success(
                 await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location);

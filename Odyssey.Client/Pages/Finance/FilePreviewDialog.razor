@@ -26,7 +26,7 @@
                         <span class="fvm-dot">·</span>
                         <span class="fvm-muted mono">@FormatFileSize(SizeBytes)</span>
                         <span class="fvm-dot">·</span>
-                        <span class="fvm-muted">@UploadedAtUtc.ToLocalTime().ToString("MMM dd, yyyy")</span>
+                        <span class="fvm-muted">@OdsDates.Long(UploadedAtUtc.ToLocalTime())</span>
                     </div>
                 </div>
                 <button type="button" class="aam-x" aria-label="Close" @onclick="CloseAsync">
@@ -176,8 +176,14 @@
 
     private static string FormatFileSize(long bytes)
     {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+        if (bytes < 1024 * 1024)
+        {
+            return $"{bytes / 1024.0:F1} KB";
+        }
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
 

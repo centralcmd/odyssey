@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Api.Email;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 
@@ -21,7 +22,7 @@ public class SmtpEmailSenderThrottleTests
     [Fact]
     public async Task AThrottledRecipient_IsNotSentTo()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(new StubThrottle { Allow = false }, logger);
 
         await sender.SendPasswordResetCodeAsync(
@@ -36,7 +37,7 @@ public class SmtpEmailSenderThrottleTests
         // The mirror of the test above: with the throttle open, delivery is attempted (and fails
         // against the unreachable host), proving the assertion above measures the skip and not the
         // absence of an SMTP attempt in general.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(new StubThrottle { Allow = true }, logger);
 
         await sender.SendPasswordResetCodeAsync(
@@ -49,7 +50,7 @@ public class SmtpEmailSenderThrottleTests
     public async Task AThrowingThrottle_FailsOpenAndWarns()
     {
         // A broken throttle is an availability problem; a silently dropped reset link is a lockout.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(new StubThrottle { Throw = true }, logger);
 
         await sender.SendPasswordResetCodeAsync(
@@ -66,7 +67,7 @@ public class SmtpEmailSenderThrottleTests
         // The unconfigured-dev path logs the action link so confirmation still works locally; the
         // throttle must not swallow that (nothing is being sent for it to bound).
         var throttle = new StubThrottle { Allow = false };
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(throttle, logger, smtpHost: string.Empty);
 
         await sender.SendPasswordResetCodeAsync(
@@ -87,7 +88,7 @@ public class SmtpEmailSenderThrottleTests
     public async Task TheResetLinkSeam_DoesNotConsultTheThrottle()
     {
         var throttle = new StubThrottle { Allow = false };
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(throttle, logger);
 
         var delivery = await sender.SendResetLinkAsync("user@example.com", ResetCode);
@@ -103,7 +104,7 @@ public class SmtpEmailSenderThrottleTests
         // NotConfigured is the intended development behaviour — the link is logged instead — and the caller
         // reports it to the admin as delivered, because there logging IS the delivery mechanism. Conflating
         // it with Failed would make every dev-stack reset look broken.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = CreateSender(new StubThrottle { Allow = true }, logger, smtpHost: string.Empty);
 
         var delivery = await sender.SendResetLinkAsync("user@example.com", ResetCode);

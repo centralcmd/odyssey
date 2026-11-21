@@ -4,7 +4,7 @@ using Odyssey.Dtos.Internet;
 
 namespace Odyssey.Client.Pages.Internet;
 
-/// <summary>A feed's status on the Feeds page (§3.3): disjoint, so the By status rows sum to the feed count (AC 60).</summary>
+/// <summary>A feed's lifecycle on the Feeds page (§3.3): exactly one per feed.</summary>
 public enum NewsFeedStatus { Active, Paused, Archived }
 
 /// <summary>
@@ -27,16 +27,62 @@ public static class NewsVisuals
         _ => "active",
     };
 
-    public static readonly OdsBreakdownDef<string>[] StatusDefs =
+    /// <summary>The Status filter member for "any health that needs attention".</summary>
+    public const string NeedsAttentionKey = "NeedsAttention";
+
+    /// <summary>
+    /// The lifecycle members. Paused is amber (<c>pending</c>), as Contracts' Paused: a paused feed has stopped and
+    /// waits on you; Archived is the standard archived neutral.
+    /// </summary>
+    public static readonly OdsBreakdownDef<string>[] LifecycleDefs =
     [
         new("active", "Active", "income", "play_circle"),
-        new("paused", "Paused", "outline", "pause_circle"),
+        new("paused", "Paused", "pending", "pause_circle"),
         new("archived", "Archived", "outline", "inventory_2"),
+    ];
+
+    /// <summary>The health members the Status filter offers (Paused and Archived are already lifecycle members).</summary>
+    public static readonly IReadOnlyList<NewsFeedHealth> FilterHealths =
+    [
+        NewsFeedHealth.Healthy, NewsFeedHealth.Pending, NewsFeedHealth.Failing,
+        NewsFeedHealth.QuotaReached, NewsFeedHealth.Gone, NewsFeedHealth.Quarantined,
+    ];
+
+    /// <summary>
+    /// The Status filter (design system <c>NF_STATUS_OPTIONS</c>): ONE mixed list — the three lifecycle members, then
+    /// Needs attention and the health members, each wearing its registry glyph and tone.
+    /// </summary>
+    public static readonly OdsBreakdownDef<string>[] StatusDefs =
+    [
+        .. LifecycleDefs,
+        new(NeedsAttentionKey, "Needs attention", "warning", "report"),
+        .. FilterHealths.Select(h => new OdsBreakdownDef<string>(h.ToString(), OdsNewsFeedHealth.Meta(h).Label,
+            OdsNewsFeedHealth.Meta(h).Tone ?? "outline", OdsNewsFeedHealth.Meta(h).Icon)),
     ];
 
     public static readonly IReadOnlyList<OdsOption> StatusOptions = OdsBreakdown.Options(StatusDefs);
 
-    public static string Label(NewsFeedStatus status) => StatusDefs.Single(d => d.Key == Key(status)).Label;
+    private static readonly HashSet<string> LifecycleKeys = [.. LifecycleDefs.Select(d => d.Key)];
+
+    public static string Label(NewsFeedStatus status) => LifecycleDefs.Single(d => d.Key == Key(status)).Label;
+
+    /// <summary>
+    /// Whether <paramref name="feed"/> passes the ticked Status members: lifecycle members OR together, health members
+    /// OR together, and the two groups AND — so Active + Failing is "active feeds that are failing". None ticked = all.
+    /// </summary>
+    public static bool MatchesStatus(ExistingNewsFeed feed, IReadOnlyCollection<string> statuses)
+    {
+        var life = statuses.Where(LifecycleKeys.Contains).ToList();
+        var health = statuses.Where(s => !LifecycleKeys.Contains(s)).ToList();
+        if (life.Count > 0 && !life.Contains(Key(StatusOf(feed))))
+        {
+            return false;
+        }
+
+        return health.Count == 0 || health.Any(s => s == NeedsAttentionKey
+            ? OdsNewsFeedHealth.NeedsAttention(feed.Health)
+            : string.Equals(s, feed.Health.ToString(), StringComparison.Ordinal));
+    }
 
     /// <summary>The sentence behind a "Storage limit reached" chip (§3.3, K13), or null when it does not apply.</summary>
     public static string? QuotaText(NewsFeedHealth health, NewsFeedQuotaReason? reason) =>
@@ -52,15 +98,15 @@ public static class NewsVisuals
 
     /// <summary>A tag as a filter or picker option; an archived tag says so in its name and wears the archive glyph (§6.4).</summary>
     public static OdsOption TagOption(ExistingNewsTag tag) =>
-        new(tag.Id.ToString(), tag.Archived ? $"{tag.Name} (archived)" : tag.Name)
+        new(tag.NewsTagId.ToString(), tag.Archived is not null ? $"{tag.Name} (archived)" : tag.Name)
         {
-            Icon = tag.Archived ? "archive" : OdsTagChip.GlyphFor(tag.Icon),
-            IconColor = tag.Archived ? OdsBreakdown.Tone("outline") : UserColor.Glyph(tag.Color) ?? TagRowColor,
+            Icon = tag.Archived is not null ? "archive" : OdsTagChip.GlyphFor(tag.Icon),
+            IconColor = tag.Archived is not null ? OdsBreakdown.Tone("outline") : UserColor.Glyph(tag.Color) ?? TagRowColor,
         };
 
     /// <summary>The Tag filter: active tags by name, then the archived ones (§3.3).</summary>
     public static IReadOnlyList<OdsOption> TagFilterOptions(IEnumerable<ExistingNewsTag> tags) =>
-        [.. tags.OrderBy(t => t.Archived).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
+        [.. tags.OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
 
     /// <summary>
     /// A tag picker's options: the active tags, plus any archived one already chosen — so an existing link stays
@@ -69,7 +115,7 @@ public static class NewsVisuals
     public static IReadOnlyList<OdsOption> TagPickerOptions(IEnumerable<ExistingNewsTag> tags, IEnumerable<Guid> chosen)
     {
         var keep = chosen.ToHashSet();
-        return [.. tags.Where(t => !t.Archived || keep.Contains(t.Id))
-            .OrderBy(t => t.Archived).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
+        return [.. tags.Where(t => t.Archived is null || keep.Contains(t.NewsTagId))
+            .OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
     }
 }

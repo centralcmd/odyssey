@@ -20,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// keeps its documented upsert but authorizes <c>accounts.create</c> explicitly and creates under the
 /// route id.
 /// </summary>
-public class PutUnknownIdApiTests
+public class PutUnknownIdApiTests(PutUnknownIdApiTests.Host host) : SharedApiHostTests<PutUnknownIdApiTests.Host>(host)
 {
     private const string ActorUserId = "put-unknown-id-actor";
 
@@ -48,9 +48,11 @@ public class PutUnknownIdApiTests
         {
             var permissions = new List<string> { UpdateClaimFor(resource) };
             if (withCreate)
+            {
                 permissions.Add(createClaim);
+            }
 
-            await using var factory = new OdysseyApiFactory(permissions, ActorUserId);
+            var factory = Factory.ForCaller(permissions);
             await EnsureCreatedAsync(factory);
             var before = await CountAsync(factory, resource);
             using var client = factory.CreateClient();
@@ -70,7 +72,7 @@ public class PutUnknownIdApiTests
     [Fact]
     public async Task PutAccount_UnknownId_UpdateOnly_Is403_AndCreatesNothing()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsUpdate], ActorUserId);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsUpdate]);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -83,9 +85,7 @@ public class PutUnknownIdApiTests
     [Fact]
     public async Task PutAccount_UnknownId_WithCreate_CreatesUnderRouteId_AndARetryUpdatesTheSameRow()
     {
-        await using var factory = new OdysseyApiFactory(
-            [PermissionClaims.AccountsRead, PermissionClaims.AccountsCreate, PermissionClaims.AccountsUpdate],
-            ActorUserId);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead, PermissionClaims.AccountsCreate, PermissionClaims.AccountsUpdate]);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
         var id = Guid.NewGuid();
@@ -109,8 +109,7 @@ public class PutUnknownIdApiTests
     [Fact]
     public async Task PutAccount_EmptyGuid_WithCreate_Is400_AndCreatesNothing()
     {
-        await using var factory = new OdysseyApiFactory(
-            [PermissionClaims.AccountsCreate, PermissionClaims.AccountsUpdate], ActorUserId);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsCreate, PermissionClaims.AccountsUpdate]);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -123,7 +122,7 @@ public class PutUnknownIdApiTests
     [Fact]
     public async Task PutAccount_ExistingId_UpdateOnly_Is204()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsUpdate], ActorUserId);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsUpdate]);
         await EnsureCreatedAsync(factory);
         var id = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
@@ -236,4 +235,7 @@ public class PutUnknownIdApiTests
             _ => throw new ArgumentOutOfRangeException(nameof(resource), resource, null),
         };
     }
+
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients.ForCaller{T}"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([], ActorUserId);
 }

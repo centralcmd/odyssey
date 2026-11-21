@@ -66,7 +66,9 @@ public partial class CreateCurrencyDialog
     protected override void OnInitialized()
     {
         if (Currency is null)
+        {
             return;
+        }
 
         _currencyCode = Currency.CurrencyCode;
         _name = Currency.Name;
@@ -90,7 +92,9 @@ public partial class CreateCurrencyDialog
             ? $"Enter a date between {ExchangeRateHistoryStartDateRule.Floor.ToString(ExchangeRateHistoryStartDateRule.Format, CultureInfo.InvariantCulture)} and today."
             : null;
         if (_codeError || _nameError || _symbolError || _syncStartError is not null)
+        {
             return false;
+        }
 
         if (IsEdit)
         {
@@ -105,7 +109,9 @@ public partial class CreateCurrencyDialog
             };
 
             if (!Invalidated((await Currencies.UpdateAsync(Currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", "Currency updated.")))
+            {
                 return false;
+            }
 
             return await SaveSyncStartAsync(Currency.CurrencyCode, EditedSync?.Enabled ?? false, EditedSync?.HistoryStartDate)
                 || await CurrencyWrittenAsync();
@@ -123,7 +129,10 @@ public partial class CreateCurrencyDialog
             };
 
             if (!Invalidated((await Currencies.CreateAsync(newCurrency)).Toast(Snackbar, "Unable to create currency", "Currency created.")))
+            {
                 return false;
+            }
+
             _createdCode = newCurrency.CurrencyCode;
         }
 
@@ -146,7 +155,9 @@ public partial class CreateCurrencyDialog
     private async Task<bool> SaveSyncStartAsync(string code, bool enabled, DateOnly? saved)
     {
         if (!ShowSyncStart || SyncStartDraft == saved)
+        {
             return true;
+        }
 
         var result = await Sync.UpdateCurrencyAsync(code,
             new ExchangeRateSyncCurrencyUpdate { Enabled = enabled, HistoryStartDate = SyncStartDraft });
@@ -167,7 +178,10 @@ public partial class CreateCurrencyDialog
     private bool Invalidated(bool saved)
     {
         if (saved)
+        {
             ReferenceData.InvalidateCurrencies();
+        }
+
         return saved;
     }
 }

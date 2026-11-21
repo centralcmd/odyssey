@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Context;
 using Odyssey.Dtos;
+using Odyssey.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -74,7 +76,7 @@ public class SystemSettingsLookupTests
     public async Task AnAbsentRow_ResolvesToTheCompiledDefault_AndLogsNothing()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var logs = new RecordingLogger();
+        var logs = new RecordingLogger<SystemSettingsLookup>();
         await using var context = CreateContext(Guid.NewGuid().ToString());
 
         var contracts = await CreateLookup(context, cache, logs).GetContractSummarySettingsAsync();
@@ -166,7 +168,7 @@ public class SystemSettingsLookupTests
     public async Task AnUnparseableRow_ResolvesConservatively_AndLogsAnError()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var logs = new RecordingLogger();
+        var logs = new RecordingLogger<SystemSettingsLookup>();
         await using var context = CreateContext(Guid.NewGuid().ToString());
         await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "abc");
 
@@ -201,7 +203,7 @@ public class SystemSettingsLookupTests
     public async Task AFailedQuery_DegradesAndLogs_UnlikeAnAbsentRow()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var logs = new RecordingLogger();
+        var logs = new RecordingLogger<SystemSettingsLookup>();
         var context = CreateContext(Guid.NewGuid().ToString());
         await context.DisposeAsync(); // the settings store is unreachable
 
@@ -264,7 +266,7 @@ public class SystemSettingsLookupTests
     public async Task ACorruptRow_LogsOncePerKeyPerWindow_NotOncePerRead()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var logs = new RecordingLogger();
+        var logs = new RecordingLogger<SystemSettingsLookup>();
         await using var context = CreateContext(Guid.NewGuid().ToString());
         await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "abc");
         await SetAsync(context, SystemSettingsKeys.ContractMaxSummaryContracts, "abc");
@@ -294,8 +296,8 @@ public class SystemSettingsLookupTests
     public async Task TheTwoConditions_LogAtOneLevelEach()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var unparseable = new RecordingLogger();
-        var outOfBound = new RecordingLogger();
+        var unparseable = new RecordingLogger<SystemSettingsLookup>();
+        var outOfBound = new RecordingLogger<SystemSettingsLookup>();
 
         await using (var context = CreateContext(Guid.NewGuid().ToString()))
         {
@@ -319,7 +321,7 @@ public class SystemSettingsLookupTests
     public async Task TheLogLine_NeverCarriesTheStoredValue()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
-        var logs = new RecordingLogger();
+        var logs = new RecordingLogger<SystemSettingsLookup>();
         await using var context = CreateContext(Guid.NewGuid().ToString());
         await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "s3cr3t-looking-garbage");
 
@@ -333,7 +335,7 @@ public class SystemSettingsLookupTests
 
     /// <summary>
     /// A watermark older than the TTL is not "last known good", it is "last known". The expiry lives in
-    /// the shared <see cref="IntSettingResolver"/>, so what this lookup must guarantee is that it reaches
+    /// the shared <see cref="Odyssey.Core.SystemSettings.IntSettingResolver"/>, so what this lookup must guarantee is that it reaches
     /// that resolver rather than keeping a private parse.
     /// </summary>
     [Fact]
@@ -343,7 +345,7 @@ public class SystemSettingsLookupTests
         // lookup must not keep a private parse that could drift again. Expiry itself is asserted
         // behaviourally by SettingsLookupReadPathContractTests and IntSettingResolverTests.
         var lookup = await File.ReadAllTextAsync(
-            SolutionFile("Odyssey.Api", "SystemSettings", "SystemSettingsLookup.cs"));
+            SourceTree.File("Odyssey.Api", "SystemSettings", "SystemSettingsLookup.cs"));
 
         Assert.DoesNotContain("int.TryParse", lookup, StringComparison.Ordinal);
     }
@@ -375,34 +377,5 @@ public class SystemSettingsLookupTests
 
         // min(last-known-good 300, shipped default 45) — a degraded read must never LOOSEN a bound.
         Assert.Equal(SystemSettingsDefaults.ContractEndingWindowDays, degraded.EndingWindowDays);
-    }
-
-    // ── helpers ─────────────────────────────────────────────────────────────────────────────────
-
-    private static string SolutionFile(params string[] parts)
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(System.IO.Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = System.IO.Path.GetDirectoryName(dir.TrimEnd(System.IO.Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return System.IO.Path.Combine([dir!, .. parts]);
-    }
-
-    /// <summary>Captures level and rendered message, so the level assertions are about the real call.</summary>
-    private sealed class RecordingLogger : ILogger<SystemSettingsLookup>
-    {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) =>
-            Entries.Add((logLevel, formatter(state, exception)));
     }
 }

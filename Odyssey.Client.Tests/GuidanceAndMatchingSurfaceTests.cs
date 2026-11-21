@@ -19,11 +19,8 @@ namespace Odyssey.Client.Tests;
 /// <c>/settings</c>, the consent bullet built from the disclosure, the match summary and wait copy, and
 /// the analysis log's guidance facts.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class GuidanceAndMatchingSurfaceTests : IDisposable
+public class GuidanceAndMatchingSurfaceTests
 {
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static readonly string[] AllFields = ["contactName", "contactAlias", "tagName", "tagDescription"];
 
     // ── OdsNoteField ─────────────────────────────────────────────────────────────────────────────
@@ -346,11 +343,13 @@ public class GuidanceAndMatchingSurfaceTests : IDisposable
             .Add(c => c.Label, "Re-match")
             .Add(c => c.OnAction, () => { acted = true; }));
 
-        cut.WaitForAssertion(() => Assert.Contains(FileAnalysisRateLimitNotice.DoneMessage, cut.Find("[role=alert]").TextContent));
-        var action = cut.Find("button");
-        Assert.False(action.HasAttribute("aria-disabled"));
+        // An explicit timeout: bUnit's default is a static that whichever test class's static constructor ran first
+        // has set, so leaning on it made this test pass or fail by run order (PR #528 tester review).
+        cut.WaitForAssertion(() => Assert.Contains(FileAnalysisRateLimitNotice.DoneMessage, cut.Find("[role=alert]").TextContent),
+            TimeSpan.FromSeconds(10));
+        cut.WaitForAssertion(() => Assert.False(cut.Find("button").HasAttribute("aria-disabled")), TimeSpan.FromSeconds(10));
 
-        action.Click();
+        cut.Find("button").Click();
         Assert.True(acted);
     }
 

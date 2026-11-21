@@ -73,7 +73,10 @@ public static class TransactionRowMenu
                     OnClick = EventCallback.Factory.Create(receiver, () =>
                     {
                         if (!ctx.Expanded)
+                        {
                             ctx.Toggle();
+                        }
+
                         return onAttach(transaction);
                     }),
                 });
@@ -120,13 +123,7 @@ public static class TransactionRowMenu
         }
 
         items.Add(new OdsMenuItem { Divider = true });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(receiver, () => onCopyId(transaction.TransactionId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(receiver, () => onCopyId(transaction.TransactionId))));
 
         if (canDelete)
         {

@@ -25,7 +25,7 @@ public enum ImportSurface
 /// must cap to the configured, admin-editable limit for <see cref="Surface"/> (issue #343 §5/§7 item
 /// 4). Controller action attributes are automatically part of the endpoint's
 /// <c>Endpoint.Metadata</c>, so no separate <c>.WithMetadata(...)</c> call is needed — the middleware
-/// reads it straight off <see cref="HttpContext.GetEndpoint"/>.
+/// reads it straight off <see cref="EndpointHttpContextExtensions.GetEndpoint"/>.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class ImportSizeLimitAttribute(ImportSurface surface) : Attribute
@@ -64,7 +64,7 @@ public sealed class UploadTransportLimitAttribute : Attribute;
 /// the dead <c>[RequestSizeLimit(500 MB)]</c> that never touched the global 65 MB multipart limit).
 /// <para>
 /// <b>Ordering is a constraint, not a position</b> (§5): registered after routing (so
-/// <see cref="HttpContext.GetEndpoint"/> resolves), after <c>UseAuthentication</c>/
+/// <see cref="EndpointHttpContextExtensions.GetEndpoint"/> resolves), after <c>UseAuthentication</c>/
 /// <c>UseAuthorization</c> (so an anonymous/unauthorized request is short-circuited before the
 /// settings lookup runs), and before <c>UseAntiforgery()</c> — before anything that could read the
 /// request body. Registered unconditionally, including in the Testing environment, so every test tier

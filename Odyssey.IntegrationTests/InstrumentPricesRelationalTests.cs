@@ -12,49 +12,17 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #446: the migration both ways, the unique indexes (one row per instrument, date
+/// The relational half of issue #446: the unique indexes (one row per instrument, date
 /// and source; one priority per instrument; the widened <c>ExclusiveGuard</c>), the CHECKs, and the foreign keys'
 /// on-delete behaviour. None of it is observable on EF InMemory.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_instrument_prices";
-    private const string PreviousMigration = "_AddPhotoOriginalBackfillJobRuns";
-    private const string Migration = "_AddInstrumentPrices";
 
     private static readonly DateTime Now = new(2026, 11, 9, 8, 0, 0, DateTimeKind.Utc);
     private static readonly DateOnly Day = new(2026, 11, 6);
-
-    [SkippableFact]
-    public async Task The_migration_reverts_and_reapplies_cleanly()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await MigratedAsync();
-        await using var context = NewContext();
-        var instrument = await AddInstrumentAsync(context);
-        await AddPriceAsync(context, instrument, Day, null);
-        await AddRunAsync(context, JobRunTrigger.Scheduled);
-
-        // Down refuses nothing about data it owns; the run row of the new type has to go first, as its CHECK does.
-        await context.Database.ExecuteSqlRawAsync("DELETE FROM `JobRuns` WHERE `JobType` = 8");
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-
-        foreach (var table in new[] { "Instruments", "InstrumentPrices", "InstrumentPriceSourceBindings", "InstrumentPriceSourceStates" })
-        {
-            Assert.False(await MigrationSeam.TableExistsAsync(context, table), table);
-        }
-
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` LIKE 'InstrumentPrice%'"));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = '{Database}' AND TABLE_NAME = 'JobRuns' AND INDEX_NAME = 'IX_JobRuns_ExclusiveGuard' AND NON_UNIQUE = 0"));
-
-        await context.Database.MigrateAsync();
-        Assert.True(await MigrationSeam.HasRunAsync(context, Migration));
-        Assert.Equal(3L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` LIKE 'InstrumentPrice%'"));
-    }
 
     [SkippableFact]
     public async Task One_running_instrument_sync_holds_the_exclusive_guard_and_concurrent_starts_race_cleanly()

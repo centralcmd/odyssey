@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -22,8 +23,14 @@ public class SelfHostedBasemapDeploymentTests
         var depth = 0;
         for (var i = Template.Value.IndexOf('{', start); i < Template.Value.Length; i++)
         {
-            if (Template.Value[i] == '{') depth++;
-            else if (Template.Value[i] == '}' && --depth == 0) return Template.Value[start..(i + 1)];
+            if (Template.Value[i] == '{')
+            {
+                depth++;
+            }
+            else if (Template.Value[i] == '}' && --depth == 0)
+            {
+                return Template.Value[start..(i + 1)];
+            }
         }
 
         throw new InvalidOperationException($"Unterminated `{header}` block.");
@@ -172,5 +179,5 @@ public class SelfHostedBasemapDeploymentTests
         Assert.DoesNotMatch(@"(?m)^\s*encode (zstd|gzip)", caddy);
     }
 
-    private static string Read(string file) => File.ReadAllText(ClientSource.Sibling(file));
+    private static string Read(string file) => File.ReadAllText(SourceTree.File(file));
 }

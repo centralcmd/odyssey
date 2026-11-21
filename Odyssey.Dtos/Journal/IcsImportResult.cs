@@ -24,6 +24,57 @@ public sealed record IcsImportResult
     /// <summary>Places this import created (a subset of what <see cref="PlacesLinked"/> counts).</summary>
     public int PlacesCreated { get; set; }
 
+    /// <summary>
+    /// Events and series this import removed because the file marked them cancelled (issue #516 §8.4). Zero unless the
+    /// import was sent with <c>allowRemovals</c>; a removed series counts as 1.
+    /// </summary>
+    public int RemovedCount { get; set; }
+
+    /// <summary>Titles of removed events and series, at most <c>ImportMaxSamplesPerSkipReason</c>.</summary>
+    public IReadOnlyList<string> RemovedSampleTitles { get; set; } = [];
+
+    /// <summary>Modified occurrences (<c>RECURRENCE-ID</c>) applied to a series (issue #519 §5).</summary>
+    public int OverridesApplied { get; set; }
+
+    /// <summary>Occurrences the file excluded (<c>EXDATE</c> or a cancelled override) and the import recorded.</summary>
+    public int ExclusionsApplied { get; set; }
+
+    /// <summary>Stored overrides the import discarded, with <c>allowRemovals</c>.</summary>
+    public int DroppedOverrideCount { get; set; }
+
+    /// <summary>Stored exclusions the import discarded, with <c>allowRemovals</c>.</summary>
+    public int DroppedExclusionCount { get; set; }
+
+    /// <summary>Series left unchanged because applying them needed <c>allowRemovals</c> (issue #519 §3 step 3).</summary>
+    public int GatedSeriesCount { get; set; }
+
+    /// <summary>Rows whose wall-clock fell in a daylight-saving gap of their zone and moved forward (v5 §4).</summary>
+    public int AdjustedCount { get; set; }
+
+    /// <summary>Attached files stored new by this import (issue #521 §5.5).</summary>
+    public int StoredFileCount { get; set; }
+
+    /// <summary>Attached files matched to a stored file instead of being stored again.</summary>
+    public int ReusedFileCount { get; set; }
+
+    /// <summary>Photos stored new in the library by this import.</summary>
+    public int StoredPhotoCount { get; set; }
+
+    /// <summary>Photos matched to a library photo instead of being stored again.</summary>
+    public int ReusedPhotoCount { get; set; }
+
+    /// <summary>Attachments not linked, each also counted under its reason in <see cref="Skipped"/>.</summary>
+    public int SkippedAttachmentCount { get; set; }
+
+    /// <summary>Attachments on a modified occurrence, or on an event that is an occurrence of a series: ignored.</summary>
+    public int IgnoredOccurrenceAttachmentCount { get; set; }
+
+    /// <summary>Events and series whose files or photos this import replaced.</summary>
+    public int ReplacedLinkSetCount { get; set; }
+
+    /// <summary>Links those replacements removed.</summary>
+    public int RemovedLinkCount { get; set; }
+
     public IReadOnlyList<IcsImportSkipGroup> Skipped { get; set; } = [];
 }
 

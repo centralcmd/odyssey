@@ -8,6 +8,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContractDetailView : IAsyncDisposable
 {
+    private OdsConfirm _confirm = default!;
+
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
     [Inject] private TimeProvider Time { get; set; } = default!;
@@ -136,7 +138,7 @@ public partial class ContractDetailView : IAsyncDisposable
 
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 
-    // Focus return across a detach, through the helper the insurance party tiles also call. A
+    // Focus return across a detach, through the shared TileRemovalFocus helper. A
     // contract's parties are one flat list, so the keys are party ids.
     private TileRemovalFocus? _focus;
 
@@ -273,10 +275,8 @@ public partial class ContractDetailView : IAsyncDisposable
     /// <remarks>
     /// <b>Edit party is withheld for an UNRECOGNISED role</b> — an ordinal this build's registry does
     /// not contain. The <c>PUT</c> is a full replacement, so a dialog that cannot name the role would
-    /// silently rewrite it to whatever it could show. Detach stays, on the same reasoning the
-    /// insurance tiles already apply to an unresolvable target: detaching a link needs only the link.
-    /// <c>Unspecified</c> is deliberately NOT withheld — it is a role the picker holds and can
-    /// round-trip perfectly.
+    /// silently rewrite it to whatever it could show. Detach stays, on the same reasoning applied to
+    /// an unresolvable target: detaching a link needs only the link.
     /// </remarks>
     private IReadOnlyList<OdsMenuItem> MenuFor(ExistingContractParty party, PartyVisual visual)
     {
@@ -295,7 +295,10 @@ public partial class ContractDetailView : IAsyncDisposable
             });
         }
 
-        if (!CanWrite) return items;
+        if (!CanWrite)
+        {
+            return items;
+        }
 
         if (OnEditParty.HasDelegate && resolved && !PartyRoleLabel.IsUnknown(party.Role))
         {
@@ -315,18 +318,11 @@ public partial class ContractDetailView : IAsyncDisposable
             {
                 Icon = "content_copy",
                 Label = "Copy name",
-                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(visual.Name, "Name copied to clipboard.")),
+                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(visual.Name, OdsCopied.Value("Name"))),
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this,
-                () => Clipboard.CopyAsync(party.ContractPartyId.ToString(), "ID copied to clipboard.")),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(party.ContractPartyId.ToString(), OdsCopied.Id("Party")))));
 
         items.Add(new OdsMenuItem { Divider = true });
         items.Add(new OdsMenuItem
@@ -351,14 +347,18 @@ public partial class ContractDetailView : IAsyncDisposable
 
     private async Task DetachPartyAsync(ExistingContractParty party)
     {
-        if (!CanWrite) return;
-        var r = Resolve(party);
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach party",
-            $"Detach '{r.Name}' from this contract? The {r.KindLabel.ToLowerInvariant()} itself is not affected.",
-            yesText: "Detach", cancelText: "Cancel");
+        if (!CanWrite)
+        {
+            return;
+        }
 
-        if (confirmed != true) return;
+        var r = Resolve(party);
+        var confirmed = await _confirm.AskAsync("Detach party", $"Detach '{r.Name}' from this contract? The {r.KindLabel.ToLowerInvariant()} itself is not affected.", "Detach", "link_off");
+
+        if (!confirmed)
+        {
+            return;
+        }
 
         // Armed BEFORE the write, while the list still holds the party: the tile that had focus is
         // gone by the time the re-fetched contract arrives.

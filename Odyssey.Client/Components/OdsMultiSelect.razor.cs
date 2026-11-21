@@ -106,7 +106,7 @@ public partial class OdsMultiSelect
     /// </summary>
     [Parameter] public int? MaxSelected { get; set; }
 
-    /// <summary>The cap's explanation, supplied by the page ("Up to 50 feeds").</summary>
+    /// <summary>The cap's explanation, supplied by the page ("Up to 50 feeds"). Defaults to "Up to {cap}".</summary>
     [Parameter] public string? MaxSelectedText { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
@@ -156,6 +156,9 @@ public partial class OdsMultiSelect
         }
     }
 
+    private string RootClass => string.Join(' ', new[] { "odc-ms", OpenEnded ? "open-ended" : null, Fits ? "fit" : null, Class }
+        .Where(c => !string.IsNullOrWhiteSpace(c)));
+
     private bool Fits => !Quiet && Options.Count > 0 && (Fit ?? Options.Count <= FitLimit);
 
     // An open-ended list keeps the trigger's own width (the filter bar's floor) and the popover opens at
@@ -187,7 +190,10 @@ public partial class OdsMultiSelect
         if (!_selected.Remove(value))
         {
             if (AtMax)
+            {
                 return Task.CompletedTask;
+            }
+
             _selected.Add(value);
         }
         return ValuesChanged.InvokeAsync([.. _selected]);

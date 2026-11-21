@@ -3,15 +3,16 @@
 
     A field whose control box shows each selected member as a removable chip, with a trigger that
     opens a searchable, checkable list. It backs the transaction-tag fields AND every entity picker
-    built on it — Journal Contacts, Photos People / Albums, and the four Insurance link collections
-    (insurers, insured accounts, insured contacts, beneficiaries). Provide OnCreate to offer an inline
+    built on it — Journal Contacts and Photos People / Albums. Provide OnCreate to offer an inline
     "Create …" row for a name that matches nothing.
 
     CreateKinds says WHAT gets created and renders one row per kind with the kind as a muted trailing
     icon + label — `Create "AA" · Transaction tag` states the record it will make instead of leaving
     the user to infer it. A field only ever offers the vocabulary it searches (a journal-tag field
     cannot mint a transaction tag); where the members are contacts rather than tags, the rows are the
-    contact types, so the created record still carries a real type.
+    contact types, so the created record still carries a real type. CreateBlocked returns a sentence
+    for a name that must not be created (a tag name held by an archived tag, which is not in Options);
+    the sentence replaces the create rows as a status row. Tag fields build it with TagNameRule.
 
     Controlled: Value is the selected ids; ValueChanged fires the full next set on every add / remove
     (bind via @@bind-Value). Built on OdsPopupMenu (a MudPopover beside one real trigger, issue
@@ -133,7 +134,7 @@
                     <div class="odc-tagms-search">
                         <span class="material-icons" aria-hidden="true">search</span>
                         <input value="@_query"
-                               @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
+                               @oninput="@(e => OnQueryInput(e.Value?.ToString()))"
                                @onkeydown="OnSearchKeyDown"
                                placeholder="@EffectiveSearchPlaceholder"
                                aria-label="@SearchLabel" />
@@ -197,7 +198,11 @@
                                     </button>
                                 }
                             }
-                            @if (!Filtered.Any() && !ShowCreate)
+                            @if (Blocked is { Length: > 0 } blocked)
+                            {
+                                <div class="odc-tagms-empty odc-tagms-blocked">@blocked</div>
+                            }
+                            @if (!Filtered.Any() && !ShowCreate && string.IsNullOrEmpty(Blocked))
                             {
                                 <div class="odc-tagms-empty">@EmptyText</div>
                             }

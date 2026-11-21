@@ -145,7 +145,9 @@ public partial class AttachDocumentsDialog
     {
         _notice = text;
         if (text is not null)
+        {
             _noticeKey++;
+        }
     }
 
     // Picked library files, keyed by FileMetadata id, in the shape the validity editor edits.
@@ -214,7 +216,9 @@ public partial class AttachDocumentsDialog
     {
         // EditorRequired is a compile error under TreatWarningsAsErrors; this catches a value cast from 0.
         if (!Enum.IsDefined(Area))
+        {
             throw new InvalidOperationException("AttachDocumentsDialog needs an Area: Finance or Journal.");
+        }
 
         _fileKinds = Kinds is null
             ? null
@@ -228,11 +232,15 @@ public partial class AttachDocumentsDialog
         _canUpload = user.HasPermission(PermissionClaims.FilesCreate);
         _canBrowse = user.HasPermission(PermissionClaims.FilesRead);
         if (!_canUpload)
+        {
             _tab = LibraryTab;
+        }
 
         _uploadLimits = await UploadLimits.GetAsync();
         if (SurfaceMaxMegabytes is { } surface)
+        {
             _uploadLimits = _uploadLimits.TightenTo(surface);
+        }
 
         if (Validity)
         {
@@ -240,7 +248,9 @@ public partial class AttachDocumentsDialog
             _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
             ContactCreator.OnCreateFailed = OnContactCreateFailed;
             if (_canReadContacts)
+            {
                 _issuerOptions = OdsContactOptions.Active(await ReferenceData.ContactsAsync());
+            }
         }
 
         if (LoadAttachedIds is not null)
@@ -256,7 +266,9 @@ public partial class AttachDocumentsDialog
         }
 
         if (_tab == LibraryTab)
+        {
             await LoadLibraryAsync();
+        }
     }
 
     private string GuessKindOrDefault(string fileName) => GuessKind?.Invoke(fileName) ?? DefaultKind;
@@ -267,14 +279,18 @@ public partial class AttachDocumentsDialog
         _error = null;
         Notice(null);
         if (_tab == LibraryTab && !_libraryLoaded)
+        {
             await LoadLibraryAsync();
+        }
     }
 
     /// <summary>Reads the Files store once. Public as a render-test seam, like the sections' LoadAsync.</summary>
     public async Task LoadLibraryAsync()
     {
         if (!_canBrowse)
+        {
             return;
+        }
 
         _libraryLoading = true;
         _libraryFailed = false;
@@ -322,12 +338,13 @@ public partial class AttachDocumentsDialog
         var other => other.Split('/')[^1].Split('.')[^1].ToUpperInvariant(),
     };
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture);
 
     private void TogglePick(FileListItem file)
     {
         if (StateOf(file) != LibraryState.Available)
+        {
             return;
+        }
 
         if (!_picked.Remove(file.Id))
         {
@@ -368,7 +385,9 @@ public partial class AttachDocumentsDialog
 
         _uploads = kept;
         if (_error is not null && _uploads.Count > 0)
+        {
             _error = null;
+        }
 
         // Every rejection of one pick in one alert (WCAG 3.3.1); a pick or removal with none clears a stale one.
         Notice(rejected.Count > 0 ? UploadFailureText.Several(rejected, itemised: true, "can’t be added") : null);
@@ -377,7 +396,9 @@ public partial class AttachDocumentsDialog
     private void ToggleMeta(OdsUploadFile file)
     {
         if (!_metaOpen.Remove(file.Uid))
+        {
             _metaOpen.Add(file.Uid);
+        }
     }
 
     private static Task Patch(OdsUploadFileExtraContext ctx, Action<OdsUploadFile> set)
@@ -393,7 +414,10 @@ public partial class AttachDocumentsDialog
     {
         var option = ContactCreator.Begin(text, kind);
         if (option is not null)
+        {
             _issuerOptions = [.. _issuerOptions, option];
+        }
+
         return option;
     }
 
@@ -401,7 +425,10 @@ public partial class AttachDocumentsDialog
     {
         _issuerOptions = [.. _issuerOptions.Where(o => o.Value != tempId)];
         foreach (var f in _uploads.Concat(_picked.Values).Where(f => f.IssuedBy == tempId))
+        {
             f.IssuedBy = null;
+        }
+
         StateHasChanged();
     }
 
@@ -419,7 +446,9 @@ public partial class AttachDocumentsDialog
     private async Task SubmitAsync()
     {
         if (_busy)
+        {
             return;
+        }
 
         var batch = _tab == UploadTab ? _uploads : [.. _picked.Values];
         if (batch.Count == 0)
@@ -439,7 +468,9 @@ public partial class AttachDocumentsDialog
         }
 
         if (Validity)
+        {
             await ContactCreator.WhenSettledAsync();
+        }
 
         _busy = true;
         _error = null;
@@ -489,13 +520,19 @@ public partial class AttachDocumentsDialog
 
                     _stored[file.Uid] = id;
                     if (await ApplyNameAsync(id, file) is { } warning)
+                    {
                         warnings.Add(warning);
+                    }
 
                     var item = ItemFor(AttachDocumentSource.Upload, id, file);
                     if (await Attach(item))
+                    {
                         attached.Add(item);
+                    }
                     else
+                    {
                         failedUploads.Add(file);
+                    }
                 }
             }
             else
@@ -515,16 +552,25 @@ public partial class AttachDocumentsDialog
             // own failures, then any rename warnings.
             var parts = new List<string>();
             if (stoppedText is not null)
+            {
                 parts.Add(stoppedText);
+            }
+
             if (perFile.Count > 0)
+            {
                 parts.Add(UploadFailureText.Several(perFile, itemised: true));
+            }
+
             parts.AddRange(warnings);
             Notice(parts.Count > 0 ? string.Join(' ', parts) : null);
 
             if (attached.Count > 0)
             {
                 if (Announce)
+                {
                     Snackbar.Add(attached.Count == 1 ? "Document attached." : $"{attached.Count} documents attached.", Severity.Success);
+                }
+
                 await OnAttached.InvokeAsync(attached);
             }
 
@@ -540,14 +586,19 @@ public partial class AttachDocumentsDialog
             if (failed == 0)
             {
                 if (_tab == UploadTab)
+                {
                     _uploads = failedUploads;
+                }
+
                 return;
             }
 
             // Partly failed: what linked is reported to the host; only the failures stay, for a retry
             // that neither re-stores nor re-links what already worked.
             if (_tab == UploadTab)
+            {
                 _uploads = failedUploads;
+            }
             // An upload failure is already on the alert line; only an attach failure needs the generic one.
             if (_notice is null)
             {
@@ -576,7 +627,9 @@ public partial class AttachDocumentsDialog
         var wanted = file.Name.Trim();
         var current = _storedNames.GetValueOrDefault(file.Uid, file.Source!.Name);
         if (string.IsNullOrEmpty(wanted) || wanted == current)
+        {
             return null;
+        }
 
         var renamed = await FilesApi.UpdateMetadataAsync(id, null, wanted);
         if (!renamed.IsSuccess)

@@ -355,11 +355,16 @@ public class OdsLineChartTests
         var step = plotWidth / (n - 1);
 
         var drawn = Enumerable.Range(0, n).Where(i => i % every == 0 || i == n - 1).ToList();
-        if (drawn.Count == 2) return; // only the first and the tail are left; nothing narrower exists
+        if (drawn.Count == 2)
+        {
+            return; // only the first and the tail are left; nothing narrower exists
+        }
 
         foreach (var (a, b) in drawn.Zip(drawn.Skip(1)))
+        {
             Assert.True((b - a) * step >= labelWidth + OdsLineChart.XLabelGap,
                 $"n={n}, width={plotWidth}, stride={every}: labels {a} and {b} are {(b - a) * step:0.#} px apart.");
+        }
     }
 
     [Fact]
@@ -367,7 +372,9 @@ public class OdsLineChartTests
     {
         // A desktop-width plot leaves the count rule in charge, so wide screens keep their density.
         for (var n = 2; n <= 60; n++)
+        {
             Assert.Equal(OdsLineChart.TickEvery(n), OdsLineChart.TickEvery(n, 5000, 7 * OdsLineChart.AxisCharWidth));
+        }
     }
 
     // ── NG8 / AC34 — the additions are off by default ───────────────────────────────────────────

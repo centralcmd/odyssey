@@ -211,14 +211,20 @@ public class TransactionRowMenuTests
         {
             var text = File.ReadAllText(file);
             if (!text.Contains("<OdsTxnTable", StringComparison.Ordinal))
+            {
                 continue;
+            }
 
             // The component itself declares the parameter; a HOST that binds it must delegate.
             if (Path.GetFileName(file) is "OdsTxnTable.razor" or "OdsInlinePager.razor")
+            {
                 continue;
+            }
 
             if (!text.Contains("Actions=", StringComparison.Ordinal))
+            {
                 continue;
+            }
 
             checkedHosts.Add(ClientSource.Relative(file));
             var partner = file.EndsWith(".razor", StringComparison.Ordinal) ? file + ".cs" : file;

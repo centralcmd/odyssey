@@ -117,7 +117,9 @@ public partial class OdsLocationMap
     protected override async Task OnParametersSetAsync()
     {
         if ((Latitude, Longitude, Name) == _shown)
+        {
             return;
+        }
 
         var moved = Latitude != _shown.Lat || Longitude != _shown.Lng;
         _shown = (Latitude, Longitude, Name);
@@ -188,7 +190,9 @@ public partial class OdsLocationMap
         {
             _module ??= await JS.InvokeAsync<IJSObjectReference>("import", token, ModulePath);
             if (IsStale(generation))
+            {
                 return;
+            }
 
             if (!await _module.InvokeAsync<bool>("isSupported", token))
             {
@@ -198,7 +202,9 @@ public partial class OdsLocationMap
 
             _styles = await StylesCache.GetAsync(token);
             if (IsStale(generation))
+            {
                 return;
+            }
 
             if (_styles is null)
             {
@@ -243,7 +249,10 @@ public partial class OdsLocationMap
             {
                 await ReleaseAsync(handle);
                 if (_disposed)
+                {
                     await ReleaseModuleAsync();
+                }
+
                 return;
             }
 
@@ -287,7 +296,9 @@ public partial class OdsLocationMap
     private async Task FailAsync(int generation, OdsLocationMapState state)
     {
         if (IsStale(generation))
+        {
             return;
+        }
 
         await DisposeMapAsync();
         _state = state;
@@ -325,7 +336,9 @@ public partial class OdsLocationMap
     public async Task OnReady(int generation)
     {
         if (IsStale(generation) || _state != OdsLocationMapState.Loading)
+        {
             return;
+        }
 
         _state = OdsLocationMapState.Ready;
         var announce = _announceReady;
@@ -338,7 +351,9 @@ public partial class OdsLocationMap
 
         StateHasChanged();
         if (announce)
+        {
             await AnnounceAsync($"Map of {Name} loaded.");
+        }
     }
 
     [JSInvokable]
@@ -348,7 +363,9 @@ public partial class OdsLocationMap
     public async Task OnDegraded(int generation)
     {
         if (IsStale(generation) || _state != OdsLocationMapState.Ready)
+        {
             return;
+        }
 
         _state = OdsLocationMapState.Degraded;
         StateHasChanged();
@@ -377,7 +394,9 @@ public partial class OdsLocationMap
     public async Task OnContextRestored(int generation)
     {
         if (IsStale(generation))
+        {
             return;
+        }
 
         // The canvas is about to be replaced: if it (or the pin, a control) held focus, keep it in the
         // map — the frame while loading, then the new surface — rather than letting it fall to <body>.
@@ -415,14 +434,18 @@ public partial class OdsLocationMap
         _dark = dark;
         var generation = ++_styleGeneration;
         if (_disposed || _handle is not { } handle || _module is null || _styles is null)
+        {
             return;
+        }
 
         var url = StyleUrlFor(dark);
         await SafeInvokeAsync(() => _module.InvokeVoidAsync("setStyle", handle, url));
 
         // A completion from a superseded toggle changes nothing.
         if (generation == _styleGeneration && !_disposed)
+        {
             _appliedStyleUrl = url;
+        }
     }
 
     // ── Plumbing ─────────────────────────────────────────────────────────────────────────────────────
@@ -430,7 +453,9 @@ public partial class OdsLocationMap
     private async Task AnnounceAsync(string sentence)
     {
         if (!_disposed && OnStatus.HasDelegate)
+        {
             await OnStatus.InvokeAsync(sentence);
+        }
     }
 
     private async Task DisposeMapAsync()
@@ -443,7 +468,9 @@ public partial class OdsLocationMap
     private async Task ReleaseAsync(int? handle)
     {
         if (handle is { } h && _module is not null)
+        {
             await SafeInvokeAsync(() => _module.InvokeVoidAsync("dispose", h));
+        }
     }
 
     private async Task ReleaseModuleAsync()
@@ -451,7 +478,10 @@ public partial class OdsLocationMap
         var module = _module;
         _module = null;
         if (module is not null)
+        {
             await SafeInvokeAsync(() => module.DisposeAsync());
+        }
+
         _selfRef?.Dispose();
         _selfRef = null;
     }
@@ -483,7 +513,9 @@ public partial class OdsLocationMap
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
         _cts.Cancel();
@@ -493,7 +525,9 @@ public partial class OdsLocationMap
         // A create still in flight owns the module until it returns: it disposes its own late handle and
         // then the module (CreateAsync's stale branch), so `dispose` still runs exactly once.
         if (!_createPending)
+        {
             await ReleaseModuleAsync();
+        }
 
         _cts.Dispose();
         GC.SuppressFinalize(this);

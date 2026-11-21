@@ -18,6 +18,8 @@ namespace Odyssey.Client.Pages.Journal;
 
 public partial class JournalCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<JournalEntrySummary> _entries = [];                       // server-filtered display list
     private readonly Dictionary<Guid, ExistingJournalEntry> _details = new();
@@ -26,6 +28,7 @@ public partial class JournalCard
     private List<ExistingJournalTag> _tags = [];
     private Dictionary<Guid, ExistingJournalTag> _tagById = new();
     private IReadOnlyList<OdsOption> _tagOptions = [];
+    private IReadOnlyCollection<string> _archivedTagNames = [];
 
     private Dictionary<Guid, ExistingContact> _contactById = new();
     private IReadOnlyList<OdsOption> _contactOptions = [];
@@ -60,6 +63,7 @@ public partial class JournalCard
     private Dictionary<Guid, string?> _photoTagColors = [];
     private Dictionary<Guid, PhotoAlbumSummary> _photoAlbumById = [];
     private IReadOnlyList<OdsOption> _photoTagOptions = [];
+    private Func<string, string?>? _photoTagNameBlocked;
     private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
     private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
     private IJSObjectReference? _focusJs;
@@ -72,7 +76,6 @@ public partial class JournalCard
     private PhotoImageAccess _imageAccess = new(false);
     private bool _canReadContacts;
     private bool _canCreateContacts;
-    private bool _canReadJournalTags;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "journal-page";
@@ -171,7 +174,9 @@ public partial class JournalCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
 
@@ -191,10 +196,6 @@ public partial class JournalCard
         // The gallery's thumbnail needs photos.read, read once here rather than per tile (issue #365 B5).
         _imageAccess = PhotoImageAccess.From(user);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
-        // /journal-tags is gated on its OWN claim, which journal.read does not imply. Without this the
-        // tag tile's "Open journal tags" item is a dead end for a caller who holds one and not the
-        // other — the same reason "Open contact" is gated on contacts.read.
-        _canReadJournalTags = user.HasPermission(PermissionClaims.JournalTagsRead);
         _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
@@ -206,6 +207,7 @@ public partial class JournalCard
     {
         _tags = (await JournalTags.ListAllAsync()).ItemsOrToast(Snackbar, "journal tags");
         _tagById = _tags.ToDictionary(t => t.JournalTagId);
+        _archivedTagNames = [.. _tags.Where(t => t.Archived is not null).Select(t => t.Name)];
         _tagOptions =
         [
             .. _tags.Where(t => t.Archived is null)
@@ -217,7 +219,10 @@ public partial class JournalCard
     private async Task LoadContacts()
     {
         if (!_canReadContacts)
+        {
             return;
+        }
+
         var contacts = await ReferenceData.ContactsAsync();
         _contactById = contacts.ToDictionary(c => c.ContactId);
         _contactOptions = OdsContactOptions.Active(contacts);
@@ -230,8 +235,16 @@ public partial class JournalCard
     {
         var hasActive = _statusFilter.Contains(nameof(ArchivalStatus.Active));
         var hasArchived = _statusFilter.Contains(nameof(ArchivalStatus.Archived));
-        if (hasActive && hasArchived) return [nameof(ArchivalStatus.Active), nameof(ArchivalStatus.Archived)];
-        if (hasArchived) return [nameof(ArchivalStatus.Archived)];
+        if (hasActive && hasArchived)
+        {
+            return [nameof(ArchivalStatus.Active), nameof(ArchivalStatus.Archived)];
+        }
+
+        if (hasArchived)
+        {
+            return [nameof(ArchivalStatus.Archived)];
+        }
+
         return [nameof(ArchivalStatus.Active)];
     }
 
@@ -253,7 +266,9 @@ public partial class JournalCard
         var response = await _listLoader.RunAsync(ct => Task.WhenAll(requests.Select(status =>
             Journal.ListAsync(_searchString, _tagFilter, _contactFilter, status, _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles, ct))));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var results = response.Value;
         if (results.Length == 1)
@@ -623,6 +638,7 @@ public partial class JournalCard
             _photoTagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _photoTagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
             _photoTagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
+            _photoTagNameBlocked = TagNameRule.For(tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Photo);
         }
 
         var albumsResult = await Albums.ListAllAsync();
@@ -650,9 +666,15 @@ public partial class JournalCard
 
     private async Task EditClicked(JournalEntrySummary e)
     {
-        if (!_canUpdate) return;
-        if (await EnsureDetail(e.JournalEntryId) is not { } detail)
+        if (!_canUpdate)
+        {
             return;
+        }
+
+        if (await EnsureDetail(e.JournalEntryId) is not { } detail)
+        {
+            return;
+        }
 
         _editEntry = detail;
         _editEntryKey = Guid.NewGuid();
@@ -675,8 +697,15 @@ public partial class JournalCard
     // ── Archive / unarchive (PUT re-projecting the loaded entry) ───────────────────
     private async Task ToggleArchive(JournalEntrySummary e)
     {
-        if (!_canUpdate) return;
-        if (await EnsureDetail(e.JournalEntryId) is not { } detail) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
+        if (await EnsureDetail(e.JournalEntryId) is not { } detail)
+        {
+            return;
+        }
 
         var archiving = detail.Archived is null;
         var update = JournalWrite.FromDetail(detail, archiving);
@@ -695,13 +724,14 @@ public partial class JournalCard
 
     private async Task ConfirmDelete(JournalEntrySummary e)
     {
-        if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete entry",
-            DeleteMessage(e.Title),
-            yesText: "Delete", cancelText: "Cancel");
+        if (!_canDelete)
+        {
+            return;
+        }
 
-        if (confirmed == true && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
+        var confirmed = await _confirm.AskAsync("Delete entry", DeleteMessage(e.Title), "Delete");
+
+        if (confirmed && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
         {
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
@@ -719,7 +749,7 @@ public partial class JournalCard
         await LoadEntries();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Entry ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Entry"));
 
     // ── Create ──────────────────────────────────────────────────────────────────
     private Guid _createKey;
@@ -727,7 +757,11 @@ public partial class JournalCard
 
     private void AddClicked()
     {
-        if (!_canCreate) return;
+        if (!_canCreate)
+        {
+            return;
+        }
+
         _createKey = Guid.NewGuid();
         _createOpen = true;
     }
@@ -753,8 +787,16 @@ public partial class JournalCard
     {
         var hasActive = _statusFilter.Contains(nameof(ArchivalStatus.Active));
         var hasArchived = _statusFilter.Contains(nameof(ArchivalStatus.Archived));
-        if (hasActive && hasArchived) return null;
-        if (hasArchived) return nameof(ArchivalStatus.Archived);
+        if (hasActive && hasArchived)
+        {
+            return null;
+        }
+
+        if (hasArchived)
+        {
+            return nameof(ArchivalStatus.Archived);
+        }
+
         return nameof(ArchivalStatus.Active);
     }
 
@@ -763,7 +805,11 @@ public partial class JournalCard
     // the server's reason (forbidden / over-cap / generic) rather than downloading a fake file.
     private async Task ExportAsync(bool filtered)
     {
-        if (_exporting) return;
+        if (_exporting)
+        {
+            return;
+        }
+
         _exporting = true;
         _announce = "Preparing journal export…";
         StateHasChanged();
@@ -779,7 +825,10 @@ public partial class JournalCard
             // The snackbar container is a role="status" region and speaks the outcome itself, success or refusal, so the
             // page's announcer only covered the wait and is cleared rather than made to say it a second time.
             _announce = "";
-            if (summary is null) return;
+            if (summary is null)
+            {
+                return;
+            }
 
             await NativeTransfer.DownloadAsync(filtered
                 ? JournalIcs.ExportUrl(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
@@ -796,12 +845,19 @@ public partial class JournalCard
 
     private async Task ExportEntryAsync(JournalEntrySummary entry)
     {
-        if (_exporting) return;
+        if (_exporting)
+        {
+            return;
+        }
+
         _exporting = true;
         try
         {
             var summary = (await JournalIcs.SummarizeExportOneAsync(entry.JournalEntryId)).OrToast(Snackbar, "Unable to export the journal entry");
-            if (summary is null) return;
+            if (summary is null)
+            {
+                return;
+            }
 
             await NativeTransfer.DownloadAsync(JournalIcs.ExportOneUrl(entry.JournalEntryId));
             var title = string.IsNullOrWhiteSpace(entry.Title) ? "the journal entry" : entry.Title;
@@ -821,8 +877,16 @@ public partial class JournalCard
     private static string CarriedSuffix(JournalEntryIcsExportSummary summary)
     {
         var parts = new List<string>();
-        if (summary.AttachmentCount > 0) parts.Add(Plural(summary.AttachmentCount, "attached file", "attached files"));
-        if (summary.PhotoCount > 0) parts.Add(Plural(summary.PhotoCount, "photo", "photos"));
+        if (summary.AttachmentCount > 0)
+        {
+            parts.Add(Plural(summary.AttachmentCount, "attached file", "attached files"));
+        }
+
+        if (summary.PhotoCount > 0)
+        {
+            parts.Add(Plural(summary.PhotoCount, "photo", "photos"));
+        }
+
         return parts.Count == 0 ? "" : $" with {string.Join(" and ", parts)} ({ByteSize.Format(summary.AttachmentBytes)})";
     }
 
@@ -860,11 +924,7 @@ public partial class JournalCard
             Icon = "event_note", Label = "Export VJOURNAL",
             OnClick = EventCallback.Factory.Create(this, () => ExportEntryAsync(e)),
         });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId))));
 
         if (_canUpdate)
         {

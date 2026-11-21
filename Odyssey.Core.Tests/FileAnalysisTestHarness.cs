@@ -41,7 +41,7 @@ internal static class FileAnalysisTestHarness
     {
         SeedRequester(context, RequesterId);
         var service = new FileAnalysisService(
-            context, provider, contactLookup, Options.Create(options), settingsLookup,
+            context, provider, contactLookup, settingsLookup,
             NullLogger<FileAnalysisService>.Instance, Queue(context, options, time), template ?? Template, time);
         Runners.AddOrUpdate(service, Runner(context, provider, settingsLookup, secrets, time, template));
         return service;
@@ -55,7 +55,8 @@ internal static class FileAnalysisTestHarness
         TimeProvider? time = null,
         IFileAnalysisPromptTemplate? template = null) =>
         new(context, provider, settingsLookup, template ?? Template, secrets ?? new KeyStored(),
-            time ?? TimeProvider.System, NullLogger<FileAnalysisExtractionRunner>.Instance);
+            time ?? TimeProvider.System, NullLogger<FileAnalysisExtractionRunner>.Instance,
+            Odyssey.Testing.FileStorage.TestFileStores.For(context).Source);
 
     /// <summary>Enqueues, then claims and runs the job in-process — what the worker does a tick later.</summary>
     public static async Task<AnalyzeFileResponse> AnalyzeAndRunAsync(

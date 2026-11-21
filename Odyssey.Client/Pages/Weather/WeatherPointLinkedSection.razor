@@ -71,7 +71,9 @@
     protected override async Task OnParametersSetAsync()
     {
         if (_loadedFor == WeatherPointId)
+        {
             return;
+        }
         _loadedFor = WeatherPointId;
         await LoadAsync();
     }
@@ -93,6 +95,8 @@
         _linked = [.. result.Value.OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)];
         _phase = Phase.Ready;
         if (_linked.Count == 0)
+        {
             await OnAnnounce.InvokeAsync($"No location uses {PointName} yet.");
+        }
     }
 }

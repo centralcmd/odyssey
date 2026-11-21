@@ -97,7 +97,9 @@ public static class OdsMoney
     public static string Compact(decimal? value, string? currencyCode)
     {
         if (value is not { } amount)
+        {
             return Absent;
+        }
 
         var magnitude = Math.Abs(amount);
         var compact = magnitude switch
@@ -114,7 +116,9 @@ public static class OdsMoney
     private static string Render(decimal? value, string? currencyCode, int minorUnits, bool signed)
     {
         if (value is not { } amount)
+        {
             return Absent;
+        }
 
         var digits = Math.Clamp(minorUnits, 0, 28);
         var magnitude = Math.Abs(amount).ToString("N" + digits.ToString(CultureInfo.InvariantCulture), CultureInfo.CurrentCulture);

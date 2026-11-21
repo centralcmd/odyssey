@@ -20,7 +20,7 @@ namespace Odyssey.Api.Tests;
 // RequireAuthorization wherever both are present, so exempting the group wholesale would silently
 // publish /manage/info and /manage/2fa. The exemption is therefore scoped by route pattern, and
 // these tests fail if that scoping is ever widened.
-public class FallbackAuthorizationPolicyTests
+public class FallbackAuthorizationPolicyTests(FallbackAuthorizationPolicyTests.Host host) : SharedApiHostTests<FallbackAuthorizationPolicyTests.Host>(host)
 {
     private const string ActorUserId = "fallback-policy-actor-id";
 
@@ -36,7 +36,7 @@ public class FallbackAuthorizationPolicyTests
     [Fact]
     public void FallbackPolicy_RequiresAnAuthenticatedUser()
     {
-        using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
 
         var options = factory.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AuthorizationOptions>>();
 
@@ -56,7 +56,7 @@ public class FallbackAuthorizationPolicyTests
     [InlineData("/resendConfirmationEmail")]
     public void PublicEndpoints_AreExemptFromTheFallbackPolicy(string route)
     {
-        using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
 
         var endpoint = Find(factory, route);
 
@@ -73,7 +73,7 @@ public class FallbackAuthorizationPolicyTests
     [InlineData("/manage/2fa")]
     public void IdentityManageEndpoints_AreNotExempt(string route)
     {
-        using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
 
         var endpoint = Find(factory, route);
 
@@ -87,7 +87,7 @@ public class FallbackAuthorizationPolicyTests
     [Fact]
     public async Task ManageInfo_Unauthenticated_IsRefused()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/manage/info");
@@ -98,7 +98,7 @@ public class FallbackAuthorizationPolicyTests
     [Fact]
     public async Task Healthz_Unauthenticated_IsReachable()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/healthz");
@@ -106,6 +106,9 @@ public class FallbackAuthorizationPolicyTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
+
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 }

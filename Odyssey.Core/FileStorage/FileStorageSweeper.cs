@@ -55,6 +55,15 @@ public sealed class FileStorageSweeper(
     /// <inheritdoc cref="FileStorageDeletionGrace.FallbackHours"/>
     public const int GraceFallbackHours = FileStorageDeletionGrace.FallbackHours;
 
+    /// <summary>The folders one reconciliation tick visits: always <see cref="ReconcileMaxFolders"/> in production.</summary>
+    internal int ReconcileFolderLimit { get; set; } = ReconcileMaxFolders;
+
+    /// <summary>
+    /// The breaker's absolute floor: always <see cref="BreakerFloor"/> in production. Only a test lowers it, so the
+    /// ratio term can be made to dominate on a volume of a thousand rows instead of over ten thousand.
+    /// </summary>
+    internal int BreakerFloorOrphans { get; set; } = BreakerFloor;
+
     private Func<CancellationToken, Task> keepAlive = _ => Task.CompletedTask;
 
     /// <summary>
@@ -612,7 +621,7 @@ public sealed class FileStorageSweeper(
 
         foreach (var folder in Folders(volume, cursor, () => nonConforming++))
         {
-            if (visited >= ReconcileMaxFolders || time.GetElapsedTime(started) >= ReconcileTimeBudget)
+            if (visited >= ReconcileFolderLimit || time.GetElapsedTime(started) >= ReconcileTimeBudget)
             {
                 WarnNonConforming(volume, pass, nonConforming);
                 return;
@@ -872,7 +881,7 @@ public sealed class FileStorageSweeper(
     {
         var orphans = await context.FileStorageOrphanSightings.CountAsync(s => s.VolumeId == volume.Id && s.LastSeenPass == pass, cancellationToken);
         var live = await context.StoredObjects.CountAsync(o => o.VolumeId == volume.Id && o.State != StoredObjectState.Pending, cancellationToken);
-        var threshold = Math.Max(BreakerFloor, live / 100);
+        var threshold = Math.Max(BreakerFloorOrphans, live / 100);
         orphansFound += orphans;
 
         if (orphans > threshold)

@@ -107,7 +107,9 @@ public static class PropertyVisuals
     public static string? AddressText(RealEstateDetailsDto? details)
     {
         if (details is null)
+        {
             return null;
+        }
 
         var town = string.Join(" ", new[] { details.PostalCode, details.City }.Where(p => !string.IsNullOrWhiteSpace(p)));
         var parts = new[] { details.AddressLine, town, details.CountryCode }.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
@@ -172,7 +174,9 @@ public static class PropertyFileTypeGuess
         foreach (var (pattern, type) in Rules)
         {
             if (pattern.IsMatch(fileName))
+            {
                 return type;
+            }
         }
 
         return PropertyFileType.Other;

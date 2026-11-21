@@ -181,7 +181,9 @@ public partial class OdsFilesTable
     protected override void OnParametersSet()
     {
         if (_columns.Count != 0 && _columns.Any(c => c.Key == "validFrom") != ValidityColumns)
+        {
             _columns = BuildColumns();
+        }
     }
 
     // The DS menu convention: Edit (when editable), the host's file-specific items, then a
@@ -191,15 +193,19 @@ public partial class OdsFilesTable
         var items = new List<OdsMenuItem>();
 
         if (CanEdit)
+        {
             items.Add(new OdsMenuItem
             {
                 Icon = "edit",
                 Label = "Edit",
                 OnClick = EventCallback.Factory.Create(this, () => StartEdit(file)),
             });
+        }
 
         if (Actions is not null)
+        {
             items.AddRange(Actions(file));
+        }
 
         if (OnDelete.HasDelegate)
         {
@@ -221,7 +227,10 @@ public partial class OdsFilesTable
     private Task HandleDelete(object key)
     {
         if (!OnDelete.HasDelegate)
+        {
             return Task.CompletedTask;
+        }
+
         var row = Files.FirstOrDefault(f => f.Id.Equals(key));
         return row is null ? Task.CompletedTask : OnDelete.InvokeAsync(row);
     }
@@ -236,9 +245,15 @@ public partial class OdsFilesTable
     private static string DefaultFormatSize(long bytes)
     {
         if (bytes < 1024)
+        {
             return $"{bytes} B";
+        }
+
         if (bytes < 1024 * 1024)
+        {
             return $"{bytes / 1024.0:F1} KB";
+        }
+
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
 
@@ -280,10 +295,14 @@ public partial class OdsFilesTable
     {
         var args = new OdsRecordSaveEventArgs(file.Id, patch);
         if (OnSave.HasDelegate)
+        {
             await OnSave.InvokeAsync(args);
+        }
 
         if (args.Failed)
+        {
             return false;
+        }
 
         _editOpen = false;
         // Deliberately not awaited: the flash outlives the save, and awaiting it would hold the
@@ -316,7 +335,7 @@ public partial class OdsFilesTable
         FormatSize?.Invoke(file.SizeBytes) ?? DefaultFormatSize(file.SizeBytes);
 
     private string DateText(DateTime uploadedUtc) =>
-        FormatDate?.Invoke(uploadedUtc) ?? uploadedUtc.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+        FormatDate?.Invoke(uploadedUtc) ?? OdsDates.LongUnpadded(uploadedUtc.ToLocalTime());
 
     /// <summary>Compact form for the validity columns — four extra date columns can't each carry a
     /// long-form date without overflowing the row.</summary>

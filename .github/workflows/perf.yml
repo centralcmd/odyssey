@@ -1,0 +1,104 @@
+name: Perf (Release PR)
+
+# The perf tier (TestShared/PerfTier.cs): volume, memory and time-budget tests — the 100,000-row calendar
+# export, the 50,000-event import, the 100,000-transaction net-worth budget, the weather batch P95 targets and
+# the 100,000-feed OPML import. They skip in the per-PR CI run, where they cost minutes and say nothing a
+# small sibling does not, and run here on the release-please Release PR — the last gate before a release.
+#
+# Why workflow_dispatch and not pull_request: release-please opens and updates the Release PR with the default
+# GITHUB_TOKEN, and events that token causes start no workflow run — which is why ci.yml never runs on that PR
+# either. workflow_dispatch is the one exception, so release-please.yml dispatches this workflow on the Release
+# PR's branch each time it updates the PR, and this run reports a `perf` commit status on that branch's head,
+# where it shows on the PR. It can also be started by hand on any branch. Setup mirrors ci.yml.
+on:
+  workflow_dispatch:
+
+# A newer push to the Release PR supersedes an older run on the same branch.
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      statuses: write
+
+    steps:
+      - name: Report perf as pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"
+          -f state=pending -f context=perf -f description="Perf tier running"
+          -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Odyssey.sln
+
+      - name: Build
+        run: dotnet build Odyssey.sln -c Release --no-restore -warnaserror
+
+      # Requiring `perf` is what un-skips these tests; requiring `integration` too makes a missing Docker daemon
+      # fail the MariaDB-backed half instead of skipping it (issue #257's rule, extended to the perf tier).
+      - name: Perf tests
+        env:
+          ODYSSEY_REQUIRE_TIER: integration,perf
+        run: |
+          for project in Odyssey.Core.Tests Odyssey.IntegrationTests; do
+            dotnet test "$project" --no-build -c Release --filter "Category=Perf" \
+              --blame-hang-timeout 15m --blame-hang-dump-type none \
+              --logger "trx;LogFilePrefix=perf-results" --results-directory ./TestResults
+          done
+
+      # A filter that matched nothing would leave this job green having run nothing, which is the failure
+      # ODYSSEY_REQUIRE_TIER exists to prevent. Every perf test must have executed, none skipped.
+      - name: Check that the perf tests ran
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, xml.etree.ElementTree as ET
+          ns = '{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}'
+          executed = skipped = 0
+          for path in glob.glob('TestResults/**/*.trx', recursive=True):
+              counters = ET.parse(path).getroot().find(f'{ns}ResultSummary/{ns}Counters')
+              # A skipped test counts in `total` but not in `executed`; `notExecuted` stays 0 for it.
+              executed += int(counters.get('executed', 0))
+              skipped += int(counters.get('total', 0)) - int(counters.get('executed', 0))
+          print(f'perf tests executed: {executed}, skipped: {skipped}')
+          sys.exit(0 if executed > 0 and skipped == 0 else 1)
+          EOF
+
+      - name: Upload test results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: perf-results
+          path: |
+            TestResults/**/*.trx
+            **/Sequence_*.xml
+          retention-days: 14
+
+      - name: Report perf result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          case "$OUTCOME" in
+            success) state=success; text="Perf tier passed" ;;
+            cancelled) state=error; text="Perf tier cancelled" ;;
+            *) state=failure; text="Perf tier failed" ;;
+          esac
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state="$state" -f context=perf -f description="$text" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

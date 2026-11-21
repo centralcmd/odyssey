@@ -18,7 +18,7 @@ using static Odyssey.Client.Tests.NewsPageTestContext;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The Feeds page's OPML half (issue #509 §3.1, §3.2, §3.3, §7.1, §7.3; amendments v4, v5): the "Feed actions" menu
+/// The Feeds page’s OPML half (issue #509 §3.1, §3.2, §3.3, §7.1, §7.3; amendments v4, v5): the "Feed actions" menu
 /// by claim and by list state, both exports, the import dialog's reload on close, and the redraw after a claims
 /// refresh. Test names carry the acceptance criterion they prove; the dialog itself is <see cref="ImportNewsFeedsDialogTests"/>.
 /// </summary>
@@ -58,7 +58,7 @@ public class NewsFeedsOpmlPageTests
             Context.Ctx.Services.AddSingleton<AuthenticationStateProvider>(Claims);
             Context.News.Setup(n => n.ListFeedsAsync(1, NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => Ok(new PagedResult<ExistingNewsFeed> { Items = [.. Current], TotalCount = Current.Count }));
-            Context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+            Context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
             Current = [.. feeds];
         }
 
@@ -300,8 +300,8 @@ public class NewsFeedsOpmlPageTests
     {
         { HttpStatusCode.TooManyRequests, null, "An export is already running. Try again in a moment." },
         { HttpStatusCode.ServiceUnavailable, NewsErrorCodes.Busy, "Busy. Try again in a moment." },
-        { HttpStatusCode.Forbidden, null, "You don't have permission to export feeds." },
-        { HttpStatusCode.InternalServerError, null, "Couldn't export the feeds." },
+        { HttpStatusCode.Forbidden, null, "You don’t have permission to export feeds." },
+        { HttpStatusCode.InternalServerError, null, "Couldn’t export the feeds." },
     };
 
     [Theory] // AC 5
@@ -326,7 +326,7 @@ public class NewsFeedsOpmlPageTests
 
         page.Choose("Export all as OPML");
 
-        page.Cut.WaitForAssertion(() => Assert.Contains("The export didn't complete. Try again.", page.Cut.Markup, StringComparison.Ordinal));
+        page.Cut.WaitForAssertion(() => Assert.Contains("The export didn’t complete. Try again.", page.Cut.Markup, StringComparison.Ordinal));
         Assert.Empty(page.Downloads);
     }
 
@@ -360,7 +360,7 @@ public class NewsFeedsOpmlPageTests
         page.Choose("Export all as OPML");
 
         page.Cut.WaitForAssertion(() => Assert.Contains("No feeds to export.", page.Cut.Markup, StringComparison.Ordinal));
-        Assert.DoesNotContain("didn't complete", page.Cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("didn’t complete", page.Cut.Markup, StringComparison.Ordinal);
         Assert.Empty(page.Downloads);
     }
 
@@ -447,7 +447,7 @@ public class NewsFeedsOpmlPageTests
 
         page.Cut.WaitForAssertion(() => Assert.Contains("Imported", page.Cut.Markup, StringComparison.Ordinal));
         page.Context.News.Verify(n => n.ListFeedsAsync(1, NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()), Times.Exactly(2));
-        page.Context.News.Verify(n => n.ListTagsAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        page.Context.NewsTags.Verify(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         page.Cut.WaitForAssertion(() => Assert.Contains("Feed list updated.", page.Polite, StringComparison.Ordinal));
         Assert.Equal(NewsFeedsPage.ActionMenuId, dialog.FindComponent<OdsModal>().Instance.ReturnFocusToId);
     }

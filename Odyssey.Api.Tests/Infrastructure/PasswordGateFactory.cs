@@ -27,7 +27,7 @@ namespace Odyssey.Api.Tests.Infrastructure;
 /// <c>RefreshSignInAsync</c> did — which is precisely the regression the gate's escape hatch has to absorb.
 /// Logging in for real is what makes "the same cookie still works afterwards" a real question.
 /// </remarks>
-public sealed class PasswordGateFactory : WebApplicationFactory<Program>
+public class PasswordGateFactory : WebApplicationFactory<Program>
 {
     public const string Password = "Password123!Safe";
 

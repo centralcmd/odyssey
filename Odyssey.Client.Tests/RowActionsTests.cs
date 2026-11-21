@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using Odyssey.Client.Components;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -166,7 +167,7 @@ public class RowActionsTests
             {
                 var text = File.ReadAllText(file);
                 return shapes.Matches(text)
-                    .Select(m => $"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, m.Index)}");
+                    .Select(m => $"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, m.Index)}");
             })
             .ToList();
 

@@ -95,7 +95,9 @@
     private async Task MergeAsync()
     {
         if (_busy)
+        {
             return;
+        }
         _alert = null;
         if (_target?.Id is not { } targetId)
         {
@@ -116,9 +118,13 @@
             }
 
             if (result.Status == HttpStatusCode.Forbidden)
+            {
                 _alert = Forbidden;
+            }
             else if (result.Problem?.ErrorFor("targetLocationId") is not null)
+            {
                 _targetError = UnusableTarget;
+            }
             else if (result.Problem?.ErrorFor("sourceId") is not null)
             {
                 // Reload the source first, then choose the message from what it is now.
@@ -126,7 +132,9 @@
                 _alert = SourceRefusal(reloaded.Value ?? Source);
             }
             else
+            {
                 _alert = result.Problem?.Message ?? "The places couldn’t be merged. Try again.";
+            }
         }
         finally
         {

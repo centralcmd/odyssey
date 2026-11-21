@@ -149,7 +149,9 @@ public partial class TransactionsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -292,7 +294,9 @@ public partial class TransactionsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "transactions");
         if (load.IsSuccess)
@@ -324,7 +328,9 @@ public partial class TransactionsCard
         _tags = [.. (await ReferenceData.TransactionTagsAsync()).OrderBy(t => t.Name)];
 
         if (_canReadContacts)
+        {
             _contacts = [.. (await ReferenceData.ContactsAsync()).OrderBy(c => c.ResolvedDisplayName)];
+        }
 
         StateHasChanged();
     }
@@ -355,7 +361,9 @@ public partial class TransactionsCard
     private Task AttachAsync(ExistingTransaction t)
     {
         if (!_canUpdate)
+        {
             return Task.CompletedTask;
+        }
 
         _attachTransaction = t;
         _attachKey = Guid.NewGuid();
@@ -369,7 +377,9 @@ public partial class TransactionsCard
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _createKey = Guid.NewGuid();
         _createOpen = true;
@@ -382,7 +392,9 @@ public partial class TransactionsCard
     private Task EditClickedAsync(ExistingTransaction t)
     {
         if (!_canUpdate)
+        {
             return Task.CompletedTask;
+        }
 
         _editTransaction = t;
         _editTransactionKey = Guid.NewGuid();
@@ -393,11 +405,15 @@ public partial class TransactionsCard
     private async Task HandleDelete(object key)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var transaction = _transactions.FirstOrDefault(t => t.TransactionId.Equals(key));
         if (transaction is null)
+        {
             return;
+        }
 
         if ((await Transactions.DeleteAsync(transaction.TransactionId)).Toast(Snackbar, "Delete failed", "Transaction deleted."))
         {
@@ -414,15 +430,19 @@ public partial class TransactionsCard
     private async Task SetStatus(ExistingTransaction t, TransactionStatus status)
     {
         if (!_canUpdate || t.Status == status)
+        {
             return;
+        }
 
         if ((await Transactions.UpdateAsync(t.TransactionId, TransactionRowMenu.StatusPatch(t, status)))
             .Toast(Snackbar, "Update failed", "Transaction updated."))
+        {
             await RefreshAsync();
+        }
     }
 
     private Task CopyId(Guid transactionId) =>
-        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
+        Clipboard.CopyAsync(transactionId.ToString(), OdsCopied.Id("Transaction"));
 
     public void Dispose() => _listLoader.Dispose();
 }

@@ -55,10 +55,11 @@ public sealed record SystemSettingsUpdate
 
     public CapacityLimit? CalendarIcsMaxImportEvents { get; set; }
 
-    [Range(1, 1024)]
+    // The calendar export and import stream (issue #516), so its pair goes to 10 GB like the task one.
+    [Range(SystemSettingsBounds.CalendarIcsMaxImportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax)]
     public int? CalendarIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.CalendarIcsMaxExportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax)]
     public int? CalendarIcsMaxExportMegabytes { get; set; }
 
     public CapacityLimit? TaskIcsMaxExportTasks { get; set; }
@@ -236,6 +237,13 @@ public sealed record SystemSettingsUpdate
     public int? JournalTaskMaxLinksPerKind { get; set; }
 
     /// <summary>
+    /// Files, and separately photos, one calendar event or series may link (issue #521 §4). Two-direction: neither end is
+    /// the shipped default, so the range names the bounds pair. Its max bounds the series-delete link copy.
+    /// </summary>
+    [Range(SystemSettingsBounds.CalendarEventMaxLinksPerKindMin, SystemSettingsBounds.CalendarEventMaxLinksPerKindMax)]
+    public int? CalendarEventMaxLinksPerKind { get; set; }
+
+    /// <summary>
     /// The upload cap, in megabytes (issue #421 Wave 4). The advertised range is not the effective
     /// range — the value must also be at or below the startup transport ceiling, which the server
     /// validates and publishes as <c>UploadMegabytesCeiling</c> on the read DTO.
@@ -279,14 +287,12 @@ public sealed record SystemSettingsUpdate
     public int? FileAnalysisMatchTimeoutSeconds { get; set; }
 
     /// <summary>
-    /// Blob prefix read for photo metadata extraction, in megabytes. The 16 MB maximum is a compiled
-    /// assumption about MariaDB's default <c>max_allowed_packet</c>, which this repository pins
-    /// nowhere — see <c>docs/deployment.md</c>.
+    /// Prefix of the upload stream read for photo metadata extraction, in megabytes. The 16 MB maximum
+    /// bounds the per-upload memory extraction materialises — see <c>docs/deployment.md</c>.
     /// </summary>
     [Range(1, 16, ErrorMessage =
-        "Metadata read size must be between 1 and 16 MB. Extraction materialises a full byte array of "
-        + "this size per photo, and 16 MB is MariaDB's default max_allowed_packet — the real wall on "
-        + "the prefix read, whatever a larger value here claimed.")]
+        "Metadata read size must be between 1 and 16 MB. Extraction holds a full byte array of this "
+        + "size in memory for every photo uploaded, so the maximum bounds per-upload memory.")]
     public int? PhotoMetadataReadMegabytes { get; set; }
 
     [Range(1, 120, ErrorMessage =

@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// the Guest-reachable one — Guest holds <c>taxes.read</c> — so leaving that surface alone would have
 /// kept the harvesting primitive open on the very claim the issue's premise rests on.
 /// </summary>
-public sealed class FinanceFileAttributionModuleApiTests
+public class FinanceFileAttributionModuleApiTests(FinanceFileAttributionModuleApiTests.Host host) : SharedApiHostTests<FinanceFileAttributionModuleApiTests.Host>(host)
 {
     private const string UploaderUserId = "module-uploader-id";
     private const string UploaderEmail = "module-uploader@example.com";
@@ -27,7 +27,7 @@ public sealed class FinanceFileAttributionModuleApiTests
     [Fact]
     public async Task GetTaxStatement_ResolvesFileAttribution()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TaxesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TaxesRead]);
         using var client = factory.CreateClient();
         var statementId = await SeedTaxStatementAsync(factory);
 
@@ -42,7 +42,7 @@ public sealed class FinanceFileAttributionModuleApiTests
     [Fact]
     public async Task ListTaxStatements_ResolvesFileAttribution()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TaxesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TaxesRead]);
         using var client = factory.CreateClient();
         await SeedTaxStatementAsync(factory);
 
@@ -56,7 +56,7 @@ public sealed class FinanceFileAttributionModuleApiTests
     [Fact]
     public async Task GetTaxStatement_WithoutUsersRead_ReturnsNeutralLabelNotEmail()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TaxesRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TaxesRead]);
         using var client = factory.CreateClient();
         var statementId = await SeedTaxStatementAsync(factory, displayName: null);
 
@@ -73,7 +73,7 @@ public sealed class FinanceFileAttributionModuleApiTests
     [Fact]
     public async Task GetContract_ResolvesFileAttribution()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.ContractsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ContractsRead]);
         using var client = factory.CreateClient();
         var contractId = await SeedContractAsync(factory);
 
@@ -155,8 +155,7 @@ public sealed class FinanceFileAttributionModuleApiTests
 
     private static FileMetadata AddFile(OdysseyContext db, string fileName, string hash)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -165,10 +164,13 @@ public sealed class FinanceFileAttributionModuleApiTests
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = hash,
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = Guid.NewGuid(),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(metadata);
         return metadata;
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

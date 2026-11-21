@@ -1,6 +1,7 @@
 using System.Net;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -11,30 +12,9 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class TransactionTagsApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (TransactionTagsApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        public HttpResponseMessage Response { get; set; } =
-            new(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""{"items":[],"offset":0,"limit":50,"totalCount":0}""",
-                                            System.Text.Encoding.UTF8, "application/json"),
-            };
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return Response;
-        }
-    }
-
-    private static (TransactionTagsApiClient Client, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         return (new TransactionTagsApiClient(new OdysseyApi(
             new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") })), handler);
     }

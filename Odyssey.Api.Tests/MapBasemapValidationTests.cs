@@ -7,6 +7,8 @@ using Odyssey.Api.Map;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -40,7 +42,7 @@ public sealed class MapBasemapValidationTests : IDisposable
     [Fact]
     public void A_valid_archive_passes_and_its_bounds_are_logged()
     {
-        var logger = new CapturingLogger<MapOptionsValidator>();
+        var logger = new RecordingLogger<MapOptionsValidator>();
 
         var result = new MapOptionsValidator(logger).Validate(Microsoft.Extensions.Options.Options.DefaultName, Options(path: Write(Archive())));
 
@@ -54,7 +56,7 @@ public sealed class MapBasemapValidationTests : IDisposable
     [Fact]
     public void The_committed_fixture_a_real_archive_passes()
     {
-        var fixture = Path.Combine(RepositoryRoot.Path, "TestShared", "Basemap", "basemap.pmtiles");
+        var fixture = SourceTree.File("TestShared", "Basemap", "basemap.pmtiles");
 
         var result = Validate(Options(path: fixture));
 
@@ -116,7 +118,10 @@ public sealed class MapBasemapValidationTests : IDisposable
         Assert.Contains("Map:BasemapFilePath", result.FailureMessage, StringComparison.Ordinal);
         Assert.Contains(rule, result.FailureMessage, StringComparison.Ordinal);
         if (path.Length > 0)
+        {
             Assert.DoesNotContain(path, result.FailureMessage, StringComparison.Ordinal);
+        }
+
         Assert.DoesNotContain(directory, result.FailureMessage, StringComparison.Ordinal);
     }
 
@@ -139,7 +144,7 @@ public sealed class MapBasemapValidationTests : IDisposable
     public void The_committed_fixture_contains_the_cabin_and_not_home()
     {
         // TestShared/Basemap/ATTRIBUTION.md's invariant, which the E2E tier's AC 20 depends on.
-        var bytes = File.ReadAllBytes(Path.Combine(RepositoryRoot.Path, "TestShared", "Basemap", "basemap.pmtiles"));
+        var bytes = File.ReadAllBytes(SourceTree.File("TestShared", "Basemap", "basemap.pmtiles"));
         var header = PmtilesHeader.Parse(bytes);
         var locations = Odyssey.TestData.Generators.LocationGenerator.Generate(DateTime.UtcNow);
 
@@ -214,7 +219,7 @@ public sealed class MapBasemapValidationTests : IDisposable
     [InlineData("OpenFreeMap © OpenMapTiles Data from OpenStreetMap")]
     public void An_attribution_missing_a_required_credit_warns_once_and_passes(string attribution)
     {
-        var logger = new CapturingLogger<MapOptionsValidator>();
+        var logger = new RecordingLogger<MapOptionsValidator>();
         var options = Options(path: Write(Archive()));
         options.Attribution = attribution;
 

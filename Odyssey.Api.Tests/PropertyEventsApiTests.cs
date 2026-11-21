@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Context.Authorization;
@@ -23,7 +24,7 @@ namespace Odyssey.Api.Tests;
 /// author label, model binding against over-posting, owner scoping across the shared table, the list
 /// surface, and the system rows <c>PUT /api/properties/{id}</c> records.
 /// </summary>
-public class PropertyEventsApiTests
+public class PropertyEventsApiTests(PropertyEventsApiTests.Host host) : SharedApiHostTests<PropertyEventsApiTests.Host>(host)
 {
     private const string ActorUserId = "property-events-actor-id";
 
@@ -55,7 +56,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_ValidBody_Returns201WithTheAuthorLabel_AndTheListLocation()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         // The store first, so the reference currencies are seeded before the actor row creates it.
         await EnsureCreatedAsync(factory);
         await factory.SeedActorUserAsync(displayName: "Kari Nordmann");
@@ -80,7 +81,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_AVehicleOnlyTypeOnRealEstate_Is422KeyedType()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory, type: PropertyType.RealEstate);
         using var client = factory.CreateClient();
 
@@ -95,7 +96,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_ASystemOnlyType_Is422KeyedType()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -108,7 +109,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_AnUndefinedTypeOrABlankTitle_Is400()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -124,7 +125,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_TheFutureBound_IsSixtySeconds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -142,7 +143,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_OverPostedServerFields_AreIgnored()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var otherProperty = await SeedPropertyAsync(factory, name: "Other");
         using var client = factory.CreateClient();
@@ -173,7 +174,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_WithTypeOmitted_PersistsOther()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -188,7 +189,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Post_OnAnUnknownProperty_Is404EchoingOnlyTheId()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
@@ -207,7 +208,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Put_OnASystemRow_KeepingItsType_Returns200_AndSourceStaysSystem()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var systemId = await SeedEventAsync(factory, propertyId, ContextPropertyEventType.Archived, ContextEventSource.System);
         using var client = factory.CreateClient();
@@ -225,7 +226,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Put_IntroducingASystemOnlyType_Is422()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var userId = await SeedEventAsync(factory, propertyId, ContextPropertyEventType.Repair, ContextEventSource.User);
         using var client = factory.CreateClient();
@@ -240,7 +241,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task PutAndDelete_AcrossOwners_Are404()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContractsRead, PermissionClaims.ContractsUpdate]);
+        var factory = Factory.ForCaller([.. ReadWrite, PermissionClaims.ContractsRead, PermissionClaims.ContractsUpdate]);
         var a = await SeedPropertyAsync(factory, name: "A");
         var b = await SeedPropertyAsync(factory, name: "B");
         var onB = await SeedEventAsync(factory, b, ContextPropertyEventType.Repair, ContextEventSource.User);
@@ -266,7 +267,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Delete_RemovesTheEvent_Returns204()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var propertyId = await SeedPropertyAsync(factory);
         var eventId = await SeedEventAsync(factory, propertyId, ContextPropertyEventType.Acquired, ContextEventSource.System);
         using var client = factory.CreateClient();
@@ -281,7 +282,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Get_AnEventWithNoAuthor_ReadsUnknownUser()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         var propertyId = await SeedPropertyAsync(factory);
         await SeedEventAsync(factory, propertyId, ContextPropertyEventType.Repair, ContextEventSource.User);
         using var client = factory.CreateClient();
@@ -294,7 +295,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Get_OnAnUnknownProperty_Is404()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -305,7 +306,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Get_SupportsTheListSurface()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         var propertyId = await SeedPropertyAsync(factory, type: PropertyType.Vehicle);
         await SeedEventAsync(factory, propertyId, ContextPropertyEventType.TyreChange, ContextEventSource.User, "Winter tyres", FixedNow.AddDays(-5));
         await SeedEventAsync(factory, propertyId, ContextPropertyEventType.Serviced, ContextEventSource.User, "Service", FixedNow.AddDays(-50));
@@ -339,7 +340,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task Guest_CanList_AndIsForbiddenEveryWrite()
     {
-        await using var factory = new ApiFactory(RolePermissions.GuestClaims);
+        var factory = Factory.ForCaller(RolePermissions.GuestClaims);
         var propertyId = await SeedPropertyAsync(factory);
         var eventId = await SeedEventAsync(factory, propertyId, ContextPropertyEventType.Repair, ContextEventSource.User);
         using var client = factory.CreateClient();
@@ -367,7 +368,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task PutProperty_Archiving_WritesOneArchivedEvent_AttributedToTheCaller()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         // The store first, so the reference currencies are seeded before the actor row creates it.
         await EnsureCreatedAsync(factory);
         await factory.SeedActorUserAsync(displayName: "Kari Nordmann");
@@ -389,7 +390,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task PostProperty_WithAnAcquiredDate_WritesOneAcquiredEvent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
         var body = VehicleBody();
@@ -405,7 +406,7 @@ public class PropertyEventsApiTests
     [Fact]
     public async Task DeleteProperty_CascadesItsEvents()
     {
-        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.PropertiesDelete]);
+        var factory = Factory.ForCaller([.. ReadWrite, PermissionClaims.PropertiesDelete]);
         var propertyId = await SeedPropertyAsync(factory);
         var survivor = await SeedPropertyAsync(factory, name: "Survivor");
         await SeedEventAsync(factory, propertyId, ContextPropertyEventType.Repair, ContextEventSource.User);
@@ -455,7 +456,7 @@ public class PropertyEventsApiTests
         return (contract.ContractId, entity.EventId);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(
             permissions,
             ActorUserId,
@@ -463,11 +464,9 @@ public class PropertyEventsApiTests
             configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedNow));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedNow));
             });
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

@@ -17,7 +17,7 @@ using static Odyssey.Api.Tests.News.NewsApiTestSupport;
 namespace Odyssey.Api.Tests.News;
 
 /// <summary>The article list, its cursor and mark-read (issue #470 §5.2, §5.3) over HTTP, on EF InMemory.</summary>
-public sealed class NewsArticlesApiTests
+public class NewsArticlesApiTests(NewsArticlesApiTests.Host host) : SharedApiHostTests<NewsArticlesApiTests.Host>(host)
 {
     private const string Articles = "/api/news-articles";
 
@@ -33,7 +33,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC6_AC29_Two_feeds_and_two_tags_or_within_and_across_and_mark_read_marks_exactly_those()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var tagA = await factory.SeedTagAsync("A");
         var tagB = await factory.SeedTagAsync("B");
         var feed1 = await factory.SeedFeedAsync(url: "https://one.example.org/rss");
@@ -77,7 +77,7 @@ public sealed class NewsArticlesApiTests
     [InlineData("Oldest")]
     public async Task AC66_Marking_the_first_page_read_then_following_the_cursor_skips_and_repeats_nothing(string sort)
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         // Three articles share each sort key, so the id tie-break is exercised.
         var ids = await factory.SeedArticlesAsync(feed, 12, step: TimeSpan.Zero);
@@ -128,7 +128,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC68_A_modified_cursor_or_one_with_other_filters_is_400_keyed_cursor_and_cursor_with_offset_is_400()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         await factory.SeedArticlesAsync(feed, 5);
         using var client = factory.CreateClient();
@@ -158,7 +158,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC70_Every_cursor_fits_its_bound_and_one_under_a_revoked_key_is_400()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feeds = new List<Guid>();
         for (var i = 0; i < 50; i++)
         {
@@ -171,7 +171,7 @@ public sealed class NewsArticlesApiTests
         Assert.InRange(page.NextCursor!.Length, 1, NewsLimits.MaxCursorLength);
 
         // A cursor protected under a key this host's ring does not hold — a revoked or rotated-out key — never decrypts.
-        var filter = new NewsArticleFilter([.. feeds.Order()], [], null, null, null, null, false, NewsArticleSortBy.Newest);
+        var filter = new NewsArticleFilter([.. feeds.Order()], [], [], null, null, null, false, NewsArticleSortBy.Newest);
         var foreign = new NewsListCursor(DataProtectionProvider.Create("foreign-ring"))
             .Issue(filter, new NewsCursorPosition(Base, Guid.NewGuid(), 0, DateTime.UtcNow));
         var response = await client.GetAsync($"{Articles}?limit=1&{Ids("feedIds", feeds)}&cursor={Uri.EscapeDataString(foreign)}");
@@ -182,7 +182,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC48_AC69_TotalCount_is_capped_at_10000_and_present_on_the_first_page_only()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         await factory.SeedArticlesAsync(feed, NewsLimits.MaxCountedArticles + 1, step: TimeSpan.FromSeconds(1));
         using var client = factory.CreateClient();
@@ -196,7 +196,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC69_Relevance_needs_a_search_and_offset_paging_stops_at_10000()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         await factory.SeedArticlesAsync(feed, 3, "Election");
         using var client = factory.CreateClient();
@@ -215,7 +215,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC72_AC73_Id_lists_are_deduplicated_before_the_cap_and_unknown_or_pending_ids_are_422()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var archived = await factory.SeedFeedAsync(url: "https://a.example.org/rss", archived: true);
         var pending = await factory.SeedFeedAsync(url: "https://b.example.org/rss", archived: true, pendingDeletion: true);
         var archivedTag = await factory.SeedTagAsync("Gone", archived: true);
@@ -244,7 +244,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task Search_uses_words_of_three_letters_and_a_two_letter_only_query_is_400_keyed_search()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         await factory.SeedArticlesAsync(feed, 2, "Election night");
         await factory.SeedArticlesAsync(feed, 2, "Weather");
@@ -309,7 +309,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC55_Mark_read_caps_each_request_at_5000_and_repeating_it_marks_the_rest()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         await factory.SeedArticlesAsync(feed, NewsLimits.MaxMarkReadPerRequest + 3, step: TimeSpan.FromSeconds(1));
         using var client = factory.CreateClient();
@@ -326,7 +326,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task Mark_read_refuses_a_future_asOf_and_unknown_ids_with_422_and_stops_at_the_asOf_edge()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var old = await factory.SeedArticlesAsync(feed, 2);
         var fresh = await factory.SeedArticlesAsync(feed, 1, "Fresh", firstSeen: Base.AddDays(1));
@@ -356,7 +356,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task Read_state_is_idempotent_and_moves_the_unread_counter_once()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var id = (await factory.SeedArticlesAsync(feed, 2))[0];
         using var client = factory.CreateClient();
@@ -379,7 +379,7 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task Article_tags_replace_add_and_remove_with_an_archived_tag_refused_on_add()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var factory = Factory.ForCaller(AllNewsClaims);
         var feed = await factory.SeedFeedAsync();
         var id = (await factory.SeedArticlesAsync(feed, 1))[0];
         var live = await factory.SeedTagAsync("Live");
@@ -403,4 +403,133 @@ public sealed class NewsArticlesApiTests
         Assert.Equal(other, link.NewsTagId);
         Assert.Equal(Base, link.SortAtUtc);
     }
+
+    /// <summary>One unread, one plain read, one read then changed by the publisher, one changed BEFORE it was read.</summary>
+    private static async Task<(Guid Feed, Guid Unread, Guid Read, Guid Updated, Guid ChangedBeforeRead)> SeedReadStatesAsync(OdysseyApiFactory factory)
+    {
+        var feed = await factory.SeedFeedAsync();
+        var unread = (await factory.SeedArticlesAsync(feed, 1, "Unread"))[0];
+        var read = await factory.SeedArticlesAsync(feed, 3, "Read", read: true, start: Base.AddHours(1));
+        await factory.WithContextAsync(async c =>
+        {
+            var updated = await c.NewsArticles.SingleAsync(a => a.NewsArticleId == read[1]);
+            updated.ContentChangedAtUtc = updated.ReadAtUtc!.Value.AddMinutes(30);
+            var before = await c.NewsArticles.SingleAsync(a => a.NewsArticleId == read[2]);
+            before.ContentChangedAtUtc = before.ReadAtUtc!.Value.AddMinutes(-30);
+            await c.SaveChangesAsync();
+        });
+        return (feed, unread, read[0], read[1], read[2]);
+    }
+
+    [Theory]
+    [InlineData("statuses=Updated", "U")]
+    [InlineData("statuses=Unread&statuses=Updated", "N,U")]
+    [InlineData("statuses=Read", "R,U,B")]
+    [InlineData("statuses=Read&statuses=Updated", "R,U,B")]
+    [InlineData("statuses=Unread&statuses=Read", "N,R,U,B")]
+    [InlineData("statuses=Unread", "N")]
+    [InlineData("isRead=true", "R,U,B")]
+    [InlineData("", "N,R,U,B")]
+    public async Task Status_filter_ors_unread_read_and_updated_since_read(string query, string expected)
+    {
+        var factory = Factory.ForCaller(AllNewsClaims);
+        var (_, unread, read, updated, before) = await SeedReadStatesAsync(factory);
+        var names = new Dictionary<string, Guid> { ["N"] = unread, ["R"] = read, ["U"] = updated, ["B"] = before };
+        using var client = factory.CreateClient();
+
+        var page = await PageAsync(client, query);
+
+        Assert.True(expected.Split(',').Select(n => names[n]).ToHashSet().SetEquals(page.Items.Select(i => i.Id)), query);
+    }
+
+    [Theory]
+    [InlineData("isRead=true&statuses=Read")]
+    [InlineData("statuses=Unknown")]
+    [InlineData("statuses=Updated&statuses=Updated")]
+    [InlineData("statuses=Sideways")]
+    public async Task Status_filter_rejects_unknown_repeated_or_mixed_members(string query)
+    {
+        var factory = Factory.ForCaller(AllNewsClaims);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Articles}?{query}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Marking_an_updated_since_read_article_read_again_rereads_it_without_moving_the_counts()
+    {
+        var factory = Factory.ForCaller(AllNewsClaims);
+        var (feed, _, read, updated, _) = await SeedReadStatesAsync(factory);
+        using var client = factory.CreateClient();
+        var catalogue = await (await client.GetAsync("/api/news-feeds/catalogue")).ReadAsync<List<NewsFeedCatalogueEntry>>();
+        Assert.Equal(1, Assert.Single(catalogue, f => f.Id == feed).UpdatedCount);
+        var plainReadAt = await factory.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == read).Select(a => a.ReadAtUtc).SingleAsync());
+        var updatedReadAt = await ReadAtAsync(factory, updated);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"{Articles}/{updated}/read-state", new NewsArticleReadState { IsRead = true })).StatusCode);
+        // The re-read moved the read time past the publisher's change; that is what clears the flag.
+        var rereadAt = await ReadAtAsync(factory, updated);
+        Assert.True(rereadAt > updatedReadAt);
+        Assert.True(rereadAt >= await factory.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == updated).Select(a => a.ContentChangedAtUtc).SingleAsync()));
+        var bulk = await (await client.PostAsJsonAsync($"{Articles}/read-state", new NewsArticlesReadStateBulk { ArticleIds = [read], IsRead = true })).ReadAsync<MarkNewsReadResult>();
+
+        Assert.Equal(0, bulk.MarkedCount);
+        Assert.Empty((await PageAsync(client, "statuses=Updated")).Items);
+        Assert.Equal(1, await factory.WithContextAsync(c => c.NewsFeedCounters.Where(x => x.NewsFeedId == feed).Select(x => x.UnreadCount).SingleAsync()));
+        // A plain read article keeps the time it was read.
+        Assert.Equal(plainReadAt, await factory.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == read).Select(a => a.ReadAtUtc).SingleAsync()));
+        catalogue = await (await client.GetAsync("/api/news-feeds/catalogue")).ReadAsync<List<NewsFeedCatalogueEntry>>();
+        Assert.Equal(0, Assert.Single(catalogue, f => f.Id == feed).UpdatedCount);
+    }
+
+    [Fact]
+    public async Task A_bulk_read_rereads_an_updated_article_without_counting_it()
+    {
+        var factory = Factory.ForCaller(AllNewsClaims);
+        var (feed, _, read, updated, _) = await SeedReadStatesAsync(factory);
+        using var client = factory.CreateClient();
+        var before = await ReadAtAsync(factory, updated);
+        var plainReadAt = await ReadAtAsync(factory, read);
+
+        var bulk = await (await client.PostAsJsonAsync($"{Articles}/read-state", new NewsArticlesReadStateBulk { ArticleIds = [updated, read], IsRead = true })).ReadAsync<MarkNewsReadResult>();
+
+        // Neither changed read state, so neither is counted; the updated one is re-read all the same.
+        Assert.Equal(0, bulk.MarkedCount);
+        Assert.True(await ReadAtAsync(factory, updated) > before);
+        Assert.Equal(plainReadAt, await ReadAtAsync(factory, read));
+        Assert.Empty((await PageAsync(client, "statuses=Updated")).Items);
+        Assert.Equal(1, await factory.WithContextAsync(c => c.NewsFeedCounters.Where(x => x.NewsFeedId == feed).Select(x => x.UnreadCount).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task Marking_an_updated_article_unread_makes_it_unread_and_leaves_the_updated_set()
+    {
+        var factory = Factory.ForCaller(AllNewsClaims);
+        var (feed, unread, _, updated, _) = await SeedReadStatesAsync(factory);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"{Articles}/{updated}/read-state", new NewsArticleReadState { IsRead = false })).StatusCode);
+
+        Assert.Null(await ReadAtAsync(factory, updated));
+        Assert.Empty((await PageAsync(client, "statuses=Updated")).Items);
+        Assert.Equal(new[] { unread, updated }.ToHashSet(), (await PageAsync(client, "statuses=Unread")).Items.Select(i => i.Id).ToHashSet());
+        Assert.Equal(2, await factory.WithContextAsync(c => c.NewsFeedCounters.Where(x => x.NewsFeedId == feed).Select(x => x.UnreadCount).SingleAsync()));
+    }
+
+    private static Task<DateTime?> ReadAtAsync(OdysseyApiFactory factory, Guid id) =>
+        factory.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == id).Select(a => a.ReadAtUtc).SingleAsync());
+
+    [Fact]
+    public async Task A_cursor_continues_across_the_isRead_and_single_member_statuses_spellings()
+    {
+        var unreadOnly = new NewsArticleFilter([], [], NewsReadStatusFilter.Normalize(false, null), null, null, null, false, NewsArticleSortBy.Newest);
+        var statuses = new NewsArticleFilter([], [], NewsReadStatusFilter.Normalize(null, [NewsArticleReadStatus.Unread]), null, null, null, false, NewsArticleSortBy.Newest);
+        var updated = new NewsArticleFilter([], [], NewsReadStatusFilter.Normalize(null, [NewsArticleReadStatus.Updated]), null, null, null, false, NewsArticleSortBy.Newest);
+
+        Assert.Equal(unreadOnly.Hash(), statuses.Hash());
+        Assert.NotEqual(unreadOnly.Hash(), updated.Hash());
+    }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

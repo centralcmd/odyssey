@@ -31,7 +31,6 @@
 </OdsCollapsible>
 
 @code {
-    [Parameter] public Guid BudgetId { get; set; }
     [Parameter] public DateTime StartDate { get; set; }
     [Parameter] public DateTime EndDate { get; set; }
 
@@ -64,12 +63,17 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (!OperatingSystem.IsBrowser()) return;
+        if (!OperatingSystem.IsBrowser())
+        {
+            return;
+        }
 
         // (Re)load whenever the tag/date inputs change — including the initial render
         // and after the parent refreshes the budget following an item edit.
         if (_loadedSignature != CurrentSignature && !_isLoading)
+        {
             await LoadTransactionsAsync();
+        }
     }
 
     private void ToggleOpen() => _isOpen = !_isOpen;
@@ -103,8 +107,10 @@
 
         _transactions = result.ItemsOrToast(Snackbar, "transactions");
         if (result.IsSuccess)
+        {
             // Only cache the signature on success, so a transient failure retries next trigger.
             _loadedSignature = signature;
+        }
 
         _isLoading = false;
         StateHasChanged();

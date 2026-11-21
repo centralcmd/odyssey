@@ -32,7 +32,9 @@ public static class TermTextValue
             if (char.GetUnicodeCategory(c) == UnicodeCategory.Control
                 || c is >= '\u202A' and <= '\u202E'
                 || c is >= '\u2066' and <= '\u2069')
+            {
                 return true;
+            }
         }
 
         return false;

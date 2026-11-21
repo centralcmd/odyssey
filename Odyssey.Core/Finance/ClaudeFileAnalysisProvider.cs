@@ -214,7 +214,9 @@ public class ClaudeFileAnalysisProvider : IFileAnalysisProvider
             ?? throw new FileAnalysisProviderException("Claude did not call the store_transactions tool.");
 
         if (toolUse.Input is not { } inputElement)
+        {
             throw new FileAnalysisProviderException("store_transactions tool_use had no input.");
+        }
 
         var rawInput = inputElement.Deserialize<StoreTransactionsInput>(JsonOptions)
             ?? throw new FileAnalysisProviderException("Could not deserialize store_transactions input.");
@@ -289,7 +291,9 @@ public class ClaudeFileAnalysisProvider : IFileAnalysisProvider
             ?? throw new FileAnalysisProviderException("Claude did not call the match_transactions tool.");
 
         if (toolUse.Input is not { } inputElement)
+        {
             throw new FileAnalysisProviderException("match_transactions tool_use had no input.");
+        }
 
         var rawInput = inputElement.Deserialize<MatchTransactionsInput>(JsonOptions)
             ?? throw new FileAnalysisProviderException("Could not deserialize match_transactions input.");
@@ -413,11 +417,15 @@ public class ClaudeFileAnalysisProvider : IFileAnalysisProvider
         string rawJson)
     {
         if (!DateOnly.TryParse(raw.TransactionDate, out var txDate))
+        {
             throw new FileAnalysisProviderException($"Invalid transaction_date '{raw.TransactionDate}'.");
+        }
 
         DateOnly? bookingDate = null;
         if (!string.IsNullOrWhiteSpace(raw.BookingDate) && DateOnly.TryParse(raw.BookingDate, out var bd))
+        {
             bookingDate = bd;
+        }
 
         return new ExtractedTransaction(
             TransactionDate: txDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),

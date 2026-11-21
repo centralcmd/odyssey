@@ -112,7 +112,10 @@ public partial class BackgroundJobs
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusAfterRender is not { } id)
+        {
             return;
+        }
+
         _focusAfterRender = null;
         try
         {
@@ -136,12 +139,16 @@ public partial class BackgroundJobs
         {
             var linked = JobRunAllowList.Clean(query, BackgroundJobPresentation.Jobs);
             if (linked.Count > 0)
+            {
                 filters = filters with { Jobs = linked };
+            }
         }
 
         _filters = filters;
         if (stored is null || stored.Fingerprint != filters.ToState().Fingerprint)
+        {
             PageState.QueueSave(PageKey, filters.ToState());
+        }
     }
 
     private string JobQueryKey => JobQuery is { Length: > 0 } query ? string.Join('\n', query) : string.Empty;
@@ -155,15 +162,21 @@ public partial class BackgroundJobs
     {
         var key = JobQueryKey;
         if (key == _appliedJobQuery)
+        {
             return;
+        }
 
         _appliedJobQuery = key;
         if (JobQuery is not { Length: > 0 } query)
+        {
             return;
+        }
 
         var linked = JobRunAllowList.Clean(query, BackgroundJobPresentation.Jobs);
         if (linked.Count > 0 && !linked.SequenceEqual(_filters.Jobs))
+        {
             await ApplyAsync(_filters with { Jobs = linked });
+        }
     }
 
     // ── Overview ───────────────────────────────────────────────────────────────────────────────────
@@ -176,7 +189,9 @@ public partial class BackgroundJobs
     {
         var response = await _overviewLoader.RunAsync(ct => Api.GetOverviewAsync(ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
         _overviewLoading = false;
@@ -189,9 +204,14 @@ public partial class BackgroundJobs
             if (announceChanges)
             {
                 if (_problemCount is { } before && before != problems)
+                {
                     _announce.Say(problems == 0 ? "No jobs need attention" : $"{Plural(problems, "job needs", "jobs need")} attention", AnnouncementKind.Refresh);
+                }
+
                 if (workerHealth != _workerHealthKey)
+                {
                     _announce.Say(workerHealth.Length == 0 ? "Worker health is back to normal" : workerHealth.Replace('\n', ' '), AnnouncementKind.Refresh);
+                }
             }
 
             _problemCount = problems;
@@ -224,12 +244,17 @@ public partial class BackgroundJobs
             .DefaultIfEmpty()
             .Min();
         if (next is not { } at || at == default)
+        {
             return;
+        }
 
         _cooldownTimer = Time.CreateTimer(_ => _ = InvokeAsync(() =>
         {
             if (_lifetime.IsCancellationRequested)
+            {
                 return;
+            }
+
             ArmCooldownTimer();
             StateHasChanged();
         }), null, at - now, Timeout.InfiniteTimeSpan);
@@ -263,7 +288,9 @@ public partial class BackgroundJobs
         }
 
         if (health?.Thumbnails is { } thumbnails && ThumbnailWorkerLine(thumbnails.State, thumbnails.ResumesAtUtc) is { } line)
+        {
             lines.Add(line);
+        }
 
         return lines;
     }
@@ -406,7 +433,9 @@ public partial class BackgroundJobs
 
         var response = await _runsLoader.RunAsync(ct => Api.ListRunsAsync(_page, _filters.PageSize, _filters.ToRequest(TimeZoneToSend), ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
 
@@ -417,7 +446,10 @@ public partial class BackgroundJobs
             _tzUtc = true;
             response = await _runsLoader.RunAsync(ct => Api.ListRunsAsync(_page, _filters.PageSize, _filters.ToRequest(TimeZoneToSend), ct));
             if (response.IsSuperseded)
+            {
                 return;
+            }
+
             result = response.Value;
         }
 
@@ -440,9 +472,13 @@ public partial class BackgroundJobs
             _total = paged.TotalCount;
             var count = Plural(paged.TotalCount, "run", "runs");
             if (announcement == RunsAnnouncement.Count)
+            {
                 _announce.SayCount(count);
+            }
             else if (announcement == RunsAnnouncement.Reset)
+            {
                 _announce.SayCount($"Filters reset. {count}");
+            }
         }
         else
         {
@@ -467,7 +503,7 @@ public partial class BackgroundJobs
         {
             Icon = "fingerprint",
             Label = "Copy run ID",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(run.Id.ToString(), "Run ID copied.")),
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(run.Id.ToString(), OdsCopied.Id("Run"))),
         },
     ];
 
@@ -514,13 +550,17 @@ public partial class BackgroundJobs
     private async Task EnsureDetailAsync(Guid id)
     {
         if (_details.TryGetValue(id, out var current) && current.Status != JobRunDetailStatus.Failed)
+        {
             return;
+        }
 
         _details[id] = JobRunDetailState.Loading;
         StateHasChanged();
         var result = await Api.GetRunAsync(id, _lifetime.Token);
         if (_lifetime.IsCancellationRequested)
+        {
             return;
+        }
 
         _details[id] = result.IsSuccess && result.Value is { } detail
             ? new JobRunDetailState(JobRunDetailStatus.Loaded, detail)
@@ -543,7 +583,9 @@ public partial class BackgroundJobs
         get
         {
             if (!_canRun)
+            {
                 return [];
+            }
 
             var now = Time.GetUtcNow().UtcDateTime;
             var items = new List<RunItem>();
@@ -552,18 +594,28 @@ public partial class BackgroundJobs
                 var visual = JobOf(job);
                 // A job with no Run label has no manual run at all (the file-analysis queue, issue #444).
                 if (visual.RunLabel is null)
+                {
                     continue;
+                }
 
                 var summary = SummaryOf(job);
                 if (_overview is not null && summary is not { CanRunNow: true })
+                {
                     continue;
+                }
 
                 if (_inFlight.Contains(job))
+                {
                     items.Add(new RunItem(job, $"Starting {visual.Lower}…", visual.MenuIcon, true));
+                }
                 else if (summary?.ManualRunAvailableAtUtc is { } at && DateTime.SpecifyKind(at, DateTimeKind.Utc) > now)
+                {
                     items.Add(new RunItem(job, $"{visual.RunLabel} — available {RunTime.Clock(at)}", visual.MenuIcon, true));
+                }
                 else
+                {
                     items.Add(new RunItem(job, visual.RunLabel!, visual.MenuIcon, false));
+                }
             }
 
             return items;
@@ -588,7 +640,9 @@ public partial class BackgroundJobs
     internal async Task RunNowAsync(JobType job)
     {
         if (!JobVisuals.ContainsKey(job) || !_inFlight.Add(job))
+        {
             return;
+        }
 
         var visual = JobOf(job);
         _announce.Say($"Starting {visual.Lower} run…");
@@ -605,7 +659,9 @@ public partial class BackgroundJobs
         }
 
         if (_lifetime.IsCancellationRequested)
+        {
             return;
+        }
 
         var outcome = JobRunOutcome.Describe(job, result);
         if (outcome.Success)
@@ -613,7 +669,10 @@ public partial class BackgroundJobs
             _toasts?.Push(OdsToastSeverity.Success, outcome.Text);
             _announce.Say(outcome.Text);
             if (outcome.FollowRunId is { } runId)
+            {
                 StartFollowing(job, runId);
+            }
+
             await ReloadAsync();
         }
         else
@@ -645,7 +704,9 @@ public partial class BackgroundJobs
     private async Task RefreshAsync()
     {
         foreach (var id in _details.Where(pair => pair.Value.IsLive).Select(pair => pair.Key).ToList())
+        {
             _details.Remove(id);
+        }
 
         _announce.Say("Background jobs refreshed", AnnouncementKind.Refresh);
         await Task.WhenAll(LoadOverviewAsync(announceChanges: true), LoadRunsAsync(RunsAnnouncement.None), LoadNewsStatusAsync());
@@ -675,7 +736,9 @@ public partial class BackgroundJobs
     private void StartFollowing(JobType job, Guid runId)
     {
         if (_follows.Any(f => f.RunId == runId))
+        {
             return;
+        }
 
         var follow = new FollowedRun(job, runId, _lifetime.Token);
         _follows.Add(follow);
@@ -686,7 +749,9 @@ public partial class BackgroundJobs
     {
         var result = await JobRunFollower.FollowAsync(Api, follow.RunId, Time, detail => InvokeAsync(() => ApplyTick(detail)), follow.Cancellation.Token, FollowDelay);
         if (result.End == FollowEnd.Stopped || _lifetime.IsCancellationRequested)
+        {
             return;
+        }
 
         await InvokeAsync(async () =>
         {
@@ -742,7 +807,9 @@ public partial class BackgroundJobs
     {
         var index = _follows.IndexOf(follow);
         if (index < 0)
+        {
             return;
+        }
 
         string? active = null;
         try
@@ -756,7 +823,9 @@ public partial class BackgroundJobs
         _follows.RemoveAt(index);
         follow.Cancellation.Dispose();
         if (active == follow.StopId)
+        {
             _focusAfterRender = _follows.Count == 0 ? HistoryHeadingId : _follows[Math.Min(index, _follows.Count - 1)].StopId;
+        }
 
         StateHasChanged();
     }
@@ -767,7 +836,10 @@ public partial class BackgroundJobs
         _filterDebounce?.Dispose();
         _cooldownTimer?.Dispose();
         foreach (var follow in _follows)
+        {
             follow.Cancellation.Dispose();
+        }
+
         _overviewLoader.Dispose();
         _runsLoader.Dispose();
         _announce?.Dispose();

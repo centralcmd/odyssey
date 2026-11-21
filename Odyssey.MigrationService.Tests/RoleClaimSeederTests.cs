@@ -36,6 +36,32 @@ public class RoleClaimSeederTests
         (RoleDefinitions.GuestId, RolePermissions.GuestClaims),
     ];
 
+    /// <summary>
+    /// Roles are the other half of the split: their ids are fixed GUIDs, so they stay in the model's
+    /// <c>HasData</c> and exist before the seeder has run at all. The seeder only reconciles claims,
+    /// so a model seed that lost a role would leave its claims with nothing to attach to.
+    /// </summary>
+    [Fact]
+    public async Task The_model_seeds_the_four_roles_and_no_claims()
+    {
+        await using var provider = MigrationServiceTestHost.Build();
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var roles = await context.Roles.AsNoTracking().Select(role => new { role.Id, role.Name }).ToListAsync();
+
+        Assert.Equal(
+            new[]
+            {
+                (RoleDefinitions.AdminId, RoleDefinitions.Admin),
+                (RoleDefinitions.OwnerId, RoleDefinitions.Owner),
+                (RoleDefinitions.UserId, RoleDefinitions.User),
+                (RoleDefinitions.GuestId, RoleDefinitions.Guest),
+            }.OrderBy(role => role.Item1, StringComparer.Ordinal),
+            roles.Select(role => (role.Id, role.Name!)).OrderBy(role => role.Item1, StringComparer.Ordinal));
+        Assert.Empty(await context.RoleClaims.AsNoTracking().ToListAsync());
+    }
+
     [Fact]
     public async Task A_freshly_migrated_database_gets_exactly_the_mapped_claims()
     {

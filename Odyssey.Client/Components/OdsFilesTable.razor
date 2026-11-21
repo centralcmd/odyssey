@@ -151,6 +151,7 @@
         // Read-only here: the values are edited in the Edit-file dialog. Dates use the compact
         // form — four extra date columns can't each carry a long-form date without overflowing.
         if (ValidityColumns)
+        {
             columns.AddRange(
             [
                 new()
@@ -178,6 +179,7 @@
                     Cell = (file, _) => b => b.AddContent(0, IssuerName(file) ?? "—"),
                 },
             ]);
+        }
 
         return columns;
     }

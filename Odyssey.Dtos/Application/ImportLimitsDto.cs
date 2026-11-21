@@ -51,4 +51,10 @@ public sealed record ImportLimitsDto
 
     /// <summary>The largest news OPML upload accepted, in MB (issue #508 §5.3).</summary>
     public int NewsOpmlMaxImportMegabytes { get; set; }
+
+    /// <summary>
+    /// Files, and separately photos, one calendar event or series may link (issue #521 §5.6). <c>null</c> while the
+    /// journal limits read is degraded, and in the client's fallback, so no dialog pre-checks against an invented cap.
+    /// </summary>
+    public int? CalendarEventMaxLinksPerKind { get; set; }
 }

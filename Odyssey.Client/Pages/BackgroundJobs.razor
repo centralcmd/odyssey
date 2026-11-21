@@ -7,8 +7,9 @@
 <PageTitle>Background jobs</PageTitle>
 
 @*
-    Background jobs — every job Odyssey.Worker runs (exchange-rate sync, weather, file-storage maintenance, photo
-    thumbnails) and every run of each, from ONE shared run log (issue #410, over #409; Odyssey Design System ·
+    Background jobs — every job Odyssey.Worker runs (the ten in BackgroundJobPresentation.Jobs: exchange-rate and
+    instrument-price sync, weather, news feed fetch, file-storage maintenance, the photo and file moves, photo thumbnails,
+    file analysis and the recurrence-key backfill) and every run of each, from ONE shared run log (issue #410, over #409; Odyssey Design System ·
     docs/components-background-jobs.md, ui_kits/web/BackgroundJobs.jsx). Gated on system-settings.read.
 
     PageHeader carries the three regions — Attention (only while a job is Failing, Not ticking, Held or Overdue),
@@ -88,16 +89,6 @@
                         else
                         {
                             <OdsEmptyLine Text="Nothing running." Pad="OdsSize.Sm" />
-                        }
-                        @if (loaded.WorkerHealth.PhotoOriginalBackfill is { } move)
-                        {
-                            <h2 class="bgj-h2">Photo original move</h2>
-                            <BackfillMoveStatus View="BackgroundJobPresentation.PhotoMoveView(move)" GeneratedAtUtc="GeneratedAt" />
-                        }
-                        @if (loaded.WorkerHealth.FileBlobBackfill is { } files)
-                        {
-                            <h2 class="bgj-h2">File move</h2>
-                            <BackfillMoveStatus View="BackgroundJobPresentation.FileMoveView(files)" GeneratedAtUtc="GeneratedAt" />
                         }
                         @if (_newsStatus is { } newsStatus)
                         {

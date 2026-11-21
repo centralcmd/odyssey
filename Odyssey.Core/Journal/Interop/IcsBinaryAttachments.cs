@@ -316,6 +316,15 @@ internal sealed class SpooledAttachment
     /// <summary>The <c>X-ODYSSEY-SHA256</c> the producer declared, if any — checked against what arrived.</summary>
     public string? DeclaredSha256 { get; init; }
 
+    /// <summary>The <c>SIZE</c> the producer declared, if any and well-formed.</summary>
+    public long? DeclaredSize { get; init; }
+
+    /// <summary>
+    /// Streamed past without being decoded (issue #521 v3 §B.2): the caller resolves it by its declared hash and size to
+    /// content already verified. <see cref="Path"/>, <see cref="Size"/> and <see cref="Sha256Hash"/> stay unset.
+    /// </summary>
+    public bool Skimmed { get; set; }
+
     public string? Path { get; set; }
 
     public long Size { get; set; }
@@ -344,6 +353,9 @@ internal sealed class IcsAttachmentSpool : IDisposable
     public string CalendarText { get; set; } = string.Empty;
 
     public int Count => byReference.Count;
+
+    /// <summary><c>ATTACH</c> lines past <see cref="IcsAttachmentSpooler.Options.MaxAttachLines"/>, dropped unparsed.</summary>
+    public int DroppedAttachLines { get; set; }
 
     public IEnumerable<SpooledAttachment> Attachments => byReference.Values;
 
@@ -417,20 +429,36 @@ internal static class IcsAttachmentSpooler
     /// <param name="MaxAttachments">Inline attachments one file may carry. Each costs a temp file and an entry, so a
     /// file of many tiny attachments is refused rather than allowed to exhaust inodes and memory.</param>
     /// <param name="SpoolDirectory">Where temp files go; null means <c>ASPNETCORE_TEMP</c>, else the OS temp path.</param>
+    /// <param name="MaxAttachLines">
+    /// <c>ATTACH</c> properties of any form parsed; the rest are dropped from the text unparsed and counted in
+    /// <see cref="IcsAttachmentSpool.DroppedAttachLines"/> (issue #521 §7.4). Null parses every one.
+    /// </param>
+    /// <param name="SkipDecode">True streams an inline value past undecoded and marks the attachment skimmed.</param>
+    /// <param name="BeforeDecode">Runs before each decode — the calendar import's free-disk check.</param>
+    /// <param name="TopLevelOnly">
+    /// The text is ONE component: an inline <c>ATTACH</c> nested in a sub-component (a <c>VALARM</c>) is dropped unread
+    /// rather than lifted, so only the component's own attachments are ever decoded (PR #529 review S2).
+    /// </param>
+    /// <param name="OnSpooled">
+    /// Runs right after each decode, before the next one, with the text spooled so far (issue #521 v4 §1): the caller
+    /// resolves, stores and deletes the temp file, so at most one attachment is on disk at a time.
+    /// </param>
     public sealed record Options(
         long MaxFileBytes, long MaxTextChars, bool AllowAttachments = true, int MaxAttachments = int.MaxValue,
-        string? SpoolDirectory = null, bool? AllowPhotos = null);
+        string? SpoolDirectory = null, bool? AllowPhotos = null, int? MaxAttachLines = null,
+        Func<SpooledAttachment, bool>? SkipDecode = null, Action? BeforeDecode = null,
+        Func<SpooledAttachment, Func<string>, CancellationToken, Task>? OnSpooled = null, bool TopLevelOnly = false);
 
     /// <summary>Temp files older than this are leftovers of a crashed process, swept on the next import.</summary>
-    internal static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
+    internal static readonly TimeSpan StaleAfter = ImportSpool.StaleAfter;
 
     private const string FilePrefix = "odyssey-import-";
 
     public static async Task<IcsAttachmentSpool> SpoolAsync(
         TextReader reader, Options options, CancellationToken cancellationToken)
     {
-        var directory = options.SpoolDirectory ?? SpoolDirectory();
-        SweepStale(directory);
+        var directory = options.SpoolDirectory ?? ImportSpool.Directory();
+        ImportSpool.SweepStale(directory, FilePrefix + "*.bin");
         var maxTextChars = options.MaxTextChars;
         var spool = new IcsAttachmentSpool(Guid.NewGuid().ToString("N"));
         try
@@ -438,10 +466,37 @@ internal static class IcsAttachmentSpooler
             var source = new CharSource(reader);
             var text = new StringBuilder();
             var head = new StringBuilder();
+            var attachLines = 0;
+            var depth = 0;
             while (await source.EnsureAsync(1, cancellationToken))
             {
                 head.Clear();
                 var headComplete = await ReadHeadAsync(source, head, cancellationToken);
+                if (headComplete && options.TopLevelOnly)
+                {
+                    var name = head.ToString().Trim();
+                    if (string.Equals(name, "BEGIN", StringComparison.OrdinalIgnoreCase))
+                    {
+                        depth++;
+                    }
+                    else if (string.Equals(name, "END", StringComparison.OrdinalIgnoreCase))
+                    {
+                        depth--;
+                    }
+                    else if (depth > 1 && IsInlineAttachment(head, out _))
+                    {
+                        await SkipValueAsync(source, cancellationToken);
+                        continue;
+                    }
+                }
+
+                if (headComplete && options.MaxAttachLines is { } maxLines && IsAttachProperty(head) && ++attachLines > maxLines)
+                {
+                    spool.DroppedAttachLines++;
+                    await SkipValueAsync(source, cancellationToken);
+                    continue;
+                }
+
                 if (headComplete && IsInlineAttachment(head, out var parameters))
                 {
                     var isPhoto = IsPhotoKind(parameters);
@@ -467,7 +522,21 @@ internal static class IcsAttachmentSpooler
                     // Added before decoding, so a failure part-way (disk full, cancellation, the byte cap) still
                     // leaves the partial temp file to the spool's disposal rather than orphaning it.
                     spool.Add(attachment);
-                    await DecodeValueAsync(source, attachment, directory, options.MaxFileBytes, cancellationToken);
+                    if (options.SkipDecode?.Invoke(attachment) == true)
+                    {
+                        attachment.Skimmed = true;
+                        await SkipValueAsync(source, cancellationToken);
+                    }
+                    else
+                    {
+                        options.BeforeDecode?.Invoke();
+                        await DecodeValueAsync(source, attachment, directory, options.MaxFileBytes, cancellationToken);
+                        if (options.OnSpooled is { } onSpooled)
+                        {
+                            await onSpooled(attachment, text.ToString, cancellationToken);
+                        }
+                    }
+
                     text.Append("ATTACH:").Append(IcsAttachmentSpool.Scheme).Append(':').Append(attachment.Reference).Append("\r\n");
                 }
                 else
@@ -543,60 +612,36 @@ internal static class IcsAttachmentSpooler
         return false;
     }
 
-    private static bool IsInlineAttachment(StringBuilder head, out Dictionary<string, string> parameters)
+    private static bool IsAttachProperty(StringBuilder head) => IcsAttachHead.Parse(head.ToString()).IsAttach;
+
+    // Consumes the rest of a logical line, folds included, keeping nothing.
+    private static async Task SkipValueAsync(CharSource source, CancellationToken cancellationToken)
     {
-        parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var parts = SplitParameters(head.ToString());
-        if (parts.Count == 0 || !string.Equals(parts[0], "ATTACH", StringComparison.OrdinalIgnoreCase))
+        while (await source.EnsureAsync(3, cancellationToken) || source.Available > 0)
         {
-            return false;
-        }
-
-        foreach (var part in parts.Skip(1))
-        {
-            var equals = part.IndexOf('=');
-            if (equals <= 0)
+            var c = source.Current;
+            if (c is '\r' or '\n')
             {
-                continue;
+                if (source.IsFold())
+                {
+                    source.SkipFold();
+                    continue;
+                }
+
+                source.SkipLineBreak();
+                return;
             }
 
-            var value = part[(equals + 1)..];
-            if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
-            {
-                value = value[1..^1];
-            }
-
-            parameters.TryAdd(part[..equals].Trim(), value);
+            source.Advance(source.RunUntilLineBreak().Length);
         }
-
-        return parameters.TryGetValue("ENCODING", out var encoding)
-            && string.Equals(encoding, "BASE64", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static List<string> SplitParameters(string head)
+    // The one head reader both calendar passes and the task and journal imports share (PR #529 review S1).
+    private static bool IsInlineAttachment(StringBuilder head, out Dictionary<string, string> parameters)
     {
-        var parts = new List<string>();
-        var current = new StringBuilder();
-        var quoted = false;
-        foreach (var c in head)
-        {
-            if (c == '"')
-            {
-                quoted = !quoted;
-            }
-
-            if (c == ';' && !quoted)
-            {
-                parts.Add(current.ToString());
-                current.Clear();
-                continue;
-            }
-
-            current.Append(c);
-        }
-
-        parts.Add(current.ToString());
-        return parts;
+        var parsed = IcsAttachHead.Parse(head.ToString());
+        parameters = new Dictionary<string, string>(parsed.Parameters, StringComparer.OrdinalIgnoreCase);
+        return parsed.IsInline;
     }
 
     private static SpooledAttachment NewAttachment(IcsAttachmentSpool spool, Dictionary<string, string> parameters)
@@ -611,6 +656,8 @@ internal static class IcsAttachmentSpooler
             ContentType = Param("FMTTYPE")?.ToLowerInvariant(),
             OriginalFileId = Guid.TryParse(Param("X-ODYSSEY-FILE-ID"), out var id) ? id : null,
             DeclaredSha256 = Param("X-ODYSSEY-SHA256")?.ToLowerInvariant(),
+            DeclaredSize = long.TryParse(Param("SIZE"), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var size) ? size : null,
             IsPhoto = IsPhotoKind(parameters),
             OriginalPhotoId = Guid.TryParse(Param("X-ODYSSEY-PHOTO-ID"), out var photoId) ? photoId : null,
             Title = Param("X-ODYSSEY-TITLE"),
@@ -619,7 +666,7 @@ internal static class IcsAttachmentSpooler
     }
 
     private static bool IsPhotoKind(Dictionary<string, string> parameters) =>
-        parameters.TryGetValue("X-ODYSSEY-KIND", out var kind) && string.Equals(kind.Trim(), "PHOTO", StringComparison.OrdinalIgnoreCase);
+        parameters.TryGetValue("X-ODYSSEY-KIND", out var kind) && string.Equals(kind, "PHOTO", StringComparison.OrdinalIgnoreCase);
 
     // Decodes the rest of the logical line into a temp file. Whatever goes wrong with the content, the line is still
     // consumed to its end, so one bad attachment never derails the parse of the rest of the file.
@@ -674,7 +721,16 @@ internal static class IcsAttachmentSpooler
             }
 
             hash.AppendData(bytes, 0, written);
-            await file.WriteAsync(bytes.AsMemory(0, written), cancellationToken);
+            try
+            {
+                await file.WriteAsync(bytes.AsMemory(0, written), cancellationToken);
+            }
+            catch (IOException ex) when (ex.HResult is 28 or unchecked((int)0x80070070) or unchecked((int)0x80070027))
+            {
+                // ENOSPC is the volume's state, not the file's: a 507, never a 500 (issue #521 v4 §1).
+                throw new Odyssey.Core.FileStorage.FileStorageFullException(
+                    "There is not enough free temporary disk space to read an attached file. Try again later.");
+            }
         }
 
         try
@@ -733,32 +789,8 @@ internal static class IcsAttachmentSpooler
         }
     }
 
-    // ASP.NET Core's own spool for large form bodies, so the two buffers of one import share a disk: the image points
-    // it at a volume, because /tmp can be a RAM-backed tmpfs.
-    private static string SpoolDirectory() =>
-        Environment.GetEnvironmentVariable("ASPNETCORE_TEMP") is { Length: > 0 } configured && Directory.Exists(configured)
-            ? configured
-            : System.IO.Path.GetTempPath();
-
-    // A process that died mid-import leaves its temp files behind, and the spool is a persistent volume, so each import
-    // removes leftovers older than a day. Best effort: a file another import still holds is simply skipped.
-    private static void SweepStale(string directory)
-    {
-        try
-        {
-            var cutoff = DateTime.UtcNow - StaleAfter;
-            foreach (var file in new DirectoryInfo(directory).EnumerateFiles(FilePrefix + "*.bin"))
-            {
-                if (file.LastWriteTimeUtc < cutoff)
-                {
-                    file.Delete();
-                }
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-        }
-    }
+    // The directory and the sweep of a crashed process's leftovers are ImportSpool's, shared with the calendar grouper,
+    // so every import's buffers share the volume ASP.NET Core spools the upload on (/tmp can be a RAM-backed tmpfs).
 
     // Copies the rest of a logical line through, folds included, then a CRLF.
     private static async Task CopyValueAsync(CharSource source, StringBuilder text, long maxTextChars, CancellationToken cancellationToken)

@@ -21,9 +21,9 @@ body:
       options:
         - API (Odyssey.Api — controllers, endpoints, middleware)
         - Client / Frontend (Odyssey.Client — Blazor WebAssembly pages/components)
-        - Finance (Odyssey.Finance — transactions, accounts, budgets, categories)
+        - Finance (Odyssey.Core/Finance — transactions, accounts, budgets, categories)
         - Auth (authentication, identity, cookie sessions)
-        - Files / Attachments (Odyssey.Finance — upload, storage, AI file analysis)
+        - Files / Attachments (Odyssey.Core/FileStorage — upload, storage, AI file analysis)
         - User Preferences (persisted per-page UI state)
         - Database / EF Core Migrations
         - Docker / Infrastructure (docker-compose, NGINX, MariaDB)
@@ -94,7 +94,7 @@ body:
       render: text
       placeholder: |
         System.NullReferenceException: Object reference not set to an instance of an object.
-           at Odyssey.Finance.Services.BudgetService.GetBudgetsAsync() ...
+           at Odyssey.Core.Finance.BudgetService.GetBudgetsAsync() ...
 
   - type: input
     id: commit

@@ -1,0 +1,80 @@
+@*
+    OdsConfirmDialog — the destructive confirmation (Odyssey Design System ·
+    components/DialogFetchedRates, the SecretClearDialog anatomy): the error-toned lead icon, Cancel
+    first and focused on open, the danger action on the right. Currencies uses it for the purge and
+    the currency delete, Instruments for the instrument delete, and OdsConfirm wraps it for every
+    page that asks a plain yes/no before a delete or detach.
+
+    It is an alertdialog described by its body copy. Focus returns to ReturnFocusToId when given,
+    else to the row menu trigger that opened it (odsCaptureFocusOwner remembers it, because the menu
+    item itself unmounts with its popover), else to the page heading. A refusal keeps the dialog
+    open with the server's message in an alert, bound as text — never markup.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="@Icon"
+               IconTone="OdsModalTone.Error"
+               Title="@Title"
+               RequiredLegend="false"
+               InitialFocus="OdsModalInitialFocus.Cancel"
+               Role="OdsModalRole.AlertDialog"
+               DescribedById="@_bodyId"
+               ReturnFocusToId="@ReturnFocusToId"
+               SubmitLabel="@ConfirmLabel"
+               SubmitIcon="@SubmitIcon"
+               SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="SubmitAsync">
+    @* The body is the dialog's description: focus opens on Cancel, so without it a screen-reader
+       user would never hear what is about to be deleted or detached (WCAG 4.1.2, 1.3.1). *@
+    <p id="@_bodyId" class="odc-confirm-body">@Body</p>
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_error</OdsAlert>
+    }
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Body { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string ConfirmLabel { get; set; } = string.Empty;
+
+    [Parameter] public string Icon { get; set; } = "delete";
+
+    /// <summary>The danger button's glyph.</summary>
+    [Parameter] public string SubmitIcon { get; set; } = "delete";
+
+    /// <summary>The row menu trigger's id (<c>OdsRecordActionContext.MenuTriggerId</c>).</summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>
+    /// Performs the delete. Returns null on success (the dialog closes), or the message to show while it
+    /// stays open.
+    /// </summary>
+    [Parameter, EditorRequired] public Func<Task<string?>> OnConfirm { get; set; } = default!;
+
+    private readonly string _bodyId = $"odc-confirm-{Guid.NewGuid():N}";
+    private string? _error;
+    private bool _wasOpen;
+
+    // A refusal belongs to the attempt that drew it: reopening starts clean.
+    protected override void OnParametersSet()
+    {
+        if (Open && !_wasOpen)
+        {
+            _error = null;
+        }
+        _wasOpen = Open;
+    }
+
+    private async Task<bool> SubmitAsync()
+    {
+        _error = await OnConfirm();
+        return _error is null;
+    }
+}

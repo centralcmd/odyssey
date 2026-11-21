@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -17,11 +18,10 @@ public class RetiredWeatherClaimLintTests
     [Fact]
     public void No_retired_weather_claim_value_remains_in_the_client_the_api_client_or_the_docs()
     {
-        var root = RepositoryRoot();
+        var root = SourceTree.Root;
         var files = ScannedFolders
-            .SelectMany(folder => Directory.EnumerateFiles(Path.Combine(root, folder), "*", SearchOption.AllDirectories))
+            .SelectMany(folder => SourceTree.Files(folder, "*"))
             .Where(path => ScannedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
-            .Where(path => !IsBuildOutput(path))
             .ToList();
         Assert.NotEmpty(files);
 
@@ -36,23 +36,5 @@ public class RetiredWeatherClaimLintTests
             .ToList();
 
         Assert.True(hits.Count == 0, "Retired weather claim values still present:\n" + string.Join("\n", hits));
-    }
-
-    private static bool IsBuildOutput(string path)
-    {
-        var parts = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return parts.Contains("bin") || parts.Contains("obj") || parts.Contains("node_modules");
-    }
-
-    private static string RepositoryRoot()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return dir!;
     }
 }

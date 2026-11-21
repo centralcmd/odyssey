@@ -24,7 +24,6 @@ public class WeatherClientTests : IDisposable
 {
     public void Dispose()
     {
-        WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
         WeatherWidget.LocalNow = static () => DateTime.Now;
     }
 
@@ -366,7 +365,7 @@ public class WeatherClientTests : IDisposable
         var auth = new Claims(claims ?? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPreferencesUpdate]);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(auth);
         ctx.Services.AddSingleton<Odyssey.Client.Services.IWeatherPointOptionsCache>(new Odyssey.Client.Services.WeatherPointOptionsCache(weather.Object, auth));
-        WeatherWidget.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         return ctx;
     }
 
@@ -378,6 +377,10 @@ public class WeatherClientTests : IDisposable
     }
 }
 
-/// <summary>Serialises the tests that set the widget's static interactivity seam.</summary>
+/// <summary>
+/// Serialises the weather test classes, which move the weather components' process-wide clock and retry
+/// statics (<c>WeatherWidget.LocalNow</c>, <c>WeatherHistorySection.Today</c>, <c>WeatherDayHours.ViewerOffset</c>,
+/// <c>WeatherRetry.CoolDown</c>) or render components that read them.
+/// </summary>
 [CollectionDefinition(nameof(WeatherWidgetSeam), DisableParallelization = true)]
 public sealed class WeatherWidgetSeam;

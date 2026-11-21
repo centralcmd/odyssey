@@ -92,7 +92,10 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
         omitted.Remove(id);
         refreshing.Add(id);
         if (!wanted.Contains(id))
+        {
             wanted.Add(id);
+        }
+
         return ScheduleAsync();
     }
 
@@ -107,7 +110,9 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
     private async Task ScheduleAsync()
     {
         if (!Enabled || Stopped || disposed)
+        {
             return;
+        }
 
         Cancel();
         var source = pending = new CancellationTokenSource();
@@ -130,7 +135,9 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
     {
         var missing = wanted.Where(id => (!items.ContainsKey(id) || refreshing.Contains(id)) && !omitted.Contains(id)).ToList();
         if (missing.Count == 0)
+        {
             return;
+        }
 
         var result = await fetch(missing, token);
         token.ThrowIfCancellationRequested();
@@ -139,7 +146,10 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
         {
             var answered = page.Items.Select(idOf).ToHashSet();
             foreach (var item in page.Items)
+            {
                 items[idOf(item)] = item;
+            }
+
             foreach (var id in missing.Where(id => !answered.Contains(id)))
             {
                 items.Remove(id);

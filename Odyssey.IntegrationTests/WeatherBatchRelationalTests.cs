@@ -8,10 +8,12 @@ using System.Data.Common;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,7 +25,7 @@ namespace Odyssey.IntegrationTests;
 /// §10 performance targets — all of which depend on what Pomelo sends to MariaDB, which the EF InMemory provider
 /// cannot show.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelper output)
 {
     private const string Database = "odyssey_weather_batch";
@@ -240,10 +242,10 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
     /// each, target 250 ms. Calendar: 50 timed events over 5 points within 62 days, target 350 ms.
     /// </summary>
     [SkippableFact]
-    [Trait("Category", "Perf")]
+    [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
     public async Task The_batch_reads_meet_their_P95_targets()
     {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        PerfTier.SkipUnlessRequested(fixture.Available, fixture.SkipReason);
         await MigratedAsync();
         var places = await PointsAndPlacesAsync(5);
         var origin = new DateTime(2026, 8, 20, 0, 0, 0, DateTimeKind.Utc);
@@ -443,15 +445,15 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
         }, AdminId, true, CancellationToken.None));
     }
 
-    private static WeatherBatchReadService Batch(OdysseyContext context) => new(context, new Settings(), new FixedTime());
+    private static WeatherBatchReadService Batch(OdysseyContext context) => new(context, new Settings(), new FakeTimeProvider(Noon));
 
-    private static WeatherReadService Read(OdysseyContext context) => new(context, Fetch(context), new Settings(), new FixedTime());
+    private static WeatherReadService Read(OdysseyContext context) => new(context, Fetch(context), new Settings(), new FakeTimeProvider(Noon));
 
     private static WeatherFetchService Fetch(OdysseyContext context) =>
-        new(context, new NoForecasts(), new NoObservations(), new Settings(), new NoSecrets(), new FixedTime());
+        new(context, new NoForecasts(), new NoObservations(), new Settings(), new NoSecrets(), new FakeTimeProvider(Noon));
 
     private static WeatherPointService Admin(OdysseyContext context) =>
-        new(context, Fetch(context), new Settings(), new RelationalWeatherHistoryPurger(context), new FixedTime());
+        new(context, Fetch(context), new Settings(), new RelationalWeatherHistoryPurger(context), new FakeTimeProvider(Noon));
 
     private static string Describe(CommandCapture capture) =>
         $"{capture.Commands.Count} commands:\n" + string.Join("\n---\n", capture.Commands.Select(c => c.Length > 200 ? c[..200] : c));
@@ -593,11 +595,6 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
 
             base.Dispose(disposing);
         }
-    }
-
-    private sealed class FixedTime : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(Noon);
     }
 
     private sealed class Settings : IWeatherSettingsLookup

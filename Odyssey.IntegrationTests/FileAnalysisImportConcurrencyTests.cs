@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -21,7 +22,7 @@ namespace Odyssey.IntegrationTests;
 /// rolls back with it. The InMemory tier sees the conflict but not the rollback — it has no
 /// transactions — so the "exactly one ledger row" half lives here.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_file_analysis_import";
@@ -126,7 +127,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             AccountType = ContextAccountType.CheckingAccount,
             CurrencyCode = "USD",
         });
-        context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+        StoredFileFixtures.AddStoredObjectRow(context, blobId);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
@@ -136,7 +137,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blobId,
+            FinanceStoredObjectId = blobId,
         });
         context.AccountFiles.Add(new AccountFile
         {
@@ -178,7 +179,6 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
 
     private static FileAnalysisService NewService(OdysseyContext context, NoopAnalysisProvider? provider = null) =>
         new(context, provider ?? new NoopAnalysisProvider(), new ContactLookup(context),
-            Options.Create(new FileAnalysisOptions { Enabled = true }),
             new EnabledSettingsLookup(), NullLogger<FileAnalysisService>.Instance,
             new FileAnalysisJobQueue(context, Options.Create(new FileAnalysisOptions()), TimeProvider.System,
                 NullLogger<FileAnalysisJobQueue>.Instance),
@@ -194,7 +194,10 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
         var builder = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
         if (interceptor is not null)
+        {
             builder.AddInterceptors(interceptor);
+        }
+
         return new OdysseyContext(builder.Options);
     }
 

@@ -39,13 +39,21 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
     /// </summary>
     internal IReadOnlyList<string> Requested
     {
-        get { lock (gate) return [.. requested]; }
+        get { lock (gate)
+            {
+                return [.. requested];
+            }
+        }
     }
 
     /// <summary>Test seam: the polite messages waiting, oldest first (a held count is not yet one).</summary>
     internal IReadOnlyList<string> Pending
     {
-        get { lock (gate) return [.. queue.Select(m => m.Text)]; }
+        get { lock (gate)
+            {
+                return [.. queue.Select(m => m.Text)];
+            }
+        }
     }
 
     public void Say(string text, AnnouncementKind kind = AnnouncementKind.Outcome)
@@ -53,7 +61,10 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         lock (gate)
         {
             if (disposed)
+            {
                 return;
+            }
+
             requested.Add(text);
             queue.Add((text, kind));
         }
@@ -67,7 +78,10 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         lock (gate)
         {
             if (disposed)
+            {
                 return;
+            }
+
             requested.Add(text);
             heldCount = text;
             countHold?.Dispose();
@@ -81,7 +95,10 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         lock (gate)
         {
             if (disposed)
+            {
                 return;
+            }
+
             requested.Add(text);
             heldCount = null;
             countHold?.Dispose();
@@ -97,7 +114,10 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         lock (gate)
         {
             if (disposed || heldCount is not { } text)
+            {
                 return;
+            }
+
             heldCount = null;
             queue.RemoveAll(m => m.Kind == AnnouncementKind.Count);
             queue.Add((text, AnnouncementKind.Count));
@@ -112,7 +132,10 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         lock (gate)
         {
             if (disposed || speaking || queue.Count == 0)
+            {
                 return;
+            }
+
             text = queue[0].Text;
             queue.RemoveAt(0);
             speaking = true;
@@ -126,7 +149,10 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
     private void EndGap()
     {
         lock (gate)
+        {
             speaking = false;
+        }
+
         Pump();
     }
 

@@ -105,7 +105,9 @@ public partial class CreateContractDialog
     protected override void OnInitialized()
     {
         if (Contract is not { } contract)
+        {
             return;
+        }
 
         _name           = contract.Name;
         _type           = contract.Type.ToString();
@@ -230,7 +232,9 @@ public partial class CreateContractDialog
 
         if (referenceInvalid || _nameError is not null || _typeError is not null || _endError is not null
             || _completionError is not null || _readyError is not null || _signedError is not null)
+        {
             return false;
+        }
 
         var oneOff = _mode == OneOffMode;
         var type = Enum.TryParse<ContractType>(_type, out var t) ? t : ContractType.Other;

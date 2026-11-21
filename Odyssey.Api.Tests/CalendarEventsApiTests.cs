@@ -11,7 +11,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class CalendarEventsApiTests
+public class CalendarEventsApiTests(CalendarEventsApiTests.Host host) : SharedApiHostTests<CalendarEventsApiTests.Host>(host)
 {
     private const string ActorUserId = "calendar-events-actor-id";
     private const string CalendarsPath = "/api/calendars";
@@ -26,7 +26,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{EventsPath}?from=2026-08-01T00:00:00Z&to=2026-08-08T00:00:00Z");
@@ -37,7 +37,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task List_WithoutCalendarClaims_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{EventsPath}?from=2026-08-01T00:00:00Z&to=2026-08-08T00:00:00Z");
@@ -48,7 +48,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task List_MissingFromOrTo_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{EventsPath}?from=2026-08-01T00:00:00Z");
@@ -59,7 +59,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task List_WindowWiderThan92Days_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{EventsPath}?from=2026-01-01T00:00:00Z&to=2026-06-01T00:00:00Z");
@@ -70,7 +70,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task List_ReturnsEventOverlappingWindowStart()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -88,7 +88,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_Then_Get()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -105,7 +105,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_EndBeforeStart_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -124,7 +124,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_DurationOver366Days_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -143,7 +143,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_YearOutOfRange_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -162,7 +162,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_MultiDayEvent_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -175,7 +175,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Update_DurationOver366Days_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -196,7 +196,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_AllDay_NonMidnightBoundary_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -216,7 +216,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_SingleDayAllDay_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Bills");
@@ -229,7 +229,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Create_UnknownCalendarId_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(EventsPath, new NewCalendarEvent
@@ -246,7 +246,7 @@ public class CalendarEventsApiTests
     [Fact]
     public async Task Update_CannotSetRecurrencePatternId()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -267,9 +267,9 @@ public class CalendarEventsApiTests
     }
 
     [Fact]
-    public async Task Delete_ReturnsNoContent()
+    public async Task Delete_ReturnsOkWithAnEmptyDetachedReport()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -277,7 +277,11 @@ public class CalendarEventsApiTests
             new DateTime(2026, 8, 10, 9, 0, 0, DateTimeKind.Utc), new DateTime(2026, 8, 10, 10, 0, 0, DateTimeKind.Utc));
 
         var delete = await client.DeleteAsync($"{EventsPath}/{created.CalendarEventId}");
-        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        // Issue #519 v5 §3, PR #528 review A2: one shape on every success.
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        var result = (await delete.Content.ReadFromJsonAsync<CalendarEventDeleteResult>())!;
+        Assert.False(result.Detached);
+        Assert.Equal(0, result.DetachedCount);
     }
 
     private static async Task<ExistingCalendar> CreateCalendarAsync(HttpClient client, string name)
@@ -302,7 +306,7 @@ public class CalendarEventsApiTests
         return (await post.Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configureServices: IsolateCalendarContext)
@@ -316,4 +320,7 @@ public class CalendarEventsApiTests
             services.AddDbContext<CalendarContext>(options => options.UseInMemoryDatabase(calendarDatabaseName));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

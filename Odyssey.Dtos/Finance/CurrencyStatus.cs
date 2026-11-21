@@ -46,13 +46,22 @@ public static class CurrencyStatuses
     public static CurrencyStatus Of(bool archived, ExistingExchangeRateSyncCurrency? sync)
     {
         if (archived)
+        {
             return CurrencyStatus.Archived;
+        }
+
         if (sync is null)
+        {
             return CurrencyStatus.SyncingOff;
+        }
+
         if (sync.Enabled || sync.Locked)
         {
             if (!sync.Locked && sync.Supported == false)
+            {
                 return CurrencyStatus.NoLongerPublished;
+            }
+
             return sync.BackfillComplete ? CurrencyStatus.Synced : CurrencyStatus.FetchingHistory;
         }
 

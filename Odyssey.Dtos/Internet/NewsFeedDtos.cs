@@ -55,6 +55,13 @@ public sealed record UpdateNewsFeed
 
     [Required]
     public bool? IsActive { get; set; }
+
+    /// <summary>
+    /// The feed's whole tag set, saved with the settings in one write. <c>null</c> keeps the current tags; <c>[]</c>
+    /// clears them. Same rule as <c>PUT …/tags</c>: a kept tag may be archived, a new one must exist and not be.
+    /// </summary>
+    [MaxLength(NewsLimits.MaxTagIdsPerRequest)]
+    public List<Guid>? TagIds { get; set; }
 }
 
 /// <summary>The body of <c>PUT /api/news-feeds/{id}/tags</c>: the feed's whole tag set.</summary>
@@ -170,6 +177,9 @@ public sealed record NewsFeedCatalogueEntry
 
     /// <summary>The same maintained counter <see cref="ExistingNewsFeed.ArticleCount"/> exposes.</summary>
     public int ArticleCount { get; set; }
+
+    /// <summary>Read articles the publisher changed after they were read: a subset of the read ones.</summary>
+    public int UpdatedCount { get; set; }
 
     /// <summary><see cref="NewsFeedState.Active"/>, <see cref="NewsFeedState.Paused"/> or <see cref="NewsFeedState.Archived"/>.</summary>
     public NewsFeedState State { get; set; }

@@ -22,15 +22,11 @@
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
 
-    <MudTextField @bind-Value="_name"
-                  Label="Statement name"
-                  Required="true"
-                  Placeholder="e.g. Tax year 2025"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Error="@_nameError"
-                  ErrorText="Give the statement a name."
-                  Immediate="true" />
+    <OdsField @bind-Value="_name"
+              Label="Statement name"
+              Required="true"
+              Placeholder="e.g. Tax year 2025"
+              Error="@(_nameError ? "Give the statement a name." : null)" />
 
     <OdsFormRow>
         <OdsNumberField Value="@((decimal?)_fiscalYear)" ValueChanged="OnYearChanged"
@@ -85,14 +81,11 @@
         <div></div>
     </OdsFormRow>
 
-    <MudTextField @bind-Value="_notes"
-                  Label="Notes"
-                  Placeholder="Anything worth remembering about this statement…"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Lines="3"
-                  Class="odc-field-multiline"
-                  FullWidth="true" />
+    <OdsField @bind-Value="_notes"
+              Label="Notes"
+              Placeholder="Anything worth remembering about this statement…"
+              Multiline="true"
+              Rows="3" />
 
     @* Derivation tags stay edit-only: POST /api/tax-statements carries no tag ids, and the tags are
        set by their own PUT against an id that does not exist until the statement is created. *@
@@ -107,12 +100,14 @@
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               CreateBlocked="_tagNameBlocked"
                                Help="Sum into derived advance tax paid (within the year)." />
             <OdsTagMultiSelect Id="tax-statement-income-tags" Label="Income tags"
                                Value="_incomeTags" ValueChanged="@(v => _incomeTags = v)" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               CreateBlocked="_tagNameBlocked"
                                Help="Sum into derived actual income." />
         </OdsFormRow>
         <OdsFormRow>
@@ -121,6 +116,7 @@
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               CreateBlocked="_tagNameBlocked"
                                Error="@_settlementTagsError"
                                Help="@(_settlementTagsError ?? "Additional tax paid or refund received — summed within the settlement range.")" />
             <div></div>

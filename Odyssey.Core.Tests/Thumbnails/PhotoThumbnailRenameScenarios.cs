@@ -2,11 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage;
-using Odyssey.Core.Finance;
 using Odyssey.Core.Imaging;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Thumbnails;
-using Odyssey.Dtos.Finance;
 using Odyssey.Testing.FileStorage;
 using Xunit;
 
@@ -78,26 +76,6 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
         Assert.Equal(PhotoThumbnailJobState.Done, (await JobRowAsync(host, photoId)).State);
     }
 
-    [SkippableFact]
-    public async Task Renaming_a_file_that_backs_no_photo_does_nothing()
-    {
-        var host = await NewThumbnailHostAsync();
-        var fileId = Guid.NewGuid();
-        await WithContextAsync(host, async c =>
-        {
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1] };
-            c.FileBlob.Add(blob);
-            c.FileMetadata.Add(new FileMetadata { Id = fileId, FileName = "a.pdf", ContentType = "application/pdf", SizeBytes = 1, Sha256Hash = "h", FileBlobId = blob.Id, UploadedAtUtc = DateTime.UtcNow });
-            await c.SaveChangesAsync();
-        });
-
-        await using var scope = host.Scope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        await Service(scope.ServiceProvider, context).UpdateFileMetadataAsync(fileId, new UpdateFileMetadataRequest { FileName = "b.pdf" });
-
-        Assert.Equal(0, await context.PhotoThumbnailJobs.CountAsync());
-    }
-
     [SkippableTheory]
     [InlineData(PhotoThumbnailJobState.Unsupported)]
     [InlineData(PhotoThumbnailJobState.Failed)]
@@ -121,44 +99,6 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
         var after = await JobRowAsync(host, photoId);
         Assert.Equal((before.State, before.Generation, before.NextAttemptAtUtc), (after.State, after.Generation, after.NextAttemptAtUtc));
         Assert.Empty(Renderer.Calls);
-    }
-
-    [SkippableFact]
-    public async Task The_rename_survives_one_concurrent_worker_write_and_gives_up_with_rename_busy_after_three()
-    {
-        var host = await NewThumbnailHostAsync();
-        var photoId = await AddPhotoAsync(host, ThumbnailFixtures.Gif(), "image/gif");
-        await Job(host).RunOnceAsync(default);
-
-        // One worker write between the rename's load and its save: the rename reloads and succeeds.
-        await using (var scope = host.Scope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var interfering = new InterferingObserver(host, photoId, times: 1);
-            await Service(scope.ServiceProvider, context, interfering).UpdateFileMetadataAsync(
-                await FileIdAsync(host, photoId), new UpdateFileMetadataRequest { FileName = "Once.gif" });
-        }
-
-        Assert.Equal("Once.gif", await FileNameAsync(host, photoId));
-
-        // A write landing before every save: three attempts, then 409 rename-busy, and nothing committed.
-        await using (var scope = host.Scope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var interfering = new InterferingObserver(host, photoId, times: int.MaxValue);
-            var fileId = await FileIdAsync(host, photoId);
-            var busy = await Assert.ThrowsAsync<FileRenameBusyException>(() => Service(scope.ServiceProvider, context, interfering)
-                .UpdateFileMetadataAsync(fileId, new UpdateFileMetadataRequest { FileName = "Never.gif" }));
-            Assert.Equal((409, "rename-busy", 1), (busy.StatusCode, busy.Code, busy.RetryAfterSeconds));
-            Assert.Equal(FileService.RenameAttempts, interfering.Calls);
-        }
-
-        // That nothing was committed is a property of one atomic save, which EF InMemory does not have: asserted where
-        // the database is real (the MariaDB rerun in Odyssey.IntegrationTests).
-        if (RelationalDatabase)
-        {
-            Assert.Equal("Once.gif", await FileNameAsync(host, photoId));
-        }
     }
 
     [SkippableFact]
@@ -205,69 +145,24 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
         Assert.Equal(0, await WithContextAsync(host, c => c.PhotoThumbnailJobs.CountAsync()));
     }
 
-    private static FileService Service(IServiceProvider services, OdysseyContext context, params IFileRenameObserver[] extra) =>
-        new(context, new FileValidationService(), TimeProvider.System,
-            [.. services.GetServices<IFileRenameObserver>(), .. extra]);
-
+    /// <summary>
+    /// A rename through the photo (issue #428 §5.4), as <c>PhotoService.Update</c> applies it: only a real change of name
+    /// writes <c>Photo.FileName</c> and stages the thumbnail rule, in the update's own save.
+    /// </summary>
     private static async Task RenameAsync(FileStorageTestHost host, Guid photoId, string name)
     {
-        var fileId = await FileIdAsync(host, photoId);
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        Assert.NotNull(await Service(scope.ServiceProvider, context).UpdateFileMetadataAsync(fileId, new UpdateFileMetadataRequest { FileName = name }));
-    }
-
-    /// <summary>
-    /// The legacy photo's file id, made reachable through the Files store first. Since PR #441 a file only a photo names
-    /// is hidden from <c>FileService</c> (it is a photo original, renamed through the photo); a file renamed there and
-    /// re-rendering a photo's thumbnails is one that is also an attachment — so these scenarios attach it to an entry.
-    /// </summary>
-    private static async Task<Guid> FileIdAsync(FileStorageTestHost host, Guid photoId)
-    {
-        var fileId = await WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId!.Value).SingleAsync());
-        await WithContextAsync(host, async c =>
+        var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
+        if (!string.Equals(photo.FileName, name, StringComparison.Ordinal))
         {
-            if (await c.JournalEntryAttachments.AnyAsync(a => a.FileId == fileId))
-            {
-                return;
-            }
+            photo.FileName = name;
+            await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameForPhotoAsync(photoId, default);
+        }
 
-            var entry = new JournalEntry
-            {
-                JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "Shared", Content = "",
-                EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
-            };
-            c.JournalEntries.Add(entry);
-            c.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entry.JournalEntryId, FileId = fileId, CreatedAt = DateTime.UtcNow });
-            await c.SaveChangesAsync();
-        });
-        return fileId;
+        await context.SaveChangesAsync();
     }
 
     private static Task<string> FileNameAsync(FileStorageTestHost host, Guid photoId) =>
-        WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId)
-            .Join(c.FileMetadata, p => p.FileId, f => f.Id, (_, f) => f.FileName).SingleAsync());
-
-    /// <summary>A "worker" that writes the job between the rename's load and its save, the given number of times.</summary>
-    internal sealed class InterferingObserver(FileStorageTestHost host, Guid photoId, int times) : IFileRenameObserver
-    {
-        public int Calls { get; private set; }
-
-        public async Task OnFileRenamingAsync(Guid fileId, CancellationToken cancellationToken)
-        {
-            Calls++;
-            if (Calls > times)
-            {
-                return;
-            }
-
-            await using var scope = host.Scope();
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var job = await context.PhotoThumbnailJobs.SingleAsync(j => j.PhotoId == photoId, cancellationToken);
-            job.Generation++;
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        public bool Owns(Type entityType) => false;
-    }
+        WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileName).SingleAsync());
 }

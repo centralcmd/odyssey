@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
@@ -10,8 +11,9 @@ namespace Odyssey.IntegrationTests;
 /// <summary>
 /// History windows (issue #436) through the real services on MariaDB, where EF InMemory cannot answer: the fence race
 /// with a window edit stores nothing at all (AC 13a — InMemory is not atomic), the point service's diff-by-start write
-/// replaces, shifts, adds and removes windows in one save without tripping the unique index (AC 22, 26), and the
-/// relational purger handles coverage, the marker and the windows (AC 16).
+/// replaces, shifts, adds and removes windows in one save without tripping the unique index (AC 22, 26), the
+/// relational purger handles coverage, the marker and the windows (AC 16), and the two order CHECKs and the cascade
+/// with the point hold (AC 18).
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
@@ -216,6 +218,72 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
         Assert.False(await verify.WeatherObservationCoverages.AnyAsync(c => c.WeatherPointId == id));
     }
 
+    // ── AC 18, 26 ────────────────────────────────────────────────────────────────────────────────
+
+    [SkippableFact]
+    public async Task The_order_checks_hold_and_writes_and_the_cascade_behave_on_mariadb()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var id = await CreateAsync(W("2025-01-01"));
+        await using (var context = NewContext())
+        {
+            context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
+            {
+                WeatherPointId = id, SiteVersion = 1, FromDate = D("2025-06-01"), ToDate = D("2026-11-06"),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        // AC 18: both CHECKs refuse an end before the start.
+        await using (var context = NewContext())
+        {
+            await Assert.ThrowsAnyAsync<Exception>(() => context.Database.ExecuteSqlAsync($"""
+                INSERT INTO `WeatherPointHistoryWindows` (`WeatherPointHistoryWindowId`, `WeatherPointId`, `FromDate`, `ToDate`)
+                VALUES ({Guid.NewGuid()}, {id}, {D("2026-06-10")}, {D("2026-06-09")})
+                """));
+            await Assert.ThrowsAnyAsync<Exception>(() => context.Database.ExecuteSqlAsync($"""
+                INSERT INTO `WeatherObservationCoverages` (`WeatherPointId`, `SiteVersion`, `FromDate`, `ToDate`)
+                VALUES ({id}, {1}, {D("2026-06-10")}, {D("2026-06-09")})
+                """));
+        }
+
+        // AC 26: the service's write shape — an end updated in place, and a start change as a remove plus an insert of a
+        // different key in ONE save — never trips the unique (WeatherPointId, FromDate) index.
+        await using (var context = NewContext())
+        {
+            context.WeatherPointHistoryWindows.Add(new WeatherPointHistoryWindow
+            {
+                WeatherPointHistoryWindowId = Guid.NewGuid(), WeatherPointId = id, FromDate = D("2026-06-10"), ToDate = D("2026-06-17"),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = NewContext())
+        {
+            var trip = await context.WeatherPointHistoryWindows.SingleAsync(w => w.WeatherPointId == id && w.FromDate == D("2026-06-10"));
+            trip.ToDate = D("2026-06-20");
+            var ongoing = await context.WeatherPointHistoryWindows.SingleAsync(w => w.WeatherPointId == id && w.ToDate == null);
+            context.WeatherPointHistoryWindows.Remove(ongoing);
+            context.WeatherPointHistoryWindows.Add(new WeatherPointHistoryWindow
+            {
+                WeatherPointHistoryWindowId = Guid.NewGuid(), WeatherPointId = id, FromDate = D("2026-07-01"), ToDate = null,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = NewContext())
+        {
+            Assert.Equal([D("2026-06-10"), D("2026-07-01")],
+                await context.WeatherPointHistoryWindows.Where(w => w.WeatherPointId == id).OrderBy(w => w.FromDate).Select(w => w.FromDate).ToListAsync());
+
+            // Both tables cascade with the point.
+            await context.Database.ExecuteSqlAsync($"DELETE FROM `WeatherPoints` WHERE `WeatherPointId` = {id}");
+            Assert.False(await context.WeatherPointHistoryWindows.AnyAsync(w => w.WeatherPointId == id));
+            Assert.False(await context.WeatherObservationCoverages.AnyAsync(c => c.WeatherPointId == id));
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
     private async Task<Guid> CreateAsync(params WeatherHistoryWindowDto[] windows)
@@ -258,7 +326,7 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
 
     private static WeatherPointService Admin(OdysseyContext context) =>
         new(context, Fetch(context, new WindowObservations()), new WindowFetching.Settings(), new RelationalWeatherHistoryPurger(context),
-            new WindowFetching.FixedTime(Morning));
+            new FakeTimeProvider(Morning));
 
     private async Task MigratedAsync()
     {
@@ -276,7 +344,7 @@ public class WeatherHistoryWindowsRelationalTests(MariaDbFixture fixture)
 internal static class WindowFetching
 {
     public static WeatherFetchService Fetch(OdysseyContext context, IWeatherObservationSource source, DateTime now) =>
-        new(context, new NoForecasts(), source, new Settings(), new FrostSecret(), new FixedTime(now));
+        new(context, new NoForecasts(), source, new Settings(), new FrostSecret(), new FakeTimeProvider(now));
 
     /// <summary>Every measure group already has its station, so a fetch's one request is a daily one.</summary>
     public static async Task ResolveStationsAsync(OdysseyContext context, Guid id, DateTime now)
@@ -291,11 +359,6 @@ internal static class WindowFetching
 
             await context.SaveChangesAsync();
         }
-    }
-
-    internal sealed class FixedTime(DateTime now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(now);
     }
 
     internal sealed class Settings : IWeatherSettingsLookup

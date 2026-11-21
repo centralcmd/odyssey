@@ -12,9 +12,12 @@ description: >
 
 Odyssey is a web app: an **NGINX-served Blazor WebAssembly SPA on `http://localhost:5199`** talking
 to an **ASP.NET Core API on `http://localhost:5188`**, cookie-authenticated, backed by **MariaDB**.
-The whole thing runs via **Docker Compose** (4 services: `mariadb` → one-shot `migrations` → `api`
-→ `client`). The migration container also runs the deterministic **demo seed**, so a fresh stack
-comes up pre-populated (4 demo users, 19 accounts, ~2.7k transactions).
+The whole thing runs via **Docker Compose** (5 services: `mariadb` → one-shot `migrations` → `api`
+and the background-job `worker` → `client`). The migration container also runs the deterministic
+**demo seed**, so a fresh stack comes up pre-populated (4 demo users, an account portfolio, a few
+thousand transactions). Demo **files, photos and contact images** are written afterwards by the
+worker (`DemoFileSeeder`), once the API has initialised the file volumes — so they appear shortly
+*after* the stack is healthy, never before. Poll for them rather than expecting them on first load.
 
 You drive the running app with **`driver.mjs`** — a Playwright script that logs in as a seeded demo
 user and screenshots/asserts authed pages. That is the agent path; a human just opens `:5199`.
@@ -25,9 +28,9 @@ user and screenshots/asserts authed pages. That is the agent path; a human just 
 ## Prerequisites
 
 - **Docker** + the Compose plugin (`docker compose`).
-- **Node 22** (for the driver). The pin is `playwright@1.64.1`, deliberately equal to the
+- **Node 22** (for the driver). The pin is `playwright@1.65.1`, deliberately equal to the
   `Microsoft.Playwright` version in `Directory.Packages.props`, so the driver and `Odyssey.E2ETests`
-  want the **same** chromium build (currently `chromium-1248`). Keep the two in lockstep when either
+  want the **same** chromium build (currently `chromium-1255`). Keep the two in lockstep when either
   is bumped: a driver pinned to a build nothing else installs means a second ~650 MB download, or an
   outright launch failure where the browsers are baked in read-only.
 - **.NET 10 SDK** — only needed to *reset* the DB (see below), not to run the stack.
@@ -47,7 +50,9 @@ pinned playwright wants, and that is precisely what a package bump on either sid
 
 ## Build & launch the stack
 
-From the repo root. Compose auto-reads `.env` (already present for the dev stack). First build
+From the repo root. Compose auto-reads a `.env` if one exists, but the checkout has none (it is
+gitignored) and none is needed: every variable in `docker-compose.yml` has a `${VAR:-default}`
+fallback that makes the dev stack work as-is. Copy `.env.example` to `.env` only to override one. First build
 compiles the API + publishes the Blazor WASM client — **several minutes**; rebuilds are cached.
 
 ```bash
@@ -66,6 +71,7 @@ Sanity-check the services and confirm the seed ran:
 ```bash
 docker compose ps --format '{{.Service}}\t{{.Status}}'
 docker logs odyssey-migrations 2>&1 | tail -3   # ends with "Demo data seeding complete."
+docker logs odyssey-worker 2>&1 | grep -i demo   # the demo files follow from the worker
 ```
 
 ### When Compose can't build: the CA override, or Aspire
@@ -116,7 +122,7 @@ cd .claude/skills/run-odyssey
 
 node driver.mjs health                 # no browser: probes API /healthz + SPA root
 node driver.mjs smoke                  # login → assert seeded account → shoot dashboard + accounts
-node driver.mjs shot /counterparties   # login → navigate to any authed route → screenshot
+node driver.mjs shot /contacts         # login → navigate to any authed route → screenshot
 node driver.mjs shot /budgets budgets  # optional 2nd arg names the output PNG
 ```
 
@@ -169,8 +175,8 @@ skips on the next launch. `/reset-environment` is the way to get a clean dataset
 ## Gotchas
 
 - **No `chromium-cli` here** — the driver uses the Node `playwright` package against the cached
-  chromium. The cache dir name is Playwright's build number (`chromium-1248`), *not* a chromium
-  version; `playwright@1.64.1` is the version that maps to it. Bumping playwright without a matching
+  chromium. The cache dir name is Playwright's build number (`chromium-1255`), *not* a chromium
+  version; `playwright@1.65.1` is the version that maps to it. Bumping playwright without a matching
   cached build means a download (which may fail offline).
 - **`PLAYWRIGHT_BROWSERS_PATH` may redirect the lookup.** A Claude Code session exports it as
   `/opt/pw-browsers`, so the driver looks there and **not** in `~/.cache/ms-playwright` — which is
@@ -203,7 +209,7 @@ skips on the next launch. `/reset-environment` is the way to get a clean dataset
   build that isn't present **in the directory it is looking in** — check `PLAYWRIGHT_BROWSERS_PATH`
   before concluding the browser is missing, since it may be resolving `/opt/pw-browsers` rather than
   `~/.cache/ms-playwright`. Fix by running `npx playwright install chromium`, or by realigning the
-  pin with `Microsoft.Playwright` in `Directory.Packages.props` (both are `1.64.1`).
+  pin with `Microsoft.Playwright` in `Directory.Packages.props` (both are `1.65.1`).
 - Driver reports a blank page or `An unhandled error has occurred`, while `node driver.mjs health`
   passes: an Aspire stack built `-c Release`. See the Aspire section above — rebuild it Debug.
 - Build fails on `docker compose up --build`: confirm the .NET 10 base images pull and there's disk

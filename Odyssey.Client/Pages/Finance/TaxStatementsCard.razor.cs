@@ -17,6 +17,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ExistingTaxStatement> _statements = [];
     // Server-computed rollup backing the header count + the year-over-year overview charts (issue
@@ -24,10 +26,8 @@ public partial class TaxStatementsCard
     private TaxStatementSummary? _summary;
     private readonly Dictionary<Guid, TaxStatementReport> _reports = new();
     private List<ExistingCurrency> _currencies = [];
-    private Dictionary<string, ExistingCurrency> _currenciesByCode = new(StringComparer.OrdinalIgnoreCase);
     private List<ExistingTransactionTag> _tags = [];
     private Dictionary<Guid, ExistingTransactionTag> _tagById = new();
-    private IReadOnlyList<OdsOption> _tagOptions = [];
 
     // Per-statement problems (derived-net-worth pending / off-currency excluded).
     private Dictionary<Guid, List<TaxProblem>> _problems = new();
@@ -92,7 +92,9 @@ public partial class TaxStatementsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -185,7 +187,9 @@ public partial class TaxStatementsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "tax statements");
         if (load.IsSuccess)
@@ -223,7 +227,6 @@ public partial class TaxStatementsCard
     private async Task LoadCurrencies()
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
-        _currenciesByCode = _currencies.ToDictionary(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task LoadTags()
@@ -231,7 +234,6 @@ public partial class TaxStatementsCard
         var tags = await ReferenceData.TransactionTagsAsync();
         _tags = tags.Where(t => t.Archived is null).OrderBy(t => t.Name, StringComparer.CurrentCulture).ToList();
         _tagById = tags.ToDictionary(t => t.TransactionTagId);
-        _tagOptions = [.. _tags.Select(OdsTransactionTagOptions.From)];
     }
 
     // Per-statement reconciliation reports (derived figures + variances). Fetched in
@@ -250,7 +252,9 @@ public partial class TaxStatementsCard
         foreach (var (id, report, _) in await Task.WhenAll(tasks))
         {
             if (report is not null)
+            {
                 _reports[id] = report;
+            }
         }
 
         BuildProblems();
@@ -263,7 +267,9 @@ public partial class TaxStatementsCard
         foreach (var s in _statements)
         {
             if (s.Archived is not null || !_reports.TryGetValue(s.TaxStatementId, out var report))
+            {
                 continue;
+            }
 
             var list = new List<TaxProblem>();
             if (!report.Derived.Available)
@@ -287,7 +293,9 @@ public partial class TaxStatementsCard
                     "Set exchange rates", "exchange-rates"));
             }
             if (list.Count > 0)
+            {
                 _problems[s.TaxStatementId] = list;
+            }
         }
     }
 
@@ -339,7 +347,11 @@ public partial class TaxStatementsCard
 
     private void AddClicked()
     {
-        if (!_canCreate) return;
+        if (!_canCreate)
+        {
+            return;
+        }
+
         _createKey = Guid.NewGuid();
         _createOpen = true;
     }
@@ -358,7 +370,10 @@ public partial class TaxStatementsCard
     private async Task<bool> AttachTaxFileAsync(AttachDocumentItem item)
     {
         if (_uploadStatement is null)
+        {
             return false;
+        }
+
         return (await TaxStatements.AttachFileAsync(_uploadStatement.TaxStatementId, AttachDocumentRequests.TaxStatement(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
@@ -369,7 +384,11 @@ public partial class TaxStatementsCard
 
     private void AddFile(ExistingTaxStatement s)
     {
-        if (!CanAttachFiles) return;
+        if (!CanAttachFiles)
+        {
+            return;
+        }
+
         _uploadStatement = s;
         _uploadKey = Guid.NewGuid();
         _uploadOpen = true;
@@ -379,7 +398,10 @@ public partial class TaxStatementsCard
     {
         // Expand the affected statement and force its files section to reload by changing its @key.
         if (_uploadStatement is not null)
+        {
             _expandedId = _uploadStatement.TaxStatementId;
+        }
+
         _filesRefreshToken = Guid.NewGuid();
         await GetStatements();
     }
@@ -392,7 +414,9 @@ public partial class TaxStatementsCard
     private void EditClicked(ExistingTaxStatement s)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editStatement = s;
         _editStatementKey = Guid.NewGuid();
@@ -408,7 +432,11 @@ public partial class TaxStatementsCard
     // ── Status + lifecycle actions ───────────────────────────────────────────
     private async Task SetStatus(ExistingTaxStatement s, TaxStatementStatus status, string? comment)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var body = new UpdateTaxStatementStatus { Status = status, StatusComment = comment };
         if ((await TaxStatements.UpdateStatusAsync(s.TaxStatementId, body)).Toast(Snackbar, "Update failed",
                 $"Marked {status.ToString().ToLowerInvariant()}."))
@@ -422,7 +450,11 @@ public partial class TaxStatementsCard
 
     private async Task ToggleArchive(ExistingTaxStatement s)
     {
-        if (!_canUpdate) return;
+        if (!_canUpdate)
+        {
+            return;
+        }
+
         var archiving = s.Archived is null;
         var update = ToUpdate(s, archiving);
         if ((await TaxStatements.UpdateAsync(s.TaxStatementId, update)).Toast(Snackbar, "Update failed",
@@ -438,12 +470,13 @@ public partial class TaxStatementsCard
 
     private async Task ConfirmDelete(ExistingTaxStatement s)
     {
-        if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete tax statement",
-            $"Delete '{s.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed == true && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
+        if (!_canDelete)
+        {
+            return;
+        }
+
+        var confirmed = await _confirm.AskAsync("Delete tax statement", $"Delete '{s.Name}'? This cannot be undone.", "Delete");
+        if (confirmed && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
         {
             _statements.Remove(s);
             _reports.Remove(s.TaxStatementId);
@@ -457,7 +490,7 @@ public partial class TaxStatementsCard
         }
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tax statement ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Tax statement"));
 
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a
     /// record body labels, it does not act — so "Attach documents" is the documents section's only entry
@@ -509,13 +542,7 @@ public partial class TaxStatementsCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId))));
 
         if (_canUpdate)
         {
@@ -578,7 +605,6 @@ public partial class TaxStatementsCard
 
     private static string? StatusFoot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Foot(s);
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────
     // Mirrors the design system's taxMoney: the amount with its ISO code trailing (e.g.
