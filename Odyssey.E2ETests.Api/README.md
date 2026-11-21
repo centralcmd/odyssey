@@ -6,8 +6,9 @@ hit the **real running API** over HTTP and authenticate through the **real `/log
 contracts the way a real client experiences them.
 
 They reuse the same already-running, seeded stack: the migration service seeds the deterministic
-demo data (including the four role users — Admin / Owner / User / Guest), and these tests log in as
-those users to assert the permission matrix end to end.
+demo data without file bytes (including the four role users — Admin / Owner / User / Guest), the
+worker's `DemoFileSeeder` adds the demo files, photos and contact images shortly after the stack is
+healthy, and these tests log in as those users to assert the permission matrix end to end.
 
 ## What it covers
 
@@ -18,8 +19,17 @@ those users to assert the permission matrix end to end.
 - **Authentication** — unauthenticated requests are challenged with `401`; a wrong password is
   rejected with `401`.
 - **Contracts/status codes** — unknown resource → `404`; seeded data is actually served as JSON.
+- **Feature permission and contract checks** — one file per area (contacts, contracts, properties,
+  calendar attachments and `.ics`, profile images, weather, news); the file list is the inventory.
 
-All tests are **read-only**, so they're safe against the shared seeded database.
+Most tests only read. Those that write (for example `ContactDeleteTests`,
+`UserProfileImagePermissionTests`, `CalendarAttachmentPermissionTests`) create their own rows with fresh
+ids and clean up after themselves, so the seeded data is left as found.
+
+### Writing a test
+
+A test that needs a seeded file, photo, contact image or album polls for it with `DemoFileWait`
+(`TestShared/`, bounded at 3 minutes): the worker writes those after the stack reports healthy.
 
 ## Running
 
@@ -28,7 +38,10 @@ if nothing is listening there — see *Skip versus fail* below for when they fai
 
 ```bash
 # Bring up just what the API tests need (no client image), then test, then tear down.
-docker compose up -d --build api      # starts mariadb + migrations + api
+# The worker seeds the demo files; without it the tests that wait for them time out.
+# `down -v` deletes the database volume — never run it against a stack someone else is using
+# (docs/running-locally-alongside-a-live-stack.md).
+docker compose up -d --build api worker   # starts mariadb + migrations + api + worker
 dotnet test Odyssey.E2ETests.Api
 docker compose down -v
 
@@ -57,5 +70,5 @@ rather than skipped.
 
 - Authentication uses `POST /login?useCookies=true` and reuses the returned cookie via a
   `CookieContainer` — the same flow a browser/SPA uses.
-- Expected allow/deny per role is derived from `PermissionClaims.{Admin,Owner,User,Guest}Claims`,
+- Expected allow/deny per role is derived from `RolePermissions.{Admin,Owner,User,Guest}Claims`,
   so the matrix tracks the real policy and can't silently drift.
