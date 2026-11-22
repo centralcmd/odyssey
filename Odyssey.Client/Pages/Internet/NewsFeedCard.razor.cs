@@ -35,6 +35,11 @@ public partial class NewsFeedCard
     /// <summary>Raised with the copy's result text, for the page's announcer.</summary>
     [Parameter] public EventCallback<string> OnCopied { get; set; }
 
+    /// <summary>A podcast's show artwork (the 200 px rendition), built from its id only; null without stored artwork.</summary>
+    [Parameter] public string? ArtworkUrl { get; set; }
+
+    private bool IsPodcast => Feed.Kind == NewsFeedKind.Podcast;
+
     public static string CardId(Guid id) => $"nf-{id}";
 
     private string QuotaId => $"nf-quota-{Feed.Id}";
@@ -69,12 +74,19 @@ public partial class NewsFeedCard
 
     private IReadOnlyList<RenderFragment?> Meta =>
     [
+        IsPodcast && !string.IsNullOrWhiteSpace(Feed.Podcast?.Author) ? Bdi(Feed.Podcast!.Author!, Lang) : null,
         SiteHost is { } host ? OdsRecordMeta.Text(host) : null,
         Feed.LastCheckedAtUtc is { } checkedAt ? CheckedMeta(Utc(checkedAt)) : OdsRecordMeta.Text("Not checked yet"),
         OdsRecordMeta.Text($"Every {Feed.EffectiveIntervalMinutes} min"),
     ];
 
-    private IReadOnlyList<OdsRecordCount> Counts =>
+    private IReadOnlyList<OdsRecordCount> Counts => IsPodcast
+        ?
+        [
+            new("podcasts", (Feed.Podcast?.EpisodeCount ?? 0).ToString("N0", System.Globalization.CultureInfo.CurrentCulture), "episodes"),
+            new("cloud_done", (Feed.Podcast?.StoredAudioCount ?? 0).ToString("N0", System.Globalization.CultureInfo.CurrentCulture), "on the server"),
+        ]
+        :
     [
         new("mark_email_unread", Feed.UnreadCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), "unread"),
         new("article", Feed.ArticleCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), "articles"),
@@ -111,6 +123,14 @@ public partial class NewsFeedCard
     };
 
     private Task CheckAgain() => OnCheckAgain.InvokeAsync(Feed);
+
+    private static RenderFragment Bdi(string text, string? lang) => builder =>
+    {
+        builder.OpenElement(0, "bdi");
+        builder.AddAttribute(1, "lang", lang);
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
 
     private async Task CopyUrlAsync(string url)
     {

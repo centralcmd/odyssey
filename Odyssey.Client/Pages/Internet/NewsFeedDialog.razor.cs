@@ -17,6 +17,11 @@ public partial class NewsFeedDialog
     public const string IntervalId = "nf-form-interval";
     public const string ConflictId = "nf-form-conflict";
     public const string ReloadId = "nf-form-reload";
+    public const string KindId = "nf-form-kind";
+    public const string DaysId = "nf-form-days";
+    public const string AutoDownloadHelpId = "nf-form-autodownload-help";
+    public const string AutoDeleteHelpId = "nf-form-autodelete-help";
+    public const string ImagesHelpId = "nf-form-images-help";
 
     [Inject] private INewsApiClient News { get; set; } = default!;
 
@@ -55,9 +60,93 @@ public partial class NewsFeedDialog
     /// <summary>Raised when a Reload brings a newer copy of the feed, so the page's row matches.</summary>
     [Parameter] public EventCallback<ExistingNewsFeed> Refreshed { get; set; }
 
+    /// <summary>New feed only: the Type the dialog opens with — <c>Podcast</c> from the Podcasts page (issue #559 §3.4).</summary>
+    [Parameter] public NewsFeedKind InitialKind { get; set; } = NewsFeedKind.Article;
+
+    internal static readonly IReadOnlyList<OdsRadioOption> KindOptions =
+    [
+        new(nameof(NewsFeedKind.Article), "Articles") { Description = "News and blog posts" },
+        new(nameof(NewsFeedKind.Podcast), "Podcast") { Description = "Episodes with downloadable audio" },
+    ];
+
     private enum Conflict { None, Changed, ReloadFailed, Deleted, Reloaded }
 
     private bool IsEdit => Feed is not null;
+
+    private bool IsPodcast => _kind == NewsFeedKind.Podcast;
+
+    private string DialogTitle => IsEdit
+        ? (_base?.Kind == NewsFeedKind.Podcast ? "Edit podcast" : "Edit feed")
+        : (InitialKind == NewsFeedKind.Podcast ? "New podcast" : "New feed");
+
+    private OdsRadioGroup? _kindGroup;
+    private NewsFeedKind _kind = NewsFeedKind.Article;
+    private bool _autoDownload;
+    private bool _autoDelete;
+    private decimal? _autoDays = PodcastLimits.DefaultAutoDeleteDays;
+    private bool _daysTouched;
+    private string? _kindError;
+    private string? _daysError;
+    private string? _automationError;
+    private Guid _switchBackKey;
+    private bool _switchBackOpen;
+    private bool _switchBackSaved;
+    private int? _switchBackCount;
+
+    private static string Range => string.Create(System.Globalization.CultureInfo.CurrentCulture,
+        $"{PodcastLimits.MinAutoDeleteDays:N0} to {PodcastLimits.MaxAutoDeleteDays:N0}");
+
+    /// <summary>
+    /// "1 to 3,650 days." from <see cref="PodcastLimits"/>, plus — on edit, when removal is turned on or the number
+    /// changes — what the change does to audio already saved to a device (§3.4).
+    /// </summary>
+    internal string DaysHelp
+    {
+        get
+        {
+            var help = $"{Range} days.";
+            var before = _base?.Podcast;
+            var changed = IsEdit && _autoDelete
+                && (before is null || !before.AutoDeleteEnabled || (_daysTouched && (int?)_autoDays != before.AutoDeleteAfterDays));
+            return changed ? $"{help} Audio already saved to a device is removed after this many days from today." : help;
+        }
+    }
+
+    internal string SwitchBackText => _switchBackCount is > 0
+        ? $"Audio for {NewsFeedback.Count(_switchBackCount.Value, "episode", "episodes")} will be removed from the server. Episodes and their show notes are kept."
+        : "Episodes and their show notes are kept.";
+
+    /// <summary>The day count's client-side check, mirroring the server (§8): empty, not whole, out of range.</summary>
+    internal static string? ValidateDays(decimal? days) =>
+        days is not { } value ? "Enter the number of days."
+        : value != decimal.Truncate(value) ? "Enter a whole number of days."
+        : value < PodcastLimits.MinAutoDeleteDays || value > PodcastLimits.MaxAutoDeleteDays ? $"Enter a number from {Range}."
+        : null;
+
+    private void OnKindChanged(string value)
+    {
+        _kind = Enum.TryParse<NewsFeedKind>(value, out var kind) ? kind : NewsFeedKind.Article;
+        _kindError = null;
+        _automationError = null;
+    }
+
+    private void OnAutoDeleteChanged(bool value)
+    {
+        _autoDelete = value;
+        _automationError = null;
+        if (!value)
+        {
+            // Off: the field is not rendered and its last value is kept, sent unchanged and never validated.
+            _daysError = null;
+        }
+    }
+
+    private void OnDaysChanged(decimal? value)
+    {
+        _autoDays = value;
+        _daysTouched = true;
+        _daysError = null;
+    }
 
     private ExistingNewsFeed? _base;
     private Guid _seededFor = Guid.Empty;
@@ -132,6 +221,11 @@ public partial class NewsFeedDialog
         _downloadImages = feed?.DownloadImages ?? true;
         _active = feed?.IsActive ?? true;
         _tagIds = feed is null ? [] : [.. feed.TagIds.Select(id => id.ToString())];
+        _kind = feed?.Kind is NewsFeedKind.Podcast or NewsFeedKind.Article ? feed.Kind : feed is null ? InitialKind : NewsFeedKind.Article;
+        _autoDownload = feed?.Podcast?.AutoDownload ?? false;
+        _autoDelete = feed?.Podcast?.AutoDeleteEnabled ?? false;
+        _autoDays = feed?.Podcast?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays;
+        _daysTouched = false;
     }
 
     private void OnUrlChanged(string? value) { _url = value; _urlError = null; _duplicateOf = null; }
@@ -156,6 +250,7 @@ public partial class NewsFeedDialog
         _tagsError = _tagIds.Count > NewsLimits.MaxTagIdsPerRequest
             ? $"Choose at most {NewsLimits.MaxTagIdsPerRequest} tags."
             : null;
+        _daysError = IsPodcast && _autoDelete ? ValidateDays(_autoDays) : null;
         if (FirstInvalidField() is { } invalid)
         {
             StateHasChanged();
@@ -163,6 +258,52 @@ public partial class NewsFeedDialog
             return false;
         }
 
+        // Podcast → Articles is ALWAYS confirmed (§3.4, sec F2), with the stored-audio count from a fresh read.
+        if (Feed is { } editing && (_base ?? editing).Kind == NewsFeedKind.Podcast && _kind == NewsFeedKind.Article)
+        {
+            var fresh = await News.GetFeedAsync(editing.Id);
+            _switchBackCount = fresh.IsSuccess ? fresh.Value?.Podcast?.StoredAudioCount : null;
+            _switchBackSaved = false;
+            _switchBackKey = Guid.NewGuid();
+            _switchBackOpen = true;
+            StateHasChanged();
+            return false;
+        }
+
+        return await SaveAsync();
+    }
+
+    /// <summary>Confirm: the save runs while the confirmation is open; the form dialog closes when it succeeds.</summary>
+    private async Task<string?> ConfirmSwitchBackAsync()
+    {
+        _switchBackSaved = await SaveAsync();
+        if (_switchBackSaved)
+        {
+            await OpenChanged.InvokeAsync(false);
+        }
+
+        return null;
+    }
+
+    /// <summary>Cancel (or Escape) reverts Type to Podcast — nothing was saved — and focuses that checked radio.</summary>
+    private async Task OnSwitchBackOpenChanged(bool open)
+    {
+        _switchBackOpen = open;
+        if (open || _switchBackSaved)
+        {
+            return;
+        }
+
+        _kind = NewsFeedKind.Podcast;
+        StateHasChanged();
+        if (_kindGroup is { } group)
+        {
+            await group.FocusAsync(frames: 2);
+        }
+    }
+
+    private async Task<bool> SaveAsync()
+    {
         var url = _url!.Trim();
         var title = string.IsNullOrWhiteSpace(_title) ? null : _title.Trim();
         var interval = _interval is { } minutes ? (int?)(int)minutes : null;
@@ -181,12 +322,12 @@ public partial class NewsFeedDialog
                 DownloadImages = _downloadImages,
                 IsActive = _active,
                 TagIds = [.. _tagIds.Select(Guid.Parse)],
-                // A PUT is a full replacement (issue #556 §5.1 #2). Until the dialog edits the type and the podcast
-                // automation (#559), it sends the feed's current values back unchanged.
-                Kind = current.Kind,
-                AutoDownload = current.Podcast?.AutoDownload ?? false,
-                AutoDeleteEnabled = current.Podcast?.AutoDeleteEnabled ?? false,
-                AutoDeleteAfterDays = current.Podcast?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays,
+                // A PUT is a full replacement (issue #556 §5.1 #2): all four are always sent. With Articles selected
+                // the automation goes as off — the server refuses it on an article feed — and the day count as kept.
+                Kind = _kind,
+                AutoDownload = IsPodcast && _autoDownload,
+                AutoDeleteEnabled = IsPodcast && _autoDelete,
+                AutoDeleteAfterDays = DaysToSend(current),
             });
         }
         else
@@ -198,11 +339,20 @@ public partial class NewsFeedDialog
                 FetchIntervalMinutes = interval,
                 DownloadImages = _downloadImages,
                 TagIds = _tagIds.Count == 0 ? null : [.. _tagIds.Select(Guid.Parse)],
+                Kind = _kind,
+                AutoDownload = IsPodcast && _autoDownload,
+                AutoDeleteEnabled = IsPodcast && _autoDelete,
+                AutoDeleteAfterDays = DaysToSend(null),
             });
         }
 
         if (result.IsSuccess && result.Value is { } saved)
         {
+            if (Feed is not null && (_base?.Kind ?? Feed.Kind) == NewsFeedKind.Article && saved.Kind == NewsFeedKind.Podcast)
+            {
+                NewsFeedback.Success(Snackbar, "Saved as a podcast. Episodes appear after the next check.");
+            }
+
             await Saved.InvokeAsync(saved);
             return true;
         }
@@ -211,9 +361,16 @@ public partial class NewsFeedDialog
         return false;
     }
 
+    /// <summary>The kept day count: a valid draft, else the feed's own, else the default (a hidden field is never validated).</summary>
+    private int DaysToSend(ExistingNewsFeed? current) =>
+        ValidateDays(_autoDays) is null && _autoDays is { } days ? (int)days
+        : current?.Podcast?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays;
+
     private string? FirstInvalidField() =>
         _urlError is not null ? UrlId
         : _titleError is not null ? TitleFieldId
+        : _kindError is not null ? KindId
+        : _daysError is not null ? DaysId
         : _intervalError is not null ? IntervalId
         : null;
 
@@ -267,6 +424,25 @@ public partial class NewsFeedDialog
         else if (problem?.ErrorFor("tagIds") is { } tagsError)
         {
             _tagsError = tagsError;
+        }
+        else if (problem?.ErrorFor("kind") is { } kindError)
+        {
+            _kindError = kindError;
+        }
+        else if (problem?.ErrorFor("autoDeleteAfterDays") is { } daysError)
+        {
+            _daysError = daysError;
+        }
+        else if (NewsFeedback.Is(problem, NewsErrorCodes.FeedAutomationNotPodcast)
+            || problem?.ErrorFor("autoDownload") is not null || problem?.ErrorFor("autoDeleteEnabled") is not null)
+        {
+            // The server wins on the switch it names (§7): shown in the Podcast settings group.
+            _automationError = problem?.ErrorFor("autoDownload") ?? problem?.ErrorFor("autoDeleteEnabled") ?? problem!.Message;
+            if (!IsPodcast)
+            {
+                NewsFeedback.Failure(Snackbar, problem, "Couldn’t save the feed");
+                return;
+            }
         }
         else
         {
@@ -353,6 +529,25 @@ public partial class NewsFeedDialog
 
         // Not a field here: the dialog only carries the server's value back unchanged.
         _active = server.IsActive;
+
+        if (before.Kind != server.Kind)
+        {
+            _kind = server.Kind is NewsFeedKind.Podcast ? NewsFeedKind.Podcast : NewsFeedKind.Article;
+            updated.Add("Type");
+        }
+
+        var a = before.Podcast;
+        var b = server.Podcast;
+        if ((a?.AutoDownload ?? false) != (b?.AutoDownload ?? false)
+            || (a?.AutoDeleteEnabled ?? false) != (b?.AutoDeleteEnabled ?? false)
+            || (a?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays) != (b?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays))
+        {
+            _autoDownload = b?.AutoDownload ?? false;
+            _autoDelete = b?.AutoDeleteEnabled ?? false;
+            _autoDays = b?.AutoDeleteAfterDays ?? PodcastLimits.DefaultAutoDeleteDays;
+            _daysError = null;
+            updated.Add("Podcast settings");
+        }
 
         if (!before.TagIds.Order().SequenceEqual(server.TagIds.Order()))
         {

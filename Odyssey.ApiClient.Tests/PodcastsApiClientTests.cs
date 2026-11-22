@@ -51,6 +51,24 @@ public class PodcastsApiClientTests
     }
 
     [Fact]
+    public async Task ListFeedsAsync_asks_for_podcast_feeds_in_every_state()
+    {
+        var handler = new RecordingHttpHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("[]", Encoding.UTF8, "application/json"),
+        });
+        var client = new PodcastsApiClient(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
+
+        await client.ListFeedsAsync(2, 200);
+
+        var uri = handler.LastRequest!.RequestUri!;
+        Assert.Equal("/api/news-feeds", uri.AbsolutePath);
+        Assert.Contains("state=All", uri.Query, StringComparison.Ordinal);
+        Assert.Contains("kind=Podcast", uri.Query, StringComparison.Ordinal);
+        Assert.Contains("offset=200&limit=200", uri.Query, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ListEpisodesAsync_leaves_out_savedToDevice_when_both_are_wanted()
     {
         var (client, handler) = Create();

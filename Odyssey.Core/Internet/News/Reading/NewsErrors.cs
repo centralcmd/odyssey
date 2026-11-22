@@ -97,7 +97,7 @@ public static class NewsErrors
 
     public static NewsException TagInUse(int feedCount, int articleCount) => new(
         HttpStatusCode.Conflict, NewsErrorCodes.TagInUse,
-        "Tag is in use by one or more feeds or articles; archive it instead of deleting.",
+        "Tag is in use by one or more feeds, articles or episodes; archive it instead of deleting.",
         extensions: new Dictionary<string, object?> { ["feedCount"] = feedCount, ["articleCount"] = articleCount });
 
     public static NewsException TagArchived(Guid tagId) => new(

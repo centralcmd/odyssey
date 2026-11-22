@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 
 namespace Odyssey.ApiClient.Resources;
@@ -28,6 +29,12 @@ public interface IPodcastsApiClient
     /// <summary>The feed catalogue narrowed to podcast feeds (<c>GET /api/news-feeds/catalogue?kind=Podcast</c>).</summary>
     Task<ApiResult<List<NewsFeedCatalogueEntry>>> GetCatalogueAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// One page of podcast feeds in every state (<c>GET /api/news-feeds?kind=Podcast&amp;state=All</c>), each with its
+    /// <c>podcast</c> block (episode, saved and stored counts) and its tags — what the Podcasts page's header sums.
+    /// </summary>
+    Task<ApiResult<PagedResult<ExistingNewsFeed>>> ListFeedsAsync(int page, int pageSize, CancellationToken ct = default);
+
     Task<ApiResult<PodcastEpisodePage>> ListEpisodesAsync(PodcastEpisodeListFilter filter, int limit, string? cursor = null, CancellationToken ct = default);
 
     Task<ApiResult<PodcastEpisodeDetail>> GetEpisodeAsync(Guid id, CancellationToken ct = default);
@@ -55,6 +62,13 @@ public sealed class PodcastsApiClient(IOdysseyApi api) : IPodcastsApiClient
 
     public Task<ApiResult<List<NewsFeedCatalogueEntry>>> GetCatalogueAsync(CancellationToken ct = default) =>
         api.GetAsync<List<NewsFeedCatalogueEntry>>($"api/news-feeds/catalogue?kind={NewsFeedKindFilter.Podcast}", ct);
+
+    public Task<ApiResult<PagedResult<ExistingNewsFeed>>> ListFeedsAsync(int page, int pageSize, CancellationToken ct = default) =>
+        api.GetPagedAsync<ExistingNewsFeed>(PagedQuery.For("api/news-feeds")
+            .Window(page, pageSize)
+            .Add("state", NewsFeedState.All.ToString())
+            .Add("kind", NewsFeedKindFilter.Podcast.ToString())
+            .Build(), ct);
 
     public Task<ApiResult<PodcastEpisodePage>> ListEpisodesAsync(PodcastEpisodeListFilter filter, int limit, string? cursor = null, CancellationToken ct = default)
     {

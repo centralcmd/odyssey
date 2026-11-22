@@ -1,0 +1,56 @@
+@using Odyssey.Client.Components
+@*
+    PodcastAudioActions — the episode card's Audio panel (issue #559 §3.2.5; Odyssey Design System ·
+    ui_kits/web/Podcasts.jsx, PodcastAudioActions; podcasts.css .pod-audio). One outlined card: a status line (<p>,
+    text), then the actions the state allows. An action the caller lacks the claim for is ABSENT.
+
+      • Every action keeps its visible label first and adds the episode to its accessible name (WCAG 2.5.3).
+      • While the server's re-request cooldown runs, Download to server / Try again are aria-disabled (focusable, not
+        activatable) and "Available again at 14:32." describes them.
+      • Pending: the pressed action shows Loading; the others are aria-disabled, except Save to device, which is never
+        locked and so never changes under focus.
+      • After three failed polls an in-flight episode says "Couldn't refresh the download status." in a <p>, with Check
+        again beside it, outside the <p>; the page announces that once.
+*@
+
+<div class="pod-audio">
+    <div class="pod-audio-head">
+        <span class="material-icons pod-audio-ic" aria-hidden="true">graphic_eq</span>
+        <p class="pod-audio-line">@StatusText</p>
+        @if (Episode.Audio.State == PodcastAudioState.Downloading)
+        {
+            <span class="pod-audio-spin"><OdsSpinner Size="OdsSize.Sm" Decorative="true" /></span>
+        }
+    </div>
+    @if (Actions.Count > 0)
+    {
+        <div class="pod-audio-actions">
+            @foreach (var action in Actions)
+            {
+                <OdsButton @key="action.Kind" id="@ActionId(action.Kind, Episode.Id)" Variant="action.Variant" Size="OdsButtonSize.Sm"
+                           Icon="@action.Icon" AriaLabel="@($"{action.Label}, {Title}")"
+                           Loading="@(Pending == action.Kind)"
+                           AriaDisabled="@IsLocked(action)" aria-describedby="@(action.Cooled ? CooldownId : null)"
+                           OnClick="() => PressAsync(action)">@action.Label</OdsButton>
+            }
+        </div>
+    }
+    @if (CooldownUntil is { } until && ShowsCooldown)
+    {
+        <p class="pod-audio-sub" id="@CooldownId">Available again at <time datetime="@Iso(until)">@CooldownText</time>.</p>
+    }
+    @if (PollTrouble && OdsPodcastAudioState.InFlight(Episode.Audio.State))
+    {
+        <div class="pod-audio-trouble">
+            <p class="pod-audio-sub">Couldn’t refresh the download status.</p>
+            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="() => OnCheckAgain.InvokeAsync()">Check again</OdsButton>
+        </div>
+    }
+    else if (WaitStopped && Episode.Audio.State == PodcastAudioState.Deferred)
+    {
+        <div class="pod-audio-trouble">
+            <p class="pod-audio-sub">Still waiting. The page stopped checking after 30 minutes.</p>
+            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="() => OnCheckAgain.InvokeAsync()">Check again</OdsButton>
+        </div>
+    }
+</div>
