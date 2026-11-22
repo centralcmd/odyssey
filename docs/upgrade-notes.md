@@ -31,7 +31,7 @@ deploy, when the security-stamp check rewrote their cookie with the new claims.
   so more buys nothing. In nginx that is `large_client_header_buffers 4 32k;` in the `server` (default server) or
   `http` block that receives the browser's request.
 - This only buys headroom: each new module adds roughly 8 claims. A structural fix that stops the cookie growing
-  with the claim catalogue is tracked separately.
+  with the claim catalogue is tracked in issue #583.
 
 ### Legacy file storage removed (`RemoveLegacyFileBlobStorage`)
 

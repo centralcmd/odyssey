@@ -30,7 +30,7 @@ server {
     # Cookie Too Large" before any location is matched. 32k matches Kestrel's MaxRequestHeadersTotalSize
     # behind this proxy, so more would only move the failure to the API. Server level, so it covers every
     # location; nginx honours it here because this is the only (default) server on the port. This buys
-    # time only: the cookie must stop growing with the catalogue (see docs/upgrade-notes.md, 0.50.1).
+    # time only: the cookie must stop growing with the catalogue (issue #583).
     large_client_header_buffers 4 32k;
 
     # Security response headers (defense-in-depth for a financial-PII SPA). Defined at the
