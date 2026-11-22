@@ -636,6 +636,21 @@ public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, Demo
         }
     }
 
+    /// <summary>A second run skips on the recipe sentinel: nothing is duplicated.</summary>
+    [Fact]
+    public async Task Seeds_the_demo_recipes_once()
+    {
+        using var scope = seededTwice.Provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var expected = DemoDataSet.Build();
+
+        Assert.Equal(expected.RecipeTags.Count, await context.RecipeTags.CountAsync());
+        Assert.Equal(expected.Recipes.Count, await context.Recipes.CountAsync());
+        Assert.Equal(expected.RecipeIngredients.Count, await context.RecipeIngredients.CountAsync());
+        Assert.Equal(expected.RecipeSteps.Count, await context.RecipeSteps.CountAsync());
+        Assert.Equal(expected.RecipeTagLinks.Count, await context.RecipeTagLinks.CountAsync());
+    }
+
     /// <summary>The photo library is the worker's DemoFileSeeder's in full (Odyssey.Worker.Tests): every photo owns its bytes.</summary>
     [Fact]
     public async Task Seeds_no_photo_library()
