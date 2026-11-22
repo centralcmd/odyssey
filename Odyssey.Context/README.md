@@ -257,7 +257,10 @@ provider and the generated migration is unusable.
 In normal operation nobody runs `database update` by hand: `Odyssey.MigrationService` migrates the
 context on start, and the API waits for it to exit successfully.
 
-**History is never squashed again.** A production database with real data has existed since `v0.35.0`,
-so every schema change is an additive migration and `InitialCreate` stays the permanent root. A
+**No ad-hoc squash; only a guarded rebaseline.** A production database with real data has existed since
+`v0.35.0`, so every schema change is an additive migration, except a rebaseline done by the procedure in
+[`docs/migration-rebaseline.md`](../docs/migration-rebaseline.md). The baseline keeps the id of the newest
+migration it replaces, so existing databases cross it with no manual SQL; `MigrationBaseline.Current` and the
+committed `Migrations/Baseline/<id>.fingerprint.txt` describe it. A
 migration interrupted on MariaDB leaves its DDL behind with no history row; `MigrationRunner` detects
 that and names the repair, described in [`docs/migration-history-drift.md`](../docs/migration-history-drift.md).

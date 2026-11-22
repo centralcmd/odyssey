@@ -1,0 +1,1553 @@
+# odyssey schema fingerprint v1 — header lines start with '#' and are never compared
+# server: 11.4.13-MariaDB-ubu2404; default charset: utf8mb4; default collation: utf8mb4_general_ci
+[schema]
+other objects: none
+table `AccountEstimates`
+CREATE TABLE `AccountEstimates` (
+  `AccountEstimateId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Value` decimal(18,6) NOT NULL,
+  `CurrencyCode` varchar(3) DEFAULT NULL,
+  `EffectiveFrom` datetime(6) NOT NULL,
+  `Note` varchar(512) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`AccountEstimateId`),
+  KEY `IX_AccountEstimates_AccountId_EffectiveFrom` (`AccountId`,`EffectiveFrom`),
+  CONSTRAINT `FK_AccountEstimates_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AccountFiles`
+CREATE TABLE `AccountFiles` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `FileType` int(11) NOT NULL,
+  `ValidFrom` datetime(6) DEFAULT NULL,
+  `ValidTo` datetime(6) DEFAULT NULL,
+  `IssuedAt` datetime(6) DEFAULT NULL,
+  `IssuedBy` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_AccountFiles_AccountId_FileMetadataId` (`AccountId`,`FileMetadataId`),
+  KEY `IX_AccountFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_AccountFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_AccountFiles_FileMetadataId` (`FileMetadataId`),
+  KEY `IX_AccountFiles_IssuedBy` (`IssuedBy`),
+  CONSTRAINT `FK_AccountFiles_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_AccountFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_AccountFiles_Contacts_IssuedBy` FOREIGN KEY (`IssuedBy`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_AccountFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Accounts`
+CREATE TABLE `Accounts` (
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(256) NOT NULL,
+  `Description` varchar(256) NOT NULL,
+  `Opened` datetime(6) NOT NULL,
+  `AccountNumber` varchar(64) DEFAULT NULL,
+  `AccountType` int(11) NOT NULL,
+  `Closed` datetime(6) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `CustodianId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  PRIMARY KEY (`AccountId`),
+  KEY `IX_Accounts_Archived` (`Archived`),
+  KEY `IX_Accounts_CustodianId` (`CustodianId`),
+  KEY `IX_Accounts_Name` (`Name`),
+  CONSTRAINT `FK_Accounts_Contacts_CustodianId` FOREIGN KEY (`CustodianId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AccountSmartTags`
+CREATE TABLE `AccountSmartTags` (
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AddedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`AccountId`,`TransactionTagId`),
+  KEY `IX_AccountSmartTags_AddedAt` (`AddedAt`),
+  KEY `IX_AccountSmartTags_TransactionTagId` (`TransactionTagId`),
+  CONSTRAINT `FK_AccountSmartTags_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_AccountSmartTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AccountTerms`
+CREATE TABLE `AccountTerms` (
+  `AccountTermId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TermKind` int(11) NOT NULL,
+  `ValueUnit` int(11) NOT NULL,
+  `Value` decimal(18,6) NOT NULL,
+  `CurrencyCode` varchar(3) DEFAULT NULL,
+  `BillingPeriod` int(11) DEFAULT NULL,
+  `EffectiveFrom` datetime(6) NOT NULL,
+  `Note` varchar(512) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`AccountTermId`),
+  KEY `IX_AccountTerms_AccountId_TermKind_EffectiveFrom` (`AccountId`,`TermKind`,`EffectiveFrom`),
+  CONSTRAINT `FK_AccountTerms_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Addresses`
+CREATE TABLE `Addresses` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Label` int(11) NOT NULL,
+  `IsPrimary` tinyint(1) NOT NULL,
+  `Line1` varchar(256) NOT NULL,
+  `Line2` varchar(256) DEFAULT NULL,
+  `City` varchar(128) NOT NULL,
+  `PostalCode` varchar(32) DEFAULT NULL,
+  `Region` varchar(128) DEFAULT NULL,
+  `CountryCode` varchar(2) NOT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_Addresses_ContactId` (`ContactId`),
+  CONSTRAINT `FK_Addresses_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AspNetRoleClaims`
+CREATE TABLE `AspNetRoleClaims` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `RoleId` varchar(255) NOT NULL,
+  `ClaimType` longtext DEFAULT NULL,
+  `ClaimValue` longtext DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_AspNetRoleClaims_RoleId` (`RoleId`),
+  CONSTRAINT `FK_AspNetRoleClaims_AspNetRoles_RoleId` FOREIGN KEY (`RoleId`) REFERENCES `AspNetRoles` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AspNetRoles`
+CREATE TABLE `AspNetRoles` (
+  `Id` varchar(255) NOT NULL,
+  `Name` varchar(256) DEFAULT NULL,
+  `NormalizedName` varchar(256) DEFAULT NULL,
+  `ConcurrencyStamp` longtext DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `RoleNameIndex` (`NormalizedName`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AspNetUserClaims`
+CREATE TABLE `AspNetUserClaims` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `UserId` varchar(255) NOT NULL,
+  `ClaimType` longtext DEFAULT NULL,
+  `ClaimValue` longtext DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_AspNetUserClaims_UserId` (`UserId`),
+  CONSTRAINT `FK_AspNetUserClaims_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AspNetUserLogins`
+CREATE TABLE `AspNetUserLogins` (
+  `LoginProvider` varchar(255) NOT NULL,
+  `ProviderKey` varchar(255) NOT NULL,
+  `ProviderDisplayName` longtext DEFAULT NULL,
+  `UserId` varchar(255) NOT NULL,
+  PRIMARY KEY (`LoginProvider`,`ProviderKey`),
+  KEY `IX_AspNetUserLogins_UserId` (`UserId`),
+  CONSTRAINT `FK_AspNetUserLogins_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AspNetUserRoles`
+CREATE TABLE `AspNetUserRoles` (
+  `UserId` varchar(255) NOT NULL,
+  `RoleId` varchar(255) NOT NULL,
+  PRIMARY KEY (`UserId`,`RoleId`),
+  KEY `IX_AspNetUserRoles_RoleId` (`RoleId`),
+  CONSTRAINT `FK_AspNetUserRoles_AspNetRoles_RoleId` FOREIGN KEY (`RoleId`) REFERENCES `AspNetRoles` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_AspNetUserRoles_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AspNetUsers`
+CREATE TABLE `AspNetUsers` (
+  `Id` varchar(255) NOT NULL,
+  `MustChangePassword` tinyint(1) NOT NULL,
+  `UserName` varchar(256) DEFAULT NULL,
+  `NormalizedUserName` varchar(256) DEFAULT NULL,
+  `Email` varchar(256) DEFAULT NULL,
+  `NormalizedEmail` varchar(256) DEFAULT NULL,
+  `EmailConfirmed` tinyint(1) NOT NULL,
+  `PasswordHash` longtext DEFAULT NULL,
+  `SecurityStamp` longtext DEFAULT NULL,
+  `ConcurrencyStamp` longtext DEFAULT NULL,
+  `PhoneNumber` longtext DEFAULT NULL,
+  `PhoneNumberConfirmed` tinyint(1) NOT NULL,
+  `TwoFactorEnabled` tinyint(1) NOT NULL,
+  `LockoutEnd` datetime(6) DEFAULT NULL,
+  `LockoutEnabled` tinyint(1) NOT NULL,
+  `AccessFailedCount` int(11) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UserNameIndex` (`NormalizedUserName`),
+  KEY `EmailIndex` (`NormalizedEmail`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `AspNetUserTokens`
+CREATE TABLE `AspNetUserTokens` (
+  `UserId` varchar(255) NOT NULL,
+  `LoginProvider` varchar(255) NOT NULL,
+  `Name` varchar(255) NOT NULL,
+  `Value` longtext DEFAULT NULL,
+  PRIMARY KEY (`UserId`,`LoginProvider`,`Name`),
+  CONSTRAINT `FK_AspNetUserTokens_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `BudgetItems`
+CREATE TABLE `BudgetItems` (
+  `BudgetItemId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BudgetId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `CategoryType` int(11) NOT NULL,
+  `PlannedAmount` decimal(18,6) NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  PRIMARY KEY (`BudgetItemId`),
+  UNIQUE KEY `IX_BudgetItems_BudgetId_Name` (`BudgetId`,`Name`),
+  KEY `IX_BudgetItems_TransactionTagId` (`TransactionTagId`),
+  CONSTRAINT `FK_BudgetItems_Budgets_BudgetId` FOREIGN KEY (`BudgetId`) REFERENCES `Budgets` (`BudgetId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_BudgetItems_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Budgets`
+CREATE TABLE `Budgets` (
+  `BudgetId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `StartDate` datetime(6) NOT NULL,
+  `EndDate` datetime(6) NOT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `BaseCurrencyCode` varchar(3) NOT NULL,
+  PRIMARY KEY (`BudgetId`),
+  KEY `IX_Budgets_Archived` (`Archived`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `CalendarEvents`
+CREATE TABLE `CalendarEvents` (
+  `CalendarEventId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CalendarId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Title` varchar(200) NOT NULL,
+  `Description` varchar(2000) DEFAULT NULL,
+  `Location` varchar(300) DEFAULT NULL,
+  `ExternalUid` varchar(255) DEFAULT NULL,
+  `StartDateTime` datetime(6) NOT NULL,
+  `EndDateTime` datetime(6) NOT NULL,
+  `IsAllDay` tinyint(1) NOT NULL,
+  `RecurrencePatternId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`CalendarEventId`),
+  KEY `IX_CalendarEvents_CalendarId_ExternalUid` (`CalendarId`,`ExternalUid`),
+  KEY `IX_CalendarEvents_CalendarId_StartDateTime` (`CalendarId`,`StartDateTime`),
+  KEY `IX_CalendarEvents_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_CalendarEvents_RecurrencePatternId` (`RecurrencePatternId`),
+  KEY `IX_CalendarEvents_UpdatedByUserId` (`UpdatedByUserId`),
+  CONSTRAINT `FK_CalendarEvents_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_CalendarEvents_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_CalendarEvents_Calendars_CalendarId` FOREIGN KEY (`CalendarId`) REFERENCES `Calendars` (`CalendarId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_CalendarEvents_RecurrencePatterns_RecurrencePatternId` FOREIGN KEY (`RecurrencePatternId`) REFERENCES `RecurrencePatterns` (`RecurrencePatternId`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Calendars`
+CREATE TABLE `Calendars` (
+  `CalendarId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(150) NOT NULL,
+  `Description` varchar(1000) DEFAULT NULL,
+  `Color` varchar(7) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`CalendarId`),
+  UNIQUE KEY `IX_Calendars_Name` (`Name`),
+  KEY `IX_Calendars_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Calendars_UpdatedByUserId` (`UpdatedByUserId`),
+  CONSTRAINT `FK_Calendars_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Calendars_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Contacts`
+CREATE TABLE `Contacts` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ExternalUid` varchar(255) NOT NULL,
+  `DisplayName` varchar(128) DEFAULT NULL,
+  `NormalizedName` varchar(256) NOT NULL,
+  `Type` int(11) NOT NULL,
+  `OrganizationNumber` varchar(64) DEFAULT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `LegacyType` int(11) DEFAULT NULL,
+  PRIMARY KEY (`ContactId`),
+  UNIQUE KEY `IX_Contacts_ExternalUid` (`ExternalUid`),
+  KEY `IX_Contacts_NormalizedName` (`NormalizedName`),
+  KEY `IX_Contacts_Type_Archived` (`Type`,`Archived`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `ContractFiles`
+CREATE TABLE `ContractFiles` (
+  `ContractFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileType` int(11) NOT NULL DEFAULT 3,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`ContractFileId`),
+  UNIQUE KEY `IX_ContractFiles_ContractId_FileMetadataId` (`ContractId`,`FileMetadataId`),
+  KEY `IX_ContractFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_ContractFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_ContractFiles_FileMetadataId` (`FileMetadataId`),
+  CONSTRAINT `FK_ContractFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_ContractFiles_Contracts_ContractId` FOREIGN KEY (`ContractId`) REFERENCES `Contracts` (`ContractId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `ContractParties`
+CREATE TABLE `ContractParties` (
+  `ContractPartyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `InsurancePolicyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  PRIMARY KEY (`ContractPartyId`),
+  KEY `IX_ContractParties_AccountId` (`AccountId`),
+  KEY `IX_ContractParties_ContactId` (`ContactId`),
+  KEY `IX_ContractParties_ContractId` (`ContractId`),
+  KEY `IX_ContractParties_InsurancePolicyId` (`InsurancePolicyId`),
+  CONSTRAINT `FK_ContractParties_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractParties_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractParties_Contracts_ContractId` FOREIGN KEY (`ContractId`) REFERENCES `Contracts` (`ContractId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractParties_InsurancePolicies_InsurancePolicyId` FOREIGN KEY (`InsurancePolicyId`) REFERENCES `InsurancePolicies` (`InsurancePolicyId`) ON DELETE CASCADE,
+  CONSTRAINT `CK_ContractParties_ExactlyOneTarget` CHECK ((`AccountId` is not null) + (`ContactId` is not null) + (`InsurancePolicyId` is not null) = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Contracts`
+CREATE TABLE `Contracts` (
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(256) NOT NULL,
+  `Type` int(11) NOT NULL DEFAULT 3,
+  `Description` varchar(1024) DEFAULT NULL,
+  `StartDate` datetime(6) DEFAULT NULL,
+  `EndDate` datetime(6) DEFAULT NULL,
+  `CompletionDate` datetime(6) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`ContractId`),
+  KEY `IX_Contracts_Archived` (`Archived`),
+  KEY `IX_Contracts_Type_Archived` (`Type`,`Archived`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Currencies`
+CREATE TABLE `Currencies` (
+  `CurrencyCode` varchar(3) NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `MinorUnits` int(11) NOT NULL,
+  `Symbol` varchar(8) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`CurrencyCode`),
+  KEY `IX_Currencies_Archived` (`Archived`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `EmailAddresses`
+CREATE TABLE `EmailAddresses` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Label` int(11) NOT NULL,
+  `IsPrimary` tinyint(1) NOT NULL,
+  `Value` varchar(256) NOT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_EmailAddresses_ContactId` (`ContactId`),
+  CONSTRAINT `FK_EmailAddresses_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `ExchangeRates`
+CREATE TABLE `ExchangeRates` (
+  `ExchangeRateId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FromCurrencyCode` varchar(3) NOT NULL,
+  `ToCurrencyCode` varchar(3) NOT NULL,
+  `Rate` decimal(18,8) NOT NULL,
+  `AsOf` datetime(6) NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`ExchangeRateId`),
+  KEY `IX_ExchangeRates_FromCurrencyCode_ToCurrencyCode_AsOf` (`FromCurrencyCode`,`ToCurrencyCode`,`AsOf`),
+  KEY `IX_ExchangeRates_ToCurrencyCode` (`ToCurrencyCode`),
+  CONSTRAINT `FK_ExchangeRates_Currencies_FromCurrencyCode` FOREIGN KEY (`FromCurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  CONSTRAINT `FK_ExchangeRates_Currencies_ToCurrencyCode` FOREIGN KEY (`ToCurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `FileAnalysisCandidateTags`
+CREATE TABLE `FileAnalysisCandidateTags` (
+  `CandidateTransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  PRIMARY KEY (`CandidateTransactionId`,`TransactionTagId`),
+  KEY `IX_FileAnalysisCandidateTags_TransactionTagId` (`TransactionTagId`),
+  CONSTRAINT `FK_FileAnalysisCandidateTags_FileAnalysisCandidateTransactions_~` FOREIGN KEY (`CandidateTransactionId`) REFERENCES `FileAnalysisCandidateTransactions` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_FileAnalysisCandidateTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `FileAnalysisCandidateTransactions`
+CREATE TABLE `FileAnalysisCandidateTransactions` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AnalysisJobId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionDate` datetime(6) NOT NULL,
+  `BookingDate` datetime(6) DEFAULT NULL,
+  `Description` varchar(1024) NOT NULL,
+  `Merchant` varchar(512) DEFAULT NULL,
+  `CategoryHint` varchar(256) DEFAULT NULL,
+  `Amount` decimal(18,6) NOT NULL,
+  `Currency` varchar(3) NOT NULL,
+  `ExternalId` varchar(256) DEFAULT NULL,
+  `InternalId` varchar(256) DEFAULT NULL,
+  `ReferenceNumber` varchar(256) DEFAULT NULL,
+  `SourceLineNumber` int(11) DEFAULT NULL,
+  `SourcePageNumber` int(11) DEFAULT NULL,
+  `LlmConfidence` decimal(5,4) DEFAULT NULL,
+  `LlmModel` varchar(256) DEFAULT NULL,
+  `LlmProviderResponseId` varchar(256) DEFAULT NULL,
+  `LlmRawJson` longtext DEFAULT NULL,
+  `ReviewStatus` int(11) NOT NULL DEFAULT 0,
+  `ReviewedAt` datetime(6) DEFAULT NULL,
+  `ReviewedByUserId` varchar(255) DEFAULT NULL,
+  `MatchedContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `MerchantMatchConfidence` decimal(5,4) DEFAULT NULL,
+  `CategoryMatchConfidence` decimal(5,4) DEFAULT NULL,
+  `MatchMethod` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`Id`),
+  KEY `IX_FileAnalysisCandidateTransactions_AnalysisJobId` (`AnalysisJobId`),
+  KEY `IX_FileAnalysisCandidateTransactions_MatchedContactId` (`MatchedContactId`),
+  KEY `IX_FileAnalysisCandidateTransactions_ReviewedByUserId` (`ReviewedByUserId`),
+  KEY `IX_FileAnalysisCandidateTransactions_ReviewStatus` (`ReviewStatus`),
+  CONSTRAINT `FK_FileAnalysisCandidateTransactions_AspNetUsers_ReviewedByUser~` FOREIGN KEY (`ReviewedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_FileAnalysisCandidateTransactions_Contacts_MatchedContactId` FOREIGN KEY (`MatchedContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_FileAnalysisCandidateTransactions_FileAnalysisJobs_AnalysisJ~` FOREIGN KEY (`AnalysisJobId`) REFERENCES `FileAnalysisJobs` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `FileAnalysisJobs`
+CREATE TABLE `FileAnalysisJobs` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AccountFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Status` int(11) NOT NULL DEFAULT 0,
+  `FileTypeDetected` varchar(256) DEFAULT NULL,
+  `StartedAt` datetime(6) DEFAULT NULL,
+  `CompletedAt` datetime(6) DEFAULT NULL,
+  `FailureCode` varchar(128) DEFAULT NULL,
+  `FailureMessage` varchar(1024) DEFAULT NULL,
+  `AnalyzerProvider` int(11) NOT NULL DEFAULT 0,
+  `AnalyzerModel` varchar(256) DEFAULT NULL,
+  `PromptVersion` varchar(128) DEFAULT NULL,
+  `RequestedByUserId` varchar(255) DEFAULT NULL,
+  `ConsentRecorded` tinyint(1) NOT NULL,
+  `ConsentMethod` varchar(128) DEFAULT NULL,
+  `ConsentText` varchar(1024) DEFAULT NULL,
+  `LawfulBasis` varchar(128) DEFAULT NULL,
+  `MatchStatus` int(11) NOT NULL DEFAULT 0,
+  `MatchFailureMessage` varchar(1024) DEFAULT NULL,
+  `VocabularyCount` int(11) DEFAULT NULL,
+  `AutoLinkThresholdInForce` decimal(5,4) DEFAULT NULL,
+  `MaxTokensInForce` int(11) DEFAULT NULL,
+  `MatchTimeoutSecondsInForce` int(11) DEFAULT NULL,
+  `AnalyzerBaseUrlHost` varchar(256) DEFAULT NULL,
+  `ProcessorInForce` varchar(128) DEFAULT NULL,
+  `ProcessorRegionInForce` varchar(128) DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_FileAnalysisJobs_AccountFileId` (`AccountFileId`),
+  KEY `IX_FileAnalysisJobs_RequestedByUserId` (`RequestedByUserId`),
+  KEY `IX_FileAnalysisJobs_Status` (`Status`),
+  CONSTRAINT `FK_FileAnalysisJobs_AccountFiles_AccountFileId` FOREIGN KEY (`AccountFileId`) REFERENCES `AccountFiles` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_FileAnalysisJobs_AspNetUsers_RequestedByUserId` FOREIGN KEY (`RequestedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `FileBlob`
+CREATE TABLE `FileBlob` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Content` longblob NOT NULL,
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `FileMetadata`
+CREATE TABLE `FileMetadata` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UploadedByUserId` varchar(255) DEFAULT NULL,
+  `FileName` varchar(256) NOT NULL,
+  `ContentType` varchar(256) NOT NULL,
+  `SizeBytes` bigint(20) NOT NULL,
+  `Sha256Hash` varchar(64) NOT NULL,
+  `FileBlobId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `UploadedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_FileMetadata_FileBlobId` (`FileBlobId`),
+  KEY `IX_FileMetadata_Sha256Hash` (`Sha256Hash`),
+  KEY `IX_FileMetadata_UploadedAtUtc` (`UploadedAtUtc`),
+  KEY `IX_FileMetadata_UploadedByUserId` (`UploadedByUserId`),
+  KEY `IX_FileMetadata_UploadedByUserId_Sha256Hash_SizeBytes` (`UploadedByUserId`,`Sha256Hash`,`SizeBytes`),
+  CONSTRAINT `FK_FileMetadata_AspNetUsers_UploadedByUserId` FOREIGN KEY (`UploadedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_FileMetadata_FileBlob_FileBlobId` FOREIGN KEY (`FileBlobId`) REFERENCES `FileBlob` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `InsurancePolicies`
+CREATE TABLE `InsurancePolicies` (
+  `InsurancePolicyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(128) NOT NULL,
+  `PolicyNumber` varchar(128) DEFAULT NULL,
+  `Type` int(11) NOT NULL DEFAULT 11,
+  `InsurerId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `InsuredAccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`InsurancePolicyId`),
+  KEY `IX_InsurancePolicies_Archived` (`Archived`),
+  KEY `IX_InsurancePolicies_InsuredAccountId` (`InsuredAccountId`),
+  KEY `IX_InsurancePolicies_InsurerId` (`InsurerId`),
+  KEY `IX_InsurancePolicies_Type_Archived` (`Type`,`Archived`),
+  CONSTRAINT `FK_InsurancePolicies_Accounts_InsuredAccountId` FOREIGN KEY (`InsuredAccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_InsurancePolicies_Contacts_InsurerId` FOREIGN KEY (`InsurerId`) REFERENCES `Contacts` (`ContactId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `InsurancePolicyFiles`
+CREATE TABLE `InsurancePolicyFiles` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `InsurancePolicyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileType` int(11) NOT NULL DEFAULT 5,
+  `EffectiveDate` datetime(6) DEFAULT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_InsurancePolicyFiles_InsurancePolicyId_FileMetadataId` (`InsurancePolicyId`,`FileMetadataId`),
+  KEY `IX_InsurancePolicyFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_InsurancePolicyFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_InsurancePolicyFiles_FileMetadataId` (`FileMetadataId`),
+  CONSTRAINT `FK_InsurancePolicyFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_InsurancePolicyFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_InsurancePolicyFiles_InsurancePolicies_InsurancePolicyId` FOREIGN KEY (`InsurancePolicyId`) REFERENCES `InsurancePolicies` (`InsurancePolicyId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalEntries`
+CREATE TABLE `JournalEntries` (
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ExternalUid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `Title` varchar(200) NOT NULL,
+  `Content` varchar(4096) NOT NULL,
+  `EntryDate` datetime(6) NOT NULL,
+  `Location` varchar(300) DEFAULT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`JournalEntryId`),
+  UNIQUE KEY `IX_JournalEntries_ExternalUid` (`ExternalUid`),
+  KEY `IX_JournalEntries_Archived_EntryDate` (`Archived`,`EntryDate`),
+  KEY `IX_JournalEntries_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_JournalEntries_UpdatedByUserId` (`UpdatedByUserId`),
+  CONSTRAINT `FK_JournalEntries_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_JournalEntries_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalEntryAttachments`
+CREATE TABLE `JournalEntryAttachments` (
+  `JournalEntryAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`JournalEntryAttachmentId`),
+  UNIQUE KEY `IX_JournalEntryAttachments_JournalEntryId_FileId` (`JournalEntryId`,`FileId`),
+  KEY `IX_JournalEntryAttachments_FileId` (`FileId`),
+  CONSTRAINT `FK_JournalEntryAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryAttachments_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalEntryContacts`
+CREATE TABLE `JournalEntryContacts` (
+  `JournalEntryContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  PRIMARY KEY (`JournalEntryContactId`),
+  UNIQUE KEY `IX_JournalEntryContacts_JournalEntryId_ContactId` (`JournalEntryId`,`ContactId`),
+  KEY `IX_JournalEntryContacts_ContactId` (`ContactId`),
+  CONSTRAINT `FK_JournalEntryContacts_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryContacts_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalEntryPhotos`
+CREATE TABLE `JournalEntryPhotos` (
+  `JournalEntryPhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`JournalEntryPhotoId`),
+  UNIQUE KEY `IX_JournalEntryPhotos_JournalEntryId_PhotoId` (`JournalEntryId`,`PhotoId`),
+  KEY `IX_JournalEntryPhotos_PhotoId` (`PhotoId`),
+  CONSTRAINT `FK_JournalEntryPhotos_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryPhotos_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalEntryTags`
+CREATE TABLE `JournalEntryTags` (
+  `JournalEntryTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  PRIMARY KEY (`JournalEntryTagId`),
+  UNIQUE KEY `IX_JournalEntryTags_JournalEntryId_JournalTagId` (`JournalEntryId`,`JournalTagId`),
+  KEY `IX_JournalEntryTags_JournalTagId` (`JournalTagId`),
+  CONSTRAINT `FK_JournalEntryTags_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryTags_JournalTags_JournalTagId` FOREIGN KEY (`JournalTagId`) REFERENCES `JournalTags` (`JournalTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalTags`
+CREATE TABLE `JournalTags` (
+  `JournalTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`JournalTagId`),
+  KEY `IX_JournalTags_Archived` (`Archived`),
+  KEY `IX_JournalTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalTaskAttachments`
+CREATE TABLE `JournalTaskAttachments` (
+  `JournalTaskAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTaskId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`JournalTaskAttachmentId`),
+  UNIQUE KEY `IX_JournalTaskAttachments_JournalTaskId_FileId` (`JournalTaskId`,`FileId`),
+  KEY `IX_JournalTaskAttachments_FileId` (`FileId`),
+  CONSTRAINT `FK_JournalTaskAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalTaskAttachments_JournalTasks_JournalTaskId` FOREIGN KEY (`JournalTaskId`) REFERENCES `JournalTasks` (`JournalTaskId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalTasks`
+CREATE TABLE `JournalTasks` (
+  `JournalTaskId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ExternalUid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `Title` varchar(200) NOT NULL,
+  `Content` varchar(4096) DEFAULT NULL,
+  `Deadline` date DEFAULT NULL,
+  `Position` int(11) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `StartedAt` datetime(6) DEFAULT NULL,
+  `CompletedAt` datetime(6) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`JournalTaskId`),
+  UNIQUE KEY `IX_JournalTasks_ExternalUid` (`ExternalUid`),
+  KEY `IX_JournalTasks_Archived_Position` (`Archived`,`Position`),
+  KEY `IX_JournalTasks_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_JournalTasks_UpdatedByUserId` (`UpdatedByUserId`),
+  CONSTRAINT `FK_JournalTasks_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_JournalTasks_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalTaskTagLinks`
+CREATE TABLE `JournalTaskTagLinks` (
+  `JournalTaskTagLinkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTaskId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTaskTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  PRIMARY KEY (`JournalTaskTagLinkId`),
+  UNIQUE KEY `IX_JournalTaskTagLinks_JournalTaskId_JournalTaskTagId` (`JournalTaskId`,`JournalTaskTagId`),
+  KEY `IX_JournalTaskTagLinks_JournalTaskTagId` (`JournalTaskTagId`),
+  CONSTRAINT `FK_JournalTaskTagLinks_JournalTaskTags_JournalTaskTagId` FOREIGN KEY (`JournalTaskTagId`) REFERENCES `JournalTaskTags` (`JournalTaskTagId`),
+  CONSTRAINT `FK_JournalTaskTagLinks_JournalTasks_JournalTaskId` FOREIGN KEY (`JournalTaskId`) REFERENCES `JournalTasks` (`JournalTaskId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `JournalTaskTags`
+CREATE TABLE `JournalTaskTags` (
+  `JournalTaskTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`JournalTaskTagId`),
+  KEY `IX_JournalTaskTags_Archived` (`Archived`),
+  KEY `IX_JournalTaskTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `LicenseAcceptances`
+CREATE TABLE `LicenseAcceptances` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `UserId` varchar(255) NOT NULL,
+  `LicenseHash` varchar(64) NOT NULL,
+  `Accepted` tinyint(1) NOT NULL,
+  `RespondedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_LicenseAcceptances_UserId_LicenseHash_RespondedAt` (`UserId`,`LicenseHash`,`RespondedAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `OrganizationDetails`
+CREATE TABLE `OrganizationDetails` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `LegalName` varchar(256) NOT NULL,
+  `OrganizationNumber` varchar(64) DEFAULT NULL,
+  `Website` varchar(2048) DEFAULT NULL,
+  PRIMARY KEY (`ContactId`),
+  CONSTRAINT `FK_OrganizationDetails_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PersonDetails`
+CREATE TABLE `PersonDetails` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FirstName` varchar(128) NOT NULL,
+  `LastName` varchar(128) NOT NULL,
+  `DateOfBirth` date DEFAULT NULL,
+  `RelationshipType` int(11) DEFAULT NULL,
+  `Sex` int(11) DEFAULT NULL,
+  `Title` varchar(128) DEFAULT NULL,
+  `Company` varchar(256) DEFAULT NULL,
+  PRIMARY KEY (`ContactId`),
+  CONSTRAINT `FK_PersonDetails_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PhoneNumbers`
+CREATE TABLE `PhoneNumbers` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Label` int(11) NOT NULL,
+  `IsPrimary` tinyint(1) NOT NULL,
+  `Value` varchar(32) NOT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_PhoneNumbers_ContactId` (`ContactId`),
+  CONSTRAINT `FK_PhoneNumbers_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PhotoAlbumItems`
+CREATE TABLE `PhotoAlbumItems` (
+  `PhotoAlbumItemId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoAlbumId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`PhotoAlbumItemId`),
+  UNIQUE KEY `IX_PhotoAlbumItems_PhotoAlbumId_PhotoId` (`PhotoAlbumId`,`PhotoId`),
+  KEY `IX_PhotoAlbumItems_PhotoId` (`PhotoId`),
+  CONSTRAINT `FK_PhotoAlbumItems_PhotoAlbums_PhotoAlbumId` FOREIGN KEY (`PhotoAlbumId`) REFERENCES `PhotoAlbums` (`PhotoAlbumId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PhotoAlbumItems_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PhotoAlbums`
+CREATE TABLE `PhotoAlbums` (
+  `PhotoAlbumId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(128) NOT NULL,
+  `Description` varchar(1024) DEFAULT NULL,
+  `CoverPhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`PhotoAlbumId`),
+  KEY `IX_PhotoAlbums_Archived` (`Archived`),
+  KEY `IX_PhotoAlbums_CoverPhotoId` (`CoverPhotoId`),
+  KEY `IX_PhotoAlbums_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_PhotoAlbums_Name` (`Name`),
+  KEY `IX_PhotoAlbums_UpdatedByUserId` (`UpdatedByUserId`),
+  CONSTRAINT `FK_PhotoAlbums_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_PhotoAlbums_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_PhotoAlbums_Photos_CoverPhotoId` FOREIGN KEY (`CoverPhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PhotoPeople`
+CREATE TABLE `PhotoPeople` (
+  `PhotoPersonId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  PRIMARY KEY (`PhotoPersonId`),
+  UNIQUE KEY `IX_PhotoPeople_PhotoId_ContactId` (`PhotoId`,`ContactId`),
+  KEY `IX_PhotoPeople_ContactId` (`ContactId`),
+  CONSTRAINT `FK_PhotoPeople_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PhotoPeople_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Photos`
+CREATE TABLE `Photos` (
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Title` varchar(200) DEFAULT NULL,
+  `Caption` varchar(2000) DEFAULT NULL,
+  `TakenAt` datetime(6) DEFAULT NULL,
+  `CapturedLatitude` double DEFAULT NULL,
+  `CapturedLongitude` double DEFAULT NULL,
+  `LocationName` varchar(256) DEFAULT NULL,
+  `PixelWidth` int(11) DEFAULT NULL,
+  `PixelHeight` int(11) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `Favourited` datetime(6) DEFAULT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`PhotoId`),
+  UNIQUE KEY `IX_Photos_FileId` (`FileId`),
+  KEY `IX_Photos_Archived` (`Archived`),
+  KEY `IX_Photos_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Photos_Favourited` (`Favourited`),
+  KEY `IX_Photos_TakenAt` (`TakenAt`),
+  KEY `IX_Photos_UpdatedByUserId` (`UpdatedByUserId`),
+  CONSTRAINT `FK_Photos_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Photos_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Photos_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PhotoTagLinks`
+CREATE TABLE `PhotoTagLinks` (
+  `PhotoTagLinkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  PRIMARY KEY (`PhotoTagLinkId`),
+  UNIQUE KEY `IX_PhotoTagLinks_PhotoId_PhotoTagId` (`PhotoId`,`PhotoTagId`),
+  KEY `IX_PhotoTagLinks_PhotoTagId` (`PhotoTagId`),
+  CONSTRAINT `FK_PhotoTagLinks_PhotoTags_PhotoTagId` FOREIGN KEY (`PhotoTagId`) REFERENCES `PhotoTags` (`PhotoTagId`),
+  CONSTRAINT `FK_PhotoTagLinks_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PhotoTags`
+CREATE TABLE `PhotoTags` (
+  `PhotoTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`PhotoTagId`),
+  UNIQUE KEY `IX_PhotoTags_Name` (`Name`),
+  KEY `IX_PhotoTags_Archived` (`Archived`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PolicyRenewalFiles`
+CREATE TABLE `PolicyRenewalFiles` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PolicyRenewalId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileType` int(11) NOT NULL DEFAULT 5,
+  `EffectiveDate` datetime(6) DEFAULT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_PolicyRenewalFiles_PolicyRenewalId_FileMetadataId` (`PolicyRenewalId`,`FileMetadataId`),
+  KEY `IX_PolicyRenewalFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_PolicyRenewalFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_PolicyRenewalFiles_FileMetadataId` (`FileMetadataId`),
+  CONSTRAINT `FK_PolicyRenewalFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_PolicyRenewalFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PolicyRenewalFiles_PolicyRenewals_PolicyRenewalId` FOREIGN KEY (`PolicyRenewalId`) REFERENCES `PolicyRenewals` (`PolicyRenewalId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `PolicyRenewals`
+CREATE TABLE `PolicyRenewals` (
+  `PolicyRenewalId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `InsurancePolicyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FromDate` datetime(6) NOT NULL,
+  `ToDate` datetime(6) NOT NULL,
+  `Premium` decimal(18,6) NOT NULL,
+  `PremiumCurrencyCode` varchar(3) NOT NULL,
+  `CoverageAmount` decimal(18,6) NOT NULL,
+  `CoverageCurrencyCode` varchar(3) NOT NULL,
+  `Notes` varchar(512) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`PolicyRenewalId`),
+  KEY `IX_PolicyRenewals_InsurancePolicyId_ToDate` (`InsurancePolicyId`,`ToDate`),
+  CONSTRAINT `FK_PolicyRenewals_InsurancePolicies_InsurancePolicyId` FOREIGN KEY (`InsurancePolicyId`) REFERENCES `InsurancePolicies` (`InsurancePolicyId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `RecurrencePatterns`
+CREATE TABLE `RecurrencePatterns` (
+  `RecurrencePatternId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CalendarId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Title` varchar(200) NOT NULL,
+  `Description` varchar(2000) DEFAULT NULL,
+  `Location` varchar(300) DEFAULT NULL,
+  `ExternalUid` varchar(255) DEFAULT NULL,
+  `StartDateTime` datetime(6) NOT NULL,
+  `EndDateTime` datetime(6) NOT NULL,
+  `IsAllDay` tinyint(1) NOT NULL,
+  `Frequency` int(11) NOT NULL,
+  `Interval` int(11) NOT NULL,
+  `DaysOfWeek` int(11) DEFAULT NULL,
+  `DayOfMonth` int(11) DEFAULT NULL,
+  `MonthOfYear` int(11) DEFAULT NULL,
+  `RecurrenceEndDate` datetime(6) DEFAULT NULL,
+  `OccurrenceCount` int(11) DEFAULT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`RecurrencePatternId`),
+  KEY `IX_RecurrencePatterns_CalendarId` (`CalendarId`),
+  KEY `IX_RecurrencePatterns_CalendarId_ExternalUid` (`CalendarId`,`ExternalUid`),
+  KEY `IX_RecurrencePatterns_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_RecurrencePatterns_UpdatedByUserId` (`UpdatedByUserId`),
+  CONSTRAINT `FK_RecurrencePatterns_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_RecurrencePatterns_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_RecurrencePatterns_Calendars_CalendarId` FOREIGN KEY (`CalendarId`) REFERENCES `Calendars` (`CalendarId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Subscriptions`
+CREATE TABLE `Subscriptions` (
+  `SubscriptionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(128) NOT NULL,
+  `ExternalId` varchar(128) DEFAULT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `StartDate` date NOT NULL,
+  `EndDate` date DEFAULT NULL,
+  `Amount` decimal(18,6) NOT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `Interval` int(11) NOT NULL DEFAULT 2,
+  `IntervalCount` int(11) NOT NULL DEFAULT 1,
+  `FirstBillingDate` date NOT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `Paused` datetime(6) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`SubscriptionId`),
+  KEY `IX_Subscriptions_Archived` (`Archived`),
+  KEY `IX_Subscriptions_ContactId` (`ContactId`),
+  KEY `IX_Subscriptions_Interval_Archived` (`Interval`,`Archived`),
+  KEY `IX_Subscriptions_Paused` (`Paused`),
+  CONSTRAINT `FK_Subscriptions_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `SystemSettings`
+CREATE TABLE `SystemSettings` (
+  `Key` varchar(100) NOT NULL,
+  `Value` varchar(4000) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedBy` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `SystemSettingSecrets`
+CREATE TABLE `SystemSettingSecrets` (
+  `Key` varchar(100) NOT NULL,
+  `Ciphertext` varchar(6000) NOT NULL,
+  `ProtectionScheme` varchar(32) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedBy` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TaxStatementFiles`
+CREATE TABLE `TaxStatementFiles` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TaxStatementId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `FileType` int(11) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TaxStatementFiles_TaxStatementId_FileMetadataId` (`TaxStatementId`,`FileMetadataId`),
+  KEY `IX_TaxStatementFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_TaxStatementFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_TaxStatementFiles_FileMetadataId` (`FileMetadataId`),
+  CONSTRAINT `FK_TaxStatementFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_TaxStatementFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_TaxStatementFiles_TaxStatements_TaxStatementId` FOREIGN KEY (`TaxStatementId`) REFERENCES `TaxStatements` (`TaxStatementId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TaxStatements`
+CREATE TABLE `TaxStatements` (
+  `TaxStatementId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `FiscalYear` int(11) NOT NULL,
+  `StartDate` datetime(6) NOT NULL,
+  `EndDate` datetime(6) NOT NULL,
+  `BaseCurrencyCode` varchar(3) NOT NULL,
+  `DeclaredTotalAssets` decimal(18,6) DEFAULT NULL,
+  `DeclaredTotalLiabilities` decimal(18,6) DEFAULT NULL,
+  `DeclaredNetWorth` decimal(18,6) DEFAULT NULL,
+  `DeclaredTotalIncome` decimal(18,6) DEFAULT NULL,
+  `AssessedTax` decimal(18,6) DEFAULT NULL,
+  `SettlementAmount` decimal(18,6) DEFAULT NULL,
+  `SettledAtUtc` datetime(6) DEFAULT NULL,
+  `FiledAtUtc` datetime(6) DEFAULT NULL,
+  `TaxOfficeApprovedAtUtc` datetime(6) DEFAULT NULL,
+  `Status` int(11) NOT NULL DEFAULT 0,
+  `StatusComment` varchar(256) DEFAULT NULL,
+  `StatusChangedAt` datetime(6) NOT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`TaxStatementId`),
+  KEY `IX_TaxStatements_Archived` (`Archived`),
+  KEY `IX_TaxStatements_FiscalYear` (`FiscalYear`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TaxStatementTags`
+CREATE TABLE `TaxStatementTags` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TaxStatementId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Role` int(11) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TaxStatementTags_TaxStatementId_TransactionTagId_Role` (`TaxStatementId`,`TransactionTagId`,`Role`),
+  KEY `IX_TaxStatementTags_TransactionTagId` (`TransactionTagId`),
+  CONSTRAINT `FK_TaxStatementTags_TaxStatements_TaxStatementId` FOREIGN KEY (`TaxStatementId`) REFERENCES `TaxStatements` (`TaxStatementId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_TaxStatementTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TermsOfServiceAcceptances`
+CREATE TABLE `TermsOfServiceAcceptances` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `UserId` varchar(255) NOT NULL,
+  `TermsOfServiceVersionId` int(11) NOT NULL,
+  `Accepted` tinyint(1) NOT NULL,
+  `RespondedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_TermsOfServiceAcceptances_TermsOfServiceVersionId` (`TermsOfServiceVersionId`),
+  KEY `IX_TermsOfServiceAcceptances_UserId_TermsOfServiceVersionId_Res~` (`UserId`,`TermsOfServiceVersionId`,`RespondedAt`),
+  CONSTRAINT `FK_TermsOfServiceAcceptances_TermsOfServiceVersions_TermsOfServ~` FOREIGN KEY (`TermsOfServiceVersionId`) REFERENCES `TermsOfServiceVersions` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TermsOfServiceVersions`
+CREATE TABLE `TermsOfServiceVersions` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `Content` longtext NOT NULL,
+  `PublishedAt` datetime(6) NOT NULL,
+  `PublishedByUserId` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_TermsOfServiceVersions_PublishedByUserId` (`PublishedByUserId`),
+  CONSTRAINT `FK_TermsOfServiceVersions_AspNetUsers_PublishedByUserId` FOREIGN KEY (`PublishedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TransactionFiles`
+CREATE TABLE `TransactionFiles` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `Type` int(11) NOT NULL DEFAULT 2,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TransactionFiles_TransactionId_FileMetadataId` (`TransactionId`,`FileMetadataId`),
+  KEY `IX_TransactionFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_TransactionFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_TransactionFiles_FileMetadataId` (`FileMetadataId`),
+  CONSTRAINT `FK_TransactionFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_TransactionFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_TransactionFiles_Transactions_TransactionId` FOREIGN KEY (`TransactionId`) REFERENCES `Transactions` (`TransactionId`) ON DELETE CASCADE,
+  CONSTRAINT `CK_TransactionFiles_Type_AllowedValues` CHECK (`Type` in (0,1,2,3,4,5,6))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `Transactions`
+CREATE TABLE `Transactions` (
+  `TransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Description` varchar(256) NOT NULL,
+  `Amount` decimal(18,6) NOT NULL,
+  `TimeStamp` datetime(6) NOT NULL,
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ExternalId` varchar(64) DEFAULT NULL,
+  `InternalId` varchar(64) DEFAULT NULL,
+  `ExtraData` varchar(1024) DEFAULT NULL,
+  `Status` int(11) NOT NULL,
+  `StatusComment` varchar(256) DEFAULT NULL,
+  `StatusChangedAt` datetime(6) NOT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  PRIMARY KEY (`TransactionId`),
+  KEY `IX_Transactions_AccountId` (`AccountId`),
+  KEY `IX_Transactions_ContactId` (`ContactId`),
+  KEY `IX_Transactions_CurrencyCode` (`CurrencyCode`),
+  KEY `IX_Transactions_TimeStamp` (`TimeStamp`),
+  CONSTRAINT `FK_Transactions_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_Transactions_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TransactionTagLinks`
+CREATE TABLE `TransactionTagLinks` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TransactionTagLinks_TransactionId_TransactionTagId` (`TransactionId`,`TransactionTagId`),
+  KEY `IX_TransactionTagLinks_TransactionTagId` (`TransactionTagId`),
+  CONSTRAINT `FK_TransactionTagLinks_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`),
+  CONSTRAINT `FK_TransactionTagLinks_Transactions_TransactionId` FOREIGN KEY (`TransactionId`) REFERENCES `Transactions` (`TransactionId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `TransactionTags`
+CREATE TABLE `TransactionTags` (
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`TransactionTagId`),
+  KEY `IX_TransactionTags_Archived` (`Archived`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `UserPreferences`
+CREATE TABLE `UserPreferences` (
+  `UserPreferenceId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  `Key` varchar(255) NOT NULL,
+  `PreferencesJson` varchar(4096) DEFAULT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  PRIMARY KEY (`UserPreferenceId`),
+  UNIQUE KEY `IX_UserPreferences_UserId_Key` (`UserId`,`Key`),
+  CONSTRAINT `FK_UserPreferences_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+table `UserProfiles`
+CREATE TABLE `UserProfiles` (
+  `UserProfileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  `FirstName` varchar(128) DEFAULT NULL,
+  `MiddleName` varchar(128) DEFAULT NULL,
+  `LastName` varchar(128) DEFAULT NULL,
+  `DisplayName` varchar(256) DEFAULT NULL,
+  `Title` varchar(128) DEFAULT NULL,
+  `BirthDate` date DEFAULT NULL,
+  `Sex` int(11) DEFAULT NULL,
+  PRIMARY KEY (`UserProfileId`),
+  UNIQUE KEY `IX_UserProfiles_UserId` (`UserId`),
+  CONSTRAINT `FK_UserProfiles_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+[seed-rows]
+table `AspNetRoles`
+Id	Name	NormalizedName	ConcurrencyStamp
+019ebf36-3a6a-43b2-aa58-7e022c3b9cf3	User	user	1d63d0dc-6c9f-4ec4-90c5-2a7f8a0b2f2c
+6c17017f-8072-44a8-8ed1-a03b71ef85a6	Admin	admin	c6c5b1d6-6c4a-4a5e-8c8b-7736ff6a8f27
+c9a82815-d9f8-4f3f-8b34-9f7272b71c7c	Guest	guest	27f1b3e3-82ff-4e4a-9e14-0c6a3c0f1f9e
+e444d6c0-1a33-4b2c-9f20-ef7a4ad2770b	Owner	owner	5e6b9878-3b89-474f-a2db-0e3d1e38859d
+[seed-keys]
+table `FileStorageMaintenanceLeases`
+absent
+table `NewsStorageTotals`
+absent
+table `PhotoThumbnailBuckets`
+absent
+table `SystemSettings`
+Key
+AccountMaxSmartTagsPerAccount
+CalendarIcsMaxAggregateExportRows
+CalendarIcsMaxAggregateExportWindowDays
+CalendarIcsMaxAggregateOccurrences
+CalendarIcsMaxExportEvents
+CalendarIcsMaxExportMegabytes
+CalendarIcsMaxImportEvents
+CalendarIcsMaxImportMegabytes
+CalendarMaxEventDurationDays
+CalendarMaxWindowDays
+ContactVCardMaxExportMegabytes
+ContactVCardMaxExportRows
+ContactVCardMaxImportEntries
+ContactVCardMaxImportMegabytes
+ContactVCardMaxRepeatablePropertiesPerEntry
+ContractMaxFilesPerContract
+ContractMaxPartiesPerContract
+ContractMaxSummaryContracts
+EmailFromAddress
+EmailFromName
+EmailMaxTrackedRecipients
+EmailPerRecipientLimit
+EmailPerRecipientWindowMinutes
+EmailRequireConfirmation
+FileAnalysisBaseUrl
+FileAnalysisEnabled
+FileAnalysisLawfulBasis
+FileAnalysisMatchAutoLinkThreshold
+FileAnalysisMatchMaxVocabulary
+FileAnalysisMatchTimeoutSeconds
+FileAnalysisMaxFutureTransactionDays
+FileAnalysisMaxTokens
+FileAnalysisModel
+FileAnalysisPrivacyNoticeUrl
+FileAnalysisProcessor
+FileAnalysisProcessorRegion
+FileStorageMaxUploadMegabytes
+ImportMaxSamplesPerSkipReason
+InsuranceExpiringSoonWindowDays
+InsuranceMaxFilesPerParent
+InsuranceMaxRenewalsPerPolicy
+InsuranceMaxSummaryPolicies
+JournalEntryMaxLinksPerKind
+JournalIcsMaxExportMegabytes
+JournalIcsMaxExportRows
+JournalIcsMaxImportEntries
+JournalIcsMaxImportMegabytes
+JournalTaskMaxLinksPerKind
+PhotoMaxAlbumMembers
+PhotoMaxLinksPerKind
+PhotoMetadataExtractionTimeoutSeconds
+PhotoMetadataReadMegabytes
+RecurrenceMaxGeneratedOccurrences
+RegistrationRequireAdminApproval
+RequireTwoFactor
+SubscriptionMaxSummaryRenewals
+SubscriptionMaxSummarySubscriptions
+SubscriptionRenewalWindowDays
+TaskIcsMaxExportMegabytes
+TaskIcsMaxExportTasks
+TaskIcsMaxImportMegabytes
+TaskIcsMaxImportTasks
+[parity-rows]
+table `AccountEstimates`
+AccountEstimateId	AccountId	Value	CurrencyCode	EffectiveFrom	Note	CreatedAtUtc
+table `AccountFiles`
+Id	AccountId	FileMetadataId	AttachedByUserId	AttachedAtUtc	FileType	ValidFrom	ValidTo	IssuedAt	IssuedBy
+table `Accounts`
+AccountId	Name	Description	Opened	AccountNumber	AccountType	Closed	Archived	CurrencyCode	CustodianId
+table `AccountSmartTags`
+AccountId	TransactionTagId	AddedAt
+table `AccountTerms`
+AccountTermId	AccountId	TermKind	ValueUnit	Value	CurrencyCode	BillingPeriod	EffectiveFrom	Note	CreatedAtUtc
+table `Addresses`
+Id	ContactId	Label	IsPrimary	Line1	Line2	City	PostalCode	Region	CountryCode
+table `AspNetRoleClaims`
+Id	RoleId	ClaimType	ClaimValue
+table `AspNetRoles`
+Id	Name	NormalizedName	ConcurrencyStamp
+019ebf36-3a6a-43b2-aa58-7e022c3b9cf3	User	user	1d63d0dc-6c9f-4ec4-90c5-2a7f8a0b2f2c
+6c17017f-8072-44a8-8ed1-a03b71ef85a6	Admin	admin	c6c5b1d6-6c4a-4a5e-8c8b-7736ff6a8f27
+c9a82815-d9f8-4f3f-8b34-9f7272b71c7c	Guest	guest	27f1b3e3-82ff-4e4a-9e14-0c6a3c0f1f9e
+e444d6c0-1a33-4b2c-9f20-ef7a4ad2770b	Owner	owner	5e6b9878-3b89-474f-a2db-0e3d1e38859d
+table `AspNetUserClaims`
+Id	UserId	ClaimType	ClaimValue
+table `AspNetUserLogins`
+LoginProvider	ProviderKey	ProviderDisplayName	UserId
+table `AspNetUserRoles`
+UserId	RoleId
+table `AspNetUsers`
+Id	MustChangePassword	UserName	NormalizedUserName	Email	NormalizedEmail	EmailConfirmed	PasswordHash	SecurityStamp	ConcurrencyStamp	PhoneNumber	PhoneNumberConfirmed	TwoFactorEnabled	LockoutEnd	LockoutEnabled	AccessFailedCount
+table `AspNetUserTokens`
+UserId	LoginProvider	Name	Value
+table `BudgetItems`
+BudgetItemId	BudgetId	Name	Description	CategoryType	PlannedAmount	TransactionTagId
+table `Budgets`
+BudgetId	Name	Description	StartDate	EndDate	Archived	BaseCurrencyCode
+table `CalendarEvents`
+CalendarEventId	CalendarId	Title	Description	Location	ExternalUid	StartDateTime	EndDateTime	IsAllDay	RecurrencePatternId	CreatedByUserId	UpdatedByUserId	CreatedAt	UpdatedAt
+table `Calendars`
+CalendarId	Name	Description	Color	CreatedByUserId	UpdatedByUserId	CreatedAt	UpdatedAt
+table `Contacts`
+ContactId	ExternalUid	DisplayName	NormalizedName	Type	OrganizationNumber	Notes	Archived	CreatedAt	UpdatedAt	LegacyType
+table `ContractFiles`
+ContractFileId	ContractId	FileMetadataId	FileType	AttachedByUserId	AttachedAtUtc
+table `ContractParties`
+ContractPartyId	ContractId	AccountId	ContactId	InsurancePolicyId
+table `Contracts`
+ContractId	Name	Type	Description	StartDate	EndDate	CompletionDate	Archived	CreatedAtUtc
+table `Currencies`
+CurrencyCode	Name	MinorUnits	Symbol	Archived
+AED	UAE Dirham	2	\N	\N
+AFN	Afghani	2	\N	\N
+ALL	Albanian Lek	2	L	\N
+AMD	Armenian Dram	2	\N	\N
+AOA	Kwanza	2	\N	\N
+ARS	Argentine Peso	2	\N	\N
+AUD	Australian Dollar	2	$	\N
+AWG	Aruban Florin	2	\N	\N
+AZN	Azerbaijan Manat	2	₼	\N
+BAM	Convertible Mark	2	\N	\N
+BBD	Barbados Dollar	2	$	\N
+BDT	Taka	2	৳	\N
+BGN	Bulgarian Lev	2	лв	\N
+BHD	Bahraini Dinar	3	\N	\N
+BIF	Burundi Franc	0	\N	\N
+BMD	Bermudian Dollar	2	$	\N
+BND	Brunei Dollar	2	$	\N
+BOB	Boliviano	2	Bs.	\N
+BOV	Mvdol	2	\N	\N
+BRL	Brazilian Real	2	R$	\N
+BSD	Bahamian Dollar	2	$	\N
+BTN	Ngultrum	2	\N	\N
+BWP	Pula	2	\N	\N
+BYN	Belarusian Ruble	2	\N	\N
+BZD	Belize Dollar	2	$	\N
+CAD	Canadian Dollar	2	$	\N
+CDF	Congolese Franc	2	\N	\N
+CHE	WIR Euro	2	\N	\N
+CHF	Swiss Franc	2	CHF	\N
+CHW	WIR Franc	2	\N	\N
+CLF	Unidad de Fomento	4	\N	\N
+CLP	Chilean Peso	0	$	\N
+CNY	Yuan Renminbi	2	¥	\N
+COP	Colombian Peso	2	$	\N
+COU	Unidad de Valor Real	2	\N	\N
+CRC	Costa Rican Colon	2	₡	\N
+CUP	Cuban Peso	2	₱	\N
+CVE	Cape Verde Escudo	2	\N	\N
+CZK	Czech Koruna	2	Kč	\N
+DJF	Djibouti Franc	0	\N	\N
+DKK	Danish Krone	2	kr	\N
+DOP	Dominican Peso	2	RD$	\N
+DZD	Algerian Dinar	2	\N	\N
+EGP	Egyptian Pound	2	£	\N
+ERN	Nakfa	2	\N	\N
+ETB	Ethiopian Birr	2	\N	\N
+EUR	Euro	2	€	\N
+FJD	Fiji Dollar	2	$	\N
+FKP	Falkland Islands Pound	2	£	\N
+GBP	Pound Sterling	2	£	\N
+GEL	Lari	2	₾	\N
+GHS	Ghana Cedi	2	₵	\N
+GIP	Gibraltar Pound	2	£	\N
+GMD	Dalasi	2	\N	\N
+GNF	Guinean Franc	0	\N	\N
+GTQ	Quetzal	2	Q	\N
+GYD	Guyana Dollar	2	$	\N
+HKD	Hong Kong Dollar	2	$	\N
+HNL	Lempira	2	L	\N
+HTG	Gourde	2	\N	\N
+HUF	Forint	2	Ft	\N
+IDR	Rupiah	2	Rp	\N
+ILS	New Israeli Sheqel	2	₪	\N
+INR	Indian Rupee	2	₹	\N
+IQD	Iraqi Dinar	3	\N	\N
+IRR	Iranian Rial	2	\N	\N
+ISK	Iceland Krona	0	kr	\N
+JMD	Jamaican Dollar	2	$	\N
+JOD	Jordanian Dinar	3	\N	\N
+JPY	Yen	0	¥	\N
+KES	Kenyan Shilling	2	\N	\N
+KGS	Som	2	\N	\N
+KHR	Riel	2	៛	\N
+KMF	Comorian Franc	0	\N	\N
+KPW	North Korean Won	0	₩	\N
+KRW	Won	0	₩	\N
+KWD	Kuwaiti Dinar	3	\N	\N
+KYD	Cayman Islands Dollar	2	$	\N
+KZT	Tenge	2	₸	\N
+LAK	Lao Kip	0	₭	\N
+LBP	Lebanese Pound	0	£	\N
+LKR	Sri Lanka Rupee	2	₨	\N
+LRD	Liberian Dollar	2	$	\N
+LSL	Loti	2	\N	\N
+LYD	Libyan Dinar	3	\N	\N
+MAD	Moroccan Dirham	2	\N	\N
+MDL	Moldovan Leu	2	\N	\N
+MGA	Malagasy Ariary	2	\N	\N
+MKD	Macedonian Denar	2	ден	\N
+MMK	Kyat	2	Ks	\N
+MNT	Tugrik	2	₮	\N
+MOP	Pataca	2	MOP$	\N
+MRU	Ouguiya	2	\N	\N
+MUR	Mauritius Rupee	2	₨	\N
+MVR	Rufiyaa	2	\N	\N
+MWK	Malawi Kwacha	2	MK	\N
+MXN	Mexican Peso	2	$	\N
+MXV	Mexican Unidad de Inversion (UDI)	2	\N	\N
+MYR	Malaysian Ringgit	2	RM	\N
+MZN	Mozambique Metical	2	\N	\N
+NAD	Namibia Dollar	2	$	\N
+NGN	Naira	2	₦	\N
+NIO	Cordoba Oro	2	C$	\N
+NOK	Norwegian Krone	2	kr	\N
+NPR	Nepalese Rupee	2	₨	\N
+NZD	New Zealand Dollar	2	$	\N
+OMR	Rial Omani	3	\N	\N
+PAB	Balboa	2	B/.	\N
+PEN	Sol	2	S/	\N
+PGK	Kina	2	\N	\N
+PHP	Philippine Peso	2	₱	\N
+PKR	Pakistan Rupee	2	₨	\N
+PLN	Zloty	2	zł	\N
+PYG	Guarani	0	₲	\N
+QAR	Qatari Rial	2	\N	\N
+RON	Romanian Leu	2	lei	\N
+RSD	Serbian Dinar	2	\N	\N
+RUB	Russian Ruble	2	₽	\N
+RWF	Rwanda Franc	0	\N	\N
+SAR	Saudi Riyal	2	\N	\N
+SBD	Solomon Islands Dollar	2	$	\N
+SCR	Seychelles Rupee	2	₨	\N
+SDG	Sudanese Pound	2	\N	\N
+SEK	Swedish Krona	2	kr	\N
+SGD	Singapore Dollar	2	$	\N
+SHP	Saint Helena Pound	2	£	\N
+SLE	Leone	2	\N	\N
+SOS	Somali Shilling	2	\N	\N
+SRD	Surinam Dollar	2	$	\N
+SSP	South Sudanese Pound	2	£	\N
+STN	Dobra	2	Db	\N
+SVC	El Salvador Colon	2	₡	\N
+SYP	Syrian Pound	2	£	\N
+SZL	Lilangeni	2	\N	\N
+THB	Baht	2	฿	\N
+TJS	Somoni	2	\N	\N
+TMT	Turkmenistan New Manat	2	\N	\N
+TND	Tunisian Dinar	3	\N	\N
+TOP	Pa'anga	2	\N	\N
+TRY	Turkish Lira	2	₺	\N
+TTD	Trinidad and Tobago Dollar	2	$	\N
+TWD	New Taiwan Dollar	2	$	\N
+TZS	Tanzanian Shilling	2	\N	\N
+UAH	Ukrainian Hryvnia	2	₴	\N
+UGX	Uganda Shilling	0	\N	\N
+USD	US Dollar	2	$	\N
+USN	US Dollar (Next Day)	2	\N	\N
+UYI	Uruguay Peso en Unidades Indexadas (UI)	0	\N	\N
+UYU	Peso Uruguayo	2	$U	\N
+UYW	Unidad Previsional	4	\N	\N
+UZS	Uzbekistan Sum	2	\N	\N
+VED	Bolivar Digital	2	\N	\N
+VND	Dong	0	₫	\N
+VUV	Vatu	0	\N	\N
+WST	Tala	2	\N	\N
+XAF	CFA Franc BEAC	0	\N	\N
+XCD	East Caribbean Dollar	2	$	\N
+XCG	Caribbean Guilder	2	\N	\N
+XOF	CFA Franc BCEAO	0	\N	\N
+XPF	CFP Franc	0	\N	\N
+YER	Yemeni Rial	2	\N	\N
+ZAR	Rand	2	R	\N
+ZMW	Zambian Kwacha	2	ZK	\N
+ZWG	Zimbabwe Gold	2	\N	\N
+table `EmailAddresses`
+Id	ContactId	Label	IsPrimary	Value
+table `ExchangeRates`
+ExchangeRateId	FromCurrencyCode	ToCurrencyCode	Rate	AsOf	CreatedAt	UpdatedAt
+table `FileAnalysisCandidateTags`
+CandidateTransactionId	TransactionTagId
+table `FileAnalysisCandidateTransactions`
+Id	AnalysisJobId	TransactionDate	BookingDate	Description	Merchant	CategoryHint	Amount	Currency	ExternalId	InternalId	ReferenceNumber	SourceLineNumber	SourcePageNumber	LlmConfidence	LlmModel	LlmProviderResponseId	LlmRawJson	ReviewStatus	ReviewedAt	ReviewedByUserId	MatchedContactId	MerchantMatchConfidence	CategoryMatchConfidence	MatchMethod
+table `FileAnalysisJobs`
+Id	AccountFileId	Status	FileTypeDetected	StartedAt	CompletedAt	FailureCode	FailureMessage	AnalyzerProvider	AnalyzerModel	PromptVersion	RequestedByUserId	ConsentRecorded	ConsentMethod	ConsentText	LawfulBasis	MatchStatus	MatchFailureMessage	VocabularyCount	AutoLinkThresholdInForce	MaxTokensInForce	MatchTimeoutSecondsInForce	AnalyzerBaseUrlHost	ProcessorInForce	ProcessorRegionInForce
+table `FileBlob`
+Id	Content
+table `FileMetadata`
+Id	UploadedByUserId	FileName	ContentType	SizeBytes	Sha256Hash	FileBlobId	Description	UploadedAtUtc
+table `InsurancePolicies`
+InsurancePolicyId	Name	PolicyNumber	Type	InsurerId	InsuredAccountId	Notes	Archived	CreatedAtUtc
+table `InsurancePolicyFiles`
+Id	InsurancePolicyId	FileMetadataId	FileType	EffectiveDate	AttachedByUserId	AttachedAtUtc
+table `JournalEntries`
+JournalEntryId	ExternalUid	Title	Content	EntryDate	Location	CreatedByUserId	UpdatedByUserId	CreatedAt	UpdatedAt	Archived
+table `JournalEntryAttachments`
+JournalEntryAttachmentId	JournalEntryId	FileId	CreatedAt
+table `JournalEntryContacts`
+JournalEntryContactId	JournalEntryId	ContactId
+table `JournalEntryPhotos`
+JournalEntryPhotoId	JournalEntryId	PhotoId	Position	CreatedAt
+table `JournalEntryTags`
+JournalEntryTagId	JournalEntryId	JournalTagId
+table `JournalTags`
+JournalTagId	Name	Description	Archived
+table `JournalTaskAttachments`
+JournalTaskAttachmentId	JournalTaskId	FileId	CreatedAt
+table `JournalTasks`
+JournalTaskId	ExternalUid	Title	Content	Deadline	Position	CreatedByUserId	UpdatedByUserId	CreatedAt	UpdatedAt	StartedAt	CompletedAt	Archived
+table `JournalTaskTagLinks`
+JournalTaskTagLinkId	JournalTaskId	JournalTaskTagId
+table `JournalTaskTags`
+JournalTaskTagId	Name	Description	Archived
+table `LicenseAcceptances`
+Id	UserId	LicenseHash	Accepted	RespondedAt
+table `OrganizationDetails`
+ContactId	LegalName	OrganizationNumber	Website
+table `PersonDetails`
+ContactId	FirstName	LastName	DateOfBirth	RelationshipType	Sex	Title	Company
+table `PhoneNumbers`
+Id	ContactId	Label	IsPrimary	Value
+table `PhotoAlbumItems`
+PhotoAlbumItemId	PhotoAlbumId	PhotoId	Position	CreatedAt
+table `PhotoAlbums`
+PhotoAlbumId	Name	Description	CoverPhotoId	Archived	CreatedByUserId	UpdatedByUserId	CreatedAt	UpdatedAt
+table `PhotoPeople`
+PhotoPersonId	PhotoId	ContactId
+table `Photos`
+PhotoId	FileId	Title	Caption	TakenAt	CapturedLatitude	CapturedLongitude	LocationName	PixelWidth	PixelHeight	Archived	Favourited	CreatedByUserId	UpdatedByUserId	CreatedAt	UpdatedAt
+table `PhotoTagLinks`
+PhotoTagLinkId	PhotoId	PhotoTagId
+table `PhotoTags`
+PhotoTagId	Name	Description	Archived
+table `PolicyRenewalFiles`
+Id	PolicyRenewalId	FileMetadataId	FileType	EffectiveDate	AttachedByUserId	AttachedAtUtc
+table `PolicyRenewals`
+PolicyRenewalId	InsurancePolicyId	FromDate	ToDate	Premium	PremiumCurrencyCode	CoverageAmount	CoverageCurrencyCode	Notes	CreatedAtUtc
+table `RecurrencePatterns`
+RecurrencePatternId	CalendarId	Title	Description	Location	ExternalUid	StartDateTime	EndDateTime	IsAllDay	Frequency	Interval	DaysOfWeek	DayOfMonth	MonthOfYear	RecurrenceEndDate	OccurrenceCount	CreatedByUserId	UpdatedByUserId	CreatedAt	UpdatedAt
+table `Subscriptions`
+SubscriptionId	Name	ExternalId	ContactId	StartDate	EndDate	Amount	CurrencyCode	Interval	IntervalCount	FirstBillingDate	Notes	Paused	Archived	CreatedAtUtc
+table `SystemSettings`
+Key	Value	UpdatedAt	UpdatedBy
+AccountMaxSmartTagsPerAccount	20	2000-01-01 00:00:00	\N
+CalendarIcsMaxAggregateExportRows	20000	2000-01-01 00:00:00	\N
+CalendarIcsMaxAggregateExportWindowDays	92	2000-01-01 00:00:00	\N
+CalendarIcsMaxAggregateOccurrences	5000	2000-01-01 00:00:00	\N
+CalendarIcsMaxExportEvents	2000	2000-01-01 00:00:00	\N
+CalendarIcsMaxExportMegabytes	64	2000-01-01 00:00:00	\N
+CalendarIcsMaxImportEvents	2000	2000-01-01 00:00:00	\N
+CalendarIcsMaxImportMegabytes	64	2000-01-01 00:00:00	\N
+CalendarMaxEventDurationDays	366	2000-01-01 00:00:00	\N
+CalendarMaxWindowDays	92	2000-01-01 00:00:00	\N
+ContactVCardMaxExportMegabytes	64	2000-01-01 00:00:00	\N
+ContactVCardMaxExportRows	unlimited	2000-01-01 00:00:00	\N
+ContactVCardMaxImportEntries	unlimited	2000-01-01 00:00:00	\N
+ContactVCardMaxImportMegabytes	64	2000-01-01 00:00:00	\N
+ContactVCardMaxRepeatablePropertiesPerEntry	200	2000-01-01 00:00:00	\N
+ContractMaxFilesPerContract	50	2000-01-01 00:00:00	\N
+ContractMaxPartiesPerContract	25	2000-01-01 00:00:00	\N
+ContractMaxSummaryContracts	1000	2000-01-01 00:00:00	\N
+EmailFromAddress	no-reply@odyssey.local	2000-01-01 00:00:00	\N
+EmailFromName	Odyssey	2000-01-01 00:00:00	\N
+EmailMaxTrackedRecipients	20000	2000-01-01 00:00:00	\N
+EmailPerRecipientLimit	3	2000-01-01 00:00:00	\N
+EmailPerRecipientWindowMinutes	60	2000-01-01 00:00:00	\N
+EmailRequireConfirmation	true	2000-01-01 00:00:00	\N
+FileAnalysisBaseUrl	https://api.anthropic.com	2000-01-01 00:00:00	\N
+FileAnalysisEnabled	false	2000-01-01 00:00:00	\N
+FileAnalysisLawfulBasis	Consent · GDPR Art. 6(1)(a)	2000-01-01 00:00:00	\N
+FileAnalysisMatchAutoLinkThreshold	0.6	2000-01-01 00:00:00	\N
+FileAnalysisMatchMaxVocabulary	500	2000-01-01 00:00:00	\N
+FileAnalysisMatchTimeoutSeconds	60	2000-01-01 00:00:00	\N
+FileAnalysisMaxFutureTransactionDays	90	2000-01-01 00:00:00	\N
+FileAnalysisMaxTokens	8096	2000-01-01 00:00:00	\N
+FileAnalysisModel	claude-sonnet-5	2000-01-01 00:00:00	\N
+FileAnalysisPrivacyNoticeUrl	https://www.anthropic.com/legal/privacy	2000-01-01 00:00:00	\N
+FileAnalysisProcessor	Anthropic	2000-01-01 00:00:00	\N
+FileAnalysisProcessorRegion	United States	2000-01-01 00:00:00	\N
+FileStorageMaxUploadMegabytes	64	2000-01-01 00:00:00	\N
+ImportMaxSamplesPerSkipReason	100	2000-01-01 00:00:00	\N
+InsuranceExpiringSoonWindowDays	30	2000-01-01 00:00:00	\N
+InsuranceMaxFilesPerParent	50	2000-01-01 00:00:00	\N
+InsuranceMaxRenewalsPerPolicy	100	2000-01-01 00:00:00	\N
+InsuranceMaxSummaryPolicies	1000	2000-01-01 00:00:00	\N
+JournalEntryMaxLinksPerKind	50	2000-01-01 00:00:00	\N
+JournalIcsMaxExportMegabytes	64	2000-01-01 00:00:00	\N
+JournalIcsMaxExportRows	2000	2000-01-01 00:00:00	\N
+JournalIcsMaxImportEntries	2000	2000-01-01 00:00:00	\N
+JournalIcsMaxImportMegabytes	64	2000-01-01 00:00:00	\N
+JournalTaskMaxLinksPerKind	50	2000-01-01 00:00:00	\N
+PhotoMaxAlbumMembers	1000	2000-01-01 00:00:00	\N
+PhotoMaxLinksPerKind	50	2000-01-01 00:00:00	\N
+PhotoMetadataExtractionTimeoutSeconds	5	2000-01-01 00:00:00	\N
+PhotoMetadataReadMegabytes	8	2000-01-01 00:00:00	\N
+RecurrenceMaxGeneratedOccurrences	1000	2000-01-01 00:00:00	\N
+RegistrationRequireAdminApproval	true	2000-01-01 00:00:00	\N
+RequireTwoFactor	false	2000-01-01 00:00:00	\N
+SubscriptionMaxSummaryRenewals	6	2000-01-01 00:00:00	\N
+SubscriptionMaxSummarySubscriptions	1000	2000-01-01 00:00:00	\N
+SubscriptionRenewalWindowDays	45	2000-01-01 00:00:00	\N
+TaskIcsMaxExportMegabytes	64	2000-01-01 00:00:00	\N
+TaskIcsMaxExportTasks	2000	2000-01-01 00:00:00	\N
+TaskIcsMaxImportMegabytes	64	2000-01-01 00:00:00	\N
+TaskIcsMaxImportTasks	2000	2000-01-01 00:00:00	\N
+table `SystemSettingSecrets`
+Key	Ciphertext	ProtectionScheme	UpdatedAt	UpdatedBy
+table `TaxStatementFiles`
+Id	TaxStatementId	FileMetadataId	AttachedByUserId	AttachedAtUtc	FileType
+table `TaxStatements`
+TaxStatementId	Name	FiscalYear	StartDate	EndDate	BaseCurrencyCode	DeclaredTotalAssets	DeclaredTotalLiabilities	DeclaredNetWorth	DeclaredTotalIncome	AssessedTax	SettlementAmount	SettledAtUtc	FiledAtUtc	TaxOfficeApprovedAtUtc	Status	StatusComment	StatusChangedAt	Notes	Archived	CreatedAtUtc
+table `TaxStatementTags`
+Id	TaxStatementId	TransactionTagId	Role
+table `TermsOfServiceAcceptances`
+Id	UserId	TermsOfServiceVersionId	Accepted	RespondedAt
+table `TermsOfServiceVersions`
+Id	Content	PublishedAt	PublishedByUserId
+table `TransactionFiles`
+Id	TransactionId	FileMetadataId	AttachedByUserId	AttachedAtUtc	Type
+table `Transactions`
+TransactionId	Description	Amount	TimeStamp	AccountId	ContactId	ExternalId	InternalId	ExtraData	Status	StatusComment	StatusChangedAt	CurrencyCode
+table `TransactionTagLinks`
+Id	TransactionId	TransactionTagId
+table `TransactionTags`
+TransactionTagId	Name	Description	Archived
+table `UserPreferences`
+UserPreferenceId	UserId	Key	PreferencesJson	UpdatedAt
+table `UserProfiles`
+UserProfileId	UserId	FirstName	MiddleName	LastName	DisplayName	Title	BirthDate	Sex
