@@ -42,6 +42,10 @@ public partial class PodcastsPage
             case PodcastAudioAction.Save:
                 // The browser downloads the attachment natively; the file never enters the WASM heap (§3.2.5).
                 await Transfer.DownloadAsync(Podcasts.AudioUrl(episode.Id));
+
+                // The server records the save on download: re-read so the chip, tile and Status filter catch up.
+                await RefreshEpisodeAsync(episode.Id);
+                StateHasChanged();
                 return;
             case PodcastAudioAction.Remove:
                 _alerts.Remove(episode.Id);
@@ -332,23 +336,22 @@ public partial class PodcastsPage
             return;
         }
 
-        if (await PageHiddenAsync())
-        {
-            // Paused while the tab is hidden; the next tick looks again.
-            SchedulePoll();
-            return;
-        }
-
-        var inFlight = _rows.Where(r => OdsPodcastAudioState.InFlight(r.Audio.State)).ToList();
-        if (inFlight.Count == 0)
-        {
-            SchedulePoll();
-            return;
-        }
-
+        // Claimed before the first await, so a Check again during the visibility read cannot start a second tick.
         _polling = true;
         try
         {
+            if (await PageHiddenAsync())
+            {
+                // Paused while the tab is hidden; the next tick looks again.
+                return;
+            }
+
+            var inFlight = _rows.Where(r => OdsPodcastAudioState.InFlight(r.Audio.State)).ToList();
+            if (inFlight.Count == 0)
+            {
+                return;
+            }
+
             var feeds = _poller.FeedsForTick([.. inFlight.Select(r => r.FeedId)]);
             var filter = new PodcastEpisodeListFilter
             {
@@ -366,8 +369,9 @@ public partial class PodcastsPage
             {
                 if (result.Status == HttpStatusCode.UnprocessableEntity)
                 {
-                    // A podcast was deleted or switched to articles elsewhere: reload the feeds and the list.
-                    _poller.Failed((int)HttpStatusCode.UnprocessableEntity, null);
+                    // A podcast was deleted or switched to articles elsewhere: reload the feeds and the list. That is
+                    // not a failed poll, so it neither backs off nor counts towards "Couldn't refresh".
+                    _polling = false;
                     await LoadAsync();
                     return;
                 }

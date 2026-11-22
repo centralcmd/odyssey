@@ -65,7 +65,8 @@ public class PodcastsApiClientTests
         Assert.Equal("/api/news-feeds", uri.AbsolutePath);
         Assert.Contains("state=All", uri.Query, StringComparison.Ordinal);
         Assert.Contains("kind=Podcast", uri.Query, StringComparison.Ordinal);
-        Assert.Contains("offset=200&limit=200", uri.Query, StringComparison.Ordinal);
+        Assert.Contains("offset=200", uri.Query, StringComparison.Ordinal);
+        Assert.Contains("limit=200", uri.Query, StringComparison.Ordinal);
     }
 
     [Fact]

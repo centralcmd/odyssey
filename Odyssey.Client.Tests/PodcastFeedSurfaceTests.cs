@@ -124,6 +124,29 @@ public class PodcastFeedSurfaceTests
         Assert.Contains(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusRadioGroup" && Equals(i.Arguments[0], NewsFeedDialog.KindId));
     }
 
+    [Fact]
+    public async Task A_confirmed_switch_back_that_fails_to_save_keeps_articles_selected()
+    {
+        var feed = PodcastsPageTests.Podcast("Show");
+        await using var context = new NewsPageTestContext();
+        context.News.Setup(n => n.GetFeedAsync(feed.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(feed));
+        context.News.Setup(n => n.UpdateFeedAsync(feed.Id, It.IsAny<UpdateNewsFeed>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Fail<ExistingNewsFeed>(HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedLimit));
+        var cut = RenderDialog(context, feed);
+
+        cut.Find($"#{NewsFeedDialog.KindId} input[value='Article']").Change(true);
+        Assert.False(await Submit(cut));
+        cut.WaitForAssertion(() => Assert.Contains("Switch to articles?", cut.Markup, StringComparison.Ordinal));
+
+        var confirm = cut.FindComponent<OdsConfirmDialog>();
+        Assert.Null(await cut.InvokeAsync(() => confirm.Instance.OnConfirm()));
+        await cut.InvokeAsync(() => confirm.Instance.OpenChanged.InvokeAsync(false));
+
+        cut.WaitForAssertion(() => Assert.Contains("The limit has been reached.", cut.Markup, StringComparison.Ordinal));
+        Assert.Equal(nameof(NewsFeedKind.Article), cut.FindComponent<OdsRadioGroup>().Instance.Value);
+        Assert.DoesNotContain(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusRadioGroup");
+    }
+
     // ── The Feeds page ─────────────────────────────────────────────────────────────────────────────
 
     private static NewsPageTestContext FeedsContext(IReadOnlyList<ExistingNewsFeed> feeds)

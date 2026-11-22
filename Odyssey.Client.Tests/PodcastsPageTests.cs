@@ -276,6 +276,26 @@ public class PodcastsPageTests
         Assert.False(filter.IncludeArchivedFeeds);
     }
 
+    [Theory]
+    [InlineData(new[] { PodcastsPage.SavedKey }, true)]
+    [InlineData(new[] { PodcastsPage.UnsavedKey }, false)]
+    [InlineData(new[] { PodcastsPage.SavedKey, PodcastsPage.UnsavedKey }, null)]
+    [InlineData(new string[0], null)]
+    public async Task The_page_sends_the_device_members_and_the_search_on_its_list_query(string[] statuses, bool? saved)
+    {
+        var feed = Podcast("Tidewater Talks");
+        await using var page = new Harness([feed], [Episode(feed, "One")]);
+        page.Context.State.Setup(s => s.LoadAsync<PodcastsPage.PodcastsPageState>(PodcastsPage.PageStateKey))
+            .ReturnsAsync(new PodcastsPage.PodcastsPageState { Statuses = [.. statuses], Search = "  ferry  " });
+
+        page.Render();
+
+        var filter = page.Filters[0];
+        Assert.Equal(saved, filter.SavedToDevice);
+        Assert.Null(filter.AudioStates);
+        Assert.Equal("ferry", filter.Search);
+    }
+
     [Fact]
     public async Task A_deep_link_preselects_its_podcast_and_a_non_podcast_id_is_dropped()
     {
@@ -383,6 +403,158 @@ public class PodcastsPageTests
         Assert.Equal($"news-feeds?state=All&reveal={feed.Id}", cut.Find($"#pod-{episode.Id} [role=alert] a").GetAttribute("href"));
     }
 
+    [Fact]
+    public async Task The_pressed_action_stays_focusable_while_its_request_runs()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var episode = Episode(feed, "Ferry timetables");
+        await using var page = new Harness([feed], [episode]);
+        var pending = new TaskCompletionSource<ApiResult<PodcastEpisodeAudioInfo>>();
+        page.Context.Podcasts.Setup(p => p.RequestAudioAsync(episode.Id, It.IsAny<CancellationToken>())).Returns(pending.Task);
+
+        var cut = page.Render();
+        Expand(cut, episode);
+        Action(cut, PodcastAudioAction.Download, episode).Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var button = Action(cut, PodcastAudioAction.Download, episode);
+            Assert.Equal("true", button.GetAttribute("aria-disabled"));
+            Assert.False(button.HasAttribute("disabled"));
+        });
+        Action(cut, PodcastAudioAction.Download, episode).Click();
+        page.Context.Podcasts.Verify(p => p.RequestAudioAsync(episode.Id, It.IsAny<CancellationToken>()), Times.Once);
+
+        pending.SetResult(Fail<PodcastEpisodeAudioInfo>(HttpStatusCode.InternalServerError));
+        cut.WaitForAssertion(() => Assert.Null(Action(cut, PodcastAudioAction.Download, episode).GetAttribute("aria-disabled")));
+    }
+
+    [Fact]
+    public async Task Save_to_device_downloads_natively_never_requests_and_rereads_the_saved_episode()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var episode = Episode(feed, "Logbooks", PodcastAudioState.Stored);
+        await using var page = new Harness([feed], [episode]);
+        var url = $"api/podcast-episodes/{episode.Id}/audio";
+        page.Context.Podcasts.Setup(p => p.AudioUrl(episode.Id)).Returns(url);
+
+        var cut = page.Render();
+        Expand(cut, episode);
+        Assert.DoesNotContain("Saved to a device", cut.Find($"#pod-{episode.Id}").TextContent, StringComparison.Ordinal);
+        page.Details[episode.Id] = Detail(episode, d => d.LastPlayedAtUtc = Now.UtcDateTime);
+        Action(cut, PodcastAudioAction.Save, episode).Click();
+
+        page.Context.Transfer.Verify(t => t.DownloadAsync(url), Times.Once);
+        page.Context.Podcasts.Verify(p => p.RequestAudioAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        cut.WaitForAssertion(() => Assert.Contains("Saved to a device", cut.Find($"#pod-{episode.Id}").TextContent, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Conflict, NewsErrorCodes.PodcastAudioBusy, "The audio is downloading right now. Try again when it’s finished.")]
+    [InlineData(HttpStatusCode.TooManyRequests, NewsErrorCodes.PodcastAudioCooldown, "You can try again at ")]
+    [InlineData((HttpStatusCode)507, NewsErrorCodes.PodcastAudioQuotaReached, "The audio storage limit is reached. Remove audio from the server, or ask an administrator to raise the limit in Settings.")]
+    [InlineData(HttpStatusCode.Forbidden, null, "You no longer have permission to do this.")]
+    [InlineData(HttpStatusCode.InternalServerError, null, "Couldn’t do that. Try again.")]
+    public async Task A_refused_download_is_a_card_alert_naming_why(HttpStatusCode status, string? code, string text)
+    {
+        var feed = Podcast("Garden Hour");
+        var episode = Episode(feed, "Pruning");
+        await using var page = new Harness([feed], [episode]);
+        page.Context.Podcasts.Setup(p => p.RequestAudioAsync(episode.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Fail<PodcastEpisodeAudioInfo>(status, code, status == HttpStatusCode.TooManyRequests ? TimeSpan.FromMinutes(5) : null));
+
+        var cut = page.Render();
+        Expand(cut, episode);
+        if (status == HttpStatusCode.TooManyRequests)
+        {
+            // The refusal re-reads the episode, whose cooldown then describes the button.
+            page.Details[episode.Id] = Detail(episode, d => d.Audio = new PodcastEpisodeAudioInfo
+            {
+                State = PodcastAudioState.None,
+                RequestAvailableAtUtc = Now.UtcDateTime.AddMinutes(5),
+            });
+        }
+
+        Action(cut, PodcastAudioAction.Download, episode).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(text, cut.Find($"#pod-{episode.Id} [role=alert]").TextContent, StringComparison.Ordinal));
+        if (status == HttpStatusCode.TooManyRequests)
+        {
+            cut.WaitForAssertion(() => Assert.Contains("Available again at", cut.Find($"#pod-cd-{episode.Id}").TextContent, StringComparison.Ordinal));
+            Assert.Equal("true", Action(cut, PodcastAudioAction.Download, episode).GetAttribute("aria-disabled"));
+        }
+    }
+
+    [Fact]
+    public async Task A_refusal_for_an_episode_that_is_gone_removes_its_card_and_says_so()
+    {
+        var feed = Podcast("Garden Hour");
+        var episode = Episode(feed, "Pruning");
+        await using var page = new Harness([feed], [episode]);
+        page.Context.Podcasts.Setup(p => p.RequestAudioAsync(episode.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Fail<PodcastEpisodeAudioInfo>(HttpStatusCode.NotFound));
+
+        var cut = page.Render();
+        Expand(cut, episode);
+        Action(cut, PodcastAudioAction.Download, episode).Click();
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll($"#pod-{episode.Id}")));
+        cut.WaitForAssertion(() => Assert.Contains("This episode is no longer available.", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Cancel_releases_the_request_says_so_and_focuses_download()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var episode = Episode(feed, "Logbooks", PodcastAudioState.Queued);
+        await using var page = new Harness([feed], [episode]);
+        page.Context.Podcasts.Setup(p => p.RemoveAudioAsync(episode.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+
+        var cut = page.Render();
+        Expand(cut, episode);
+        page.Details[episode.Id] = Detail(episode, d => d.Audio = new PodcastEpisodeAudioInfo { State = PodcastAudioState.None });
+        Action(cut, PodcastAudioAction.Cancel, episode).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Download cancelled.", Polite(cut), StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Contains("Not downloaded", cut.Find($"#pod-{episode.Id} .odc-podaudio").TextContent, StringComparison.Ordinal));
+        Assert.Contains(page.Context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusById"
+            && Equals(i.Arguments[0], PodcastAudioActions.ActionId(PodcastAudioAction.Download, episode.Id)));
+    }
+
+    [Fact]
+    public async Task Cancel_after_the_claim_was_lost_is_a_card_alert_and_keeps_the_card()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var episode = Episode(feed, "Logbooks", PodcastAudioState.Deferred);
+        await using var page = new Harness([feed], [episode]);
+        page.Context.Podcasts.Setup(p => p.RemoveAudioAsync(episode.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Fail(HttpStatusCode.Forbidden));
+
+        var cut = page.Render();
+        Expand(cut, episode);
+        Action(cut, PodcastAudioAction.Cancel, episode).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("You no longer have permission to do this.", cut.Find($"#pod-{episode.Id} [role=alert]").TextContent, StringComparison.Ordinal));
+        Assert.Contains("Waiting for space", cut.Find($"#pod-{episode.Id} .odc-podaudio").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Try_again_on_a_failed_download_queues_it_again()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var episode = Episode(feed, "Logbooks", PodcastAudioState.Failed, e => e.Audio.FailureKind = PodcastAudioFailureKind.TooLarge);
+        await using var page = new Harness([feed], [episode]);
+        page.Context.Podcasts.Setup(p => p.RequestAudioAsync(episode.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new PodcastEpisodeAudioInfo { State = PodcastAudioState.Queued, RequestedBy = PodcastAudioRequestedBy.User }));
+
+        var cut = page.Render();
+        Expand(cut, episode);
+        Assert.Contains("Couldn’t download: the file is larger than the server allows.", cut.Find($"#pod-{episode.Id} .pod-audio-line").TextContent, StringComparison.Ordinal);
+        Action(cut, PodcastAudioAction.Retry, episode).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Queued", cut.Find($"#pod-{episode.Id} .odc-podaudio").TextContent, StringComparison.Ordinal));
+        page.Context.Podcasts.Verify(p => p.RequestAudioAsync(episode.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // ── Polling ────────────────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -402,6 +574,24 @@ public class PodcastsPageTests
         Assert.Equal([feed.Id], poll.FeedIds);
         Assert.Equal(PodcastAudioPoller.PolledStates, poll.AudioStates);
         cut.WaitForAssertion(() => Assert.Contains("Logbooks is on the server and ready to save.", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_hidden_tab_pauses_polling_and_a_visible_one_resumes_it()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var episode = Episode(feed, "Logbooks", PodcastAudioState.Downloading);
+        await using var page = new Harness([feed], [episode]);
+        page.Context.Ctx.JSInterop.Setup<bool>("odsPageHidden").SetResult(true);
+
+        var cut = page.Render();
+        page.Context.Time.Advance(PodcastAudioPoller.ActiveInterval);
+        cut.WaitForAssertion(() => Assert.Contains(page.Context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsPageHidden"));
+        Assert.DoesNotContain(page.Filters, f => f.IncludeArchivedFeeds);
+
+        page.Context.Ctx.JSInterop.Setup<bool>("odsPageHidden").SetResult(false);
+        page.Context.Time.Advance(PodcastAudioPoller.ActiveInterval);
+        cut.WaitForAssertion(() => Assert.Single(page.Filters, f => f.IncludeArchivedFeeds));
     }
 
     [Fact]

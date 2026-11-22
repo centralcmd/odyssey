@@ -7,7 +7,7 @@
       • Every action keeps its visible label first and adds the episode to its accessible name (WCAG 2.5.3).
       • While the server's re-request cooldown runs, Download to server / Try again are aria-disabled (focusable, not
         activatable) and "Available again at 14:32." describes them.
-      • Pending: the pressed action shows Loading; the others are aria-disabled, except Save to device, which is never
+      • Pending: the pressed action shows Loading and stays focusable (aria-disabled); the others are aria-disabled, except Save to device, which is never
         locked and so never changes under focus.
       • After three failed polls an in-flight episode says "Couldn't refresh the download status." in a <p>, with Check
         again beside it, outside the <p>; the page announces that once.
@@ -30,7 +30,7 @@
                 <OdsButton @key="action.Kind" id="@ActionId(action.Kind, Episode.Id)" Variant="action.Variant" Size="OdsButtonSize.Sm"
                            Icon="@action.Icon" AriaLabel="@($"{action.Label}, {Title}")"
                            Loading="@(Pending == action.Kind)"
-                           AriaDisabled="@IsLocked(action)" aria-describedby="@(action.Cooled ? CooldownId : null)"
+                           AriaDisabled="@(IsLocked(action) || Pending == action.Kind)" aria-describedby="@(action.Cooled ? CooldownId : null)"
                            OnClick="() => PressAsync(action)">@action.Label</OdsButton>
             }
         </div>

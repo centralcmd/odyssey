@@ -91,6 +91,7 @@ public partial class NewsFeedDialog
     private Guid _switchBackKey;
     private bool _switchBackOpen;
     private bool _switchBackSaved;
+    private bool _switchBackFailed;
     private int? _switchBackCount;
 
     private static string Range => string.Create(System.Globalization.CultureInfo.CurrentCulture,
@@ -264,6 +265,7 @@ public partial class NewsFeedDialog
             var fresh = await News.GetFeedAsync(editing.Id);
             _switchBackCount = fresh.IsSuccess ? fresh.Value?.Podcast?.StoredAudioCount : null;
             _switchBackSaved = false;
+            _switchBackFailed = false;
             _switchBackKey = Guid.NewGuid();
             _switchBackOpen = true;
             StateHasChanged();
@@ -281,15 +283,23 @@ public partial class NewsFeedDialog
         {
             await OpenChanged.InvokeAsync(false);
         }
+        else
+        {
+            // The save failed: the confirmation closes onto the form, which shows why, with Articles still selected.
+            _switchBackFailed = true;
+        }
 
         return null;
     }
 
-    /// <summary>Cancel (or Escape) reverts Type to Podcast — nothing was saved — and focuses that checked radio.</summary>
+    /// <summary>
+    /// Cancel (or Escape) reverts Type to Podcast — nothing was saved — and focuses that checked radio. A confirmed save
+    /// that failed reverts nothing: the reader chose Articles and the form's error says why it did not save.
+    /// </summary>
     private async Task OnSwitchBackOpenChanged(bool open)
     {
         _switchBackOpen = open;
-        if (open || _switchBackSaved)
+        if (open || _switchBackSaved || _switchBackFailed)
         {
             return;
         }
