@@ -32,15 +32,32 @@ function onVisibility() {
     }
 }
 
+// One re-acquire in flight at a time: `release` and `visibilitychange` can both fire before the first request
+// settles, and a second request would leak the first lock.
+let reacquiring = false;
+
 async function reacquire() {
+    if (reacquiring || sentinel) {
+        return;
+    }
+    reacquiring = true;
     try {
         await acquire();
+        if (!wanted) {
+            // The page let the screen sleep while the request was in flight.
+            const held = sentinel;
+            sentinel = null;
+            held?.removeEventListener('release', onReleased);
+            try { await held?.release(); } catch { /* already released */ }
+        }
     } catch {
         const lost = owner;
         stop();
         if (lost) {
             try { await lost.invokeMethodAsync('OnWakeLockLost'); } catch { /* the page is gone */ }
         }
+    } finally {
+        reacquiring = false;
     }
 }
 
