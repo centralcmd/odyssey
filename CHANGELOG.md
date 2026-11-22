@@ -8,6 +8,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 Entries start at 0.16.0; releases before it are recorded only in the
 [GitHub tags](https://github.com/centralcmd/odyssey/tags).
 
+## [0.52.0](https://github.com/centralcmd/odyssey/compare/v0.51.0...v0.52.0) (2026-11-22)
+
+
+### Features
+
+* **migrations:** add the guarded migration rebaseline mechanism ([#588](https://github.com/centralcmd/odyssey/issues/588)) ([e169f3e](https://github.com/centralcmd/odyssey/commit/e169f3e61c1155e55e27dcf3bce93b7ffcb06cfd))
+
 ## [0.51.0](https://github.com/centralcmd/odyssey/compare/v0.50.1...v0.51.0) (2026-11-22)
 
 
