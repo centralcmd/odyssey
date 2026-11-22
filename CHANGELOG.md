@@ -8,6 +8,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 Entries start at 0.16.0; releases before it are recorded only in the
 [GitHub tags](https://github.com/centralcmd/odyssey/tags).
 
+## [0.51.0](https://github.com/centralcmd/odyssey/compare/v0.50.1...v0.51.0) (2026-11-22)
+
+
+### Features
+
+* **api:** replace swashbuckle with the built-in openapi generator and scalar ([#582](https://github.com/centralcmd/odyssey/issues/582)) ([36b962c](https://github.com/centralcmd/odyssey/commit/36b962cd38a47db18d0a3ec1beef8ae580a333b4))
+
 ## [0.50.1](https://github.com/centralcmd/odyssey/compare/v0.50.0...v0.50.1) (2026-11-22)
 
 
