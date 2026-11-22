@@ -9,17 +9,23 @@
     server updated (role=status) and focuses the first of them. A failed Reload keeps the alert and focus on Reload;
     a 404 means the feed was deleted: Save is disabled and focus moves to Close.
 
+    Type and automation (issue #559 §3.4; design system NewsFeeds.jsx, NewsFeedDialog): after Feed URL, a required
+    Type radio group (create defaults to InitialKind) and, for a podcast, a "Podcast settings" fieldset — two switches,
+    each described by its help line, and Remove after (days), rendered only while removal is on, its range from
+    PodcastLimits. Podcast → Articles is always confirmed with the fresh stored-audio count; Cancel reverts Type to
+    Podcast and returns focus to that checked radio.
+
     There is no Active / archive switch: Pause, Resume, Archive and Unarchive live in the card's ⋯ menu only, and the
     dialog sends the feed's current isActive back unchanged. Tags are part of the feed's own form on create and edit
     alike — there is no separate Tags dialog; on edit they travel in the same PUT as the settings.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged"
-               Icon="rss_feed"
-               Title="@(IsEdit ? "Edit feed" : "New feed")"
-               Subtitle="@(IsEdit ? "Change how Odyssey reads this feed." : "Subscribe to a site’s RSS, Atom or JSON feed.")"
+               Icon="@(IsPodcast ? "podcasts" : "rss_feed")"
+               Title="@DialogTitle"
+               Subtitle="@(IsEdit ? "Change how Odyssey reads this feed." : InitialKind == NewsFeedKind.Podcast ? "Subscribe to a podcast’s RSS feed." : "Subscribe to a site’s RSS, Atom or JSON feed.")"
                CancelLabel="@(_conflict == Conflict.Deleted ? "Close" : "Cancel")"
-               SubmitLabel="@(IsEdit ? "Save" : "Create feed")"
+               SubmitLabel="@(IsEdit ? "Save" : IsPodcast ? "Create podcast" : "Create feed")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                SubmitDisabled="@(_conflict == Conflict.Deleted)"
                OnSubmit="SubmitAsync">
@@ -59,13 +65,58 @@
                        OnClick="() => GoToFeed.InvokeAsync(existing)">Go to feed</OdsButton>
         </div>
     }
+    <OdsRadioGroup @ref="_kindGroup" Id="@KindId" Label="Type" Required="true" Value="@_kind.ToString()" ValueChanged="OnKindChanged"
+                   Options="KindOptions" Error="@_kindError" />
+    @if (IsPodcast)
+    {
+        <fieldset class="pod-fieldset">
+            <legend>Podcast settings</legend>
+            <div class="pod-switch-row">
+                <OdsSwitch Label="Download new episodes automatically" Checked="_autoDownload" CheckedChanged="v => { _autoDownload = v; _automationError = null; }"
+                           AriaDescribedBy="@AutoDownloadHelpId" />
+                <p class="pod-help" id="@AutoDownloadHelpId">Only episodes published after the first check. The server limits how many it downloads per podcast.</p>
+            </div>
+            <div class="pod-switch-row">
+                <OdsSwitch Label="Remove audio automatically" Checked="_autoDelete" CheckedChanged="OnAutoDeleteChanged"
+                           AriaDescribedBy="@AutoDeleteHelpId" />
+                <p class="pod-help" id="@AutoDeleteHelpId">Audio is removed from the server a set number of days after it was last saved to a device. Audio never saved to a device is kept.</p>
+            </div>
+            @if (_automationError is { } automationError)
+            {
+                <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@automationError</OdsAlert>
+            }
+            @if (_autoDelete)
+            {
+                <OdsNumberField Id="@DaysId" Label="Remove after" Unit="days" Required="true" Step="1"
+                                Min="PodcastLimits.MinAutoDeleteDays" Max="PodcastLimits.MaxAutoDeleteDays"
+                                Value="_autoDays" ValueChanged="OnDaysChanged" Help="@DaysHelp" Error="@_daysError" />
+            }
+        </fieldset>
+    }
     <OdsField id="@TitleFieldId" Label="Custom title" Value="@_title" ValueChanged="OnTitleChanged"
               MaxLength="@NewsLimits.MaxCustomTitleLength" Help="@NewsFeedForm.TitleHelp" Error="@_titleError" />
     <OdsNumberField Id="@IntervalId" Label="Check every" Unit="min" Value="_interval" ValueChanged="OnIntervalChanged"
                     Min="NewsLimits.MinFetchIntervalMinutes" Max="NewsLimits.MaxFetchIntervalMinutes" Step="1"
                     Placeholder="Default" Help="@NewsFeedForm.IntervalHelp" Error="@_intervalError" />
-    <OdsSwitch Label="Download images" Checked="_downloadImages" CheckedChanged="v => { _downloadImages = v; }" />
+    @if (IsPodcast)
+    {
+        <div class="pod-switch-row">
+            <OdsSwitch Label="Download images" Checked="_downloadImages" CheckedChanged="v => { _downloadImages = v; }" AriaDescribedBy="@ImagesHelpId" />
+            <p class="pod-help" id="@ImagesHelpId">Images inside show notes</p>
+        </div>
+    }
+    else
+    {
+        <OdsSwitch Label="Download images" Checked="_downloadImages" CheckedChanged="v => { _downloadImages = v; }" />
+    }
     <OdsTagMultiSelect Label="Tags" Value="_tagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
                        Noun="news tag" NounPlural="news tags" Error="@_tagsError"
-                       Help="Every article from this feed carries these tags too." />
+                       Help="@(IsPodcast ? "Every episode from this podcast carries these tags too." : "Every article from this feed carries these tags too.")" />
 </OdsFormDialog>
+
+@if (_switchBackKey != Guid.Empty)
+{
+    <OdsConfirmDialog @key="_switchBackKey" Open="_switchBackOpen" OpenChanged="OnSwitchBackOpenChanged"
+                      Title="Switch to articles?" Body="@SwitchBackText" ConfirmLabel="Switch to articles"
+                      Icon="article" SubmitIcon="article" OnConfirm="ConfirmSwitchBackAsync" />
+}

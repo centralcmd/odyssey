@@ -5053,6 +5053,8 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 /* ---------- NewsFeedHealthChip (§3.3) ----------
    A plain .odc-chip in its registry tone; the text label carries the meaning. */
 .odc-chip.odc-newshealth { white-space: nowrap; }
+/* PodcastAudioStateChip (centralcmd/odyssey#559): one line, like the feed health chip. */
+.odc-chip.odc-podaudio { white-space: nowrap; }
 
 /* ---------- ExternalLink (§4.1, §6.2) ----------
    The URL (ltr, wraps anywhere), the host as its own token, then the actions:

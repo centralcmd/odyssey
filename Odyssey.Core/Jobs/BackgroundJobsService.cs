@@ -529,8 +529,27 @@ public sealed class BackgroundJobsService(
                 ImagesStored = news.ImagesStored,
                 FeedsQuarantined = news.FeedsQuarantined,
                 FeedsMarked = news.FeedsMarked,
+                ArtworkStored = news.ArtworkStored,
+                ArtworkFailed = news.ArtworkFailed,
+                ChaptersFetched = news.ChaptersFetched,
             },
             NewsFeedJobRun => new NewsFeedJobRunDetail(),
+            PodcastAudioDownloadJobRun downloads when canRead => new PodcastAudioDownloadJobRunDetail
+            {
+                DownloadsStored = downloads.DownloadsStored,
+                DownloadsFailed = downloads.DownloadsFailed,
+                DownloadsDeferred = downloads.DownloadsDeferred,
+                DownloadsRecovered = downloads.DownloadsRecovered,
+                ReservationsRefused = downloads.ReservationsRefused,
+                AudioBytesStored = downloads.AudioBytesStored,
+            },
+            PodcastAudioDownloadJobRun => new PodcastAudioDownloadJobRunDetail(),
+            PodcastAudioRetentionJobRun retention when canRead => new PodcastAudioRetentionJobRunDetail
+            {
+                AudioReleased = retention.AudioReleased,
+                AudioBytesReleased = retention.AudioBytesReleased,
+            },
+            PodcastAudioRetentionJobRun => new PodcastAudioRetentionJobRunDetail(),
             RecurrenceKeyBackfillJobRun keys when canRead => new RecurrenceKeyBackfillJobRunDetail
             {
                 SeriesKeyed = keys.SeriesKeyed,

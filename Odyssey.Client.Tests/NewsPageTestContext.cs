@@ -42,6 +42,11 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
         Ctx.Services.AddScoped<RelativeTimeTicker>();
         Ctx.Services.AddSingleton(News.Object);
         Ctx.Services.AddSingleton(NewsTags.Object);
+        Podcasts.Setup(p => p.ArtworkUrl(It.IsAny<Guid>(), It.IsAny<PodcastArtworkSize>()))
+            .Returns((Guid id, PodcastArtworkSize size) => $"http://localhost/api/podcast-artwork/{id}/content?size={size}");
+        Podcasts.Setup(p => p.AudioUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://localhost/api/podcast-episodes/{id}/audio/content");
+        Ctx.Services.AddSingleton(Podcasts.Object);
+        Ctx.Services.AddSingleton(Transfer.Object);
         Ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         Ctx.Services.AddSingleton(State.Object);
         Ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims ?? AllNewsClaims));
@@ -64,6 +69,12 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
     public BunitContext Ctx { get; } = new();
 
     public Mock<INewsApiClient> News { get; } = new();
+
+    /// <summary>The podcast endpoints (issue #556/#559): episodes, audio, artwork and the podcast feed list.</summary>
+    public Mock<IPodcastsApiClient> Podcasts { get; } = new();
+
+    /// <summary>The browser's native download, behind Save to device.</summary>
+    public Mock<INativeTransfer> Transfer { get; } = new();
 
     /// <summary>The news tags, on the contract every tag resource shares.</summary>
     public Mock<ITagsApiClient<ExistingNewsTag>> NewsTags { get; } = new();

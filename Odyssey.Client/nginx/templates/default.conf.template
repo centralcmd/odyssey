@@ -153,6 +153,29 @@ server {
         client_body_timeout 3600s;
     }
 
+    # Podcast audio downloads (issue #556 §5.3 #8): the API stamps an episode as downloaded only after it has written
+    # the whole file, so nginx must not buffer the response — buffered, a slow or aborted client would look complete to
+    # the API, and a 1 GB episode would park on nginx's temp disk. A transfer gets an hour. The route is a GET, so the
+    # body limit is the smallest nginx default worth stating, not a size any request needs.
+    location ~ ^/api/api/podcast-episodes/[^/]+/audio/content$ {
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://api:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_connect_timeout 5s;
+        proxy_buffer_size 16k;
+        proxy_buffers 8 16k;
+        proxy_busy_buffers_size 32k;
+
+        client_max_body_size 1m;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+    }
+
     # Household locations (issue #350 §7.7): no access log. The geocoding search sends an address someone
     # typed — often their own — to a third party, and although that text travels in the request body, not
     # the URL, this keeps every /locations request out of the log as defence in depth.

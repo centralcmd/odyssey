@@ -27,7 +27,8 @@ public class NewsNavigationAndCacheTests
         Assert.Equal(("Internet", "public"), (module.Label, module.Icon));
         Assert.Equal(["News", "Weather", "Reference"], module.Groups.Select(g => g.Label));
         var pages = module.Groups.SelectMany(g => g.Items).ToList();
-        Assert.Equal([("News", "news", "feed", PermissionClaims.NewsRead), ("Feeds", "news-feeds", "rss_feed", PermissionClaims.NewsRead),
+        Assert.Equal([("News", "news", "feed", PermissionClaims.NewsRead), ("Podcasts", "podcasts", "podcasts", PermissionClaims.NewsRead),
+                ("Feeds", "news-feeds", "rss_feed", PermissionClaims.NewsRead),
                 ("Weather points", "weather-points", "wb_sunny", PermissionClaims.WeatherPointsRead),
                 ("News Tags", "news-tags", "local_offer", PermissionClaims.NewsRead)],
             pages.Select(p => (p.Label, p.Href, p.Icon, p.Claim)));
@@ -43,12 +44,12 @@ public class NewsNavigationAndCacheTests
     }
 
     [Fact]
-    public void The_module_is_gone_without_news_read_or_weather_points_read_and_news_read_alone_shows_the_three_news_pages()
+    public void The_module_is_gone_without_news_read_or_weather_points_read_and_news_read_alone_shows_the_four_news_pages()
     {
         Assert.DoesNotContain(NavModel.VisibleModules(Holding()), m => m.Key == "internet");
         Assert.DoesNotContain(NavModel.AllVisiblePages(Holding()), hit => hit.ModuleKey == "internet");
         Assert.Contains(NavModel.VisibleModules(Holding(PermissionClaims.NewsRead)), m => m.Key == "internet");
-        Assert.Equal(3, NavModel.AllVisiblePages(Holding(PermissionClaims.NewsRead)).Count(hit => hit.ModuleKey == "internet"));
+        Assert.Equal(4, NavModel.AllVisiblePages(Holding(PermissionClaims.NewsRead)).Count(hit => hit.ModuleKey == "internet"));
     }
 
     [Fact]

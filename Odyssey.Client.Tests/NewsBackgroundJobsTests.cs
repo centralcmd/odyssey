@@ -66,7 +66,8 @@ public class NewsBackgroundJobsTests : IAsyncLifetime
 
         var bars = cut.FindAll("[role=progressbar]");
         var image = bars[0];
-        Assert.Equal("Image storage", cut.Find($"#{image.GetAttribute("aria-labelledby")}").TextContent.Trim());
+        // Podcast artwork counts inside the image quota (issue #559 §3.6), so the bar measures both.
+        Assert.Equal("Images and artwork", cut.Find($"#{image.GetAttribute("aria-labelledby")}").TextContent.Trim());
         Assert.Equal("0", image.GetAttribute("aria-valuemin"));
         Assert.Equal("100", image.GetAttribute("aria-valuemax"));
         Assert.Equal("20", image.GetAttribute("aria-valuenow"));

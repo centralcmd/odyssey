@@ -24,6 +24,9 @@ public abstract class JobRunDetailBodyBase : ComponentBase
 
     protected string N(int? value) => value is { } v ? BackgroundJobPresentation.Count(v) : Missing;
 
+    /// <summary>A byte total in 1024-steps (<c>870.1 MB</c>), or the claim words when withheld.</summary>
+    protected string Size(long? bytes) => bytes is { } b ? Odyssey.Client.Pages.Storage.StorageHealth.Bytes(b) : Missing;
+
     /// <summary>A worded value that may be absent: "None" when the run had none, the claim words when it was withheld.</summary>
     protected string Words(string? words) => words ?? (CanReadDetail || Area is null ? "None" : Missing);
 

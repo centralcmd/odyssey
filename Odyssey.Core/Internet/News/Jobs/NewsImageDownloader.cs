@@ -58,7 +58,7 @@ public sealed class NewsImageDownloader(
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var imageBytes = await context.NewsStorageTotals.AsNoTracking()
-            .Where(t => t.Id == NewsStorageTotal.SingletonId).Select(t => t.ImageBytes).FirstOrDefaultAsync(cancellationToken);
+            .Where(t => t.Id == NewsStorageTotal.SingletonId).Select(t => t.ImageBytes + t.ArtworkBytes).FirstOrDefaultAsync(cancellationToken);
         var quotaHolds = imageBytes >= settings.ImageStoreQuotaBytes;
 
         var eligible = from image in context.NewsArticleImages.AsNoTracking()
@@ -164,7 +164,7 @@ public sealed class NewsImageDownloader(
         }
 
         var imageBytes = await context.NewsStorageTotals.AsNoTracking()
-            .Where(t => t.Id == NewsStorageTotal.SingletonId).Select(t => t.ImageBytes).FirstOrDefaultAsync(cancellationToken);
+            .Where(t => t.Id == NewsStorageTotal.SingletonId).Select(t => t.ImageBytes + t.ArtworkBytes).FirstOrDefaultAsync(cancellationToken);
         if (imageBytes >= settings.ImageStoreQuotaBytes)
         {
             return await DeferAsync(context, image, NewsImageDeferredReason.StoreQuota, now + NewsJobTiming.StoreQuotaRetry, cancellationToken);

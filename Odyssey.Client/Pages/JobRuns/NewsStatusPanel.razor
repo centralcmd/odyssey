@@ -10,6 +10,10 @@
 
     Each bar is labelled by its visible caption (aria-labelledby), clamps its value to the maximum, and states the
     figure in aria-valuetext and as visible text; "Full" is visible text with a warning glyph, never colour alone.
+
+    Podcasts (issue #559 §3.6): the image bar measures images AND artwork (the artwork counts inside the image quota);
+    an Audio bar measures stored plus graced audio against the audio quota, with "‹size› GiB awaiting removal"
+    beneath while graced bytes remain; an Artwork tile; and the podcasts using the most audio, beside the image list.
 *@
 
 <div class="bgj-news">
@@ -20,12 +24,23 @@
         <OdsInfoTile Icon="rss_feed" Label="Feeds"><Value>@Count(Status.FeedCount)</Value></OdsInfoTile>
         <OdsInfoTile Icon="gpp_maybe" Label="Quarantined feeds"><Value>@Count(Status.QuarantinedFeedCount)</Value></OdsInfoTile>
         <OdsInfoTile Icon="data_usage" Label="Free space"><Value>@(Status.Storage == NewsStorageState.Unconfigured ? "Unknown" : $"{GiB(Status.VolumeFreeBytes)} GiB")</Value></OdsInfoTile>
+        <OdsInfoTile Icon="image" Label="Artwork"><Value>@($"{GiB(Status.ArtworkBytes)} GiB")</Value></OdsInfoTile>
     </OdsInfoTileGrid>
     @if (Status.Storage != NewsStorageState.Unconfigured)
     {
         <div class="bgj-quotas">
-            @QuotaBar("bgj-news-image", "Image storage", Status.ImageBytes, Status.ImageQuotaBytes, Status.ImageQuotaReached)
+            @QuotaBar("bgj-news-image", "Images and artwork", Status.ImageBytes + Status.ArtworkBytes, Status.ImageQuotaBytes, Status.ImageQuotaReached)
             @QuotaBar("bgj-news-text", "Text storage", Status.TextAndSourceBytes, Status.TextAndSourceQuotaBytes, Status.TextAndSourceQuotaReached)
+            @if (Status.AudioQuotaBytes > 0)
+            {
+                <div class="bgj-quota-group">
+                    @QuotaBar("bgj-news-audio", "Audio", Status.AudioBytes + Status.AudioPendingReleaseBytes, Status.AudioQuotaBytes, Status.AudioQuotaReached)
+                    @if (Status.AudioPendingReleaseBytes > 0)
+                    {
+                        <p class="bgj-news-caption">@($"{GiB(Status.AudioPendingReleaseBytes)} GiB awaiting removal")</p>
+                    }
+                </div>
+            }
         </div>
     }
     @if (Status.TopFeedsByImageBytes.Count > 0)
@@ -38,6 +53,21 @@
                     <li @key="feed.FeedId">
                         <a class="bgj-link" href="@($"news-feeds?state=All&reveal={feed.FeedId}")" lang="@(string.IsNullOrWhiteSpace(feed.Language) ? null : feed.Language)"><bdi>@feed.DisplayTitle</bdi></a>
                         <span class="mono">@($"{GiB(feed.ImageBytes)} GiB")</span>
+                    </li>
+                }
+            </ol>
+        </div>
+    }
+    @if (Status.TopFeedsByAudioBytes.Count > 0)
+    {
+        <div class="bgj-news-topwrap">
+            <p class="bgj-news-cap" id="bgj-news-top-audio">Largest podcasts by audio</p>
+            <ol class="bgj-news-top" aria-labelledby="bgj-news-top-audio">
+                @foreach (var feed in Status.TopFeedsByAudioBytes.Take(TopFeeds))
+                {
+                    <li @key="feed.FeedId">
+                        <a class="bgj-link" href="@($"news-feeds?state=All&reveal={feed.FeedId}")" lang="@(string.IsNullOrWhiteSpace(feed.Language) ? null : feed.Language)"><bdi>@feed.DisplayTitle</bdi></a>
+                        <span class="mono">@($"{GiB(feed.AudioBytes)} GiB")</span>
                     </li>
                 }
             </ol>

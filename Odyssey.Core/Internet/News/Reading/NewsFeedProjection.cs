@@ -9,10 +9,19 @@ namespace Odyssey.Core.Internet.News.Reading;
 /// fetch state and the counters are always inserted with the feed; a missing one (possible only on the FK-free
 /// InMemory tier) reads as an unfetched feed with zero counts.
 /// </summary>
-public sealed record NewsFeedRow(NewsFeed Feed, NewsFeedFetchState? State, NewsFeedCounter? Counter, IReadOnlyList<Guid> TagIds)
+public sealed record NewsFeedRow(
+    NewsFeed Feed, NewsFeedFetchState? State, NewsFeedCounter? Counter, IReadOnlyList<Guid> TagIds, NewsFeedPodcastFacts? Podcast = null)
 {
     public NewsFeedHealth Health => NewsFeedProjection.Health(Feed, State);
 }
+
+/// <summary>
+/// A podcast feed's details and stored-audio figures (issue #556 §5.1 #3), read once per projection. The artwork id is
+/// set only when the artwork is stored, so a read never names an image the content endpoint would <c>404</c>.
+/// </summary>
+public sealed record NewsFeedPodcastFacts(
+    PodcastFeedDetails? Details, Guid? StoredArtworkId, int EpisodeCount, int StoredAudioCount, long StoredAudioBytes,
+    int SavedEpisodeCount = 0);
 
 /// <summary>The feed projections: one display-title rule, one health derivation, one management gate.</summary>
 public static class NewsFeedProjection
@@ -80,8 +89,24 @@ public static class NewsFeedProjection
             ArticleCount = Math.Max(0, row.Counter?.ArticleCount ?? 0),
             TagIds = [.. row.TagIds],
             Management = canManage ? Management(feed, state, todayUtc) : null,
+            Kind = feed.Kind,
+            Podcast = feed.Kind == NewsFeedKind.Podcast ? Podcast(feed, row.Podcast) : null,
         };
     }
+
+    private static NewsFeedPodcast Podcast(NewsFeed feed, NewsFeedPodcastFacts? facts) => new()
+    {
+        Author = facts?.Details?.Author,
+        ArtworkId = facts?.StoredArtworkId,
+        Explicit = facts?.Details?.Explicit,
+        AutoDownload = feed.AutoDownload,
+        AutoDeleteEnabled = feed.AutoDeleteEnabled,
+        AutoDeleteAfterDays = feed.AutoDeleteAfterDays,
+        EpisodeCount = facts?.EpisodeCount ?? 0,
+        SavedEpisodeCount = facts?.SavedEpisodeCount ?? 0,
+        StoredAudioCount = facts?.StoredAudioCount ?? 0,
+        StoredAudioBytes = facts?.StoredAudioBytes ?? 0,
+    };
 
     public static NewsFeedCatalogueEntry ToCatalogueEntry(NewsFeedRow row)
     {
@@ -97,6 +122,7 @@ public static class NewsFeedProjection
             UnreadCount = Math.Max(0, row.Counter?.UnreadCount ?? 0),
             ArticleCount = Math.Max(0, row.Counter?.ArticleCount ?? 0),
             State = StateOf(row.Feed),
+            Kind = row.Feed.Kind,
         };
     }
 

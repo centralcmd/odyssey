@@ -1,0 +1,187 @@
+@*
+    PodcastEpisodeCard — one episode on /podcasts (issue #559 §3.2.3–§3.2.5; Odyssey Design System ·
+    ui_kits/web/Podcasts.jsx, PodcastEpisodeCard). An h3 record card using OdsRecordCard's existing parameters:
+
+      • the mark is the show artwork (200 px rendition, lazy, alt=""), falling back to the podcasts glyph; the card's
+        accent is the audio state's tone — the Internet module's convention (an article's mark takes its read state, a
+        feed's its health) — and the PodcastAudioStateChip's text is what says the state;
+      • chips: the audio state · Saved to a device (when the audio ever reached a device: v1's only "played"
+        signal) · Trailer / Bonus · Explicit;
+      • meta: podcast · published · duration · S2 · E14 · Has chapters, every abbreviation aria-hidden and followed by
+        its spoken form;
+      • the ⋯ menu carries navigation only. The audio actions live in the body's Audio panel, beside their status,
+        cooldown and polling lines.
+
+    Open, it follows the fixed order — the action alert → the tiles → the Audio panel (then the detail's loading or
+    error state) → About this episode · Chapters · Show notes · Images, each an h4 SectionDivider, each omitted when
+    empty. Every publisher string is encoded text.
+*@
+
+<OdsRecordCard Id="@CardId(Episode.Id)"
+               Icon="podcasts"
+               Image="@(ArtworkUrl is null ? null : new OdsRecordImage(ArtworkUrl))"
+               Accent="@AccentColor"
+               AccentSoft="@AccentSoftColor"
+               HeadingLevel="3"
+               Name="@Title"
+               NameLang="@Lang"
+               Meta="Meta"
+               Open="Open"
+               OnToggle="OnToggle"
+               Class="pod-card">
+    <Chips>
+        <PodcastAudioStateChip State="Episode.Audio.State" Compact="true" />
+        @if (Episode.LastPlayedAtUtc is not null)
+        {
+            <OdsChip Tone="OdsChipTone.Outline" Icon="phone_iphone" Class="sm">Saved to a device</OdsChip>
+        }
+        @if (EpisodeTypeLabel is { } typeLabel)
+        {
+            <OdsChip Tone="OdsChipTone.Outline" Class="sm">@typeLabel</OdsChip>
+        }
+        @if (Episode.Explicit == true)
+        {
+            <OdsChip Tone="OdsChipTone.Outline" Class="sm">Explicit</OdsChip>
+        }
+    </Chips>
+    <Actions>
+        @if (Menu.Count > 0)
+        {
+            <OdsMenu Items="Menu" AriaLabel="@($"Actions for {Title}")" />
+        }
+    </Actions>
+    <Alert>
+        @if (CardAlert is { } alert)
+        {
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                <span class="nw-alert-line">
+                    <span>@alert.Text</span>
+                    @if (alert.LinkHref is { } href)
+                    {
+                        <a class="nw-inline-link" href="@href">@alert.LinkLabel</a>
+                    }
+                </span>
+            </OdsAlert>
+        }
+    </Alert>
+    <Details>
+        <OdsInfoTileGrid>
+            <OdsInfoTile Icon="event" Label="Published" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@AbsoluteTime(Episode.PublishedAtUtc, "Not given")</Value>
+            </OdsInfoTile>
+            @if (Duration is { } duration)
+            {
+                <OdsInfoTile Icon="timer" Label="Duration" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value><time datetime="@duration.Iso"><span aria-hidden="true">@duration.Visible</span><span class="odc-sr-only">@duration.Spoken</span></time></Value>
+                </OdsInfoTile>
+            }
+            @if (SeasonEpisode is { } se)
+            {
+                <OdsInfoTile Icon="format_list_numbered" Label="Season / Episode" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value><span aria-hidden="true">@se.Visible</span><span class="odc-sr-only">@se.Spoken</span></Value>
+                </OdsInfoTile>
+            }
+            @if (Episode.Audio.State == PodcastAudioState.Stored)
+            {
+                <OdsInfoTile Icon="cloud_done" Label="Size on the server" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value>@StoredSize</Value>
+                </OdsInfoTile>
+            }
+            @* Omitted when null — never "Never": a Guest's download is never recorded. *@
+            @if (Episode.LastPlayedAtUtc is { } saved)
+            {
+                <OdsInfoTile Icon="phone_iphone" Label="Last saved to a device" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value>@AbsoluteTime(saved, string.Empty)</Value>
+                </OdsInfoTile>
+            }
+            @if (Episode.AutoDeleteAtUtc is { } autoDelete)
+            {
+                <OdsInfoTile Icon="auto_delete" Label="Removed automatically on" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value><time datetime="@Iso(autoDelete)">@NewsArticleCard.Day(autoDelete)</time></Value>
+                </OdsInfoTile>
+            }
+        </OdsInfoTileGrid>
+    </Details>
+    <Content>
+        <div class="pod-content">
+            <PodcastAudioActions Episode="Episode" CanRequest="CanRequest" CanDelete="CanDelete" Pending="Pending"
+                                 PollTrouble="PollTrouble" WaitStopped="WaitStopped" Now="Now" TimeZone="TimeZone"
+                                 OnAction="OnAction" OnCheckAgain="OnCheckAgain" />
+            @switch (Detail?.Phase ?? NewsBodyPhase.Loading)
+            {
+                case NewsBodyPhase.Loading:
+                    <div class="nw-detail-loading" aria-busy="true">
+                        @if (Detail?.Slow == true)
+                        {
+                            <span class="odc-sr-only" role="status">Loading episode…</span>
+                        }
+                        <OdsSkeleton Variant="OdsSkeletonVariant.Text" Lines="4" />
+                    </div>
+                    break;
+                case NewsBodyPhase.Error:
+                case NewsBodyPhase.StorageUnavailable:
+                    <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                        <span class="nw-alert-line">
+                            <span>@(Detail!.Phase == NewsBodyPhase.StorageUnavailable ? StorageText : ErrorText)</span>
+                            <OdsButton id="@RetryId(Episode.Id)" Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh"
+                                       OnClick="() => OnRetryDetail.InvokeAsync(Episode)">Retry</OdsButton>
+                        </span>
+                    </OdsAlert>
+                    break;
+            }
+        </div>
+    </Content>
+    <Sections>
+        @if (Detail is { Phase: NewsBodyPhase.Ready, Detail: { } detail })
+        {
+            @if (!string.IsNullOrWhiteSpace(detail.Description))
+            {
+                <div class="pod-section">
+                    <OdsSectionDivider Label="About this episode" HeadingLevel="4" />
+                    <div class="nw-reading-text">
+                        <NewsArticleBody Body="@detail.Description" Lang="@Lang" IdPrefix="@($"pod-about-{Episode.Id:N}")" />
+                    </div>
+                </div>
+            }
+            @if (detail.Chapters.Count > 0)
+            {
+                <div class="pod-section">
+                    <OdsSectionDivider Label="Chapters" Meta="@PodcastFormat.ChapterSource(detail.ChaptersSource)" HeadingLevel="4" />
+                    <PodcastChapterList Chapters="detail.Chapters" Lang="@Lang" />
+                </div>
+            }
+            @if (detail.ShowNotesUnavailable)
+            {
+                <div class="pod-section">
+                    <OdsSectionDivider Label="Show notes" HeadingLevel="4" />
+                    <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None">@ShowNotesUnavailableText</OdsAlert>
+                </div>
+            }
+            else if (detail.ShowNotesOmittedReason is not null)
+            {
+                <div class="pod-section">
+                    <OdsSectionDivider Label="Show notes" HeadingLevel="4" />
+                    <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None">@ShowNotesOmittedText</OdsAlert>
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(detail.ShowNotes))
+            {
+                <div class="pod-section">
+                    <OdsSectionDivider Label="Show notes" HeadingLevel="4" />
+                    <div class="nw-reading-text">
+                        <NewsArticleBody Body="@detail.ShowNotes" Lang="@Lang" IdPrefix="@($"pod-notes-{Episode.Id:N}")" />
+                    </div>
+                </div>
+            }
+            @if (Images.Count > 0)
+            {
+                <div class="pod-section">
+                    <OdsSectionDivider Label="Images" Meta="@Images.Count.ToString(System.Globalization.CultureInfo.CurrentCulture)" HeadingLevel="4" />
+                    <div class="nw-reading-media pod-media">
+                        <OdsImageCarousel Images="Images" Label="@($"Images for “{Title}”")" Lang="@Lang" />
+                    </div>
+                </div>
+            }
+        }
+    </Sections>
+</OdsRecordCard>

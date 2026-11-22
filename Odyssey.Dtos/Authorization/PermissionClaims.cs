@@ -250,4 +250,11 @@ public static class PermissionClaims
     public const string NewsTagsCreate = "news-tags.create";
     public const string NewsTagsUpdate = "news-tags.update";
     public const string NewsTagsDelete = "news-tags.delete";
+
+    // Podcasts (issue #556 §7.2). Queuing a server download spends disk and makes the server contact a third party,
+    // which news.update (read state, tags) never did, so it has its own pair. Admin, Owner and User hold both; Guest
+    // reads and saves stored audio under news.read only. Every holder also holds news.read (AuthorizationPolicyTests),
+    // and every news-feeds.update holder holds both.
+    public const string PodcastAudioCreate = "podcast-audio.create";
+    public const string PodcastAudioDelete = "podcast-audio.delete";
 }

@@ -1,0 +1,30 @@
+@using Odyssey.Dtos.Internet
+@*
+    PodcastAudioStateChip — where an episode's audio stands on the server as one text-labelled chip (Odyssey Design
+    System · components/PodcastAudioStateChip; issue #559 §3.2.5). Registry-driven like NewsFeedHealthChip:
+    OdsPodcastAudioState holds the label, tone and glyph, and the neutral fallback for a member this client has never
+    heard of. The chip says only WHERE the audio is; the reason for a failure or a wait is the card's status line.
+
+    Accessibility: the state lives in the visible text label; the glyph is aria-hidden.
+*@
+
+<span class="@ChipClass">
+    <span class="material-icons" aria-hidden="true">@_meta.Icon</span>
+    @_meta.Label
+</span>
+
+@code {
+    /// <summary>The episode's audio state.</summary>
+    [Parameter] public PodcastAudioState State { get; set; } = PodcastAudioState.None;
+
+    /// <summary>Compact (sm) sizing.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsPodcastAudioStateMeta _meta => OdsPodcastAudioState.Meta(State);
+
+    private string ChipClass =>
+        string.Join(' ', new[] { "odc-chip", _meta.Tone, Compact ? "sm" : null, "odc-podaudio", Class }
+            .Where(c => !string.IsNullOrEmpty(c)));
+}

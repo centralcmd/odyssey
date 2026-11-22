@@ -71,6 +71,70 @@ public sealed record NewsParsedItem
 
     /// <summary>The item was over the source cap, so no source file is kept (§6.1: logged by the caller).</summary>
     public bool SourceTooLarge { get; init; }
+
+    /// <summary>The item's podcast fields (issue #556 §8.3), raw; <c>null</c> when it carries none.</summary>
+    public NewsParsedPodcastItem? Podcast { get; init; }
+}
+
+/// <summary>An audio enclosure (issue #556 §8.3): the URL already sanitised, the declared type and length as the feed said.</summary>
+public sealed record NewsParsedEnclosure(string Url, string? DeclaredType, long? DeclaredLength);
+
+/// <summary>One Podlove Simple Chapter, raw (issue #556 §8.6 normalises it).</summary>
+public sealed record NewsParsedChapter(string? Start, string? Title, string? Href);
+
+/// <summary>
+/// An item's podcast fields, as the feed carried them (issue #556 §8.3). URLs are already sanitised (absolute http(s),
+/// no user info) or null; every other value is raw, so <c>PodcastFields</c> is the one place the §8.3 and §8.6 rules
+/// are applied.
+/// </summary>
+public sealed record NewsParsedPodcastItem
+{
+    /// <summary>The first audio enclosure: RSS <c>enclosure</c>, Atom <c>rel="enclosure"</c> or a JSON Feed audio attachment.</summary>
+    public NewsParsedEnclosure? Audio { get; init; }
+
+    /// <summary><c>itunes:duration</c>: seconds, <c>M:S</c> or <c>H:M:S</c>.</summary>
+    public string? Duration { get; init; }
+
+    /// <summary>JSON Feed <c>duration_in_seconds</c>.</summary>
+    public double? DurationSeconds { get; init; }
+
+    public string? Season { get; init; }
+
+    public string? Episode { get; init; }
+
+    public string? EpisodeType { get; init; }
+
+    public string? Explicit { get; init; }
+
+    /// <summary><c>itunes:image@href</c>, sanitised.</summary>
+    public string? ImageUrl { get; init; }
+
+    public NewsTextField? Subtitle { get; init; }
+
+    public NewsTextField? Summary { get; init; }
+
+    public IReadOnlyList<NewsParsedChapter> Chapters { get; init; } = [];
+
+    /// <summary>The Podcasting 2.0 <c>podcast:chapters@url</c>, sanitised.</summary>
+    public string? ChaptersUrl { get; init; }
+
+    public bool IsEmpty =>
+        Audio is null && Duration is null && DurationSeconds is null && Season is null && Episode is null && EpisodeType is null
+        && Explicit is null && ImageUrl is null && Subtitle is null && Summary is null && Chapters.Count == 0 && ChaptersUrl is null;
+}
+
+/// <summary>A feed's channel-level podcast fields (issue #556 §8.3), raw except the sanitised image URL.</summary>
+public sealed record NewsParsedPodcastFeed
+{
+    public string? Author { get; init; }
+
+    /// <summary><c>itunes:image@href</c>, else RSS <c>image/url</c>, sanitised.</summary>
+    public string? ImageUrl { get; init; }
+
+    public string? Explicit { get; init; }
+
+    /// <summary><c>itunes:type</c>: <c>episodic</c> or <c>serial</c>.</summary>
+    public string? Type { get; init; }
 }
 
 /// <summary>A parsed feed: its channel-level fields (cleaned and clamped) and up to <see cref="NewsFeedParser.MaxItemsKept"/> items.</summary>
@@ -97,6 +161,9 @@ public sealed record NewsParsedFeed
 
     /// <summary>The document had more than <see cref="NewsFeedParser.MaxItemsRead"/> items; the rest were not read.</summary>
     public bool ItemLimitReached { get; init; }
+
+    /// <summary>The channel's podcast fields (issue #556 §8.3); <c>null</c> when it carries none.</summary>
+    public NewsParsedPodcastFeed? Podcast { get; init; }
 }
 
 /// <summary>The parse result. <see cref="Feed"/> is set exactly when <see cref="Outcome"/> is <see cref="NewsFeedParseOutcome.Ok"/>.</summary>
