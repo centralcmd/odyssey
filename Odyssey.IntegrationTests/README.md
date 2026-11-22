@@ -92,15 +92,13 @@ A **migration test** (`MigrationSeam`) that needs the database *before* head cal
 migrated to exactly that migration with every later one pending. Each target gets its own template database
 (`odyssey_template_<16 hex digits of a hash of the migration id>`), built on first use and shared by every
 test asking for the same target; tests asking for different targets build theirs independently. A data
-migration's seam test is temporary (see below). Today the only callers are `MigratedSchemaTemplateTests`,
-which uses an intermediate migration only as a fidelity sample, and the half-applied-Contract drift test in
-`LocationConversionMigrationTests`.
+migration's seam test is temporary (see below). Since the November 2026 rebaseline the chain is one migration
+long, so nothing calls it today; the next data migration's seam test will.
 
 Only tests whose point is that the chain applies from nothing still migrate for real: the **seeder
-test**, `MigrationDriftIntegrationTests`, the drift-guard tests in `TermRenameMigrationTests` and the
-fresh-database tests that drive `MigrationRunner` or the migrations job, which need an empty database a copy
-cannot give them, and the data-migration seam test `RemoveLegacyFileBlobStorageMigrationTests`, which migrates a
-fresh database to the migration before its target (`MigrationSeam.MigrateToAsync`).
+test**, `MigrationDriftIntegrationTests`, `DriftGuardNarrownessTests`, `MigrationBaselineGuardIntegrationTests`,
+`SchemaFingerprintParityTests` and the other fresh-database tests that drive `MigrationRunner` or the migrations
+job, which need an empty database a copy cannot give them.
 
 `MigratedSchemaTemplateTests` compares a copy with a database migrated the slow way, at head and at one
 intermediate migration: every column, index, constraint, foreign key and table option, and every row
@@ -125,8 +123,10 @@ release containing it reaches production. Removing them follows two rules:
 - **Keep the `MigrationRunner` guards** — the drift guard and the pre-migration checks a fresh database still
   passes through — tested from an empty database or a head copy, since every fresh install runs them.
 
-Two rounds of this have happened. The tests for migrations up to `v0.35.0`
-(`20260924202453_AddTextAndDateTimeTermKinds`) went first. The rest went once production had applied
-`v0.48.0`, whose newest migration is `20261119224858_StoreFetchedRatesInPublishedDirectionOnly`. The one data
-migration since, `RemoveLegacyFileBlobStorage`, ships with its seam tests
-(`RemoveLegacyFileBlobStorageMigrationTests`) and they follow the rule above.
+Three rounds of this have happened. The tests for migrations up to `v0.35.0`
+(`20260924202453_AddTextAndDateTimeTermKinds`) went first, and the rest up to `v0.48.0` next. The third was the
+November 2026 rebaseline at `v0.51.0` ([`docs/migration-rebaseline.md`](../docs/migration-rebaseline.md)), which
+folded the whole chain into one baseline and retired every remaining seam test with it: the
+`RemoveLegacyFileBlobStorage`, `UniqueJournalAndTaskTagNames`, `AddPodcastFeeds` and hourly-cap data paths, the
+location conversion and the account-type retirement. Their schema assertions stayed, on a head copy, and
+`SchemaFingerprintParityTests` now pins the rest of the schema the chain built.

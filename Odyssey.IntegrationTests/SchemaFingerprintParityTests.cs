@@ -154,9 +154,15 @@ public class SchemaFingerprintParityTests(MariaDbFixture fixture)
                 new System.Text.RegularExpressions.Regex("^[0-9a-f-]{36}$"));
             var masked = new StringWriter();
             await ParityFingerprint.WriteParityRowsAsync(connection, masked, [guid]);
-            var roles = masked.ToString()[masked.ToString().IndexOf("table `AspNetRoles`", StringComparison.Ordinal)..]
-                .Split('\n').Skip(2).Take(4).ToList();
-            Assert.All(roles, row => Assert.EndsWith("\t" + ParityFingerprint.VolatilePlaceholder, row));
+            // By the header's column NAME, and every row up to the next table, so neither the column order nor the
+            // number of roles is assumed.
+            var block = masked.ToString()[masked.ToString().IndexOf("table `AspNetRoles`", StringComparison.Ordinal)..]
+                .Split('\n').Skip(1).TakeWhile(line => !line.StartsWith("table ", StringComparison.Ordinal) && line.Length > 0).ToList();
+            var stamp = Array.IndexOf(block[0].Split('\t'), "ConcurrencyStamp");
+            Assert.True(stamp >= 0, "AspNetRoles has no ConcurrencyStamp column.");
+            var roles = block.Skip(1).ToList();
+            Assert.NotEmpty(roles);
+            Assert.All(roles, row => Assert.Equal(ParityFingerprint.VolatilePlaceholder, row.Split('\t')[stamp]));
 
             var digits = guid with { Shape = new System.Text.RegularExpressions.Regex("^[0-9]+$") };
             await Assert.ThrowsAsync<InvalidOperationException>(

@@ -341,45 +341,6 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         Assert.Equal(reserved, state.RequestCount);
     }
 
-    [SkippableFact]
-    public async Task The_hourly_cap_migration_reverts_and_reapplies_cleanly()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await MigratedAsync();
-        await using var context = NewContext();
-        context.InstrumentPriceSourceStates.Add(new InstrumentPriceSourceState
-        {
-            SourceKey = "tiingo",
-            RequestHourUtc = Now,
-            RequestHourCount = 3,
-            UpdatedAtUtc = Now,
-        });
-        await context.SaveChangesAsync();
-
-        // The migration just before the hourly cap. Reverting to it also undoes any migration that sorts after this one;
-        // the assertions below look only at what the hourly cap's own Up and Down change.
-        await MigrationSeam.MigrateToAsync(context, "_AddPodcastFeeds");
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{Database}' AND COLUMN_NAME IN ('RequestHourUtc', 'RequestHourCount', 'InstrumentsDeferred')"));
-        // Down drops the new CHECK and restores the counters CHECK without the deferred counter.
-        Assert.Equal(0L, await CheckCountAsync(context, "CK_InstrumentPriceSourceStates_RequestHourCount"));
-        Assert.Equal(1L, await CheckCountAsync(context, "CK_JobRuns_CountersNonNegative"));
-        Assert.Equal(0L, await CheckCountAsync(context, "CK_JobRuns_CountersNonNegative", "InstrumentsDeferred"));
-
-        await context.Database.MigrateAsync();
-        Assert.True(await MigrationSeam.HasRunAsync(context, "_AddInstrumentPriceHourlyCap"));
-        Assert.Equal(1L, await CheckCountAsync(context, "CK_InstrumentPriceSourceStates_RequestHourCount"));
-        Assert.Equal(1L, await CheckCountAsync(context, "CK_JobRuns_CountersNonNegative", "InstrumentsDeferred"));
-        // The kept row reads the column default.
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM `InstrumentPriceSourceStates` WHERE `RequestHourCount` <> 0 OR `RequestHourUtc` IS NOT NULL"));
-    }
-
-    private static Task<long> CheckCountAsync(OdysseyContext context, string name, string? clauseContains = null) =>
-        MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '{Database}' AND CONSTRAINT_NAME = '{name}'"
-            + (clauseContains is null ? string.Empty : $" AND CHECK_CLAUSE LIKE '%{clauseContains}%'"));
-
     private async Task MigratedAsync()
     {
         await fixture.CreateMigratedDatabaseAsync(Database);

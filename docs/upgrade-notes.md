@@ -16,6 +16,22 @@ starts at 0.16.0) is filed under *Before 0.16.0*.
 
 ## Unreleased
 
+### Migration history rebaselined at v0.51.0: upgrade to v0.51.0 first
+
+The 95 migrations up to and including v0.51.0's `20261122104734_AddRecipes` were folded into one baseline that
+keeps that id (issue #581, [`migration-rebaseline.md`](migration-rebaseline.md)).
+
+- **A database on v0.51.0 needs nothing.** Its history already holds the baseline's id, so the migrations job finds
+  nothing to apply and changes nothing. The old history rows stay; they are harmless.
+- **A database older than v0.51.0 is refused** by the migrations job, which names v0.51.0 as the release to upgrade
+  through. Deploy v0.51.0, let its migrations job complete, then deploy this release. Nothing is changed by the
+  refusal.
+- **Before deploying**, take a dump and run `--schema-fingerprint` against each database (the runbook's step 4);
+  after deploying, run it again. Both diffs should be empty.
+- Gone with the old chain: the one-time location conversion, the non-positive exchange-rate pre-check and the
+  property/vehicle account retirement report. All three ran during upgrades that every supported database has
+  already completed.
+
 ### Sign-in broke behind the client nginx at 0.50.0: larger request-header buffers
 
 0.50.0 added 18 permission claims (books, recipes and their tags, podcast audio). The Identity auth cookie carries

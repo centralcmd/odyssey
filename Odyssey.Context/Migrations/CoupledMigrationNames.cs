@@ -4,7 +4,7 @@ namespace Odyssey.Context.Migrations;
 
 /// <summary>
 /// Every migration NAME that code outside the migrations themselves depends on (issue #581 §3). Each one is
-/// matched by suffix (<see cref="Matches"/>) against an id such as <c>20261102001234_UnifyLocationsContract</c>.
+/// matched by suffix (<see cref="Matches"/>) against an id such as <c>20261122104734_AddRecipes</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,25 +20,12 @@ namespace Odyssey.Context.Migrations;
 /// </remarks>
 public static class CoupledMigrationNames
 {
-    /// <summary>The migration the issue #380 location conversion runs after.</summary>
-    public const string UnifyLocationsExpand = "UnifyLocationsExpand";
-
-    /// <summary>The migration that runs after the location conversion and drops the old columns.</summary>
-    public const string UnifyLocationsContract = "UnifyLocationsContract";
-
-    /// <summary>Adds <c>CK_ExchangeRates_RatePositive</c>; the runner refuses it over a non-positive rate.</summary>
-    public const string AddExchangeRatePositiveCheck = "AddExchangeRatePositiveCheck";
-
-    /// <summary>The issue #218 data migration whose pending effect the migrations job reports first.</summary>
-    public const string RetirePropertyAndVehicleAccountTypes = "RetirePropertyAndVehicleAccountTypes";
-
-    public static IReadOnlyList<string> All { get; } =
-    [
-        UnifyLocationsExpand,
-        UnifyLocationsContract,
-        AddExchangeRatePositiveCheck,
-        RetirePropertyAndVehicleAccountTypes,
-    ];
+    /// <summary>
+    /// Empty since the November 2026 rebaseline: every coupling named a migration it folded away, and the code behind
+    /// each (the location-conversion staging, the non-positive-rate refusal, the account-type retirement report) went
+    /// with it.
+    /// </summary>
+    public static IReadOnlyList<string> All { get; } = [];
 
     /// <summary>Whether <paramref name="migrationId"/> is the migration named <paramref name="name"/>.</summary>
     public static bool Matches(string migrationId, string name) =>

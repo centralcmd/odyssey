@@ -70,7 +70,7 @@ public class MigrationBaselineGuardIntegrationTests(MariaDbFixture fixture)
                 Assert.Equal([before.Max(StringComparer.Ordinal)!], shipped);
                 Assert.Empty(await context.Database.GetPendingMigrationsAsync());
 
-                await MigrationRunner.MigrateAsync(context, null, new MigrationBaseline(shipped[0], "v0.0.1"), CancellationToken.None);
+                await MigrationRunner.MigrateAsync(context, new MigrationBaseline(shipped[0], "v0.0.1"), CancellationToken.None);
             }
 
             Assert.Equal(before, await HistoryAsync());
@@ -91,13 +91,16 @@ public class MigrationBaselineGuardIntegrationTests(MariaDbFixture fixture)
         try
         {
             var head = (await HistoryAsync()).Max(StringComparer.Ordinal)!;
-            await ExecuteAsync($"DELETE FROM `__EFMigrationsHistory` WHERE MigrationId = '{head}'");
+            // A database of the old chain stopped one migration short holds that chain's earlier rows, not the cut's.
+            // Since the rebaseline the chain is one migration long, so the earlier row is a stand-in.
+            await ExecuteAsync($"DELETE FROM `__EFMigrationsHistory` WHERE MigrationId = '{head}'; " +
+                "INSERT INTO `__EFMigrationsHistory` (MigrationId, ProductVersion) VALUES ('20200101000000_OneBeforeTheCut', '9.0.0')");
             var before = await HistoryAsync();
 
             await using (var context = SquashedContext())
             {
                 var error = await Assert.ThrowsAsync<MigrationBaselineException>(() =>
-                    MigrationRunner.MigrateAsync(context, null, new MigrationBaseline(head, "v0.0.1"), CancellationToken.None));
+                    MigrationRunner.MigrateAsync(context, new MigrationBaseline(head, "v0.0.1"), CancellationToken.None));
 
                 Assert.Equal(MigrationBaselineGap.BelowBaseline, error.Gap);
                 Assert.Contains("Upgrade to v0.0.1 first", error.Message);
@@ -125,7 +128,7 @@ public class MigrationBaselineGuardIntegrationTests(MariaDbFixture fixture)
             var baseline = MigrationBaseline.Current with { BridgeRelease = bridge };
 
             var error = await Assert.ThrowsAsync<MigrationBaselineException>(() =>
-                MigrationRunner.MigrateAsync(context, null, baseline, CancellationToken.None));
+                MigrationRunner.MigrateAsync(context, baseline, CancellationToken.None));
 
             Assert.Equal(MigrationBaselineGap.BelowBaseline, error.Gap);
             Assert.Equal("20200101000000_Ancient", error.NewestAppliedId);

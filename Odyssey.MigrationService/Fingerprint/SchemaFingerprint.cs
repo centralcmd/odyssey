@@ -49,7 +49,7 @@ internal static partial class SchemaFingerprint
         foreach (var table in tables.Where(t => t != HistoryTable))
         {
             output.Write($"table {SchemaCapture.Quote(table)}\n");
-            output.Write(NormalizeCreateTable(await SchemaCapture.ShowCreateTableAsync(connection, table, ct)));
+            output.Write(NormalizeCreateTable(await SchemaCapture.ShowCreateTableAsync(connection, table, ct), charset, collation));
             output.Write("\n");
         }
 
@@ -71,12 +71,49 @@ internal static partial class SchemaFingerprint
 
     /// <summary>
     /// <c>SHOW CREATE TABLE</c> output with only what varies between equal schemas removed: the
-    /// <c>AUTO_INCREMENT=n</c> table option, and <c>\r\n</c>. Engine, charset, collation, <c>ROW_FORMAT</c> and
-    /// default rendering are kept, and nothing inside a definition is collapsed, so a string literal in a
-    /// <c>CHECK</c> or a default survives unchanged.
+    /// <c>AUTO_INCREMENT=n</c> table option, <c>\r\n</c>, and the ORDER of the column and key lines, which are sorted
+    /// (columns first, then keys and constraints). Each line itself is kept verbatim — engine, charset, collation,
+    /// <c>ROW_FORMAT</c>, defaults and every literal survive unchanged.
     /// </summary>
-    public static string NormalizeCreateTable(string createTable) =>
-        AutoIncrementOption().Replace(createTable.Replace("\r\n", "\n", StringComparison.Ordinal), "") + "\n";
+    /// <remarks>
+    /// Order is discounted because a rebaseline cannot reproduce it: a column a later migration added was appended
+    /// to its table, while the baseline creates every column in model order (the November 2026 rebaseline moved 40
+    /// tables' columns that way, and nothing else about them). EF addresses columns and indexes by name, so the
+    /// order is not part of what the application depends on.
+    /// </remarks>
+    /// <param name="databaseCharset">The database's default charset; with <paramref name="databaseCollation"/>, a table
+    /// option equal to both is written as <see cref="InheritedDefaults"/>.</param>
+    /// <param name="databaseCollation">The database's default collation.</param>
+    public static string NormalizeCreateTable(string createTable, string? databaseCharset = null, string? databaseCollation = null)
+    {
+        var text = AutoIncrementOption().Replace(createTable.Replace("\r\n", "\n", StringComparison.Ordinal), "");
+        if (databaseCharset is not null && databaseCollation is not null)
+        {
+            // A table that inherited the database's defaults says so, rather than naming them: the defaults are the
+            // server's configuration (MariaDB 11.4 ships utf8mb4_uca1400_ai_ci, a database created with an explicit
+            // collation differs), not something a migration chose. A table whose options differ keeps them.
+            text = text.Replace(
+                $" DEFAULT CHARSET={databaseCharset} COLLATE={databaseCollation}\n", $" {InheritedDefaults}\n", StringComparison.Ordinal);
+            if (text.EndsWith($" DEFAULT CHARSET={databaseCharset} COLLATE={databaseCollation}", StringComparison.Ordinal))
+            {
+                text = text[..^$" DEFAULT CHARSET={databaseCharset} COLLATE={databaseCollation}".Length] + $" {InheritedDefaults}";
+            }
+        }
+
+        var lines = text.Split('\n');
+        if (lines.Length < 3)
+        {
+            return string.Join('\n', lines) + "\n";
+        }
+
+        var body = lines[1..^1].Select(line => line.TrimEnd(',')).ToList();
+        var columns = body.Where(line => line.StartsWith("  `", StringComparison.Ordinal)).Order(StringComparer.Ordinal);
+        var keys = body.Where(line => !line.StartsWith("  `", StringComparison.Ordinal)).Order(StringComparer.Ordinal);
+        return lines[0] + "\n" + string.Join(",\n", columns.Concat(keys)) + "\n" + lines[^1] + "\n";
+    }
+
+    /// <summary>Written in place of a table's charset and collation options when they equal the database's defaults.</summary>
+    public const string InheritedDefaults = "DEFAULT CHARSET=<database default> COLLATE=<database default>";
 
     /// <summary>The comparable part of a fingerprint: every line that is not a header line.</summary>
     public static string WithoutHeader(string fingerprint) =>
@@ -155,7 +192,9 @@ internal static partial class SchemaFingerprint
             return;
         }
 
-        var selected = seeded.Class == SeededTableClass.Rows ? tableColumns.Select(c => c.Column).ToList() : keyColumns;
+        var selected = seeded.Class == SeededTableClass.Rows
+            ? tableColumns.Select(c => c.Column).Order(StringComparer.Ordinal).ToList()
+            : keyColumns;
         output.Write(string.Join('\t', selected) + "\n");
 
         await using var command = connection.CreateCommand();
