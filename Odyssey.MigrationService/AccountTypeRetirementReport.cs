@@ -34,7 +34,7 @@ public sealed record AccountTypeRetirementReport(
     long CurrencyMismatchedEstimates)
 {
     /// <summary>The migration's name suffix; matched the way <c>MigrationSeam</c> matches it.</summary>
-    public const string MigrationName = "_RetirePropertyAndVehicleAccountTypes";
+    public const string MigrationName = "_" + Odyssey.Context.Migrations.CoupledMigrationNames.RetirePropertyAndVehicleAccountTypes;
 
     private const string Retired = "a.`AccountType` IN (6, 7)";
 

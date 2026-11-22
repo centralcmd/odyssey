@@ -58,12 +58,22 @@ merge of the application and domain contexts, for example, a database from befor
 
 neither of which exists any more, while the current `InitialCreate` is pending.
 
-Read that tell yourself rather than expecting the guard to. It could now be automated — there is one
-context and one set of ids, so an unrecognised row really is evidence of a superseded set — but it is
-not, and the guard deliberately reports only the object collision it can prove. (It *could not* be
-automated before: two contexts shared this table, so each one's rows looked unknown to the other and
-the check would have fired on every healthy database.) Making the guard name this cause specifically is
-a worthwhile follow-up with its own message and test; until then, read the ids.
+Since issue #581 the job reads that tell for you, in two places:
+
+- **The cut-point guard runs first.** A history that lacks this build's baseline migration
+  (`MigrationBaseline.Current`, today `20260829095318_InitialCreate`) never reaches the drift guard: the
+  job stops with `MigrationBaselineException`. If the history's newest id is *earlier* than the
+  baseline, the message names the release to upgrade through (or says the database must be recreated,
+  when no bridge exists); if it is *later*, the message says the database was built by a different
+  migration set. The example above is the second case. Before following "upgrade to the bridge
+  release", check that the printed newest id really belongs to that release's chain — the guard decides
+  by id order alone.
+- **The drift guard names a superseded set when it can prove one.** When it fires and the history holds
+  ids this build does not ship that are **later than the baseline**, the message lists them and names
+  the superseded set as the cause. Unknown ids *earlier* than the baseline never count: they are the
+  retired ids a rebaseline leaves on every healthy database (see
+  [`migration-rebaseline.md`](migration-rebaseline.md)), and counting them would report an ordinary
+  interruption as a superseded set. Without such ids the message still names both causes.
 
 Note that a squash is **not** repaired by re-running, and is not repaired by hand-editing the history
 row either. The old schema is not the new schema — after the context merges it is missing every

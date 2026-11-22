@@ -1496,9 +1496,9 @@ dotnet ef migrations add <MigrationName> \
 ```
 
 **IMPORTANT:**
-There is one `DbContext` and one migrations folder, `Odyssey.Context/Migrations/`. It has a README.md
-with details on creating and applying migrations. ALWAYS use dotnet tools for creating and applying
-migrations.
+There is one `DbContext` and one migrations folder, `Odyssey.Context/Migrations/`. (There is no README in
+that folder; the rebaseline procedure is [`docs/migration-rebaseline.md`](docs/migration-rebaseline.md).)
+ALWAYS use dotnet tools for creating and applying migrations.
 
 Scaffolding resolves the provider through `Odyssey.Api`, and there is no `IDesignTimeDbContextFactory`,
 so `UseInMemoryDatabase` must be false, the environment must not be `Testing`, and
@@ -1512,12 +1512,30 @@ ids no longer applies — but note the consequence for diagnosis: an id in that 
 does not ship is now unambiguous evidence of a superseded set, where before it was the normal sight of
 the other context's rows.
 
-**Squashing is over: a production database with real data has existed since `v0.35.0` (September
-2026).** Every schema change from here on is an additive migration, even when a squash would be
-tidier, and `20260829095318_InitialCreate` stays the permanent root of the history. What had licensed
-the earlier squashes was that no deployed database held data anyone needed to keep — never the
-absence of releases, which have existed since `v0.8.0`. The first real deployment retired that
-licence, as intended.
+**Ad-hoc squashing is over; a GUARDED rebaseline replaces it** (issue #581). A production database
+with real data has existed since `v0.35.0` (September 2026), and the earlier squashes left no upgrade
+path, which is no longer acceptable. Between rebaselines every schema change is an additive migration,
+even when a squash would be tidier. A rebaseline is the one exception, and only through
+[`docs/migration-rebaseline.md`](docs/migration-rebaseline.md): the chain collapses into one migration
+that **keeps the id of the newest migration it replaces**, so a database at the cut sees it as applied
+and needs no SQL. Five pieces make that safe, and none may be skipped or weakened to land one:
+
+- **`MigrationBaseline.Current`** (`Odyssey.Context/Migrations/`) names the earliest id this build ships
+  and the bridge release a database below it upgrades through. `MigrationRunner` refuses a non-empty
+  database whose history lacks the baseline id **before anything runs**, and never writes history.
+- **The committed fingerprint** (`Odyssey.Context/Migrations/Baseline/<baseline-id>.fingerprint.txt`) is
+  what an empty database migrated to the baseline id must produce — schema and every row.
+  `SchemaFingerprintParityTests` compares it; a failure is a defect in the baseline, **never** a reason to
+  regenerate the file, which is a deliberate runbook step on the reference tree.
+- **`Odyssey.MigrationService --schema-fingerprint`** prints the operator sections (schema, `Roles` rows,
+  seed keys) against a live database, read-only, so each production database is diffed before and after.
+  It reads rows only through `SchemaFingerprint.ReadSeededAsync` and the `SeededTables` classification
+  (`Currencies` is excluded: administrators edit it); the all-rows writer exists only in the test tier.
+- **`CoupledMigrationNames`** is the only place code may name a migration. Every entry must resolve to one
+  non-baseline migration, and a lint fails on a migration name written as a literal in
+  `Odyssey.MigrationService` or `Odyssey.Core`.
+- **The same-id rule is tested, not assumed** (`MigrationBaselineGuardIntegrationTests`): a database at
+  head opened through a one-migration assembly carrying the head id has nothing pending.
 
 Real data also changes what a **data** migration costs. `Down()` restores schema, not rows, so a
 migration that moves or rewrites data (`RetirePropertyAndVehicleAccountTypes` is the first since

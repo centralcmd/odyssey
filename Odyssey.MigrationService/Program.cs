@@ -8,6 +8,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Options;
+using Odyssey.MigrationService.Fingerprint;
+
+// Before the host is built (issue #581 §5): the fingerprint mode must start no hosted service, migration or
+// seeder, and must keep stdout free of log lines.
+if (SchemaFingerprintCommand.IsRequested(args))
+{
+    return await SchemaFingerprintCommand.RunAsync(
+        SchemaFingerprintCommand.BuildConfiguration(args), Console.Out, Console.Error);
+}
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -83,3 +92,4 @@ builder.Services.Configure<HostOptions>(options =>
 
 var host = builder.Build();
 host.Run();
+return 0;

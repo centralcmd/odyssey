@@ -9,10 +9,10 @@ namespace Odyssey.Core.Locations.Conversion;
 public interface ILocationConversion
 {
     /// <summary>The migration the conversion runs after (step 1).</summary>
-    const string ExpandMigration = "UnifyLocationsExpand";
+    const string ExpandMigration = Odyssey.Context.Migrations.CoupledMigrationNames.UnifyLocationsExpand;
 
     /// <summary>The migration that runs after the conversion and drops the old columns (step 3).</summary>
-    const string ContractMigration = "UnifyLocationsContract";
+    const string ContractMigration = Odyssey.Context.Migrations.CoupledMigrationNames.UnifyLocationsContract;
 
     Task<LocationConversionResult> ConvertAsync(CancellationToken cancellationToken);
 }

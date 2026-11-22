@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using Odyssey.Context.Migrations;
 using Odyssey.Core.Locations.Conversion;
 
 namespace Odyssey.MigrationService;
@@ -15,7 +16,7 @@ namespace Odyssey.MigrationService;
 public static class MigrationRunner
 {
     /// <summary>The migration that adds <c>CK_ExchangeRates_RatePositive</c> (issue #472).</summary>
-    internal const string RatePositiveMigration = "AddExchangeRatePositiveCheck";
+    internal const string RatePositiveMigration = CoupledMigrationNames.AddExchangeRatePositiveCheck;
 
     /// <summary>The most row ids a <see cref="NonPositiveExchangeRateException"/> lists.</summary>
     internal const int NonPositiveRateIdLimit = 20;
@@ -58,8 +59,18 @@ public static class MigrationRunner
     /// transaction, so it is restart-safe and may be cancelled between batches.
     /// </para>
     /// </remarks>
-    public static async Task MigrateAsync(
-        DbContext dbContext, ILocationConversion? conversion, CancellationToken cancellationToken)
+    public static Task MigrateAsync(
+        DbContext dbContext, ILocationConversion? conversion, CancellationToken cancellationToken) =>
+        MigrateAsync(dbContext, conversion, MigrationBaseline.Current, cancellationToken);
+
+    /// <summary>
+    /// As <see cref="MigrateAsync(DbContext, ILocationConversion?, CancellationToken)"/>, against an explicit
+    /// <paramref name="baseline"/>. Production passes <see cref="MigrationBaseline.Current"/>; only tests pass
+    /// another (issue #581 AC 21).
+    /// </summary>
+    internal static async Task MigrateAsync(
+        DbContext dbContext, ILocationConversion? conversion, MigrationBaseline baseline,
+        CancellationToken cancellationToken)
     {
         // The non-relational short-circuit stays first: MigrateAsync throws EF's own, clear error for a
         // non-relational provider, which nothing below — a pending-migrations read included — would.
@@ -69,6 +80,10 @@ public static class MigrationRunner
             return;
         }
 
+        // First of all, before the pending read and before any stage (issue #581 §3): a database below the
+        // baseline must not reach a guard or a migration that assumes the chain it was built by.
+        await GuardAgainstBaselineGapAsync(dbContext, baseline, cancellationToken);
+
         var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
         var plan = PlanStages(pending, conversion is not null);
 
@@ -77,7 +92,7 @@ public static class MigrationRunner
             if (plan.ExpandStage is { } expandStage)
             {
                 var expandId = expandStage[^1];
-                await RunStageAsync(dbContext, expandStage, cancellationToken,
+                await RunStageAsync(dbContext, expandStage, baseline, cancellationToken,
                     () => dbContext.Database.MigrateAsync(expandId, CancellationToken.None));
             }
 
@@ -85,18 +100,47 @@ public static class MigrationRunner
             pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
         }
 
-        await RunStageAsync(dbContext, pending, cancellationToken,
+        await RunStageAsync(dbContext, pending, baseline, cancellationToken,
             () => dbContext.Database.MigrateAsync(CancellationToken.None));
+    }
+
+    /// <summary>
+    /// Refuses a non-empty database whose history lacks <see cref="MigrationBaseline.BaselineMigrationId"/>
+    /// (issue #581). Reports and never repairs: it writes no history row, because a database lacking the
+    /// baseline id is by definition not at the cut, and recording it would claim a schema it does not have.
+    /// </summary>
+    /// <remarks>
+    /// An empty history — the table absent included — is a fresh install and passes; the drift guard still
+    /// catches an empty history over existing tables. Ids compare as ordinal strings, which orders EF's
+    /// <c>yyyyMMddHHmmss_</c> prefix chronologically.
+    /// </remarks>
+    internal static async Task GuardAgainstBaselineGapAsync(
+        DbContext dbContext, MigrationBaseline baseline, CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsRelational())
+        {
+            return;
+        }
+
+        var applied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
+        if (applied.Count == 0 || applied.Contains(baseline.BaselineMigrationId, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        var newest = applied.Max(StringComparer.Ordinal)!;
+        throw new MigrationBaselineException(dbContext.GetType().Name, baseline, newest);
     }
 
     /// <summary>One stage: the drift guard over <paramref name="stage"/>, then <paramref name="migrate"/>.</summary>
     private static async Task RunStageAsync(
-        DbContext dbContext, IReadOnlyCollection<string> stage, CancellationToken cancellationToken, Func<Task> migrate)
+        DbContext dbContext, IReadOnlyCollection<string> stage, MigrationBaseline baseline,
+        CancellationToken cancellationToken, Func<Task> migrate)
     {
         var strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
-            await GuardAgainstDriftAsync(dbContext, cancellationToken, stage);
+            await GuardAgainstDriftAsync(dbContext, cancellationToken, stage, baseline);
 
             // After the drift guard, so a drifted database is reported as drift first.
             await GuardAgainstNonPositiveRatesAsync(dbContext, stage, cancellationToken);
@@ -197,8 +241,7 @@ public static class MigrationRunner
         }
     }
 
-    private static bool IsNamed(string migrationId, string name) =>
-        migrationId.EndsWith("_" + name, StringComparison.Ordinal);
+    private static bool IsNamed(string migrationId, string name) => CoupledMigrationNames.Matches(migrationId, name);
 
     /// <summary>
     /// Fails fast when a pending migration would recreate an object the database already has, rather
@@ -207,8 +250,14 @@ public static class MigrationRunner
     /// <param name="stage">
     /// The pending migrations of the stage about to run; null for every pending migration.
     /// </param>
+    /// <param name="baseline">
+    /// Decides which unknown history ids name a superseded set: only those later than the baseline. Ids earlier
+    /// than it are the retired ids a rebaseline leaves behind on every healthy database (issue #581 §9).
+    /// Defaults to <see cref="MigrationBaseline.Current"/>.
+    /// </param>
     internal static async Task GuardAgainstDriftAsync(
-        DbContext dbContext, CancellationToken cancellationToken, IReadOnlyCollection<string>? stage = null)
+        DbContext dbContext, CancellationToken cancellationToken, IReadOnlyCollection<string>? stage = null,
+        MigrationBaseline? baseline = null)
     {
         // The check reads information_schema, so it only means anything against a real engine. This is
         // NOT support for the in-memory provider: MigrateAsync below is relational-only and throws
@@ -229,8 +278,21 @@ public static class MigrationRunner
 
         if (MigrationDriftDetector.Detect(pending, existing) is { } drift)
         {
-            throw new MigrationDriftException(dbContext.GetType().Name, drift);
+            var superseded = await ReadSupersededIdsAsync(dbContext, baseline ?? MigrationBaseline.Current, cancellationToken);
+            throw new MigrationDriftException(dbContext.GetType().Name, drift, superseded);
         }
+    }
+
+    /// <summary>History ids this build does not ship that are later than the baseline, in order.</summary>
+    internal static async Task<IReadOnlyList<string>> ReadSupersededIdsAsync(
+        DbContext dbContext, MigrationBaseline baseline, CancellationToken cancellationToken)
+    {
+        var known = dbContext.GetService<IMigrationsAssembly>().Migrations.Keys.ToHashSet(StringComparer.Ordinal);
+        return (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken))
+            .Where(id => !known.Contains(id)
+                && string.CompareOrdinal(id, baseline.BaselineMigrationId) > 0)
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>

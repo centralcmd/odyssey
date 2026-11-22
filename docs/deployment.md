@@ -1152,9 +1152,13 @@ includes migrations.
 
 The migration history was squashed to a single `InitialCreate` more than once during development,
 most recently when the identity context was merged into `OdysseyContext`; a database built before
-`20260829095318_InitialCreate` has no upgrade path and must be recreated. **That is over.** A
-production database with real data has run since `v0.35.0`, so from then on every schema change is an
-additive migration and the history is never squashed again.
+`20260829095318_InitialCreate` has no upgrade path and must be recreated. **Those ad-hoc squashes are
+over.** A production database with real data has run since `v0.35.0`, so every schema change is an
+additive migration, except for a **guarded rebaseline** done by the procedure in
+[`migration-rebaseline.md`](migration-rebaseline.md), which existing databases cross with no manual
+SQL. A database below a rebaseline's cut is refused by the migrations job with the release to upgrade
+through first — so when a release note says "databases below `vX` must upgrade to `vX` first", do that
+upgrade before deploying the newer image.
 
 **A data migration is restored from backup, not rolled back.** `Down()` reverses schema at most; a
 migration that moves or rewrites rows (for example `RetirePropertyAndVehicleAccountTypes`, which moves
