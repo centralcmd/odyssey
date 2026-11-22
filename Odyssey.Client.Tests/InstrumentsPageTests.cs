@@ -38,21 +38,21 @@ public sealed class InstrumentsPageTests
     internal static ExistingInstrument Instrument(
         string symbol, int? priceCount = 0, bool archived = false, bool locked = false, Guid? id = null,
         InstrumentType type = InstrumentType.Stock) => new()
-    {
-        InstrumentId = id ?? Guid.NewGuid(),
-        Symbol = symbol,
-        MicCode = type == InstrumentType.Fund ? null : "XOSL",
-        Isin = "NO0010096985",
-        Name = symbol + " name",
-        Type = type,
-        CurrencyCode = "NOK",
-        ShowOnDashboard = true,
-        Archived = archived ? new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc) : null,
-        PriceCount = priceCount,
-        LatestClose = priceCount > 0 ? 284.6m : null,
-        LatestTradingDate = priceCount > 0 ? new DateOnly(2026, 11, 6) : null,
-        IdentityLocked = locked || priceCount > 0,
-    };
+        {
+            InstrumentId = id ?? Guid.NewGuid(),
+            Symbol = symbol,
+            MicCode = type == InstrumentType.Fund ? null : "XOSL",
+            Isin = "NO0010096985",
+            Name = symbol + " name",
+            Type = type,
+            CurrencyCode = "NOK",
+            ShowOnDashboard = true,
+            Archived = archived ? new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc) : null,
+            PriceCount = priceCount,
+            LatestClose = priceCount > 0 ? 284.6m : null,
+            LatestTradingDate = priceCount > 0 ? new DateOnly(2026, 11, 6) : null,
+            IdentityLocked = locked || priceCount > 0,
+        };
 
     private static ApiResult<T> Ok<T>(T value) => ApiResult<T>.Success(value, HttpStatusCode.OK);
 
@@ -393,7 +393,11 @@ public sealed class InstrumentsPageTests
 
         var option = InstrumentVisuals.OptionFor(new ExistingInstrument
         {
-            InstrumentId = Guid.NewGuid(), Symbol = "VWCE", Name = "All-World", Type = InstrumentType.Etf, CurrencyCode = "EUR",
+            InstrumentId = Guid.NewGuid(),
+            Symbol = "VWCE",
+            Name = "All-World",
+            Type = InstrumentType.Etf,
+            CurrencyCode = "EUR",
         });
         Assert.Equal("VWCE · All-World", option.Label);
         Assert.Equal(named[1].Icon, option.Icon);

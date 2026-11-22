@@ -39,7 +39,9 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
     /// </summary>
     internal IReadOnlyList<string> Requested
     {
-        get { lock (gate)
+        get
+        {
+            lock (gate)
             {
                 return [.. requested];
             }
@@ -49,7 +51,9 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
     /// <summary>Test seam: the polite messages waiting, oldest first (a held count is not yet one).</summary>
     internal IReadOnlyList<string> Pending
     {
-        get { lock (gate)
+        get
+        {
+            lock (gate)
             {
                 return [.. queue.Select(m => m.Text)];
             }

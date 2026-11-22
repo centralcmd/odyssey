@@ -178,8 +178,14 @@ public static class WeatherVisuals
 
     private static readonly Dictionary<string, string> CompassWords = new(StringComparer.Ordinal)
     {
-        ["N"] = "north", ["NE"] = "north-east", ["E"] = "east", ["SE"] = "south-east",
-        ["S"] = "south", ["SW"] = "south-west", ["W"] = "west", ["NW"] = "north-west",
+        ["N"] = "north",
+        ["NE"] = "north-east",
+        ["E"] = "east",
+        ["SE"] = "south-east",
+        ["S"] = "south",
+        ["SW"] = "south-west",
+        ["W"] = "west",
+        ["NW"] = "north-west",
     };
 
     /// <summary>The compass point a wind blows FROM, or null when unknown.</summary>

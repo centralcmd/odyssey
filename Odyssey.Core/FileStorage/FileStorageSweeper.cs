@@ -815,7 +815,11 @@ public sealed class FileStorageSweeper(
             {
                 var added = new FileStorageOrphanSighting
                 {
-                    Id = Guid.NewGuid(), VolumeId = volume.Id, RelativePath = relative, FirstSeenAtUtc = now, LastSeenPass = pass,
+                    Id = Guid.NewGuid(),
+                    VolumeId = volume.Id,
+                    RelativePath = relative,
+                    FirstSeenAtUtc = now,
+                    LastSeenPass = pass,
                 };
                 context.FileStorageOrphanSightings.Add(added);
                 sightingByPath[relative] = added;

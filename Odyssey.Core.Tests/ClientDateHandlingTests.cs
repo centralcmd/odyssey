@@ -139,12 +139,17 @@ public class ClientDateHandlingTests
         var original = new DateTime(2021, 7, 4, 9, 0, 0, DateTimeKind.Utc);
         var created = await service.Create(new NewTransaction
         {
-            Description = "Coffee", Amount = 3, AccountId = accountId, TimeStamp = original,
+            Description = "Coffee",
+            Amount = 3,
+            AccountId = accountId,
+            TimeStamp = original,
         });
 
         var updated = await service.Update(created.TransactionId, new NewTransaction
         {
-            Description = "Coffee (edited)", Amount = 4, AccountId = accountId,
+            Description = "Coffee (edited)",
+            Amount = 4,
+            AccountId = accountId,
         });
 
         Assert.NotNull(updated);
@@ -158,13 +163,17 @@ public class ClientDateHandlingTests
         var (service, accountId) = await NewTransactionServiceAsync(context);
         var created = await service.Create(new NewTransaction
         {
-            Description = "Coffee", Amount = 3, AccountId = accountId,
+            Description = "Coffee",
+            Amount = 3,
+            AccountId = accountId,
             TimeStamp = new DateTime(2021, 7, 4, 9, 0, 0, DateTimeKind.Utc),
         });
 
         var updated = await service.Update(created.TransactionId, new NewTransaction
         {
-            Description = "Coffee", Amount = 3, AccountId = accountId,
+            Description = "Coffee",
+            Amount = 3,
+            AccountId = accountId,
             TimeStamp = new DateTime(2022, 1, 2, 3, 4, 5, DateTimeKind.Unspecified),
         });
 
@@ -241,7 +250,10 @@ public class ClientDateHandlingTests
 
         var request = new NewCalendarEvent
         {
-            CalendarId = calendar.CalendarId, Title = "Dentist", StartDateTime = start, EndDateTime = end,
+            CalendarId = calendar.CalendarId,
+            Title = "Dentist",
+            StartDateTime = start,
+            EndDateTime = end,
         };
         var created = await service.Create(request, "user-id", claims: LocationClaims.Trusted);
 

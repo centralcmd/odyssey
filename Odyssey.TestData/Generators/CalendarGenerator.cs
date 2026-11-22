@@ -79,19 +79,19 @@ public static class CalendarGenerator
     private static CalendarEvent BuildEvent(
         string key, string title, string? description, string? location,
         Guid calendarId, DateTime start, DateTime end, bool isAllDay, string userId) => new()
-    {
-        CalendarEventId = DeterministicGuid.From($"calendar-event::{key}"),
-        CalendarId = calendarId,
-        Title = title,
-        Description = description,
-        Location = location,
-        StartDateTime = start,
-        EndDateTime = end,
-        IsAllDay = isAllDay,
-        CreatedByUserId = userId,
-        CreatedAt = start,
-        UpdatedAt = start,
-    };
+        {
+            CalendarEventId = DeterministicGuid.From($"calendar-event::{key}"),
+            CalendarId = calendarId,
+            Title = title,
+            Description = description,
+            Location = location,
+            StartDateTime = start,
+            EndDateTime = end,
+            IsAllDay = isAllDay,
+            CreatedByUserId = userId,
+            CreatedAt = start,
+            UpdatedAt = start,
+        };
 
     // Weekly, every Monday and Thursday at 10:00-10:30 UTC, starting Monday 2026-06-01, 10 occurrences —
     // hand-enumerated so the pre-materialized CalendarEvent rows are byte-identical to what

@@ -107,7 +107,11 @@ public sealed class NewsOpmlServiceTests : IDisposable
         var id = Guid.NewGuid();
         context.NewsTags.Add(new NewsTag
         {
-            NewsTagId = id, Name = name, NameKey = NewsTagService.NameKey(name), CreatedAtUtc = Now, UpdatedAtUtc = Now,
+            NewsTagId = id,
+            Name = name,
+            NameKey = NewsTagService.NameKey(name),
+            CreatedAtUtc = Now,
+            UpdatedAtUtc = Now,
             ArchivedAtUtc = archived ? Now : null,
         });
         await context.SaveChangesAsync();

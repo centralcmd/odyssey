@@ -52,12 +52,22 @@ public sealed class AddressFields
 
     public AddressFields Copy() => new()
     {
-        Line1 = Line1, Line2 = Line2, PostalCode = PostalCode, City = City, Region = Region, CountryCode = CountryCode,
+        Line1 = Line1,
+        Line2 = Line2,
+        PostalCode = PostalCode,
+        City = City,
+        Region = Region,
+        CountryCode = CountryCode,
     };
 
     public static AddressFields From(ExistingLocation l) => new()
     {
-        Line1 = l.Line1, Line2 = l.Line2, PostalCode = l.PostalCode, City = l.City, Region = l.Region, CountryCode = l.CountryCode,
+        Line1 = l.Line1,
+        Line2 = l.Line2,
+        PostalCode = l.PostalCode,
+        City = l.City,
+        Region = l.Region,
+        CountryCode = l.CountryCode,
     };
 
     /// <summary>Every field empty after cleaning.</summary>
@@ -95,12 +105,24 @@ public sealed class AddressFields
     {
         switch (key)
         {
-            case AddressBlockModel.Line1Key: Line1 = value; break;
-            case AddressBlockModel.Line2Key: Line2 = value; break;
-            case AddressBlockModel.PostalCodeKey: PostalCode = value; break;
-            case AddressBlockModel.CityKey: City = value; break;
-            case AddressBlockModel.RegionKey: Region = value; break;
-            case AddressBlockModel.CountryCodeKey: CountryCode = value; break;
+            case AddressBlockModel.Line1Key:
+                Line1 = value;
+                break;
+            case AddressBlockModel.Line2Key:
+                Line2 = value;
+                break;
+            case AddressBlockModel.PostalCodeKey:
+                PostalCode = value;
+                break;
+            case AddressBlockModel.CityKey:
+                City = value;
+                break;
+            case AddressBlockModel.RegionKey:
+                Region = value;
+                break;
+            case AddressBlockModel.CountryCodeKey:
+                CountryCode = value;
+                break;
         }
     }
 }

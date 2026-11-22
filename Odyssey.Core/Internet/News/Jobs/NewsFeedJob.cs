@@ -19,6 +19,9 @@ public sealed class NewsJobTally
     private int itemsRevised;
     private int imagesStored;
     private int feedsQuarantined;
+    private int artworkStored;
+    private int artworkFailed;
+    private int chaptersFetched;
 
     public int FeedsFetched => feedsFetched;
 
@@ -30,7 +33,16 @@ public sealed class NewsJobTally
 
     public int FeedsQuarantined => feedsQuarantined;
 
-    public bool HasWork => feedsFetched + itemsStored + itemsRevised + imagesStored + feedsQuarantined > 0;
+    public bool HasWork => feedsFetched + itemsStored + itemsRevised + imagesStored + feedsQuarantined
+        + artworkStored + artworkFailed + chaptersFetched > 0;
+
+    /// <summary>The podcast phases' counts (issue #556 §3.8).</summary>
+    public void Podcast(int artworkStoredNow, int artworkFailedNow, int chaptersFetchedNow)
+    {
+        Interlocked.Add(ref artworkStored, artworkStoredNow);
+        Interlocked.Add(ref artworkFailed, artworkFailedNow);
+        Interlocked.Add(ref chaptersFetched, chaptersFetchedNow);
+    }
 
     public void Fetched(int stored, int revised)
     {
@@ -51,6 +63,9 @@ public sealed class NewsJobTally
         run.ItemsRevised += ItemsRevised;
         run.ImagesStored += ImagesStored;
         run.FeedsQuarantined += FeedsQuarantined;
+        run.ArtworkStored += artworkStored;
+        run.ArtworkFailed += artworkFailed;
+        run.ChaptersFetched += chaptersFetched;
     }
 }
 
@@ -65,6 +80,8 @@ public sealed class NewsFeedJob(
     IServiceScopeFactory scopes,
     NewsFeedFetcher fetcher,
     NewsImageDownloader images,
+    Podcasts.PodcastArtworkPhase artwork,
+    Podcasts.PodcastChaptersPhase chapters,
     NewsFeedPurger purger,
     NewsMaintenance maintenance,
     NewsHostThrottleGate throttle,
@@ -176,6 +193,11 @@ public sealed class NewsFeedJob(
         // 8. Images.
         var imagePhase = await images.RunAsync(owner, settings, cancellationToken);
         tally.Images(imagePhase.Stored);
+
+        // Podcasts (issue #556 §3.4): artwork with its renditions, then the Podcasting 2.0 chapter files.
+        var artworkPhase = await artwork.RunAsync(owner, settings, cancellationToken);
+        var chapterFiles = await chapters.RunAsync(owner, cancellationToken);
+        tally.Podcast(artworkPhase.Stored, artworkPhase.Failed, chapterFiles);
 
         return (storageRefused || imagePhase.StorageRefused ? JobHeldReason.StorageUnavailable : null, manualRunId, marked);
     }
@@ -316,6 +338,9 @@ public sealed class NewsFeedJob(
                 Language = state.Language,
                 SuggestedUrl = state.SuggestedUrl,
                 ArticlesToday = state.ArticlesToday,
+                Kind = feed.Kind,
+                AutoDownload = feed.AutoDownload,
+                KindChangedAtUtc = feed.KindChangedAtUtc,
             };
 
             state.LeaseOwner = owner;
@@ -384,7 +409,10 @@ public sealed class NewsFeedJob(
             {
                 context.NewsFeedCrashEvents.Add(new NewsFeedCrashEvent
                 {
-                    NewsFeedCrashEventId = Guid.NewGuid(), LeaseOwner = leaseOwner, DetectedAtUtc = now, FeedsInFlight = inFlight[leaseOwner],
+                    NewsFeedCrashEventId = Guid.NewGuid(),
+                    LeaseOwner = leaseOwner,
+                    DetectedAtUtc = now,
+                    FeedsInFlight = inFlight[leaseOwner],
                 });
                 if (state.CrashSuspectCount >= NewsJobTiming.QuarantineAt && state.QuarantinedAtUtc is null)
                 {
@@ -477,7 +505,9 @@ public sealed class NewsFeedJob(
         var now = Now;
         return await Due(context, now).AnyAsync(cancellationToken)
             || await context.NewsArticleImages.AnyAsync(i => (i.State == NewsArticleImageState.Pending || i.State == NewsArticleImageState.Deferred)
-                && (i.NextAttemptAtUtc == null || i.NextAttemptAtUtc <= now), cancellationToken);
+                && (i.NextAttemptAtUtc == null || i.NextAttemptAtUtc <= now), cancellationToken)
+            || await Podcasts.PodcastArtworkPhase.HasWorkAsync(context, now, cancellationToken)
+            || await Podcasts.PodcastChaptersPhase.HasWorkAsync(context, now, cancellationToken);
     }
 
     /// <summary>
@@ -490,7 +520,9 @@ public sealed class NewsFeedJob(
         return await Due(context, now).AnyAsync(cancellationToken)
             || await context.NewsArticleImages.AnyAsync(i => i.State == NewsArticleImageState.Pending
                 && (i.NextAttemptAtUtc == null || i.NextAttemptAtUtc <= now), cancellationToken)
-            || await context.NewsFeeds.AnyAsync(f => f.DeletionRequestedAtUtc != null, cancellationToken);
+            || await context.NewsFeeds.AnyAsync(f => f.DeletionRequestedAtUtc != null, cancellationToken)
+            || await Podcasts.PodcastArtworkPhase.HasWorkAsync(context, now, cancellationToken)
+            || await Podcasts.PodcastChaptersPhase.HasWorkAsync(context, now, cancellationToken);
     }
 
     private async Task<bool> VerdictFailingAsync(CancellationToken cancellationToken)

@@ -59,8 +59,13 @@ public sealed class NewsOpmlRelationalTests(MariaDbFixture fixture)
         var id = Guid.NewGuid();
         context.NewsFeeds.Add(new NewsFeed
         {
-            NewsFeedId = id, Url = url, UrlKeyHash = NewsUrlKey.Hash(NewsUrlKey.UrlKey(url)!), IsActive = true, DownloadImages = true,
-            CreatedAtUtc = Base, SettingsVersion = Guid.NewGuid(),
+            NewsFeedId = id,
+            Url = url,
+            UrlKeyHash = NewsUrlKey.Hash(NewsUrlKey.UrlKey(url)!),
+            IsActive = true,
+            DownloadImages = true,
+            CreatedAtUtc = Base,
+            SettingsVersion = Guid.NewGuid(),
         });
         context.NewsFeedFetchStates.Add(new NewsFeedFetchState { NewsFeedId = id, FetchFence = Guid.NewGuid(), NextFetchAtUtc = Base });
         context.NewsFeedCounters.Add(new NewsFeedCounter { NewsFeedId = id });

@@ -32,8 +32,14 @@ public class WeatherHistoryWindowPermissionTests(ApiStackFixture fixture)
         var id = Guid.NewGuid();
         var windowed = new
         {
-            name = "x", latitude = 59.9, longitude = 10.7, timeZoneId = "Europe/Oslo", forecastEnabled = true,
-            historyEnabled = true, isTracked = false, settingsVersion = Guid.NewGuid(),
+            name = "x",
+            latitude = 59.9,
+            longitude = 10.7,
+            timeZoneId = "Europe/Oslo",
+            forecastEnabled = true,
+            historyEnabled = true,
+            isTracked = false,
+            settingsVersion = Guid.NewGuid(),
             historyWindows = new[] { new { from = "2026-06-10", to = "2026-06-17" } },
         };
 
@@ -57,8 +63,12 @@ public class WeatherHistoryWindowPermissionTests(ApiStackFixture fixture)
         var created = await fixture.PostWithAntiforgeryAsync(adminClient, "/api/weather/points", new
         {
             name = $"E2E windows {Guid.NewGuid():N}"[..40],
-            latitude = 61.517, longitude = 10.165, timeZoneId = "Europe/Oslo",
-            forecastEnabled = true, historyEnabled = true, isTracked = false,
+            latitude = 61.517,
+            longitude = 10.165,
+            timeZoneId = "Europe/Oslo",
+            forecastEnabled = true,
+            historyEnabled = true,
+            isTracked = false,
             historyWindows = new object[]
             {
                 new { from = "2025-07-01", to = "2025-07-07" },

@@ -558,7 +558,10 @@ public class CalendarIcsStreamingServiceTests : IcsServiceTestBase
         var start = new DateTime(2030, 6, 1, 9, 0, 0, DateTimeKind.Utc);
         return (await InScopeAsync(sp => sp.GetRequiredService<CalendarEventService>().Create(new NewCalendarEvent
         {
-            CalendarId = calendarId, Title = title, StartDateTime = start, EndDateTime = start.AddHours(1),
+            CalendarId = calendarId,
+            Title = title,
+            StartDateTime = start,
+            EndDateTime = start.AddHours(1),
         }, ActorUserId))).CalendarEventId;
     }
 
@@ -583,9 +586,16 @@ public class CalendarIcsStreamingServiceTests : IcsServiceTestBase
             var start = new DateTime(2030, 1, 1, 9, 0, 0, DateTimeKind.Utc);
             var row = new ContextCalendarEvent
             {
-                CalendarId = calendarId, Title = title, StartDateTime = start, EndDateTime = start.AddHours(1),
-                ExternalUid = externalUid, Location = location, LocationId = locationId, CreatedByUserId = ActorUserId,
-                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                CalendarId = calendarId,
+                Title = title,
+                StartDateTime = start,
+                EndDateTime = start.AddHours(1),
+                ExternalUid = externalUid,
+                Location = location,
+                LocationId = locationId,
+                CreatedByUserId = ActorUserId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
             };
             db.CalendarEvents.Add(row);
             await db.SaveChangesAsync();

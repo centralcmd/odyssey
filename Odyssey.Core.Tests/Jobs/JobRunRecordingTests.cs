@@ -96,7 +96,7 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
     {
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
-                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill],
+                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload, JobType.PodcastAudioRetention],
             JobCatalogue.Entries.Select(entry => entry.JobType));
         Assert.Equal(JobCatalogue.Entries.Count, JobCatalogue.Entries.Select(entry => entry.JobClass).Distinct().Count());
         Assert.All(JobCatalogue.Entries, entry => Assert.Equal(300, entry.NotTickingAfterSeconds));
@@ -234,7 +234,11 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
 
         var storage = new FileStorageMaintenanceJobRun
         {
-            StartedAtUtc = Now, FilesErased = 1, AbandonedWritesSwept = 2, ObjectsScrubbed = 3, IntegrityFailures = 1,
+            StartedAtUtc = Now,
+            FilesErased = 1,
+            AbandonedWritesSwept = 2,
+            ObjectsScrubbed = 3,
+            IntegrityFailures = 1,
         };
         storage.Finish(JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage, Now);
         Assert.Equal((6, 1), (storage.ItemsProcessed, storage.ItemsFailed));
@@ -436,7 +440,10 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
         {
             context.FileStorageMaintenanceLeases.Add(new FileStorageMaintenanceLease
             {
-                Id = FileStorageMaintenanceLease.SingletonId, HolderId = Guid.NewGuid(), LeaseUntilUtc = Now.AddMinutes(4), Version = Guid.NewGuid(),
+                Id = FileStorageMaintenanceLease.SingletonId,
+                HolderId = Guid.NewGuid(),
+                LeaseUntilUtc = Now.AddMinutes(4),
+                Version = Guid.NewGuid(),
             });
             await context.SaveChangesAsync();
         }
@@ -473,8 +480,12 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
                 new JobHeartbeat { JobType = JobType.PhotoThumbnails, WorkerId = holder, LastTickAtUtc = Now.AddDays(-2) });
             context.JobRuns.Add(new PhotoThumbnailJobRun
             {
-                JobRunId = Guid.NewGuid(), Status = JobRunStatus.Running, StartedAtUtc = Now, LastActivityAtUtc = Now,
-                ClaimedAtUtc = Now, WorkerId = holder,
+                JobRunId = Guid.NewGuid(),
+                Status = JobRunStatus.Running,
+                StartedAtUtc = Now,
+                LastActivityAtUtc = Now,
+                ClaimedAtUtc = Now,
+                WorkerId = holder,
             });
             await context.SaveChangesAsync();
         }
@@ -505,8 +516,12 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
                 new WeatherJobRun { JobRunId = Guid.NewGuid(), Status = JobRunStatus.Running, StartedAtUtc = old, LastActivityAtUtc = old },
                 new PhotoThumbnailJobRun
                 {
-                    JobRunId = Guid.NewGuid(), Status = JobRunStatus.Held, HeldReason = JobHeldReason.DecoderPaused,
-                    StartedAtUtc = old, LastActivityAtUtc = old, WorkerId = Guid.NewGuid(),
+                    JobRunId = Guid.NewGuid(),
+                    Status = JobRunStatus.Held,
+                    HeldReason = JobHeldReason.DecoderPaused,
+                    StartedAtUtc = old,
+                    LastActivityAtUtc = old,
+                    WorkerId = Guid.NewGuid(),
                 });
             var recent = new WeatherJobRun { JobRunId = Guid.NewGuid(), StartedAtUtc = Now.AddDays(-29), LastActivityAtUtc = Now };
             recent.Finish(JobRunStatus.Failed, JobFailureCategory.Internal, Now.AddDays(-29));

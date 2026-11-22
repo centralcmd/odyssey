@@ -84,7 +84,8 @@ public partial class FileAnalysisReviewGrid
 
     private async Task RestoreAmountAsync(FileAnalysisRow row)
     {
-        try { await JS.InvokeVoidAsync("odsSetInputValue", AmountInputId(row), row.AmountText); }
+        try
+        { await JS.InvokeVoidAsync("odsSetInputValue", AmountInputId(row), row.AmountText); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 
@@ -172,7 +173,8 @@ public partial class FileAnalysisReviewGrid
     private async Task AnnounceAndRefocusAsync(string message, string focusId)
     {
         await OnAnnounce.InvokeAsync(message);
-        try { await JS.InvokeVoidAsync("odsFocusById", focusId); }
+        try
+        { await JS.InvokeVoidAsync("odsFocusById", focusId); }
         catch { /* element not present (e.g. dialog closing) — non-fatal */ }
     }
 }

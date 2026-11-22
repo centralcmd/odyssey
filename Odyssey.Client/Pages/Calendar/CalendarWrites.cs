@@ -22,19 +22,19 @@ public static class CalendarWrites
     public static NewCalendarEvent Event(
         Guid calendarId, string title, string? description, string? details,
         DateTime start, DateTime end, bool isAllDay, string? timeZoneId, AttachmentLinks attachments, LocationLink link) => new()
-    {
-        CalendarId = calendarId,
-        Title = title,
-        Description = description,
-        Location = details,
-        LocationId = link.Id,
-        StartDateTime = Wire(start, Zone(isAllDay, timeZoneId)),
-        EndDateTime = Wire(end, Zone(isAllDay, timeZoneId)),
-        IsAllDay = isAllDay,
-        TimeZoneId = Zone(isAllDay, timeZoneId),
-        AttachmentFileIds = attachments.FileIds,
-        PhotoIds = attachments.PhotoIds,
-    };
+        {
+            CalendarId = calendarId,
+            Title = title,
+            Description = description,
+            Location = details,
+            LocationId = link.Id,
+            StartDateTime = Wire(start, Zone(isAllDay, timeZoneId)),
+            EndDateTime = Wire(end, Zone(isAllDay, timeZoneId)),
+            IsAllDay = isAllDay,
+            TimeZoneId = Zone(isAllDay, timeZoneId),
+            AttachmentFileIds = attachments.FileIds,
+            PhotoIds = attachments.PhotoIds,
+        };
 
     /// <summary>
     /// A loaded event re-timed and nothing else — the calendar's drag (a day move) and resize (a new start
@@ -53,26 +53,26 @@ public static class CalendarWrites
         DateTime start, DateTime end, bool isAllDay, string? timeZoneId,
         RecurrenceFrequency frequency, int interval, DaysOfWeekFlags? daysOfWeek, int? dayOfMonth, int? monthOfYear,
         DateTime? recurrenceEndDate, int? occurrenceCount, AttachmentLinks attachments, LocationLink link) => new()
-    {
-        CalendarId = calendarId,
-        Title = title,
-        Description = description,
-        Location = details,
-        LocationId = link.Id,
-        StartDateTime = Wire(start, Zone(isAllDay, timeZoneId)),
-        EndDateTime = Wire(end, Zone(isAllDay, timeZoneId)),
-        IsAllDay = isAllDay,
-        TimeZoneId = Zone(isAllDay, timeZoneId),
-        Frequency = frequency,
-        Interval = interval,
-        DaysOfWeek = daysOfWeek,
-        DayOfMonth = dayOfMonth,
-        MonthOfYear = monthOfYear,
-        RecurrenceEndDate = recurrenceEndDate is { } until ? Wire(until, Zone(isAllDay, timeZoneId)) : null,
-        OccurrenceCount = occurrenceCount,
-        AttachmentFileIds = attachments.FileIds,
-        PhotoIds = attachments.PhotoIds,
-    };
+        {
+            CalendarId = calendarId,
+            Title = title,
+            Description = description,
+            Location = details,
+            LocationId = link.Id,
+            StartDateTime = Wire(start, Zone(isAllDay, timeZoneId)),
+            EndDateTime = Wire(end, Zone(isAllDay, timeZoneId)),
+            IsAllDay = isAllDay,
+            TimeZoneId = Zone(isAllDay, timeZoneId),
+            Frequency = frequency,
+            Interval = interval,
+            DaysOfWeek = daysOfWeek,
+            DayOfMonth = dayOfMonth,
+            MonthOfYear = monthOfYear,
+            RecurrenceEndDate = recurrenceEndDate is { } until ? Wire(until, Zone(isAllDay, timeZoneId)) : null,
+            OccurrenceCount = occurrenceCount,
+            AttachmentFileIds = attachments.FileIds,
+            PhotoIds = attachments.PhotoIds,
+        };
 
     /// <summary>
     /// A series write bound to what the user saw (issue #520 v3 §A, v5 B1): the <see cref="ExistingRecurrencePattern.Version"/>

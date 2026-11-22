@@ -80,20 +80,20 @@ public class ContractPauseTests
     private static UpdateContract Write(
         ExistingContract from, bool isPaused = false, bool isArchived = false,
         DateTime? startDate = null, DateTime? endDate = null, DateTime? completionDate = null) => new()
-    {
-        Name = from.Name,
-        Type = from.Type,
-        StartDate = startDate ?? from.StartDate,
-        EndDate = endDate ?? from.EndDate,
-        CompletionDate = completionDate ?? from.CompletionDate,
-        IsArchived = isArchived,
-        IsPaused = isPaused,
-        // Carried forward, exactly as every first-party client call site must (issue #145): PUT is a
-        // full replacement, so omitting these would clear both stamps and flip the contract to Draft
-        // — which would make every pause assertion below fail for the wrong reason.
-        Ready = from.Ready,
-        Signed = from.Signed,
-    };
+        {
+            Name = from.Name,
+            Type = from.Type,
+            StartDate = startDate ?? from.StartDate,
+            EndDate = endDate ?? from.EndDate,
+            CompletionDate = completionDate ?? from.CompletionDate,
+            IsArchived = isArchived,
+            IsPaused = isPaused,
+            // Carried forward, exactly as every first-party client call site must (issue #145): PUT is a
+            // full replacement, so omitting these would clear both stamps and flip the contract to Draft
+            // — which would make every pause assertion below fail for the wrong reason.
+            Ready = from.Ready,
+            Signed = from.Signed,
+        };
 
     // ── Setting and clearing the stamp (AC 1–3) ───────────────────────────────
 

@@ -218,7 +218,10 @@ public class ContactServiceTests
 
         var address = await service.CreateAddress(cp.ContactId, new NewAddress
         {
-            Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "no",
+            Label = AddressLabel.Visiting,
+            Line1 = "Storgata 55",
+            City = "Oslo",
+            CountryCode = "no",
         }, claims: LocationClaims.Trusted);
 
         Assert.NotNull(address);

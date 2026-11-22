@@ -379,7 +379,8 @@ public class CalendarIcsServiceTests : IcsServiceTestBase
     public async Task Import_TooManyVEvents_IsRefused_NothingImported()
     {
         // The setting ships unlimited since issue #516, so an administrator's finite cap is what this pins.
-        Limits.CalendarIcsMaxExportEvents = TestMaxImportEvents; Limits.CalendarIcsMaxImportEvents = TestMaxImportEvents;
+        Limits.CalendarIcsMaxExportEvents = TestMaxImportEvents;
+        Limits.CalendarIcsMaxImportEvents = TestMaxImportEvents;
         var calendarId = await CreateCalendarAsync("Flood");
         var events = Enumerable.Range(0, TestMaxImportEvents + 1)
             .Select(i => Vevent($"u{i}", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", $"SUMMARY:E{i}"));

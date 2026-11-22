@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Imaging;
 using Odyssey.Core.Jobs;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Journal;
@@ -103,7 +104,9 @@ public sealed partial class PhotoThumbnailJob
 
         context.PhotoThumbnailIncidents.Add(new PhotoThumbnailIncident
         {
-            Kind = PhotoThumbnailIncidentKind.Restart, OccurredAtUtc = now, WorkerName = identity.Name,
+            Kind = PhotoThumbnailIncidentKind.Restart,
+            OccurredAtUtc = now,
+            WorkerName = identity.Name,
         });
         await context.SaveChangesAsync(cancellationToken);
         restartRequested = true;
@@ -219,19 +222,14 @@ public sealed partial class PhotoThumbnailJob
     /// </summary>
     private async Task<(bool Finished, ThumbnailRenderResult? Result)> RenderUnderWatchdogAsync(ThumbnailRenderRequest request)
     {
-        // The watchdog is armed BEFORE the thread starts: arming it after would let the clock move between the
-        // renderer starting and the timer existing, and a timer armed late measures from the wrong instant (with a
-        // fake clock it never fires at all).
-        using var watchdogCancel = new CancellationTokenSource();
-        var watchdog = Task.Delay(PhotoThumbnailTiming.Watchdog, time, watchdogCancel.Token);
-        var decode = RunOnThread(() => SafeRender(request));
-        if (await Task.WhenAny(decode, watchdog) == decode)
+        // The shared guard arms the watchdog before the thread starts (issue #556 arch B4 extracted it).
+        var run = await ThumbnailRenderGuard.RunAsync(() => SafeRender(request), PhotoThumbnailTiming.Watchdog, time, ThreadName);
+        if (run.Finished)
         {
-            await watchdogCancel.CancelAsync();
-            return (true, await decode);
+            return (true, run.Value);
         }
 
-        abandonedDecode = decode;
+        abandonedDecode = run.Abandoned;
         abandonedAtUtc = Now;
         restartRequested = false;
         return (false, null);
@@ -281,25 +279,7 @@ public sealed partial class PhotoThumbnailJob
         return orientation is >= 1 and <= 8 ? orientation : 1;
     }
 
-    private static Task<T> RunOnThread<T>(Func<T> work)
-    {
-        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                completion.SetResult(work());
-            }
-            catch (Exception ex)
-            {
-                completion.SetException(ex);
-            }
-        })
-        {
-            IsBackground = true,
-            Name = "odyssey-thumbnail",
-        };
-        thread.Start();
-        return completion.Task;
-    }
+    private const string ThreadName = "odyssey-thumbnail";
+
+    private static Task<T> RunOnThread<T>(Func<T> work) => ThumbnailRenderGuard.RunOnThread(work, ThreadName);
 }

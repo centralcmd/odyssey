@@ -10,7 +10,8 @@
     News tags — the tag-admin sister of Transaction/Journal/Task/Photo tags (Odyssey Design System ·
     TransactionTags · createTagsPage). Reuses the shared OdsTagAdmin over the api/news-tags contract: search +
     archival filter + sort, create / rename / archive / delete (an in-use tag returns 409 → toast). Every write drops
-    the news tag cache, so the feed and article pickers see it. Names are user text, rendered auto-encoded.
+    the news tag cache, so the feed and article pickers see it. Podcast episodes are articles, so a tag's links count them
+    too (issue #559 §3.5). Names are user text, rendered auto-encoded.
 *@
 
 <OdsTagAdmin TRow="ExistingNewsTag"
@@ -21,7 +22,7 @@
              UpdateClaim="@PermissionClaims.NewsTagsUpdate"
              DeleteClaim="@PermissionClaims.NewsTagsDelete"
              NamePlaceholder="e.g. Favourites"
-             ModalSubtitle="Tags group feeds and articles. A feed’s tags apply to every article it brings."
+             ModalSubtitle="Tags group feeds, podcasts, articles and episodes. A feed’s tags apply to every article or episode it brings."
              EmptyDesc="Create your first tag to group feeds and articles — or to mark favourites."
              Id="@(t => t.NewsTagId)"
              Name="@(t => t.Name)"
@@ -29,5 +30,5 @@
              Archived="@(t => t.Archived)"
              IconOf="@(t => t.Icon)"
              ColorOf="@(t => t.Color)"
-             IconHelp="Shown for this tag and on every feed and article carrying it. Default keeps the tag icon."
+             IconHelp="Shown for this tag and on every feed, article and episode carrying it. Default keeps the tag icon."
              OnTagsChanged="Catalogue.InvalidateTags" />

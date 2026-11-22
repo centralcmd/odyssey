@@ -397,7 +397,10 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
 
             var address = (await service.CreateAddress(contactId, new NewAddress
             {
-                Label = AddressLabel.Home, Line1 = "Storgata 55", City = "Oslo", CountryCode = "no",
+                Label = AddressLabel.Home,
+                Line1 = "Storgata 55",
+                City = "Oslo",
+                CountryCode = "no",
             }, claims: LocationClaims.Trusted))!;
             Assert.True(address.IsPrimary);
             Assert.Equal("NO", address.CountryCode);

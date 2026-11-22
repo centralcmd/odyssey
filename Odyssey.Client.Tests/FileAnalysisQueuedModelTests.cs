@@ -172,8 +172,7 @@ public class FileAnalysisQueuedModelTests
     public void ThePollPath_CallsNoToastVariant()
     {
         var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "FileAnalysisDialog.razor.cs"));
-        var poll = source[source.IndexOf("private async Task PollLoopAsync", StringComparison.Ordinal)..
-                          source.IndexOf("private void ObserveOpen", StringComparison.Ordinal)];
+        var poll = source[source.IndexOf("private async Task PollLoopAsync", StringComparison.Ordinal)..source.IndexOf("private void ObserveOpen", StringComparison.Ordinal)];
 
         Assert.DoesNotMatch(new Regex(@"OrToast|\bToast\(|Snackbar"), poll);
     }

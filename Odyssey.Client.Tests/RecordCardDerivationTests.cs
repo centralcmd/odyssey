@@ -97,17 +97,17 @@ public class RecordCardDerivationTests
     private static ExistingTaxStatement Statement(
         TaxStatementStatus status = TaxStatementStatus.New,
         DateTime? archived = null, string? comment = null, DateTime? statusChangedAt = null) => new()
-    {
-        TaxStatementId = Guid.NewGuid(),
-        Name = "Tax Year 2026",
-        FiscalYear = 2026,
-        StartDate = new DateTime(2026, 1, 1),
-        EndDate = new DateTime(2026, 12, 31),
-        Status = status,
-        StatusComment = comment,
-        StatusChangedAt = statusChangedAt ?? default,
-        Archived = archived,
-    };
+        {
+            TaxStatementId = Guid.NewGuid(),
+            Name = "Tax Year 2026",
+            FiscalYear = 2026,
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = new DateTime(2026, 12, 31),
+            Status = status,
+            StatusComment = comment,
+            StatusChangedAt = statusChangedAt ?? default,
+            Archived = archived,
+        };
 
     [Theory]
     [InlineData(TaxStatementStatus.New, "New", "fiber_new", OdsInfoTileTone.Info)]

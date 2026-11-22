@@ -71,4 +71,21 @@ public static class NewsErrorCodes
 
     /// <summary><c>409</c>: a concurrent write took one of the import's URLs; no feed from it was committed.</summary>
     public const string OpmlConflict = "news-opml-conflict";
+
+    // ── Podcasts (issue #556 §9.1) ────────────────────────────────────────────────────────────────────────────
+
+    /// <summary><c>422</c> keyed <c>autoDownload</c> or <c>autoDeleteEnabled</c>: automation turned on for an article feed.</summary>
+    public const string FeedAutomationNotPodcast = "news-feed-automation-not-podcast";
+
+    /// <summary><c>400</c> keyed <c>kind</c>: a feed type this server does not know.</summary>
+    public const string FeedKindUnknown = "news-feed-kind-unknown";
+
+    /// <summary><c>409</c>: the episode's audio is downloading, so it cannot be removed now.</summary>
+    public const string PodcastAudioBusy = "podcast-audio-busy";
+
+    /// <summary><c>429</c> with <c>Retry-After</c>: a re-request inside the cooldown after the last user request or removal.</summary>
+    public const string PodcastAudioCooldown = "podcast-audio-cooldown";
+
+    /// <summary><c>507</c>: the audio storage quota, counting audio awaiting deletion, is reached.</summary>
+    public const string PodcastAudioQuotaReached = "podcast-audio-quota-reached";
 }

@@ -43,17 +43,17 @@ public sealed class JournalEntryDraft
     /// are hydrated from file metadata by the caller.</summary>
     public static JournalEntryDraft From(ExistingJournalEntry e,
         IEnumerable<JournalDraftPhoto> photos, IEnumerable<FileMetadataResponse> attachments) => new()
-    {
-        Title = e.Title,
-        Content = e.Content,
-        EntryDate = e.EntryDate.ToLocalTime().Date,
-        Location = e.Location ?? string.Empty,
-        Place = PlaceDraft.For(e.LocationId, e.LocationRef),
-        TagIds = [.. e.TagIds.Select(id => id.ToString())],
-        ContactIds = [.. e.ContactIds.Select(id => id.ToString())],
-        Photos = [.. photos],
-        Attachments = [.. attachments],
-    };
+        {
+            Title = e.Title,
+            Content = e.Content,
+            EntryDate = e.EntryDate.ToLocalTime().Date,
+            Location = e.Location ?? string.Empty,
+            Place = PlaceDraft.For(e.LocationId, e.LocationRef),
+            TagIds = [.. e.TagIds.Select(id => id.ToString())],
+            ContactIds = [.. e.ContactIds.Select(id => id.ToString())],
+            Photos = [.. photos],
+            Attachments = [.. attachments],
+        };
 }
 
 /// <summary>
@@ -79,34 +79,34 @@ public static class JournalWrite
     public static NewJournalEntry New(
         string title, string content, DateTime entryDate, string? details, Guid[] tagIds, Guid[] contactIds,
         Guid[] photoIds, Guid[] attachmentFileIds, LocationLink link) => new()
-    {
-        Title = title,
-        Content = content,
-        EntryDate = entryDate,
-        Location = details,
-        LocationId = link.Id,
-        TagIds = tagIds,
-        ContactIds = contactIds,
-        PhotoIds = photoIds,
-        AttachmentFileIds = attachmentFileIds,
-    };
+        {
+            Title = title,
+            Content = content,
+            EntryDate = entryDate,
+            Location = details,
+            LocationId = link.Id,
+            TagIds = tagIds,
+            ContactIds = contactIds,
+            PhotoIds = photoIds,
+            AttachmentFileIds = attachmentFileIds,
+        };
 
     /// <summary>The single construction of <see cref="UpdateJournalEntry"/> in the client.</summary>
     public static UpdateJournalEntry Update(
         string title, string content, DateTime entryDate, string? details, bool archived, Guid[] tagIds, Guid[] contactIds,
         Guid[] photoIds, Guid[] attachmentFileIds, LocationLink link) => new()
-    {
-        Title = title,
-        Content = content,
-        EntryDate = entryDate,
-        Location = details,
-        LocationId = link.Id,
-        Archived = archived,
-        TagIds = tagIds,
-        ContactIds = contactIds,
-        PhotoIds = photoIds,
-        AttachmentFileIds = attachmentFileIds,
-    };
+        {
+            Title = title,
+            Content = content,
+            EntryDate = entryDate,
+            Location = details,
+            LocationId = link.Id,
+            Archived = archived,
+            TagIds = tagIds,
+            ContactIds = contactIds,
+            PhotoIds = photoIds,
+            AttachmentFileIds = attachmentFileIds,
+        };
 
     public static NewJournalEntry ToNew(JournalEntryDraft d, LocationLink link) => New(
         d.Title.Trim(),

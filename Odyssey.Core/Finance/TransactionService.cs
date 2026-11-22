@@ -21,7 +21,7 @@ public class TransactionService
         this.contactLookup = contactLookup;
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
-    
+
     /// <summary>Server-side paged list (issue #277): search + account/status/tag/direction/date filters + allowlisted sort.</summary>
     public async Task<PagedResult<ExistingTransaction>> ListAsync(
         TransactionsQueryParams query,
@@ -157,9 +157,15 @@ public class TransactionService
         {
             switch (row.Status)
             {
-                case TransactionStatus.New: counts.New += row.Count; break;
-                case TransactionStatus.Approved: counts.Approved += row.Count; break;
-                case TransactionStatus.Flagged: counts.Flagged += row.Count; break;
+                case TransactionStatus.New:
+                    counts.New += row.Count;
+                    break;
+                case TransactionStatus.Approved:
+                    counts.Approved += row.Count;
+                    break;
+                case TransactionStatus.Flagged:
+                    counts.Flagged += row.Count;
+                    break;
             }
         }
 
@@ -202,7 +208,7 @@ public class TransactionService
             }
         }
     }
-    
+
     /// <summary>
     /// Whether the transaction exists, without loading its tags, files and contact (issue #287 M9).
     /// </summary>
@@ -226,7 +232,7 @@ public class TransactionService
         }
         return dto;
     }
-    
+
     public async Task<ExistingTransaction> Create(NewTransaction newTransaction, CancellationToken cancellationToken = default)
     {
         var normalizedCurrencyCode = CurrencyValidationService.Normalize(newTransaction.CurrencyCode);
@@ -261,7 +267,7 @@ public class TransactionService
 
         return (await Get(transaction.TransactionId, cancellationToken))!;
     }
-    
+
     public async Task<ExistingTransaction?> Update(Guid id, NewTransaction putTransaction, CancellationToken cancellationToken = default)
     {
         var transaction = await context.Transactions
@@ -352,7 +358,7 @@ public class TransactionService
         {
             return;
         }
-        
+
         context.Transactions.Remove(transaction);
         await context.SaveChangesAsync(cancellationToken);
     }

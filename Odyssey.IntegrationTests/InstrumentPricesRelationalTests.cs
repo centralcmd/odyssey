@@ -51,8 +51,11 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         await using var other = NewContext();
         other.JobRuns.Add(new ExchangeRateSyncJobRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Running,
-            StartedAtUtc = Now, LastActivityAtUtc = Now,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Scheduled,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = Now,
+            LastActivityAtUtc = Now,
         });
         await other.SaveChangesAsync();
     }
@@ -118,7 +121,11 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         var instrument = await AddInstrumentAsync(context);
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = Day, Close = 9999999999.99999999m, CreatedAtUtc = Now,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = Day,
+            Close = 9999999999.99999999m,
+            CreatedAtUtc = Now,
         });
         await context.SaveChangesAsync();
 
@@ -169,7 +176,12 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         var instrument = await AddInstrumentAsync(context, createdBy: userId);
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = Day, Close = 1m, CreatedAtUtc = Now, CreatedByUserId = userId,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = Day,
+            Close = 1m,
+            CreatedAtUtc = Now,
+            CreatedByUserId = userId,
         });
         await context.SaveChangesAsync();
 
@@ -208,7 +220,12 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     {
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = date, Close = 10m, SourceKey = source, CreatedAtUtc = Now,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = date,
+            Close = 10m,
+            SourceKey = source,
+            CreatedAtUtc = Now,
         });
         await context.SaveChangesAsync();
     }
@@ -217,7 +234,12 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     {
         context.InstrumentPriceSourceBindings.Add(new InstrumentPriceSourceBinding
         {
-            InstrumentId = instrument, SourceKey = source, SourceSymbol = "EQNR.OL", Priority = priority, Enabled = true, UpdatedAtUtc = Now,
+            InstrumentId = instrument,
+            SourceKey = source,
+            SourceSymbol = "EQNR.OL",
+            Priority = priority,
+            Enabled = true,
+            UpdatedAtUtc = Now,
         });
         await context.SaveChangesAsync();
     }
@@ -226,7 +248,11 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     {
         context.JobRuns.Add(new InstrumentPriceSyncJobRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = trigger, Status = JobRunStatus.Running, StartedAtUtc = Now, LastActivityAtUtc = Now,
+            JobRunId = Guid.NewGuid(),
+            Trigger = trigger,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = Now,
+            LastActivityAtUtc = Now,
         });
         await context.SaveChangesAsync();
     }

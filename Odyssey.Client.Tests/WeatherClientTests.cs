@@ -211,7 +211,8 @@ public class WeatherClientTests : IDisposable
                 .ReturnsAsync(Ok(new WeatherPointOptions { Points = [Option(home), Option(cabin)], HouseholdDefaultPointId = home.WeatherPointId }));
             weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
             {
-                Point = home, Status = WeatherStatus.NoData,
+                Point = home,
+                Status = WeatherStatus.NoData,
             }));
             weather.Setup(w => w.SetPreferenceAsync(cabin.WeatherPointId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
@@ -268,7 +269,8 @@ public class WeatherClientTests : IDisposable
             client = weather;
             weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
             {
-                Point = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Home" }, Status = WeatherStatus.NoData,
+                Point = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Home" },
+                Status = WeatherStatus.NoData,
             }));
         }, claims: [PermissionClaims.WeatherRead]);
 

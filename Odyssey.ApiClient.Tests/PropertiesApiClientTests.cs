@@ -70,13 +70,18 @@ public class PropertiesApiClientTests
 
     private static readonly NewProperty Body = new()
     {
-        Name = "Storgata 14", Description = "Home", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
+        Name = "Storgata 14",
+        Description = "Home",
+        Type = PropertyType.RealEstate,
+        CurrencyCode = "NOK",
         RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House },
     };
 
     private static readonly NewPropertyEstimate EstimateBody = new()
     {
-        Value = 100m, CurrencyCode = "NOK", EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        Value = 100m,
+        CurrencyCode = "NOK",
+        EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
     };
 
     /// <summary>

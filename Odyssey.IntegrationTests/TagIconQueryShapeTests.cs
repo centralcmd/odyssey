@@ -100,7 +100,10 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             var entry = await CountAsync(context => Entries(context).Create(new NewJournalEntry
             {
-                Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = journalTagIds,
+                Title = "New",
+                Content = "Dear journal.",
+                EntryDate = DateTime.UtcNow,
+                TagIds = journalTagIds,
             }, Author, claims: LocationClaims.Trusted));
             Assert.Equal("beach_access", entry.Result.DisplayIcon);
             Assert.Equal([seeded.Art, seeded.Trip, seeded.Zoo], entry.Result.TagIds);
@@ -108,7 +111,10 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             var updatedEntry = await CountAsync(context => Entries(context).Update(entry.Result.JournalEntryId, new UpdateJournalEntry
             {
-                Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = [seeded.Zoo],
+                Title = "New",
+                Content = "Dear journal.",
+                EntryDate = DateTime.UtcNow,
+                TagIds = [seeded.Zoo],
             }, Author, claims: LocationClaims.Trusted));
             Assert.Equal("pets", updatedEntry.Result!.DisplayIcon);
             Assert.InRange(updatedEntry.Commands, UpdateEntryCommandsBefore, UpdateEntryCommandsBefore + 1);
@@ -119,7 +125,8 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             var updatedTask = await CountAsync(context => Tasks(context).Update(task.Result.JournalTaskId, new UpdateJournalTask
             {
-                Title = "New", TagIds = [taskTagIds[0]],
+                Title = "New",
+                TagIds = [taskTagIds[0]],
             }, Author));
             Assert.NotNull(updatedTask.Result);
             Assert.InRange(updatedTask.Commands, UpdateTaskCommandsBefore, UpdateTaskCommandsBefore + 1);
@@ -186,8 +193,13 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
         {
             var entry = new JournalEntry
             {
-                JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = $"Entry {i}",
-                Content = "Dear journal.", EntryDate = now.AddDays(-i), CreatedAt = now, UpdatedAt = now,
+                JournalEntryId = Guid.NewGuid(),
+                ExternalUid = Guid.NewGuid().ToString(),
+                Title = $"Entry {i}",
+                Content = "Dear journal.",
+                EntryDate = now.AddDays(-i),
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             foreach (var tag in journal.AsEnumerable().Reverse())
             {
@@ -196,8 +208,12 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             var item = new JournalTask
             {
-                JournalTaskId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = $"Task {i}",
-                Position = i, CreatedAt = now, UpdatedAt = now,
+                JournalTaskId = Guid.NewGuid(),
+                ExternalUid = Guid.NewGuid().ToString(),
+                Title = $"Task {i}",
+                Position = i,
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             foreach (var tag in task.AsEnumerable().Reverse())
             {
@@ -208,8 +224,12 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
             {
                 PhotoId = Guid.NewGuid(),
                 StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: Odyssey.Core.Journal.Originals.PhotoOriginalStorage.FeatureKey),
-                FileName = $"p{i}.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = StoredFileFixtures.Sha256([1, 2, 3]),
-                CreatedAt = now, UpdatedAt = now,
+                FileName = $"p{i}.jpg",
+                ContentType = "image/jpeg",
+                SizeBytes = 3,
+                Sha256Hash = StoredFileFixtures.Sha256([1, 2, 3]),
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             foreach (var tag in photo.AsEnumerable().Reverse())
             {

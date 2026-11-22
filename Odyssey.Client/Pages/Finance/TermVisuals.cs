@@ -205,13 +205,13 @@ public static class TermVisuals
     public static string FormatValue(
         TermValueUnit unit, decimal? value, string? currencyCode, string? textValue, DateTime? dateTimeValue,
         Func<decimal, string?, string> money) => unit switch
-    {
-        TermValueUnit.Percentage => value is { } pct ? (pct < 0 ? "−" : "") + PctStr(Math.Abs(pct)) : NoValue,
-        TermValueUnit.Amount => value is { } amount ? money(amount, currencyCode) : NoValue,
-        TermValueUnit.Text => string.IsNullOrWhiteSpace(textValue) ? NoValue : textValue,
-        TermValueUnit.DateTime => FormatDateTime(dateTimeValue),
-        _ => NoValue,
-    };
+        {
+            TermValueUnit.Percentage => value is { } pct ? (pct < 0 ? "−" : "") + PctStr(Math.Abs(pct)) : NoValue,
+            TermValueUnit.Amount => value is { } amount ? money(amount, currencyCode) : NoValue,
+            TermValueUnit.Text => string.IsNullOrWhiteSpace(textValue) ? NoValue : textValue,
+            TermValueUnit.DateTime => FormatDateTime(dateTimeValue),
+            _ => NoValue,
+        };
 
     // ---- Date & time (issue #192) -------------------------------------------------------------
 

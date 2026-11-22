@@ -1,0 +1,172 @@
+@page "/books"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Books
+@attribute [Authorize(Policy = PermissionClaims.BooksRead)]
+@implements IDisposable
+
+@*
+    /books (issue #571; design system · Books.jsx, docs/components-books.md) — the first page of the Library module.
+    The standard record list: PageHeader → OdsInfiniteList of expandable OdsRecordCards, one open at a time. The list
+    filters and sorts on the server; the overview and the sub-line describe the WHOLE catalogue, so they read the
+    unfiltered set (the same request when no filter is set).
+
+    The mark is the cover photo (photos.read) or the FORMAT glyph; format is the book's type-equivalent, so it is the
+    accent; status is state and stays a chip. Counts only — a book has no money figure, so the card has none. Without
+    a read claim the matching section, count and filter are absent. Contributors, images and files are record
+    actions (the record ⋯ menu), never dialog sections.
+*@
+
+<PageTitle>Books</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="4">
+    <PageHeader Title="Books"
+                Icon="@Icons.Material.Filled.AutoStories"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New book"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@SubLineText</SubLine>
+
+        <OverviewContent>
+            @if (_all.Count > 0)
+            {
+                <div class="con-stats">
+                    <OdsBreakdownTile Label="By status" Rows="BookVisuals.StatusRows(_all)" Empty="No books." />
+                    <OdsBreakdownTile Label="By format" Rows="BookVisuals.FormatRows(_all)" Empty="No books." />
+                    @if (_canReadTags)
+                    {
+                        @* No total: a book carries several tags, so a sum would count it once per tag. *@
+                        <OdsBreakdownTile Label="By tag" Rows="BookVisuals.TagRows(_tags, _all)" Empty="No tagged books." Total="false" />
+                    }
+                </div>
+            }
+        </OverviewContent>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadBooks"
+                                Placeholder="@(_canReadContacts ? "Search title, author, publisher or ISBN…" : "Search title, publisher or ISBN…")"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="BookVisuals.StatusOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Format" Values="_formatFilter" ValuesChanged="OnFormatFilterChanged"
+                                Options="OdsTypeRegistries.BookFormatOptions" Class="ph-select" />
+                @if (_canReadTags)
+                {
+                    @* All of, not any of — the label says so, since the control has no helper line. Open-ended (user data). *@
+                    <OdsMultiSelect Label="Has every tag" Fit="false" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
+                                    Options="_tagOptions" Class="ph-select bk-tag-filter" />
+                }
+                @if (_canReadContacts)
+                {
+                    <OdsContactSelect Bare="true" AriaLabel="Author — main author or contributor" Placeholder="Any author or contributor"
+                                      Value="@_authorFilter" ValueChanged="OnAuthorFilterChanged" Options="_authorOptions"
+                                      Class="ph-select bk-author-filter" />
+                }
+                @if (_canReadPhotos)
+                {
+                    <OdsSelect Prefix="Cover" AriaLabel="Cover" Value="@_coverFilter" ValueChanged="OnCoverFilterChanged"
+                               Options="CoverOptions" Class="ph-select" />
+                }
+                @if (_canReadFiles)
+                {
+                    <OdsSelect Prefix="Files" AriaLabel="Files" Value="@_filesFilter" ValueChanged="OnFilesFilterChanged"
+                               Options="FilesOptions" Class="ph-select" />
+                }
+                <OdsSortSelect TRow="BookSummary" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Books per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="BookSummary" Items="_books" BatchSize="_batch"
+                         ItemKey="@(b => (object)b.BookId)" Noun="books" RevealKey="_flashId"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadBooks"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         FilteredEmptyTitle="No books match these filters"
+                         EmptyIcon="auto_stories"
+                         EmptyTitle="No books yet"
+                         EmptyDescription="Add the books on your shelf, or a wish list.">
+            <RenderItem Context="b">
+                @{
+                    var format = OdsTypeRegistries.BookFormatOf(b.Format);
+                    var status = BookVisuals.StatusOf(b.Status);
+                    var tagChips = TagChips(b);
+                }
+                <OdsRecordCard Id="@($"book-{b.BookId}")"
+                               Icon="@format.Icon"
+                               Image="CoverOf(b)"
+                               Accent="@format.Color"
+                               AccentSoft="@format.Soft"
+                               Name="@b.Title"
+                               Class="bk-card"
+                               Meta="MetaFor(b)"
+                               Counts="CountsFor(b)"
+                               Dimmed="@(b.Status == BookStatus.SoldOrGivenAway)"
+                               Highlight="@(_flashId == b.BookId)"
+                               Open="IsExpanded(b.BookId)"
+                               OnToggle="@(_ => ToggleExpand(b.BookId))">
+                    <Chips>
+                        <OdsChip Tone="status.ChipTone" Icon="@status.Icon" Class="sm">@status.Label</OdsChip>
+                        <OdsChip Tone="OdsChipTone.Outline" Icon="@format.Icon" Class="sm">@format.Label</OdsChip>
+                        @if (tagChips.Count > 0)
+                        {
+                            <OdsTagChips Tags="tagChips" Max="2" />
+                        }
+                    </Chips>
+
+                    <Actions>
+                        <OdsMenu Items="RowActions(b)" AriaLabel="@($"Actions for {b.Title}")" />
+                    </Actions>
+
+                    <Content>
+                        @if (IsExpanded(b.BookId))
+                        {
+                            <BookRecord @key="b.BookId" BookId="b.BookId"
+                                        CanUpdate="_canUpdate" CanReadContacts="_canReadContacts"
+                                        CanReadPhotos="_canReadPhotos" CanReadFiles="_canReadFiles"
+                                        OffFilter="@_offFilter.Contains(b.BookId)"
+                                        ContributorRequestToken="@TokenFor(_contributorTokens, b.BookId)"
+                                        PhotosRequestToken="@TokenFor(_photosTokens, b.BookId)"
+                                        FilesRequestToken="@TokenFor(_filesTokens, b.BookId)"
+                                        OnLoaded="OnBookLoaded"
+                                        OnAnnounce="Announce" />
+                        }
+                    </Content>
+                </OdsRecordCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">Add book</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New book"
+                               Sub="A book on the shelf, an e-book or PDF, an audiobook — or one you want."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <BookDialog @key="_dialogKey" @bind-Open="_dialogOpen" Book="_editBook" Tags="_tags" OnSaved="OnBookSaved" />
+}
+
+@if (_deleteBook is not null)
+{
+    <DeleteBookDialog @key="_deleteKey" @bind-Open="_deleteOpen" Book="_deleteBook"
+                      OnDelete="@(() => DeleteAsync(_deleteBook))" />
+}

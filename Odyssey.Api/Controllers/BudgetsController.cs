@@ -132,7 +132,7 @@ public sealed class BudgetsController : ControllerBase
         await budgetService.Delete(id, cancellationToken);
         return NoContent();
     }
-    
+
     [HttpGet("{id}/transactions", Name = "GetBudgetTransactions")]
     [Authorize(Policy = PermissionClaims.TransactionsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BudgetReport))]

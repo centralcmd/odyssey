@@ -1,0 +1,15 @@
+@*
+    A podcast audio retention pass's detail (issue #556 §3.7): the audio files released by the auto-delete rule and their
+    bytes. Counts only — never an episode or a feed; a nulled count (no news.read) reads "Not shown" through N.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Audio files removed")">@N(Retention.AudioReleased)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Space freed")">@Size(Retention.AudioBytesReleased)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private PodcastAudioRetentionJobRunDetail Retention => (PodcastAudioRetentionJobRunDetail)Run;
+}

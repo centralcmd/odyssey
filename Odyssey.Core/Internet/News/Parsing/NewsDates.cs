@@ -12,16 +12,41 @@ public static partial class NewsDates
 {
     private static readonly Dictionary<string, int> Months = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["jan"] = 1, ["feb"] = 2, ["mar"] = 3, ["apr"] = 4, ["may"] = 5, ["jun"] = 6,
-        ["jul"] = 7, ["aug"] = 8, ["sep"] = 9, ["sept"] = 9, ["oct"] = 10, ["nov"] = 11, ["dec"] = 12,
+        ["jan"] = 1,
+        ["feb"] = 2,
+        ["mar"] = 3,
+        ["apr"] = 4,
+        ["may"] = 5,
+        ["jun"] = 6,
+        ["jul"] = 7,
+        ["aug"] = 8,
+        ["sep"] = 9,
+        ["sept"] = 9,
+        ["oct"] = 10,
+        ["nov"] = 11,
+        ["dec"] = 12,
     };
 
     private static readonly Dictionary<string, int> NamedZones = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["UT"] = 0, ["UTC"] = 0, ["GMT"] = 0, ["Z"] = 0,
-        ["EST"] = -5 * 60, ["EDT"] = -4 * 60, ["CST"] = -6 * 60, ["CDT"] = -5 * 60,
-        ["MST"] = -7 * 60, ["MDT"] = -6 * 60, ["PST"] = -8 * 60, ["PDT"] = -7 * 60,
-        ["CET"] = 60, ["CEST"] = 120, ["BST"] = 60, ["IST"] = 330, ["JST"] = 540, ["AEST"] = 600,
+        ["UT"] = 0,
+        ["UTC"] = 0,
+        ["GMT"] = 0,
+        ["Z"] = 0,
+        ["EST"] = -5 * 60,
+        ["EDT"] = -4 * 60,
+        ["CST"] = -6 * 60,
+        ["CDT"] = -5 * 60,
+        ["MST"] = -7 * 60,
+        ["MDT"] = -6 * 60,
+        ["PST"] = -8 * 60,
+        ["PDT"] = -7 * 60,
+        ["CET"] = 60,
+        ["CEST"] = 120,
+        ["BST"] = 60,
+        ["IST"] = 330,
+        ["JST"] = 540,
+        ["AEST"] = 600,
     };
 
     /// <summary>Parses a feed date, or returns null.</summary>

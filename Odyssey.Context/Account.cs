@@ -11,15 +11,15 @@ public class Account
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public Guid AccountId { get; set; }
-    
+
     [StringLength(256)]
     [Required]
     public required string Name { get; set; }
-    
+
     [StringLength(256)]
     [Required]
     public required string Description { get; set; }
-    
+
     [Required]
     public required DateTime Opened { get; set; } = DateTime.UtcNow;
 
@@ -28,11 +28,11 @@ public class Account
 
     [Required]
     public AccountType AccountType { get; set; }
-    
+
     public DateTime? Closed { get; set; }
 
     public DateTime? Archived { get; set; }
-    
+
     [StringLength(3)]
     [Required]
     public string CurrencyCode { get; set; } = "USD";

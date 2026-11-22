@@ -31,8 +31,15 @@ public class NewsBackgroundJobsTests : IAsyncLifetime
     {
         var status = new NewsStatus
         {
-            Storage = state, Volume = "news", ArticleCount = 1234, FeedCount = 18, QuarantinedFeedCount = 1,
-            ImageBytes = 4 * GiB, ImageQuotaBytes = 20 * GiB, TextAndSourceBytes = 2 * GiB, TextAndSourceQuotaBytes = 20 * GiB,
+            Storage = state,
+            Volume = "news",
+            ArticleCount = 1234,
+            FeedCount = 18,
+            QuarantinedFeedCount = 1,
+            ImageBytes = 4 * GiB,
+            ImageQuotaBytes = 20 * GiB,
+            TextAndSourceBytes = 2 * GiB,
+            TextAndSourceQuotaBytes = 20 * GiB,
             VolumeFreeBytes = 100 * GiB,
         };
         edit?.Invoke(status);
@@ -59,7 +66,8 @@ public class NewsBackgroundJobsTests : IAsyncLifetime
 
         var bars = cut.FindAll("[role=progressbar]");
         var image = bars[0];
-        Assert.Equal("Image storage", cut.Find($"#{image.GetAttribute("aria-labelledby")}").TextContent.Trim());
+        // Podcast artwork counts inside the image quota (issue #559 §3.6), so the bar measures both.
+        Assert.Equal("Images and artwork", cut.Find($"#{image.GetAttribute("aria-labelledby")}").TextContent.Trim());
         Assert.Equal("0", image.GetAttribute("aria-valuemin"));
         Assert.Equal("100", image.GetAttribute("aria-valuemax"));
         Assert.Equal("20", image.GetAttribute("aria-valuenow"));
@@ -89,7 +97,10 @@ public class NewsBackgroundJobsTests : IAsyncLifetime
     {
         var feeds = Enumerable.Range(0, 12).Select(i => new NewsFeedImageUsage
         {
-            FeedId = Guid.NewGuid(), DisplayTitle = $"Feed {i}", Language = i == 0 ? "nb" : null, ImageBytes = GiB,
+            FeedId = Guid.NewGuid(),
+            DisplayTitle = $"Feed {i}",
+            Language = i == 0 ? "nb" : null,
+            ImageBytes = GiB,
         }).ToList();
         var cut = ctx.Render<NewsStatusPanel>(p => p.Add(c => c.Status, Status(edit: s => s.TopFeedsByImageBytes = feeds)));
 
@@ -116,8 +127,17 @@ public class NewsBackgroundJobsTests : IAsyncLifetime
     {
         NewsFeedJobRunDetail Run(JobRunTrigger trigger) => new()
         {
-            Id = Guid.NewGuid(), JobType = JobType.NewsFeedFetch, Trigger = trigger, Status = JobRunStatus.Succeeded,
-            StartedAtUtc = DateTime.UtcNow, FeedsFetched = 4, ItemsStored = 12, ItemsRevised = 2, ImagesStored = 9, FeedsQuarantined = 0, FeedsMarked = 3,
+            Id = Guid.NewGuid(),
+            JobType = JobType.NewsFeedFetch,
+            Trigger = trigger,
+            Status = JobRunStatus.Succeeded,
+            StartedAtUtc = DateTime.UtcNow,
+            FeedsFetched = 4,
+            ItemsStored = 12,
+            ItemsRevised = 2,
+            ImagesStored = 9,
+            FeedsQuarantined = 0,
+            FeedsMarked = 3,
         };
 
         var scheduled = ctx.Render<JobRunDetailNewsFeedFetch>(p => p.Add(c => c.Run, Run(JobRunTrigger.Scheduled)));

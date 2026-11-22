@@ -315,6 +315,23 @@ public sealed record SystemSettingsDto
 
     public int NewsOpmlMaxImportEntries { get; set; }
 
+    // ── Podcasts (issue #556 §8.2) ────────────────────────────────────────────────────────────────
+
+    public int PodcastAudioStoreMaxGiB { get; set; }
+
+    public int PodcastAudioMaxEpisodeMb { get; set; }
+
+    /// <summary>
+    /// Server-computed ceiling on <see cref="PodcastAudioMaxEpisodeMb"/>: <c>PodcastAudioSizeCeiling.Mb</c> of
+    /// <c>FileStorage:MaxFileSizeBytes</c>, never below the setting's floor. The store refuses a larger write, so the
+    /// control bounds itself by <c>min(range max, this)</c>.
+    /// </summary>
+    public int PodcastAudioMaxEpisodeMbCeiling { get; set; }
+
+    public int PodcastAutoDownloadsPerFeedPerDay { get; set; }
+
+    public int PodcastAutoDownloadMaxUnfetchedPerFeed { get; set; }
+
     // ── Filesystem object storage (issue #346) ───────────────────────────────────────────────────
 
     /// <summary>Hours a released file stays on disk before the maintenance job removes it.</summary>

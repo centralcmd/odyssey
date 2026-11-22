@@ -59,7 +59,7 @@ public class AccountService
         OrganizationNumber = r.OrganizationNumber,
         Archived = r.Archived,
     };
-    
+
     /// <summary>
     /// Server-side paged list (issue #277): search + type/status filters + allowlisted sort. The
     /// <c>balance</c> and <c>txnCount</c> keys are expressed as correlated subqueries so the ordering
@@ -320,7 +320,7 @@ public class AccountService
             }
         }
     }
-    
+
     /// <summary>
     /// Distinct CONTRACTS naming each account as a party — not party rows. An account linked to one
     /// contract in two roles is one contract, which is what the account's Contracts section lists.
@@ -469,7 +469,7 @@ public class AccountService
     public async Task<IList<ExistingAccountFile>?> GetAccountFiles(Guid accountId, CancellationToken cancellationToken = default) =>
         await FileLinks.List(accountId, cancellationToken);
 
-    
+
     public Task<ExistingAccount> Create(NewAccount newAccount, CancellationToken cancellationToken = default) =>
         Create(newAccount, accountId: null, cancellationToken);
 
@@ -519,7 +519,7 @@ public class AccountService
         dto.Custodian = await ResolveCustodian(account.CustodianId, cancellationToken);
         return dto;
     }
-    
+
     public async Task<ExistingAccount?> Update(Guid id, NewAccount putAccount, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts
@@ -578,7 +578,7 @@ public class AccountService
         dto.Custodian = await ResolveCustodian(account.CustodianId, cancellationToken);
         return dto;
     }
-    
+
     public async Task Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(e => e.AccountId == id, cancellationToken);

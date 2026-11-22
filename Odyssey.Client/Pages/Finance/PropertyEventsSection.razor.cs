@@ -241,7 +241,9 @@ public partial class PropertyEventsSection : IAsyncDisposable
         _listLoader.Dispose();
         if (_focusJs is not null)
         {
-            try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _focusJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
 
         GC.SuppressFinalize(this);

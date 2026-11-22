@@ -114,6 +114,14 @@ public class PlotWidthObserverTests
         var second = observer.SyncAsync(PlotB);
         bridge.HeldImport!.SetResult(bridge.Module.Object);
         await first;
+        // The newer plot's observe call is issued by a continuation of the same import, which may not have
+        // run yet when the first sync returns: wait for it rather than assume it.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (bridge.Pending.Count == 0 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+
         bridge.Release(0);
         await second;
 

@@ -115,8 +115,13 @@ public class NewsSettingsApiTests(NewsSettingsApiTests.Host host) : SharedApiHos
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
         {
-            NewsDefaultFetchIntervalMinutes = 120, NewsMaxFeeds = 300, NewsImageMaxPerArticle = 0,
-            NewsImageStoreMaxGiB = 10, NewsTextStoreMaxGiB = 5, NewsFeedMaxArticlesPerDay = 50, NewsFeedMaxImageMbPerDay = 20,
+            NewsDefaultFetchIntervalMinutes = 120,
+            NewsMaxFeeds = 300,
+            NewsImageMaxPerArticle = 0,
+            NewsImageStoreMaxGiB = 10,
+            NewsTextStoreMaxGiB = 5,
+            NewsFeedMaxArticlesPerDay = 50,
+            NewsFeedMaxImageMbPerDay = 20,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

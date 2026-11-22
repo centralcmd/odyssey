@@ -141,7 +141,8 @@ public partial class WeatherHistoryChart : IAsyncDisposable
         List<Column>? current = null;
         foreach (var c in cols)
         {
-            if (has(c)) { if (current is null) { current = []; runs.Add(current); } current.Add(c); }
+            if (has(c))
+            { if (current is null) { current = []; runs.Add(current); } current.Add(c); }
             else
             {
                 current = null;
@@ -284,7 +285,8 @@ public partial class WeatherHistoryChart : IAsyncDisposable
 
     private void OnPlotKey(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape") { ClearHover(); return; }
+        if (e.Key == "Escape")
+        { ClearHover(); return; }
         if (N == 0 || e.Key is not ("ArrowLeft" or "ArrowRight"))
         {
             return;

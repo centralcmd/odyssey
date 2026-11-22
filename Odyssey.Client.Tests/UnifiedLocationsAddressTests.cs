@@ -31,7 +31,12 @@ public class UnifiedLocationsAddressTests
 {
     private static AddressFields Fields(string line1 = "Storgata 1", string? line2 = null, string? region = null) => new()
     {
-        Line1 = line1, Line2 = line2, PostalCode = "0155", City = "Oslo", Region = region, CountryCode = "NO",
+        Line1 = line1,
+        Line2 = line2,
+        PostalCode = "0155",
+        City = "Oslo",
+        Region = region,
+        CountryCode = "NO",
     };
 
     private static AddressBlockStored Stored(int otherUses = 2, AddressFields? fields = null) => new()
@@ -857,11 +862,21 @@ public class UnifiedLocationsAddressTests
 
     private static ExistingProperty Property(Guid? locationId = null) => new()
     {
-        PropertyId = Guid.NewGuid(), Name = "Flat", Description = "Home", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
+        PropertyId = Guid.NewGuid(),
+        Name = "Flat",
+        Description = "Home",
+        Type = PropertyType.RealEstate,
+        CurrencyCode = "NOK",
         RealEstateDetails = new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.Apartment, LocationId = locationId, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo",
-            CountryCode = "NO", OtherUses = locationId is null ? null : 1, PlaceHasCoordinates = false,
+            Kind = RealEstateKind.Apartment,
+            LocationId = locationId,
+            AddressLine = "Storgata 1",
+            PostalCode = "0155",
+            City = "Oslo",
+            CountryCode = "NO",
+            OtherUses = locationId is null ? null : 1,
+            PlaceHasCoordinates = false,
         },
     };
 

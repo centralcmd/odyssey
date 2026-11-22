@@ -437,7 +437,10 @@ internal sealed partial class CalendarAttachmentImporter(
 
     private static CalendarAttachSlot Copy(CalendarAttachSlot known) => new()
     {
-        Kind = known.Kind, State = known.State, Id = known.Id, Reservation = known.Reservation,
+        Kind = known.Kind,
+        State = known.State,
+        Id = known.Id,
+        Reservation = known.Reservation,
     };
 
     // ------------------------------------------------------------------ References
@@ -462,7 +465,11 @@ internal sealed partial class CalendarAttachmentImporter(
 
         return new CalendarAttachSlot
         {
-            Kind = kind, State = CalendarAttachSlotState.Reference, ReferenceId = id, ReferenceHash = folded, ReferenceSize = parsedSize,
+            Kind = kind,
+            State = CalendarAttachSlotState.Reference,
+            ReferenceId = id,
+            ReferenceHash = folded,
+            ReferenceSize = parsedSize,
         };
     }
 

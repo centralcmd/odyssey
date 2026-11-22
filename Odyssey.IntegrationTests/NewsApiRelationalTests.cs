@@ -44,15 +44,20 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
         TimeProvider.System, NullLogger<NewsArticleService>.Instance);
 
     private static NewsFeedService Feeds(OdysseyContext context) =>
-        new(context, new DefaultNewsSettings(), new NewsFetchStateFlags(), TimeProvider.System, NullLogger<NewsFeedService>.Instance);
+        new(context, new DefaultNewsSettings(), new NewsFetchStateFlags(), new Odyssey.Core.Internet.News.Podcasts.PodcastAudioRequests(), TimeProvider.System, NullLogger<NewsFeedService>.Instance);
 
     private static async Task<Guid> FeedAsync(OdysseyContext context, string url, string? title = "Feed")
     {
         var id = Guid.NewGuid();
         context.NewsFeeds.Add(new NewsFeed
         {
-            NewsFeedId = id, Url = url, UrlKeyHash = NewsUrlKey.Hash(NewsUrlKey.UrlKey(url)!), IsActive = true, DownloadImages = false,
-            CreatedAtUtc = Base, SettingsVersion = Guid.NewGuid(),
+            NewsFeedId = id,
+            Url = url,
+            UrlKeyHash = NewsUrlKey.Hash(NewsUrlKey.UrlKey(url)!),
+            IsActive = true,
+            DownloadImages = false,
+            CreatedAtUtc = Base,
+            SettingsVersion = Guid.NewGuid(),
         });
         context.NewsFeedFetchStates.Add(new NewsFeedFetchState { NewsFeedId = id, FetchFence = Guid.NewGuid(), NextFetchAtUtc = Base, Title = title });
         context.NewsFeedCounters.Add(new NewsFeedCounter { NewsFeedId = id });
@@ -69,8 +74,16 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
             var sortAt = Base + step * i;
             context.NewsArticles.Add(new NewsArticle
             {
-                NewsArticleId = id, NewsFeedId = feedId, Bucket = 1, Title = $"{title} {i}", Excerpt = $"Opening words of {title}.",
-                ContentHash = new byte[32], IdentityHash = new byte[32], FirstSeenAtUtc = sortAt, LastSeenAtUtc = sortAt, SortAtUtc = sortAt,
+                NewsArticleId = id,
+                NewsFeedId = feedId,
+                Bucket = 1,
+                Title = $"{title} {i}",
+                Excerpt = $"Opening words of {title}.",
+                ContentHash = new byte[32],
+                IdentityHash = new byte[32],
+                FirstSeenAtUtc = sortAt,
+                LastSeenAtUtc = sortAt,
+                SortAtUtc = sortAt,
             });
             ids.Add(id);
         }
@@ -158,7 +171,12 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
             {
                 var page = await service.ListAsync(new NewsArticlesQueryParams
                 {
-                    FeedIds = feedIds, TagIds = tagIds, IsRead = false, SortBy = sort, Limit = 4, Cursor = cursor,
+                    FeedIds = feedIds,
+                    TagIds = tagIds,
+                    IsRead = false,
+                    SortBy = sort,
+                    Limit = 4,
+                    Cursor = cursor,
                 }, CancellationToken.None);
                 seen.AddRange(page.Items.Select(i => i.Id));
                 await service.SetReadAsync(new NewsArticlesReadStateBulk { ArticleIds = [.. page.Items.Select(i => i.Id)], IsRead = true }, CancellationToken.None);
@@ -237,7 +255,14 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
         var feed = await Feeds(api).GetAsync(id, canManage: true, CancellationToken.None);
         var updated = await Feeds(api).UpdateAsync(id, new UpdateNewsFeed
         {
-            Version = feed!.Version, Url = $"https://moved-{Guid.NewGuid():N}.example.org/rss", DownloadImages = true, IsActive = true,
+            Version = feed!.Version,
+            Url = $"https://moved-{Guid.NewGuid():N}.example.org/rss",
+            DownloadImages = true,
+            IsActive = true,
+            Kind = NewsFeedKind.Article,
+            AutoDownload = false,
+            AutoDeleteEnabled = false,
+            AutoDeleteAfterDays = 30,
         }, canManage: true, "it-user", CancellationToken.None);
         Assert.NotNull(updated);
         Assert.True(await Feeds(api).RefreshAsync(id, CancellationToken.None));

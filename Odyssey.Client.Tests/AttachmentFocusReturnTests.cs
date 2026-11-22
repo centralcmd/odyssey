@@ -122,8 +122,11 @@ public class AttachmentFocusReturnTests
         List<FileMetadataResponse> files = [Meta("a.pdf"), Meta("b.pdf")];
         var task = new JournalTaskSummary
         {
-            JournalTaskId = Guid.NewGuid(), Title = "Renew passport", Status = JournalTaskStatus.Doing,
-            Position = 0, AttachmentCount = files.Count,
+            JournalTaskId = Guid.NewGuid(),
+            Title = "Renew passport",
+            Status = JournalTaskStatus.Doing,
+            Position = 0,
+            AttachmentCount = files.Count,
         };
         var cut = ctx.Render<TaskListRow>(p => p
             .Add(r => r.Task, task)

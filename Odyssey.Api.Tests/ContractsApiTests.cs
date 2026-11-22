@@ -931,9 +931,13 @@ public class ContractsApiTests(ContractsApiTests.Host host) : SharedApiHostTests
         var archived = await CreateTypedAsync(client, ContractType.Other, start: FixedToday.AddDays(-30));
         (await client.PutAsJsonAsync($"{Path}/{archived}", new UpdateContract
         {
-            Name = "Other contract", Type = ContractType.Other,
-            StartDate = FixedToday.AddDays(-30), EndDate = Lapsed, IsArchived = true,
-            Ready = ReadyOn, Signed = SignedOn,
+            Name = "Other contract",
+            Type = ContractType.Other,
+            StartDate = FixedToday.AddDays(-30),
+            EndDate = Lapsed,
+            IsArchived = true,
+            Ready = ReadyOn,
+            Signed = SignedOn,
         })).EnsureSuccessStatusCode();
 
         var summary = (await client.GetFromJsonAsync<ContractSummary>($"{Path}/summary"))!;
@@ -1527,20 +1531,20 @@ public class ContractsApiTests(ContractsApiTests.Host host) : SharedApiHostTests
     private static UpdateContract UpdateContract(
         bool isPaused, bool isArchived, DateTime? startDate = null, DateTime? endDate = null,
         DateTime? completionDate = null) => new()
-    {
-        Name = "Employment agreement",
-        Type = ContractType.Employment,
-        Description = "Full-time role",
-        StartDate = completionDate is null ? startDate ?? FixedToday.AddDays(-30) : null,
-        EndDate = completionDate is null ? endDate : null,
-        CompletionDate = completionDate,
-        IsArchived = isArchived,
-        IsPaused = isPaused,
-        // Carried forward for the same reason (issue #145) — and additionally because an unsigned
-        // contract cannot be paused at all, so omitting these would make every pause below a 400.
-        Ready = ReadyOn,
-        Signed = SignedOn,
-    };
+        {
+            Name = "Employment agreement",
+            Type = ContractType.Employment,
+            Description = "Full-time role",
+            StartDate = completionDate is null ? startDate ?? FixedToday.AddDays(-30) : null,
+            EndDate = completionDate is null ? endDate : null,
+            CompletionDate = completionDate,
+            IsArchived = isArchived,
+            IsPaused = isPaused,
+            // Carried forward for the same reason (issue #145) — and additionally because an unsigned
+            // contract cannot be paused at all, so omitting these would make every pause below a 400.
+            Ready = ReadyOn,
+            Signed = SignedOn,
+        };
 
     /// <summary>An end date already lapsed against the fixed clock — the shorthand for "archivable".</summary>
     private static DateTime Lapsed => FixedToday.AddDays(-1);

@@ -66,8 +66,14 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
 
     private static NewWeatherPoint NewPoint(string name = "Oslo", bool tracked = false, bool forecast = true, bool history = true) => new()
     {
-        Name = name, Latitude = 59.91349m, Longitude = 10.73889m, AltitudeMeters = 23, TimeZoneId = "Europe/Oslo",
-        ForecastEnabled = forecast, HistoryEnabled = history, IsTracked = tracked,
+        Name = name,
+        Latitude = 59.91349m,
+        Longitude = 10.73889m,
+        AltitudeMeters = 23,
+        TimeZoneId = "Europe/Oslo",
+        ForecastEnabled = forecast,
+        HistoryEnabled = history,
+        IsTracked = tracked,
     };
 
     private static async Task<ExistingWeatherPoint> CreatePointAsync(
@@ -80,9 +86,15 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
 
     private static UpdateWeatherPoint Update(ExistingWeatherPoint p, bool? forecast = null, bool? history = null, decimal? latitude = null) => new()
     {
-        Name = p.Name, Latitude = latitude ?? p.Site.Latitude, Longitude = p.Site.Longitude, AltitudeMeters = p.Site.AltitudeMeters,
-        TimeZoneId = p.Site.TimeZoneId, ForecastEnabled = forecast ?? p.ForecastEnabled, HistoryEnabled = history ?? p.HistoryEnabled,
-        IsTracked = p.IsTracked, SettingsVersion = p.SettingsVersion,
+        Name = p.Name,
+        Latitude = latitude ?? p.Site.Latitude,
+        Longitude = p.Site.Longitude,
+        AltitudeMeters = p.Site.AltitudeMeters,
+        TimeZoneId = p.Site.TimeZoneId,
+        ForecastEnabled = forecast ?? p.ForecastEnabled,
+        HistoryEnabled = history ?? p.HistoryEnabled,
+        IsTracked = p.IsTracked,
+        SettingsVersion = p.SettingsVersion,
     };
 
     private static Task<HttpResponseMessage> LinkAsync(HttpClient client, Guid locationId, Guid? pointId) =>
@@ -201,8 +213,14 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
                 locationId = Guid.NewGuid();
                 context.WeatherPoints.Add(new WeatherPoint
                 {
-                    WeatherPointId = pointId, Name = "P", ForecastEnabled = true, CurrentSiteVersion = 1,
-                    SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
+                    WeatherPointId = pointId,
+                    Name = "P",
+                    ForecastEnabled = true,
+                    CurrentSiteVersion = 1,
+                    SettingsVersion = Guid.NewGuid(),
+                    EnabledAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now,
                 });
                 context.WeatherPointSites.Add(new WeatherPointSite { WeatherPointId = pointId, SiteVersion = 1, Latitude = 59.9m, Longitude = 10.7m, TimeZoneId = "Europe/Oslo", AppliedAt = now });
                 context.Locations.Add(new Location { LocationId = locationId, Name = "L", CreatedAt = now, UpdatedAt = now });
@@ -267,8 +285,11 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
 
         var stale = await client.PostAsJsonAsync("/api/weather/points", new NewWeatherPoint
         {
-            FromLocationId = location.LocationId, ExpectedLocationFingerprint = "v1:0.000:0.000:-:UTC",
-            ForecastEnabled = true, HistoryEnabled = true, IsTracked = false,
+            FromLocationId = location.LocationId,
+            ExpectedLocationFingerprint = "v1:0.000:0.000:-:UTC",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
         });
         Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
         var body = await stale.Content.ReadAsStringAsync();
@@ -277,8 +298,11 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
 
         var created = await client.PostAsJsonAsync("/api/weather/points", new NewWeatherPoint
         {
-            FromLocationId = location.LocationId, ExpectedLocationFingerprint = location.WeatherFingerprint,
-            ForecastEnabled = true, HistoryEnabled = true, IsTracked = false,
+            FromLocationId = location.LocationId,
+            ExpectedLocationFingerprint = location.WeatherFingerprint,
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
         });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var point = (await created.Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
@@ -293,7 +317,11 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
         using var noRead = factory.ClientFor([PermissionClaims.WeatherPointsUpdate, PermissionClaims.WeatherPointsRead]);
         var forbidden = await noRead.PostAsJsonAsync("/api/weather/points", new NewWeatherPoint
         {
-            FromLocationId = Guid.NewGuid(), ExpectedLocationFingerprint = "x", ForecastEnabled = true, HistoryEnabled = true, IsTracked = false,
+            FromLocationId = Guid.NewGuid(),
+            ExpectedLocationFingerprint = "x",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
         });
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
 
@@ -304,7 +332,11 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
 
         var refused = await client.PostAsJsonAsync("/api/weather/points", new NewWeatherPoint
         {
-            FromLocationId = place.LocationId, ExpectedLocationFingerprint = "v1:none", ForecastEnabled = true, HistoryEnabled = true, IsTracked = false,
+            FromLocationId = place.LocationId,
+            ExpectedLocationFingerprint = "v1:none",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
         });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
         var problem = await refused.Content.ReadFromJsonAsync<ValidationProblemDetails>();
@@ -538,8 +570,13 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
 
         var put = await client.PutAsJsonAsync($"/api/locations/{place.LocationId}", new
         {
-            name = place.Name, latitude = place.Latitude, longitude = place.Longitude, altitudeMeters = place.AltitudeMeters,
-            timeZoneId = place.TimeZoneId, source = (int)LocationSource.Manual, weatherPointId = other.WeatherPointId,
+            name = place.Name,
+            latitude = place.Latitude,
+            longitude = place.Longitude,
+            altitudeMeters = place.AltitudeMeters,
+            timeZoneId = place.TimeZoneId,
+            source = (int)LocationSource.Manual,
+            weatherPointId = other.WeatherPointId,
         });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         Assert.Equal(point.WeatherPointId,
@@ -747,12 +784,21 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.CalendarEvents.Add(new CalendarEvent
             {
-                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Walk", LocationId = place.LocationId,
-                StartDateTime = start, EndDateTime = start.AddHours(2),
+                CalendarEventId = eventId,
+                CalendarId = Guid.NewGuid(),
+                Title = "Walk",
+                LocationId = place.LocationId,
+                StartDateTime = start,
+                EndDateTime = start.AddHours(2),
             });
             context.JournalEntries.Add(new JournalEntry
             {
-                JournalEntryId = entryId, ExternalUid = "e1", Title = "Today", Content = "…", EntryDate = DateTime.UtcNow, LocationId = place.LocationId,
+                JournalEntryId = entryId,
+                ExternalUid = "e1",
+                Title = "Today",
+                Content = "…",
+                EntryDate = DateTime.UtcNow,
+                LocationId = place.LocationId,
             });
             await context.SaveChangesAsync();
         }
@@ -847,12 +893,19 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.CalendarEvents.Add(new CalendarEvent
             {
-                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Walk",
-                StartDateTime = DateTime.UtcNow.AddDays(-3), EndDateTime = DateTime.UtcNow.AddDays(-3).AddHours(1),
+                CalendarEventId = eventId,
+                CalendarId = Guid.NewGuid(),
+                Title = "Walk",
+                StartDateTime = DateTime.UtcNow.AddDays(-3),
+                EndDateTime = DateTime.UtcNow.AddDays(-3).AddHours(1),
             });
             context.JournalEntries.Add(new JournalEntry
             {
-                JournalEntryId = entryId, ExternalUid = "e-cache", Title = "Today", Content = "…", EntryDate = DateTime.UtcNow.AddDays(-3),
+                JournalEntryId = entryId,
+                ExternalUid = "e-cache",
+                Title = "Today",
+                Content = "…",
+                EntryDate = DateTime.UtcNow.AddDays(-3),
             });
             await context.SaveChangesAsync();
         }
@@ -923,7 +976,12 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
             {
                 context.JournalEntries.Add(new JournalEntry
                 {
-                    JournalEntryId = id, ExternalUid = $"e-{id}", Title = "Day", Content = "…", EntryDate = DateTime.UtcNow, LocationId = place.LocationId,
+                    JournalEntryId = id,
+                    ExternalUid = $"e-{id}",
+                    Title = "Day",
+                    Content = "…",
+                    EntryDate = DateTime.UtcNow,
+                    LocationId = place.LocationId,
                 });
             }
 
@@ -1223,12 +1281,21 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.CalendarEvents.Add(new CalendarEvent
             {
-                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Walk", LocationId = place.LocationId,
-                StartDateTime = start, EndDateTime = start.AddHours(2),
+                CalendarEventId = eventId,
+                CalendarId = Guid.NewGuid(),
+                Title = "Walk",
+                LocationId = place.LocationId,
+                StartDateTime = start,
+                EndDateTime = start.AddHours(2),
             });
             context.JournalEntries.Add(new JournalEntry
             {
-                JournalEntryId = entryId, ExternalUid = "e1", Title = "Today", Content = "…", EntryDate = from, LocationId = place.LocationId,
+                JournalEntryId = entryId,
+                ExternalUid = "e1",
+                Title = "Today",
+                Content = "…",
+                EntryDate = from,
+                LocationId = place.LocationId,
             });
             await context.SaveChangesAsync();
         }
@@ -1519,20 +1586,35 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
             {
                 context.WeatherDays.Add(new WeatherDay
                 {
-                    WeatherPointId = point.WeatherPointId, LocalDate = day, ObservedMinTempC = 9.5m, ObservedMaxTempC = 18.5m,
-                    ObservedMeanTempC = 14m, ObservedPrecipitationMm = 1.2m, ObservedFetchedAtUtc = new DateTime(2026, 6, 20, 7, 0, 0, DateTimeKind.Utc),
-                    ObservedSiteVersion = 1, UpdatedAtUtc = new DateTime(2026, 6, 20, 7, 0, 0, DateTimeKind.Utc),
+                    WeatherPointId = point.WeatherPointId,
+                    LocalDate = day,
+                    ObservedMinTempC = 9.5m,
+                    ObservedMaxTempC = 18.5m,
+                    ObservedMeanTempC = 14m,
+                    ObservedPrecipitationMm = 1.2m,
+                    ObservedFetchedAtUtc = new DateTime(2026, 6, 20, 7, 0, 0, DateTimeKind.Utc),
+                    ObservedSiteVersion = 1,
+                    UpdatedAtUtc = new DateTime(2026, 6, 20, 7, 0, 0, DateTimeKind.Utc),
                 });
             }
 
             context.CalendarEvents.Add(new CalendarEvent
             {
-                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Hike", LocationId = place.LocationId,
-                StartDateTime = tripDay, EndDateTime = tripDay.AddHours(3),
+                CalendarEventId = eventId,
+                CalendarId = Guid.NewGuid(),
+                Title = "Hike",
+                LocationId = place.LocationId,
+                StartDateTime = tripDay,
+                EndDateTime = tripDay.AddHours(3),
             });
             context.JournalEntries.Add(new JournalEntry
             {
-                JournalEntryId = entryId, ExternalUid = "trip", Title = "Trip", Content = "…", EntryDate = tripDay, LocationId = place.LocationId,
+                JournalEntryId = entryId,
+                ExternalUid = "trip",
+                Title = "Trip",
+                Content = "…",
+                EntryDate = tripDay,
+                LocationId = place.LocationId,
             });
             await context.SaveChangesAsync();
         }

@@ -18,9 +18,25 @@ public static class ApiInteropExtensions
     /// </summary>
     public static ApiUpload ToApiUpload(this IBrowserFile file, long maxSizeBytes) =>
         new(file.Name,
-            file.ContentType,
+            UploadContentType(file.Name, file.ContentType),
             file.Size,
             () => file.OpenReadStream(maxSizeBytes));
+
+    /// <summary>The EPUB content type (issue #571 §3.10.3).</summary>
+    public const string EpubContentType = "application/epub+zip";
+
+    /// <summary>
+    /// The content type an upload is sent with. The only rewrite in the client (issue #571 §3.10.3): most browsers
+    /// report no type, or <c>application/octet-stream</c>, for an <c>.epub</c>, which the server's allow-list would
+    /// refuse, so a name ending <c>.epub</c> with one of those two is sent as <see cref="EpubContentType"/>. Every
+    /// other combination is sent as declared. It decides nothing: the server's signature check still accepts or
+    /// refuses the bytes.
+    /// </summary>
+    internal static string UploadContentType(string name, string? declared) =>
+        name.EndsWith(".epub", StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(declared) || string.Equals(declared, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
+            ? EpubContentType
+            : declared ?? string.Empty;
 
     /// <summary>
     /// Returns the value on success; on failure toasts "{failureLead}: {detail}" and returns

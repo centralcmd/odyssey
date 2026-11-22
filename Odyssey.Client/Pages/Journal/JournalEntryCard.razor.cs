@@ -215,12 +215,16 @@ public partial class JournalEntryCard
     {
         if (_weatherJs is not null)
         {
-            try { await _weatherJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _weatherJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
 
         if (_focusReturnJs is not null)
         {
-            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _focusReturnJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

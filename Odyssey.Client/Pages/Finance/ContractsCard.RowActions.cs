@@ -297,7 +297,8 @@ public partial class ContractsCard
                 _expandedId = null;
             }
 
-            if (_editContract?.ContractId == c.ContractId) { _editContract = null; _editContractOpen = false; }
+            if (_editContract?.ContractId == c.ContractId)
+            { _editContract = null; _editContractOpen = false; }
             await LoadSummary();
             StateHasChanged();
         }

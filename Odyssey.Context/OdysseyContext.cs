@@ -357,6 +357,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<JournalTask>(modelBuilder, nameof(JournalTask.CreatedByUserId), nameof(JournalTask.UpdatedByUserId));
         DeclareUserAttribution<Photo>(modelBuilder, nameof(Photo.CreatedByUserId), nameof(Photo.UpdatedByUserId));
         DeclareUserAttribution<PhotoAlbum>(modelBuilder, nameof(PhotoAlbum.CreatedByUserId), nameof(PhotoAlbum.UpdatedByUserId));
+        DeclareUserAttribution<Book>(modelBuilder, nameof(Book.CreatedByUserId), nameof(Book.UpdatedByUserId));
         DeclareUserAttribution<RecurrencePattern>(modelBuilder, nameof(RecurrencePattern.CreatedByUserId), nameof(RecurrencePattern.UpdatedByUserId));
         DeclareUserAttribution<RecurrenceExclusion>(modelBuilder, nameof(RecurrenceExclusion.CreatedByUserId));
 
@@ -483,6 +484,14 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PhotoPerson> PhotoPeople { get; set; }
     public DbSet<PhotoAlbum> PhotoAlbums { get; set; }
     public DbSet<PhotoAlbumItem> PhotoAlbumItems { get; set; }
+
+    // Books (issue #527), a Library-module feature.
+    public DbSet<Book> Books { get; set; }
+    public DbSet<BookContributor> BookContributors { get; set; }
+    public DbSet<BookImage> BookImages { get; set; }
+    public DbSet<BookAttachment> BookAttachments { get; set; }
+    public DbSet<BookTag> BookTags { get; set; }
+    public DbSet<BookTagLink> BookTagLinks { get; set; }
 
     // Calendar (issue #330), merged in.
     public DbSet<Calendar> Calendars { get; set; }
@@ -622,6 +631,17 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<NewsFeedTag> NewsFeedTags => Set<NewsFeedTag>();
     public DbSet<NewsArticleTag> NewsArticleTags => Set<NewsArticleTag>();
     public DbSet<NewsFeedCrashEvent> NewsFeedCrashEvents => Set<NewsFeedCrashEvent>();
+
+    // ── Podcasts (issue #556) ───────────────────────────────────────────────────────────────────
+    // A podcast is a news feed of kind Podcast; an episode extends its NewsArticle 1:1. Audio and artwork are files on
+    // the PodcastAudio and PodcastArtwork storage features.
+    public DbSet<PodcastFeedDetails> PodcastFeedDetails => Set<PodcastFeedDetails>();
+    public DbSet<PodcastEpisode> PodcastEpisodes => Set<PodcastEpisode>();
+    public DbSet<PodcastEpisodeAudio> PodcastEpisodeAudio => Set<PodcastEpisodeAudio>();
+    public DbSet<PodcastChapter> PodcastChapters => Set<PodcastChapter>();
+    public DbSet<PodcastArtwork> PodcastArtwork => Set<PodcastArtwork>();
+    public DbSet<PodcastArtworkFile> PodcastArtworkFiles => Set<PodcastArtworkFile>();
+    public DbSet<PodcastArtworkIncident> PodcastArtworkIncidents => Set<PodcastArtworkIncident>();
 
     /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from

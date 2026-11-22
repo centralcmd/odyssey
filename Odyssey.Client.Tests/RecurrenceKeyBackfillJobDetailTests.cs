@@ -26,9 +26,14 @@ public class RecurrenceKeyBackfillJobDetailTests : IAsyncLifetime
 
     private static RecurrenceKeyBackfillJobRunDetail Run(int? keyed, int? failures, int? detached) => new()
     {
-        Id = Guid.NewGuid(), JobType = JobType.RecurrenceKeyBackfill, Trigger = JobRunTrigger.Scheduled,
-        Status = JobRunStatus.Succeeded, StartedAtUtc = DateTime.UtcNow,
-        SeriesKeyed = keyed, SeriesKeyFailures = failures, KeyRowsDetached = detached,
+        Id = Guid.NewGuid(),
+        JobType = JobType.RecurrenceKeyBackfill,
+        Trigger = JobRunTrigger.Scheduled,
+        Status = JobRunStatus.Succeeded,
+        StartedAtUtc = DateTime.UtcNow,
+        SeriesKeyed = keyed,
+        SeriesKeyFailures = failures,
+        KeyRowsDetached = detached,
     };
 
     private static List<(string Label, string Value)> Tiles(IRenderedComponent<JobRunDetailRecurrenceKeyBackfill> cut) =>

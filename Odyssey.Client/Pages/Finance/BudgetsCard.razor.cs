@@ -106,22 +106,22 @@ public partial class BudgetsCard
     private void ApplyPageState(BudgetsPageState state)
     {
         _overviewOpen = state.OverviewOpen;
-        _searchOpen   = state.SearchOpen;
+        _searchOpen = state.SearchOpen;
         _searchString = state.Search ?? string.Empty;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
-        _sort         = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
-        _batch        = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
+        _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
+        _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
 
     private BudgetsPageState BuildPageState() => new()
     {
-        OverviewOpen  = _overviewOpen,
-        SearchOpen    = _searchOpen,
-        Search        = _searchString,
-        StatusFilter  = [.. _statusFilter],
-        SortField     = _sort.Key,
+        OverviewOpen = _overviewOpen,
+        SearchOpen = _searchOpen,
+        Search = _searchString,
+        StatusFilter = [.. _statusFilter],
+        SortField = _sort.Key,
         SortDirection = _sort.Dir,
-        BatchSize     = _batch,
+        BatchSize = _batch,
     };
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());

@@ -30,7 +30,8 @@ public class CalendarRecurrenceImportTests
     {
         var r = new IcsImportResult
         {
-            ImportedCount = 2, UpdatedCount = 1,
+            ImportedCount = 2,
+            UpdatedCount = 1,
             Skipped = [new IcsImportSkipGroup { Reason = "Uses a time zone Odyssey doesn’t know.", Count = 1, SampleTitles = ["Standup on Mars"] }],
         };
         configure?.Invoke(r);

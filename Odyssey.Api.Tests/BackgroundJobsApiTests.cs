@@ -40,7 +40,7 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
         PermissionClaims.FileStorageRead,
         PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate,
         PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisCreate,
-        PermissionClaims.NewsFeedsUpdate,
+        PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsRead,
         PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate,
     ];
 
@@ -116,14 +116,14 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
 
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
-                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill],
+                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload, JobType.PodcastAudioRetention],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
             Assert.Equal(JobHealth.NotTicking, job.Health);
             Assert.Equal(300, job.NotTickingAfterSeconds);
             // The file-analysis queue has no manual run (issue #444): it only runs work a user consented to.
-            Assert.Equal(job.JobType != JobType.FileAnalysis, job.CanRunNow);
+            Assert.Equal(job.JobType is not (JobType.FileAnalysis or JobType.PodcastAudioDownload), job.CanRunNow);
             Assert.True(job.CanReadDetail);
         });
         Assert.Null(overview.Jobs.Single(job => job.JobType == JobType.Weather).OverdueAfterSeconds);
@@ -571,7 +571,12 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
             context.SystemSettings.Single(setting => setting.Key == SystemSettingsKeys.WeatherUserAgentContact).Value = "ops@example.org";
             context.WeatherPoints.Add(new WeatherPoint
             {
-                WeatherPointId = Guid.NewGuid(), Name = "Home", ForecastEnabled = true, IsTracked = true, EnabledAt = Now, CurrentSiteVersion = 1,
+                WeatherPointId = Guid.NewGuid(),
+                Name = "Home",
+                ForecastEnabled = true,
+                IsTracked = true,
+                EnabledAt = Now,
+                CurrentSiteVersion = 1,
             });
         });
         using var client = factory.ClientFor(Admin);
@@ -635,7 +640,9 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
             context.PhotoThumbnailJobs.Add(PendingJob());
             context.PhotoThumbnailWorkerHeartbeats.Add(new PhotoThumbnailWorkerHeartbeat
             {
-                WorkerName = "worker-1", State = ThumbnailWorkerState.Tripped, UpdatedAtUtc = Now.AddSeconds(-10),
+                WorkerName = "worker-1",
+                State = ThumbnailWorkerState.Tripped,
+                UpdatedAtUtc = Now.AddSeconds(-10),
             });
             for (var i = 1; i <= 3; i++)
             {
@@ -753,8 +760,11 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
     {
         var run = new TRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, StartedAtUtc = started ?? finished.AddMinutes(-1),
-            ClaimedAtUtc = started ?? finished, LastActivityAtUtc = finished,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Scheduled,
+            StartedAtUtc = started ?? finished.AddMinutes(-1),
+            ClaimedAtUtc = started ?? finished,
+            LastActivityAtUtc = finished,
         };
         run.Finish(status, category, finished);
         return run;
@@ -763,20 +773,34 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
     private static JobRun Running<TRun>(Guid? worker)
         where TRun : JobRun, new() => new TRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Running,
-            StartedAtUtc = Now.AddMinutes(-1), ClaimedAtUtc = Now.AddMinutes(-1), LastActivityAtUtc = Now.AddMinutes(-1), WorkerId = worker,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Scheduled,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = Now.AddMinutes(-1),
+            ClaimedAtUtc = Now.AddMinutes(-1),
+            LastActivityAtUtc = Now.AddMinutes(-1),
+            WorkerId = worker,
         };
 
     private static TRun Held<TRun>(Guid worker, JobHeldReason reason)
         where TRun : JobRun, new() => new()
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Held, HeldReason = reason,
-            StartedAtUtc = Now.AddMinutes(-10), ClaimedAtUtc = Now.AddMinutes(-10), LastActivityAtUtc = Now.AddMinutes(-10), WorkerId = worker,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Scheduled,
+            Status = JobRunStatus.Held,
+            HeldReason = reason,
+            StartedAtUtc = Now.AddMinutes(-10),
+            ClaimedAtUtc = Now.AddMinutes(-10),
+            LastActivityAtUtc = Now.AddMinutes(-10),
+            WorkerId = worker,
         };
 
     private static PhotoThumbnailJobEntry PendingJob() => new()
     {
-        PhotoId = Guid.NewGuid(), State = PhotoThumbnailJobState.Pending, NextAttemptAtUtc = Now, UpdatedAtUtc = Now,
+        PhotoId = Guid.NewGuid(),
+        State = PhotoThumbnailJobState.Pending,
+        NextAttemptAtUtc = Now,
+        UpdatedAtUtc = Now,
     };
 
     public class ApiFactory(IReadOnlyCollection<string> permissions, OdysseyApiFactory? sharingStoreWith = null)

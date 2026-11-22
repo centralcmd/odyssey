@@ -129,8 +129,13 @@ public static class NewsHttpFetch
                 {
                     return new NewsHttpResult
                     {
-                        Outcome = NewsHttpOutcome.NotModified, HttpStatus = status, FinalUrl = current, SuggestedUrl = state.SuggestedUrl,
-                        RedirectedFromHttps = redirectedFromHttps, ETag = Header(response, "ETag"), LastModified = Header(response, "Last-Modified"),
+                        Outcome = NewsHttpOutcome.NotModified,
+                        HttpStatus = status,
+                        FinalUrl = current,
+                        SuggestedUrl = state.SuggestedUrl,
+                        RedirectedFromHttps = redirectedFromHttps,
+                        ETag = Header(response, "ETag"),
+                        LastModified = Header(response, "Last-Modified"),
                     };
                 }
 

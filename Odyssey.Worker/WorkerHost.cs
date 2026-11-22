@@ -68,6 +68,8 @@ public static class WorkerHost
         Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsReader(services);
         Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsFeedFetching(services);
         services.AddPeriodicJob<Odyssey.Core.Internet.News.Jobs.NewsFeedJob>();
+        services.AddPeriodicJob<Odyssey.Core.Internet.News.Podcasts.PodcastAudioDownloadJob>();
+        services.AddPeriodicJob<Odyssey.Core.Internet.News.Podcasts.PodcastAudioRetentionJob>();
         // Recurrence keys (issue #519 §11): keys every pre-#519 series in the background, one locked series at a time.
         services.AddPeriodicJob<Odyssey.Core.Journal.RecurrenceKeyBackfillJob>();
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();

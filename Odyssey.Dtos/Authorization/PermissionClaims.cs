@@ -39,12 +39,12 @@ public static class PermissionClaims
     public const string BudgetsRead = "budgets.read";
     public const string BudgetsUpdate = "budgets.update";
     public const string BudgetsDelete = "budgets.delete";
-    
+
     public const string TransactionsCreate = "transactions.create";
     public const string TransactionsRead = "transactions.read";
     public const string TransactionsUpdate = "transactions.update";
     public const string TransactionsDelete = "transactions.delete";
-    
+
     public const string TransactionTagsCreate = "transactions.tags.create";
     public const string TransactionTagsRead = "transactions.tags.read";
     public const string TransactionTagsUpdate = "transactions.tags.update";
@@ -143,6 +143,17 @@ public static class PermissionClaims
     public const string PhotoTagsRead = "photos.tags.read";
     public const string PhotoTagsUpdate = "photos.tags.update";
     public const string PhotoTagsDelete = "photos.tags.delete";
+
+    // Books (issue #527), a Library-module feature. Guest reads books and book tags only.
+    public const string BooksCreate = "books.create";
+    public const string BooksRead = "books.read";
+    public const string BooksUpdate = "books.update";
+    public const string BooksDelete = "books.delete";
+
+    public const string BookTagsCreate = "books.tags.create";
+    public const string BookTagsRead = "books.tags.read";
+    public const string BookTagsUpdate = "books.tags.update";
+    public const string BookTagsDelete = "books.tags.delete";
 
     public const string PhotoAlbumsCreate = "photos.albums.create";
     public const string PhotoAlbumsRead = "photos.albums.read";
@@ -250,4 +261,11 @@ public static class PermissionClaims
     public const string NewsTagsCreate = "news-tags.create";
     public const string NewsTagsUpdate = "news-tags.update";
     public const string NewsTagsDelete = "news-tags.delete";
+
+    // Podcasts (issue #556 §7.2). Queuing a server download spends disk and makes the server contact a third party,
+    // which news.update (read state, tags) never did, so it has its own pair. Admin, Owner and User hold both; Guest
+    // reads and saves stored audio under news.read only. Every holder also holds news.read (AuthorizationPolicyTests),
+    // and every news-feeds.update holder holds both.
+    public const string PodcastAudioCreate = "podcast-audio.create";
+    public const string PodcastAudioDelete = "podcast-audio.delete";
 }

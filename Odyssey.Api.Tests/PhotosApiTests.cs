@@ -698,7 +698,9 @@ public class PhotosApiTests(PhotosApiTests.Host host) : SharedApiHostTests<Photo
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.JournalEntryAttachments.Add(new JournalEntryAttachment
             {
-                JournalEntryId = Guid.NewGuid(), FileId = fileId, CreatedAt = DateTime.UtcNow,
+                JournalEntryId = Guid.NewGuid(),
+                FileId = fileId,
+                CreatedAt = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -774,8 +776,13 @@ public class PhotosApiTests(PhotosApiTests.Host host) : SharedApiHostTests<Photo
             var blobContent = financeBytes;
             context.FileMetadata.Add(new FileMetadata
             {
-                Id = Guid.NewGuid(), FileName = "receipt.jpg", ContentType = "image/jpeg", SizeBytes = financeBytes.Length,
-                Sha256Hash = Odyssey.Testing.FileStorage.PhotoTestData.Sha256(financeBytes), FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent), UploadedAtUtc = DateTime.UtcNow,
+                Id = Guid.NewGuid(),
+                FileName = "receipt.jpg",
+                ContentType = "image/jpeg",
+                SizeBytes = financeBytes.Length,
+                Sha256Hash = Odyssey.Testing.FileStorage.PhotoTestData.Sha256(financeBytes),
+                FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
+                UploadedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }

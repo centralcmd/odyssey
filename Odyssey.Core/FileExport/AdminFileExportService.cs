@@ -103,7 +103,8 @@ public sealed class AdminFileExportService
         var missing = await query.CountAsync(file =>
             (file.FinanceStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.FinanceStoredObjectId && o.State == StoredObjectState.Committed))
             || (file.JournalStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.JournalStoredObjectId && o.State == StoredObjectState.Committed))
-            || (file.ContactAvatarStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.ContactAvatarStoredObjectId && o.State == StoredObjectState.Committed)),
+            || (file.ContactAvatarStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.ContactAvatarStoredObjectId && o.State == StoredObjectState.Committed))
+            || (file.LibraryStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.LibraryStoredObjectId && o.State == StoredObjectState.Committed)),
             cancellationToken);
         if (missing > 0)
         {

@@ -51,6 +51,25 @@ public class NewsFeed
     /// <summary>Rotated by every API write to the feed's settings, tags, archive and delete; never by the worker.</summary>
     [ConcurrencyCheck]
     public Guid SettingsVersion { get; set; }
+
+    /// <summary>What the feed carries (issue #556 §4.1); every feed predating podcasts is an article feed.</summary>
+    public NewsFeedKind Kind { get; set; }
+
+    /// <summary>When <see cref="Kind"/> last changed; a podcast baseline older than this no longer counts (§3.4).</summary>
+    public DateTime? KindChangedAtUtc { get; set; }
+
+    /// <summary>Queue newly published episodes for download (§3.4); podcast feeds only.</summary>
+    public bool AutoDownload { get; set; }
+
+    /// <summary>Release stored audio a set number of days after it was saved to a device (§3.7); podcast feeds only.</summary>
+    public bool AutoDeleteEnabled { get; set; }
+
+    /// <summary>Kept while the rule is off, so turning it back on restores the number.</summary>
+    [Range(PodcastLimits.MinAutoDeleteDays, PodcastLimits.MaxAutoDeleteDays)]
+    public int AutoDeleteAfterDays { get; set; } = PodcastLimits.DefaultAutoDeleteDays;
+
+    /// <summary>When the rule was turned on or its days changed: the countdown never starts before it (§3.7).</summary>
+    public DateTime? AutoDeleteChangedAtUtc { get; set; }
 }
 
 /// <summary>
@@ -92,6 +111,13 @@ public class NewsFeedFetchState
     public DateTime? RefreshRequestedAtUtc { get; set; }
 
     public DateTime? ValidatorsResetRequestedAtUtc { get; set; }
+
+    /// <summary>
+    /// The <see cref="NewsFeed.KindChangedAtUtc"/> the purge loop last finished rewriting <see cref="NewsArticle.FeedKind"/>
+    /// for (issue #556 §4.8), worker-written. While it is older than the feed's change, the feed's articles may carry the
+    /// old kind, so readers add the feed to their kind predicate explicitly; once it catches up, <c>FeedKind</c> is exact.
+    /// </summary>
+    public DateTime? FeedKindRewrittenAtUtc { get; set; }
 
     /// <summary>A same-host permanent redirect target; only an API <c>PUT</c> applies it (§3.3).</summary>
     [StringLength(NewsLimits.MaxUrlLength)]
@@ -177,6 +203,18 @@ public class NewsStorageTotal
     public long ImageBytes { get; set; }
 
     public long TextAndSourceBytes { get; set; }
+
+    /// <summary>Stored podcast audio (issue #556 §4.7).</summary>
+    public long AudioBytes { get; set; }
+
+    /// <summary>Released audio the store has not deleted yet (the deletion grace); counted toward the audio quota.</summary>
+    public long AudioPendingReleaseBytes { get; set; }
+
+    /// <summary>The expected size of every in-flight download, reserved under this row's lock (§3.6 step 4).</summary>
+    public long AudioReservedBytes { get; set; }
+
+    /// <summary>Stored podcast artwork and its renditions; counted toward the image quota with <see cref="ImageBytes"/>.</summary>
+    public long ArtworkBytes { get; set; }
 }
 
 /// <summary>
@@ -284,6 +322,12 @@ public class NewsArticle
     /// <summary>Copied from the feed.</summary>
     [StringLength(NewsLimits.MaxLanguageLength)]
     public string? Language { get; set; }
+
+    /// <summary>
+    /// A copy of the feed's <see cref="NewsFeed.Kind"/> (issue #556 §4.8): written at insert, rewritten by the purge loop
+    /// after a type change. An index aid only, like <see cref="FeedVisible"/>; the join to the feed is the filter.
+    /// </summary>
+    public NewsFeedKind FeedKind { get; set; }
 }
 
 /// <summary>How an identity key was derived (§4.8, §8.8).</summary>

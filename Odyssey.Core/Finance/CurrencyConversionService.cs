@@ -344,16 +344,16 @@ public class CurrencyConversionService(OdysseyContext context, TimeProvider? inj
         IQueryable<ExchangeRate> stored, IQueryable<ExchangeRate> reversed, CancellationToken cancellationToken)
     {
         var rows = await stored.Select(rate => new BranchRow
-            {
-                From = rate.FromCurrencyCode,
-                To = rate.ToCurrencyCode,
-                AsOf = rate.AsOf,
-                Tiebreak = rate.UpdatedAt ?? rate.CreatedAt,
-                ExchangeRateId = rate.ExchangeRateId,
-                Rate = rate.Rate,
-                Fetched = rate.Provider != null,
-                Reversed = false,
-            })
+        {
+            From = rate.FromCurrencyCode,
+            To = rate.ToCurrencyCode,
+            AsOf = rate.AsOf,
+            Tiebreak = rate.UpdatedAt ?? rate.CreatedAt,
+            ExchangeRateId = rate.ExchangeRateId,
+            Rate = rate.Rate,
+            Fetched = rate.Provider != null,
+            Reversed = false,
+        })
             .Concat(reversed.Select(rate => new BranchRow
             {
                 From = rate.FromCurrencyCode,

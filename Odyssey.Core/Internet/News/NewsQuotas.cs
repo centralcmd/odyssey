@@ -20,6 +20,25 @@ public static class NewsImageSizeCeiling
 }
 
 /// <summary>
+/// The derived ceiling of the <c>PodcastAudioMaxEpisodeMb</c> setting (issue #556 §8.2), the
+/// <see cref="NewsImageSizeCeiling"/> recipe: the store refuses a write above <c>FileStorage:MaxFileSizeBytes</c>.
+/// Called by the settings <c>PUT</c> (through <c>RequestCapCeilings</c>), the published
+/// <c>PodcastAudioMaxEpisodeMbCeiling</c> and the worker's read-side clamp.
+/// </summary>
+public static class PodcastAudioSizeCeiling
+{
+    private const long BytesPerMegabyte = 1024 * 1024;
+
+    /// <summary><c>max(PodcastAudioMaxEpisodeMbMin, maxFileSizeBytes / 1 MiB)</c>.</summary>
+    public static int Mb(long maxFileSizeBytes) =>
+        (int)Math.Clamp(maxFileSizeBytes / BytesPerMegabyte, SystemSettingsBounds.PodcastAudioMaxEpisodeMbMin, int.MaxValue);
+
+    /// <summary>The effective per-episode byte cap: the setting, never above what the store accepts.</summary>
+    public static long Bytes(int settingMb, long maxFileSizeBytes) =>
+        Math.Min(Math.Min(settingMb, Mb(maxFileSizeBytes)) * BytesPerMegabyte, maxFileSizeBytes);
+}
+
+/// <summary>
 /// The text-and-source quota predicate (§6.3). The worker's ingest skip, the quota-reason recompute and
 /// <c>GET /api/news-status</c> all call it; a source lint keeps it the only comparison.
 /// </summary>

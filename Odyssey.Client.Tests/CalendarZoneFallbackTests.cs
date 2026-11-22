@@ -26,7 +26,8 @@ public class CalendarZoneFallbackTests
     private static ApiResult<T> Refused<T>(string key) =>
         ApiResult<T>.Failure(HttpStatusCode.BadRequest, new ApiProblem
         {
-            Status = 400, Title = "One or more validation errors occurred.",
+            Status = 400,
+            Title = "One or more validation errors occurred.",
             Errors = new Dictionary<string, string[]> { [key] = ["The time zone must be an IANA time zone, e.g. Europe/Oslo."] },
         });
 

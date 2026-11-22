@@ -58,17 +58,17 @@ public class PropertyNetWorthTests
         DateTime? acquired = null,
         DateTime? disposed = null,
         DateTime? archived = null) => new()
-    {
-        PropertyId = Guid.NewGuid(),
-        Name = name,
-        Description = "Street address 1, 0150 Oslo",
-        Type = PropertyType.RealEstate,
-        CurrencyCode = currency,
-        AcquiredDate = acquired,
-        DisposedDate = disposed,
-        Archived = archived,
-        Notes = "Private note",
-    };
+        {
+            PropertyId = Guid.NewGuid(),
+            Name = name,
+            Description = "Street address 1, 0150 Oslo",
+            Type = PropertyType.RealEstate,
+            CurrencyCode = currency,
+            AcquiredDate = acquired,
+            DisposedDate = disposed,
+            Archived = archived,
+            Notes = "Private note",
+        };
 
     private static PropertyEstimate NewEstimate(Property property, decimal value, DateTime effectiveFrom, DateTime? created = null) => new()
     {

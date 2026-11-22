@@ -328,15 +328,15 @@ public sealed class JobRunRecorder(
 
     private TRun NewRun<TRun>(JobRunTrigger trigger, JobRunStatus status, DateTime now)
         where TRun : JobRun, new() => new()
-    {
-        JobRunId = Guid.NewGuid(),
-        Trigger = trigger,
-        Status = status,
-        StartedAtUtc = now,
-        ClaimedAtUtc = now,
-        LastActivityAtUtc = now,
-        WorkerId = identity.WorkerId,
-    };
+        {
+            JobRunId = Guid.NewGuid(),
+            Trigger = trigger,
+            Status = status,
+            StartedAtUtc = now,
+            ClaimedAtUtc = now,
+            LastActivityAtUtc = now,
+            WorkerId = identity.WorkerId,
+        };
 
     /// <summary>Saves; a lost <see cref="JobRun.Generation"/> race drops the write with a Warning and returns false.</summary>
     private async Task<bool> SaveAsync(OdysseyContext context, JobType jobType, CancellationToken cancellationToken)

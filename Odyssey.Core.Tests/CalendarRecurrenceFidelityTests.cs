@@ -256,16 +256,27 @@ public class CalendarRecurrenceFidelityTests
 
     private static RecurrencePattern Weekly(DateTime start, string? zone, int? count) => new()
     {
-        RecurrencePatternId = Guid.NewGuid(), CalendarId = Guid.Empty, Title = "Standup",
-        StartDateTime = start, EndDateTime = start.AddHours(1), TimeZoneId = zone,
-        Frequency = RecurrenceFrequency.Weekly, Interval = 1, DaysOfWeek = DaysOfWeekFlags.Monday,
-        OccurrenceCount = count, Version = Guid.NewGuid(),
+        RecurrencePatternId = Guid.NewGuid(),
+        CalendarId = Guid.Empty,
+        Title = "Standup",
+        StartDateTime = start,
+        EndDateTime = start.AddHours(1),
+        TimeZoneId = zone,
+        Frequency = RecurrenceFrequency.Weekly,
+        Interval = 1,
+        DaysOfWeek = DaysOfWeekFlags.Monday,
+        OccurrenceCount = count,
+        Version = Guid.NewGuid(),
     };
 
     private static ContextCalendarEvent Row(RecurrencePattern pattern, DateTime start, string? title = null, int createdOffsetMinutes = 0) => new()
     {
-        CalendarEventId = Guid.NewGuid(), CalendarId = pattern.CalendarId, Title = title ?? pattern.Title,
-        StartDateTime = start, EndDateTime = start.AddHours(1), RecurrencePatternId = pattern.RecurrencePatternId,
+        CalendarEventId = Guid.NewGuid(),
+        CalendarId = pattern.CalendarId,
+        Title = title ?? pattern.Title,
+        StartDateTime = start,
+        EndDateTime = start.AddHours(1),
+        RecurrencePatternId = pattern.RecurrencePatternId,
         CreatedAt = Now.AddDays(-30).AddMinutes(createdOffsetMinutes),
     };
 
@@ -287,7 +298,8 @@ public class CalendarRecurrenceFidelityTests
         state.Rows.Remove(row);
         state.Exclusions.Add(new RecurrenceExclusion
         {
-            RecurrencePatternId = state.Pattern.RecurrencePatternId, OccurrenceKey = row.OccurrenceKey!.Value,
+            RecurrencePatternId = state.Pattern.RecurrencePatternId,
+            OccurrenceKey = row.OccurrenceKey!.Value,
         });
     }
 }

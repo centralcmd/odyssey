@@ -276,7 +276,10 @@ public class PropertiesApiTests(PropertiesApiTests.Host host) : SharedApiHostTes
             Notes = "Renovated",
             RealEstateDetails = new RealEstateDetailsDto
             {
-                Kind = RealEstateKind.Apartment, City = "Oslo", BuildYear = 2001, ApplyTo = Odyssey.Dtos.Journal.AddressApplyTo.ThisRecord,
+                Kind = RealEstateKind.Apartment,
+                City = "Oslo",
+                BuildYear = 2001,
+                ApplyTo = Odyssey.Dtos.Journal.AddressApplyTo.ThisRecord,
             },
         };
         var response = await client.PutAsJsonAsync(PropertyPath(created.PropertyId), replacement);

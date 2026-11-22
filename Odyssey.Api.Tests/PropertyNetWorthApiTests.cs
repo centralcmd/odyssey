@@ -154,13 +154,21 @@ public class PropertyNetWorthApiTests
         context.Accounts.AddRange(
             new Account
             {
-                AccountId = CheckingId, Name = "Checking", Description = "Checking", Opened = opened,
-                AccountType = AccountType.CheckingAccount, CurrencyCode = "USD",
+                AccountId = CheckingId,
+                Name = "Checking",
+                Description = "Checking",
+                Opened = opened,
+                AccountType = AccountType.CheckingAccount,
+                CurrencyCode = "USD",
             },
             new Account
             {
-                AccountId = HouseAccountId, Name = "House (account)", Description = "House", Opened = opened,
-                AccountType = AccountType.OtherAsset, CurrencyCode = "USD",
+                AccountId = HouseAccountId,
+                Name = "House (account)",
+                Description = "House",
+                Opened = opened,
+                AccountType = AccountType.OtherAsset,
+                CurrencyCode = "USD",
             });
         context.Transactions.Add(new Transaction
         {

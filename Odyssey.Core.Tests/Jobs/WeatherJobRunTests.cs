@@ -95,8 +95,11 @@ public sealed class WeatherJobRunTests
         var now = h.Time.GetUtcNow().UtcDateTime;
         var run = new WeatherJobRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Manual, Status = JobRunStatus.Running,
-            StartedAtUtc = now, LastActivityAtUtc = now,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Manual,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = now,
+            LastActivityAtUtc = now,
         };
         context.JobRuns.Add(run);
         await context.SaveChangesAsync();

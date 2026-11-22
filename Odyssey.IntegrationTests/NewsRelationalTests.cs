@@ -321,8 +321,13 @@ public class NewsRelationalTests(MariaDbFixture fixture)
         var feedId = Guid.NewGuid();
         context.NewsFeeds.Add(new NewsFeed
         {
-            NewsFeedId = feedId, Url = $"https://{feedId:N}.example/feed", UrlKeyHash = Hash(feedId.ToString()), DownloadImages = true,
-            IsActive = true, CreatedAtUtc = Now, SettingsVersion = Guid.NewGuid(),
+            NewsFeedId = feedId,
+            Url = $"https://{feedId:N}.example/feed",
+            UrlKeyHash = Hash(feedId.ToString()),
+            DownloadImages = true,
+            IsActive = true,
+            CreatedAtUtc = Now,
+            SettingsVersion = Guid.NewGuid(),
         });
         // Inserted in the save that creates the feed (§4.2, §4.3).
         context.NewsFeedFetchStates.Add(new NewsFeedFetchState { NewsFeedId = feedId, FetchFence = Guid.NewGuid(), NextFetchAtUtc = Now });
@@ -350,16 +355,32 @@ public class NewsRelationalTests(MariaDbFixture fixture)
         context.NewsTags.Add(new NewsTag { NewsTagId = tagId, Name = $"Tag {tagId:N}"[..20], NameKey = $"tag {tagId:N}"[..20], CreatedAtUtc = Now, UpdatedAtUtc = Now });
         context.NewsArticles.Add(new NewsArticle
         {
-            NewsArticleId = articleId, NewsFeedId = feedId, Bucket = 1, Title = title, Author = author, Excerpt = excerpt,
-            ContentHash = Hash($"c:{articleId}"), IdentityHash = Hash($"h:{articleId}"), BodyLength = 10, FirstSeenAtUtc = Now,
-            LastSeenAtUtc = Now, SortAtUtc = Now, FeedVisible = true,
+            NewsArticleId = articleId,
+            NewsFeedId = feedId,
+            Bucket = 1,
+            Title = title,
+            Author = author,
+            Excerpt = excerpt,
+            ContentHash = Hash($"c:{articleId}"),
+            IdentityHash = Hash($"h:{articleId}"),
+            BodyLength = 10,
+            FirstSeenAtUtc = Now,
+            LastSeenAtUtc = Now,
+            SortAtUtc = Now,
+            FeedVisible = true,
         });
         await context.SaveChangesAsync();
 
         context.NewsArticleIdentities.Add(new NewsArticleIdentity
         {
-            NewsArticleIdentityId = Guid.NewGuid(), NewsArticleId = articleId, NewsFeedId = feedId, Kind = NewsArticleIdentityKind.Guid,
-            IdentityKey = $"g:{articleId}", IdentityKeyHash = identityKeyHash, FirstSeenAtUtc = Now, LastSeenAtUtc = Now,
+            NewsArticleIdentityId = Guid.NewGuid(),
+            NewsArticleId = articleId,
+            NewsFeedId = feedId,
+            Kind = NewsArticleIdentityKind.Guid,
+            IdentityKey = $"g:{articleId}",
+            IdentityKeyHash = identityKeyHash,
+            FirstSeenAtUtc = Now,
+            LastSeenAtUtc = Now,
         });
         context.NewsArticleFiles.Add(FileFor(articleId, source, NewsArticleFileKind.Source, "application/xml"));
         var imageFile = FileFor(articleId, image, NewsArticleFileKind.Image, "image/jpeg");
@@ -367,8 +388,14 @@ public class NewsRelationalTests(MariaDbFixture fixture)
         context.NewsArticleFiles.Add(imageFile);
         context.NewsArticleImages.Add(new NewsArticleImage
         {
-            NewsArticleImageId = Guid.NewGuid(), NewsArticleId = articleId, NewsArticleFileId = imageFileId, Position = 1, DisplayOrder = 1,
-            Origin = NewsArticleImageOrigin.Enclosure, SourceUrl = "https://img.example/a.jpg", State = NewsArticleImageState.Stored,
+            NewsArticleImageId = Guid.NewGuid(),
+            NewsArticleId = articleId,
+            NewsArticleFileId = imageFileId,
+            Position = 1,
+            DisplayOrder = 1,
+            Origin = NewsArticleImageOrigin.Enclosure,
+            SourceUrl = "https://img.example/a.jpg",
+            State = NewsArticleImageState.Stored,
         });
         context.NewsFeedTags.Add(new NewsFeedTag { NewsFeedTagId = Guid.NewGuid(), NewsFeedId = feedId, NewsTagId = tagId });
         context.NewsArticleTags.Add(new NewsArticleTag { NewsArticleTagId = Guid.NewGuid(), NewsArticleId = articleId, NewsTagId = tagId, SortAtUtc = Now });
@@ -383,8 +410,15 @@ public class NewsRelationalTests(MariaDbFixture fixture)
         var revisionId = Guid.NewGuid();
         context.NewsArticleRevisions.Add(new NewsArticleRevision
         {
-            NewsArticleRevisionId = revisionId, NewsArticleId = graph.ArticleId, RevisionNumber = 1, Title = "Old", ContentHash = Hash("old"),
-            IdentityHash = Hash("old-id"), BodyLength = 3, ValidFromUtc = Now.AddHours(-2), ReplacedAtUtc = Now,
+            NewsArticleRevisionId = revisionId,
+            NewsArticleId = graph.ArticleId,
+            RevisionNumber = 1,
+            Title = "Old",
+            ContentHash = Hash("old"),
+            IdentityHash = Hash("old-id"),
+            BodyLength = 3,
+            ValidFromUtc = Now.AddHours(-2),
+            ReplacedAtUtc = Now,
         });
         await context.SaveChangesAsync();
         await context.Database.ExecuteSqlRawAsync(
@@ -396,16 +430,27 @@ public class NewsRelationalTests(MariaDbFixture fixture)
         var id = Guid.NewGuid();
         return new StoredObject
         {
-            Id = id, VolumeId = volume.Id, FeatureKey = "NewsArticles", RelativePath = $"news/{feedId:N}/1/{articleId:N}/{id:N}{extension}",
-            SizeBytes = 1, Sha256Hash = Convert.ToHexString(SHA256.HashData([1])).ToLowerInvariant(), State = StoredObjectState.Committed,
+            Id = id,
+            VolumeId = volume.Id,
+            FeatureKey = "NewsArticles",
+            RelativePath = $"news/{feedId:N}/1/{articleId:N}/{id:N}{extension}",
+            SizeBytes = 1,
+            Sha256Hash = Convert.ToHexString(SHA256.HashData([1])).ToLowerInvariant(),
+            State = StoredObjectState.Committed,
             CreatedAtUtc = Now,
         };
     }
 
     private static NewsArticleFile FileFor(Guid articleId, StoredObject stored, NewsArticleFileKind kind, string contentType) => new()
     {
-        NewsArticleFileId = Guid.NewGuid(), NewsArticleId = articleId, Kind = kind, StoredObjectId = stored.Id, ContentType = contentType,
-        SizeBytes = 1, Sha256 = SHA256.HashData([1]), CreatedAtUtc = Now,
+        NewsArticleFileId = Guid.NewGuid(),
+        NewsArticleId = articleId,
+        Kind = kind,
+        StoredObjectId = stored.Id,
+        ContentType = contentType,
+        SizeBytes = 1,
+        Sha256 = SHA256.HashData([1]),
+        CreatedAtUtc = Now,
     };
 
     private static Task InsertIdentityAsync(OdysseyContext context, Guid articleId, Guid feedId, byte[] keyHash) =>
@@ -417,7 +462,11 @@ public class NewsRelationalTests(MariaDbFixture fixture)
     {
         var run = new NewsFeedJobRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Running, StartedAtUtc = Now, LastActivityAtUtc = Now,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Scheduled,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = Now,
+            LastActivityAtUtc = Now,
         };
         configure(run);
         context.JobRuns.Add(run);

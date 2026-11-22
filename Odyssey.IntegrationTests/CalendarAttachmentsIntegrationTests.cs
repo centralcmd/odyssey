@@ -144,10 +144,14 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
             // Daily for 1,000 days, all before the fixed clock: every row is detached and keeps a copy.
             var created = await new RecurrencePatternService(context, limits, new FakeTimeProvider(Now)).Create(new NewRecurrencePattern
             {
-                CalendarId = calendarId, Title = "Daily", StartDateTime = new DateTime(2022, 1, 1, 9, 0, 0),
-                EndDateTime = new DateTime(2022, 1, 1, 10, 0, 0), Frequency = DtoFrequency.Daily,
+                CalendarId = calendarId,
+                Title = "Daily",
+                StartDateTime = new DateTime(2022, 1, 1, 9, 0, 0),
+                EndDateTime = new DateTime(2022, 1, 1, 10, 0, 0),
+                Frequency = DtoFrequency.Daily,
                 RecurrenceEndDate = new DateTime(2022, 1, 1, 9, 0, 0).AddDays(999),
-                AttachmentFileIds = [.. files], PhotoIds = [.. photos],
+                AttachmentFileIds = [.. files],
+                PhotoIds = [.. photos],
             }, User, claims: LocationClaims.Trusted, linkClaims: CalendarLinkClaims.Trusted);
             patternId = created.RecurrencePatternId;
             Assert.Equal(1000, created.GeneratedEventCount);
@@ -272,15 +276,21 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
 
     private static NewCalendarEvent Event(Guid calendarId) => new()
     {
-        CalendarId = calendarId, Title = "Meeting",
-        StartDateTime = new DateTime(2026, 3, 2, 10, 0, 0), EndDateTime = new DateTime(2026, 3, 2, 11, 0, 0),
+        CalendarId = calendarId,
+        Title = "Meeting",
+        StartDateTime = new DateTime(2026, 3, 2, 10, 0, 0),
+        EndDateTime = new DateTime(2026, 3, 2, 11, 0, 0),
     };
 
     private static NewRecurrencePattern Weekly(Guid calendarId, int count) => new()
     {
-        CalendarId = calendarId, Title = "Standup",
-        StartDateTime = new DateTime(2026, 2, 2, 9, 0, 0), EndDateTime = new DateTime(2026, 2, 2, 10, 0, 0),
-        Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = count,
+        CalendarId = calendarId,
+        Title = "Standup",
+        StartDateTime = new DateTime(2026, 2, 2, 9, 0, 0),
+        EndDateTime = new DateTime(2026, 2, 2, 10, 0, 0),
+        Frequency = DtoFrequency.Weekly,
+        DaysOfWeek = DtoDays.Monday,
+        OccurrenceCount = count,
     };
 
     private static RecurrencePatternService Patterns(OdysseyContext context) =>
@@ -316,8 +326,14 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
             var bytes = Encoding.UTF8.GetBytes($"file {i} {Guid.NewGuid()}");
             var file = new FileMetadata
             {
-                Id = Guid.NewGuid(), UploadedByUserId = User, FileName = $"f{i}.txt", ContentType = "text/plain",
-                SizeBytes = bytes.Length, Sha256Hash = PhotoTestData.Sha256(bytes), FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context), UploadedAtUtc = Now,
+                Id = Guid.NewGuid(),
+                UploadedByUserId = User,
+                FileName = $"f{i}.txt",
+                ContentType = "text/plain",
+                SizeBytes = bytes.Length,
+                Sha256Hash = PhotoTestData.Sha256(bytes),
+                FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
+                UploadedAtUtc = Now,
             };
             context.FileMetadata.Add(file);
             fileIds.Add(file.Id);
@@ -331,8 +347,13 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
             {
                 PhotoId = Guid.NewGuid(),
                 StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: Odyssey.Core.Journal.Originals.PhotoOriginalStorage.FeatureKey),
-                FileName = $"p{i}.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = hash,
-                CreatedByUserId = User, CreatedAt = Now, UpdatedAt = Now,
+                FileName = $"p{i}.jpg",
+                ContentType = "image/jpeg",
+                SizeBytes = 3,
+                Sha256Hash = hash,
+                CreatedByUserId = User,
+                CreatedAt = Now,
+                UpdatedAt = Now,
             };
             context.Photos.Add(photo);
             photoIds.Add(photo.PhotoId);

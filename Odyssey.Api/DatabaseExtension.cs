@@ -15,7 +15,7 @@ public static class DatabaseExtension
     public static WebApplicationBuilder AddDatabases(this WebApplicationBuilder builder)
     {
         var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase") || builder.Environment.IsEnvironment("Testing");
-        
+
         if (useInMemoryDatabase)
         {
             // EF Core InMemory has no real transactions and throws by default rather than silently

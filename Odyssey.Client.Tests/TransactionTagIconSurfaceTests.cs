@@ -280,7 +280,10 @@ public class TransactionTagIconSurfaceTests : IAsyncLifetime
         var id = Guid.NewGuid();
         var option = OdsTransactionTagOptions.From(new ExistingTransactionTag
         {
-            TransactionTagId = id, Name = "Food", Archived = null, Icon = icon,
+            TransactionTagId = id,
+            Name = "Food",
+            Archived = null,
+            Icon = icon,
         });
 
         Assert.Equal(id.ToString(), option.Value);

@@ -41,7 +41,10 @@ public class ContactLabelRemapTests
 
         await service.CreateAddress(created.ContactId, new NewAddress
         {
-            Label = AddressLabel.Home, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+            Label = AddressLabel.Home,
+            Line1 = "Storgata 55",
+            City = "Oslo",
+            CountryCode = "NO",
         }, claims: LocationClaims.Trusted);
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.Home, Value = "ada@example.com" });
         await service.CreatePhone(created.ContactId, new NewPhoneNumber { Label = PhoneLabel.Home, Value = "+47 22 00 00 00" });
@@ -66,7 +69,10 @@ public class ContactLabelRemapTests
         await service.CreatePhone(created.ContactId, new NewPhoneNumber { Label = PhoneLabel.Mobile, Value = "+47 900 00 000" });
         await service.CreateAddress(created.ContactId, new NewAddress
         {
-            Label = AddressLabel.Postal, Line1 = "Postboks 1", City = "Oslo", CountryCode = "NO",
+            Label = AddressLabel.Postal,
+            Line1 = "Postboks 1",
+            City = "Oslo",
+            CountryCode = "NO",
         }, claims: LocationClaims.Trusted);
 
         var updated = await service.Update(created.ContactId, Org());
@@ -94,7 +100,10 @@ public class ContactLabelRemapTests
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.General, Value = "post@acme.example" });
         await service.CreateAddress(created.ContactId, new NewAddress
         {
-            Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+            Label = AddressLabel.Visiting,
+            Line1 = "Storgata 55",
+            City = "Oslo",
+            CountryCode = "NO",
         }, claims: LocationClaims.Trusted);
 
         context.ChangeTracker.Clear();

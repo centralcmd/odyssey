@@ -193,9 +193,10 @@ not the copyright line. `LICENSE` is owned by the maintainers via
 ## Git and versioning
 
 Commits follow **Conventional Commits** (`<type>(<scope>): <description>`): a lowercase subject
-under 72 characters with no trailing period, the *why* in the body, and any issue number in the
+under 80 characters where possible (120 at most) with no trailing period, the *why* in the body, and any issue number in the
 body rather than the subject. Release automation reads these messages, so the type matters:
-`fix:` makes a patch release and `feat:` a minor one.
+`fix:` makes a patch release and `feat:` a minor one. CI checks the PR title against these rules,
+because it becomes the commit subject when the PR is squash-merged.
 
 The allowed types and scopes, and how versioning works, are in
 [`CLAUDE.md` → *Git & Versioning*](CLAUDE.md#git--versioning). In short: versions follow SemVer,
@@ -209,3 +210,9 @@ with comments used sparingly, and one house rule on field naming that surprises 
 instance fields are plain camelCase with **no `_` prefix** — except in Blazor components
 (`.razor` / `.razor.cs`), which use `_camelCase`. Static fields and constants are PascalCase. The
 details and examples are in [`CLAUDE.md` → *Code Style*](CLAUDE.md#code-style).
+
+CI fails on whitespace that differs from `.editorconfig`. Fix it before pushing with:
+
+```bash
+dotnet format whitespace Odyssey.sln
+```

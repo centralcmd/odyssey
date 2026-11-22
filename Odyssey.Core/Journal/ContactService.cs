@@ -35,19 +35,27 @@ public partial class ContactService
     private readonly ILogger<ContactService>? logger;
 
     private readonly Odyssey.Core.FileStorage.IObjectStore? objectStore;
+    private readonly IContactBookCredits? bookCredits;
 
+    /// <param name="bookCredits">
+    /// The book-credit check (issue #527 §7.10). Optional like the other trailing services so direct constructions keep
+    /// compiling; the API resolves it through DI. Without it the two RESTRICT keys still refuse the delete
+    /// on a real database.
+    /// </param>
     public ContactService(
         OdysseyContext context,
         IContactReferenceGuard referenceGuard,
         TimeProvider? timeProvider = null,
         ILogger<ContactService>? logger = null,
-        Odyssey.Core.FileStorage.IObjectStore? objectStore = null)
+        Odyssey.Core.FileStorage.IObjectStore? objectStore = null,
+        IContactBookCredits? bookCredits = null)
     {
         this.context = context;
         this.referenceGuard = referenceGuard;
         this.timeProvider = timeProvider ?? TimeProvider.System;
         this.logger = logger;
         this.objectStore = objectStore;
+        this.bookCredits = bookCredits;
     }
 
     // The base read query, eagerly loading the 1:1 detail sub-records and the three contact

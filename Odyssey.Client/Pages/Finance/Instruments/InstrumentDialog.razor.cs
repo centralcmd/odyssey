@@ -56,8 +56,12 @@ public partial class InstrumentDialog
 
     private static readonly Dictionary<string, string> FieldLabels = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["type"] = "Type", ["symbol"] = "Symbol", ["micCode"] = "Exchange code", ["isin"] = "ISIN",
-        ["name"] = "Name", ["currencyCode"] = "Currency",
+        ["type"] = "Type",
+        ["symbol"] = "Symbol",
+        ["micCode"] = "Exchange code",
+        ["isin"] = "ISIN",
+        ["name"] = "Name",
+        ["currencyCode"] = "Currency",
     };
 
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
@@ -337,7 +341,8 @@ public partial class InstrumentDialog
         }
 
         _focusSummary = false;
-        try { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime under bUnit */ }
     }

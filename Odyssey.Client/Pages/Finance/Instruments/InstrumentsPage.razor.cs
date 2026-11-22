@@ -802,7 +802,8 @@ public partial class InstrumentsPage : IDisposable
 
     private async Task InvokeJsAsync(string identifier, object[] args)
     {
-        try { await Js.InvokeVoidAsync(identifier, args); }
+        try
+        { await Js.InvokeVoidAsync(identifier, args); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime (prerender, bUnit) */ }
     }

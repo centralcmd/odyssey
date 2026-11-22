@@ -54,6 +54,7 @@ internal sealed class PhotoStoreHost : IAsyncDisposable
                 [StoredFileAreas.FinanceFeatureKey] = "photos",
                 [StoredFileAreas.JournalFeatureKey] = "photos",
                 [StoredFileAreas.ContactAvatarFeatureKey] = "photos",
+                [StoredFileAreas.LibraryFeatureKey] = "photos",
             },
             features: [],
             configureServices: services =>

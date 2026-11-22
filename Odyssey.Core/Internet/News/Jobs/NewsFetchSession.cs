@@ -42,6 +42,15 @@ public sealed record NewsClaim
 
     /// <summary>The feed's articles today when it was claimed (the day already rolled).</summary>
     public int ArticlesToday { get; init; }
+
+    /// <summary>What the feed carries at claim time (issue #556 §3.4).</summary>
+    public NewsFeedKind Kind { get; init; }
+
+    /// <summary>The podcast's auto-download switch at claim time.</summary>
+    public bool AutoDownload { get; init; }
+
+    /// <summary>When the feed's type last changed: a podcast baseline at or before it does not count (§3.4 step 7).</summary>
+    public DateTime? KindChangedAtUtc { get; init; }
 }
 
 /// <summary>How a fenced write ended.</summary>

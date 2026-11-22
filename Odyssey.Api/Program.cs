@@ -470,6 +470,12 @@ builder.Services.AddScoped<Odyssey.Core.Journal.PhotoTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoAlbumService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.IPhotoLookup, Odyssey.Core.Journal.PhotoLookup>();
 
+// Books (issue #527), a Library-module feature. Gated by the books.* claims only; IContactBookCredits lets the
+// Journal-side contact delete ask about book credits without referencing the Books namespace.
+builder.Services.AddScoped<Odyssey.Core.Books.BookService>();
+builder.Services.AddScoped<Odyssey.Core.Books.BookTagService>();
+builder.Services.AddScoped<Odyssey.Core.Journal.IContactBookCredits, Odyssey.Core.Books.ContactBookCredits>();
+
 // Calendar module (issue #323). No feature toggle — capability is gated by claims only.
 builder.Services.AddScoped<Odyssey.Core.Journal.CalendarService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.CalendarEventService>();
@@ -571,6 +577,8 @@ builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.INewsArticleSearch
 builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.NewsListCursor>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsFeedService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsArticleService>();
+builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.PodcastEpisodeCursor>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Podcasts.PodcastEpisodeService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsTagService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsStatusService>();
 // OPML import and export (issue #508): the services, and the one-import-at-a-time permit, shared by every request.

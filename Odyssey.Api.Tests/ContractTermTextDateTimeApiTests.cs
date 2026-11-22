@@ -284,19 +284,19 @@ public class ContractTermTextDateTimeApiTests(ContractTermTextDateTimeApiTests.H
         string? textValue, string label = "Notice period", decimal? value = null, string? dateTimeValue = null,
         string? currencyCode = null, int? interval = null, int? intervalCount = null, string? anchorDate = null,
         int direction = 0) => new
-    {
-        label,
-        valueUnit = (int)TermValueUnit.Text,
-        direction,
-        value,
-        textValue,
-        dateTimeValue,
-        currencyCode,
-        interval,
-        intervalCount,
-        anchorDate,
-        effectiveFrom = "2026-02-01T00:00:00Z",
-    };
+        {
+            label,
+            valueUnit = (int)TermValueUnit.Text,
+            direction,
+            value,
+            textValue,
+            dateTimeValue,
+            currencyCode,
+            interval,
+            intervalCount,
+            anchorDate,
+            effectiveFrom = "2026-02-01T00:00:00Z",
+        };
 
     private static object DateTimeBody(string? dateTimeValue, string label = "Break deadline", string? textValue = null) => new
     {
