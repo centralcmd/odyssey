@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage.Files;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Recipes;
 using Xunit;
@@ -28,6 +30,8 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     private static readonly string[] EditorWithPhotos = [.. Editor, PermissionClaims.PhotosRead];
 
     private static readonly string[] Guest = [PermissionClaims.RecipesRead, PermissionClaims.RecipeTagsRead];
+
+    private static readonly string[] EditorWithFiles = [.. Editor, PermissionClaims.FilesRead];
 
     // ── Happy path ──────────────────────────────────────────────────────────
 
@@ -193,6 +197,170 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     }
 
     // ── Scaling (§8.3) ──────────────────────────────────────────────────────
+
+    // ── File links (Draft v6) ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Create_WithFiles_ReturnsThemWithNameTypeAndSize_AndTheListCountsThem()
+    {
+        var pdf = await SeedFileAsync("original.pdf", "application/pdf", "the original");
+        var scan = await SeedFileAsync("scan.png", "image/png", "pixels", StoredFileArea.Library);
+        using var client = Factory.ClientWith(EditorWithFiles);
+
+        var request = Pancakes();
+        request.AttachmentFileIds = [pdf, scan];
+        var created = await CreateAsync(client, request);
+
+        // Unordered links come back by file name.
+        Assert.Equal([pdf, scan], created.Attachments!.Select(a => a.FileId));
+        Assert.Equal(["original.pdf", "scan.png"], created.Attachments!.Select(a => a.FileName));
+        var original = created.Attachments!.Single(a => a.FileId == pdf);
+        Assert.Equal("original.pdf", original.FileName);
+        Assert.Equal("application/pdf", original.ContentType);
+        Assert.Equal(12, original.SizeBytes);
+        var row = (await client.GetFromJsonAsync<PagedResultDto>(Path))!.Items.Single(r => r.RecipeId == created.RecipeId);
+        Assert.Equal(2, row.AttachmentCount);
+        var filtered = (await client.GetFromJsonAsync<PagedResultDto>($"{Path}?hasAttachments=true"))!.Items;
+        Assert.Contains(filtered, r => r.RecipeId == created.RecipeId);
+    }
+
+    [Fact]
+    public async Task Create_WithFilesWithoutFilesRead_IsForbidden_ForAnExistingAndAMissingIdAlike()
+    {
+        var file = await SeedFileAsync("original.pdf", "application/pdf", "x");
+        using var client = Factory.ClientWith(Editor);
+
+        var existing = Pancakes();
+        existing.AttachmentFileIds = [file];
+        var missing = Pancakes();
+        missing.AttachmentFileIds = [Guid.NewGuid()];
+        var first = await client.PostAsJsonAsync(Path, existing);
+        var second = await client.PostAsJsonAsync(Path, missing);
+
+        Assert.Equal(HttpStatusCode.Forbidden, first.StatusCode);
+        Assert.Equal(WithoutTraceId(await first.Content.ReadAsStringAsync()), WithoutTraceId(await second.Content.ReadAsStringAsync()));
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(Path, Pancakes())).StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WithoutFilesRead_NullKeepsLinks_AnyArrayIsForbidden()
+    {
+        var file = await SeedFileAsync("original.pdf", "application/pdf", "x");
+        using var withFiles = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+        var created = await CreateAsync(withFiles, request);
+        using var client = Factory.ClientWith(Editor);
+
+        var same = Update(created);
+        same.AttachmentFileIds = [file];
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", same)).StatusCode);
+        var none = Update(created);
+        none.AttachmentFileIds = [];
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", none)).StatusCode);
+
+        var keep = Update(created);
+        keep.Title = "Crêpes";
+        var put = await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", keep);
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.Null((await put.Content.ReadFromJsonAsync<ExistingRecipe>())!.Attachments);
+
+        var read = (await withFiles.GetFromJsonAsync<ExistingRecipe>($"{Path}/{created.RecipeId}"))!;
+        Assert.Equal([file], read.Attachments!.Select(a => a.FileId));
+    }
+
+    [Fact]
+    public async Task WithoutFilesRead_FileDataIsAbsent_AndTheFilterIsForbidden()
+    {
+        var file = await SeedFileAsync("original.pdf", "application/pdf", "x");
+        using var withFiles = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+        var created = await CreateAsync(withFiles, request);
+        using var client = Factory.ClientWith(Editor);
+
+        Assert.Null((await client.GetFromJsonAsync<ExistingRecipe>($"{Path}/{created.RecipeId}"))!.Attachments);
+        var row = (await client.GetFromJsonAsync<PagedResultDto>(Path))!.Items.Single(r => r.RecipeId == created.RecipeId);
+        Assert.Null(row.AttachmentCount);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Path}?hasAttachments=true")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Path}?hasAttachments=false")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_AddsAndRemovesFileLinks_InPlace()
+    {
+        var a = await SeedFileAsync("a.pdf", "application/pdf", "a");
+        var b = await SeedFileAsync("b.txt", "text/plain", "b");
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [a];
+        var created = await CreateAsync(client, request);
+        var linkA = created.Attachments!.Single().RecipeAttachmentId;
+
+        var update = Update(created);
+        update.AttachmentFileIds = [a, b];
+        var both = (await (await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", update)).Content.ReadFromJsonAsync<ExistingRecipe>())!;
+        Assert.Equal(linkA, both.Attachments!.Single(x => x.FileId == a).RecipeAttachmentId);
+
+        var drop = Update(both);
+        drop.AttachmentFileIds = [b];
+        var onlyB = (await (await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", drop)).Content.ReadFromJsonAsync<ExistingRecipe>())!;
+        Assert.Equal([b], onlyB.Attachments!.Select(x => x.FileId));
+    }
+
+    [Fact]
+    public async Task Create_WithDuplicateUnknownOrPhotoOriginalFiles_IsUnprocessable_KeyedOnAttachmentFileIds()
+    {
+        var file = await SeedFileAsync("a.pdf", "application/pdf", "a");
+        var original = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "orig.jpg");
+        Guid originalFileId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            originalFileId = Guid.NewGuid();
+            var photo = await context.Photos.SingleAsync(p => p.PhotoId == original);
+            var hidden = await StoredFileFixtures.SeedFileAsync(scope.ServiceProvider, [1, 2, 3], "orig.jpg", "image/jpeg", id: originalFileId);
+            photo.LegacyFileId = hidden.Id;
+            await context.SaveChangesAsync();
+        }
+
+        using var client = Factory.ClientWith(EditorWithFiles);
+        foreach (var ids in new[] { new[] { file, file }, [Guid.NewGuid()], [originalFileId] })
+        {
+            var request = Pancakes();
+            request.AttachmentFileIds = ids;
+            var response = await client.PostAsJsonAsync(Path, request);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            Assert.Equal(["attachmentFileIds"], await ErrorKeys(response));
+        }
+    }
+
+    [Fact]
+    public async Task Create_OverTheFileCap_IsBadRequest()
+    {
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [.. Enumerable.Range(0, RecipeLimits.MaxAttachments + 1).Select(_ => Guid.NewGuid())];
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, request)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_RemovesTheFileLinks_AndKeepsTheFiles()
+    {
+        var file = await SeedFileAsync("a.pdf", "application/pdf", "a");
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+        var created = await CreateAsync(client, request);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Path}/{created.RecipeId}")).StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.False(await context.RecipeAttachments.AnyAsync(l => l.RecipeId == created.RecipeId));
+        Assert.True(await context.FileMetadata.AnyAsync(f => f.Id == file));
+    }
 
     [Fact]
     public async Task Get_WithServings_ScalesOnlyScalableAmounts_AndWritesNothing()
@@ -878,6 +1046,16 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     }
 
     // The trace id differs per request; nothing else may.
+    private async Task<Guid> SeedFileAsync(
+        string fileName, string contentType, string content, StoredFileArea area = StoredFileArea.Finance)
+    {
+        using var scope = Factory.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Database.EnsureCreatedAsync();
+        var file = await StoredFileFixtures.SeedFileAsync(
+            scope.ServiceProvider, Encoding.UTF8.GetBytes(content), fileName, contentType, area, uploadedByUserId: ActorUserId);
+        return file.Id;
+    }
+
     private static string WithoutTraceId(string body) =>
         System.Text.RegularExpressions.Regex.Replace(body, "\"traceId\":\"[^\"]*\"", string.Empty);
 

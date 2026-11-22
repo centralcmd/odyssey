@@ -37,6 +37,7 @@ public static class StorageHealth
         ["FinanceFiles"] = "Finance files",
         ["JournalFiles"] = "Journal files",
         ["ContactAvatars"] = "Contact avatars",
+        ["LibraryFiles"] = "Library files",
     };
 
     public static string? FeatureLabel(string featureKey) => FeatureLabels.GetValueOrDefault(featureKey);

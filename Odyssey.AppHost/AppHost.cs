@@ -84,6 +84,7 @@ var fileStorageSettings = new Dictionary<string, string>
     ["FileStorage__Bindings__FinanceFiles"] = "primary",
     ["FileStorage__Bindings__JournalFiles"] = "primary",
     ["FileStorage__Bindings__ContactAvatars"] = "primary",
+    ["FileStorage__Bindings__LibraryFiles"] = "primary",
     ["FileStorage__Bindings__NewsArticles"] = "primary",
 };
 

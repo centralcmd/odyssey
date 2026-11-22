@@ -14,8 +14,8 @@ namespace Odyssey.Api.Controllers;
 /// <summary>
 /// The household's recipes (issue #525 §5). Every action returning a recipe read model is gated by
 /// <c>recipes.read</c>, <c>.create</c> or <c>.update</c> alone, which the tag-icon pin in
-/// <c>AuthorizationPolicyTests</c> holds it to (issue #345). The caller's <c>photos.read</c> and
-/// <c>recipes.tags.read</c> are passed to the service, which decides what they unlock.
+/// <c>AuthorizationPolicyTests</c> holds it to (issue #345). The caller's <c>photos.read</c>,
+/// <c>files.read</c> and <c>recipes.tags.read</c> are passed to the service, which decides what they unlock.
 /// </summary>
 [ApiController]
 [Route("api/recipes")]
@@ -26,9 +26,9 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<RecipeSummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List recipes with search (title or ingredient), tag, time, photo and status filters, sort and paging.")]
+    [SwaggerOperation(Summary = "List recipes with search (title or ingredient), tag, time, photo, file and status filters, sort and paging.")]
     public async Task<IActionResult> Get([FromQuery] RecipesQueryParams query, CancellationToken cancellationToken = default) =>
-        Ok(await service.ListAsync(query, CanReadPhotos(), cancellationToken));
+        Ok(await service.ListAsync(query, CanReadPhotos(), CanReadFiles(), cancellationToken));
 
     [HttpGet("{id}", Name = "GetRecipe")]
     [Authorize(Policy = PermissionClaims.RecipesRead)]
@@ -41,7 +41,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
         [FromQuery] RecipeReadQuery query,
         CancellationToken cancellationToken = default)
     {
-        var result = await service.GetAsync(id, query.Servings, CanReadPhotos(), cancellationToken);
+        var result = await service.GetAsync(id, query.Servings, CanReadPhotos(), CanReadFiles(), cancellationToken);
         return result is null ? NotFound(id) : Ok(await WithAuthorsAsync(result, cancellationToken));
     }
 
@@ -53,7 +53,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a recipe. Linking photos needs photos.read; linking tags needs recipes.tags.read.")]
+    [SwaggerOperation(Summary = "Create a recipe. Linking photos needs photos.read, files files.read, tags recipes.tags.read.")]
     public async Task<IActionResult> Post([FromBody] NewRecipe request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -61,7 +61,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
             return this.MissingUserProblem();
         }
 
-        var created = await service.CreateAsync(request, userId, CanReadPhotos(), CanReadTags(), cancellationToken);
+        var created = await service.CreateAsync(request, userId, CanReadPhotos(), CanReadTags(), CanReadFiles(), cancellationToken);
         var dto = await WithAuthorsAsync(created, cancellationToken);
         return CreatedAtRoute("GetRecipe", new { id = dto.RecipeId }, dto);
     }
@@ -76,7 +76,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace a recipe (not an upsert). A stale version is 409 recipe-version-conflict; photoIds null leaves photos unchanged.")]
+    [SwaggerOperation(Summary = "Replace a recipe (not an upsert). A stale version is 409 recipe-version-conflict; photoIds / attachmentFileIds null leave those links unchanged.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateRecipe request,
@@ -87,7 +87,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
             return this.MissingUserProblem();
         }
 
-        var updated = await service.UpdateAsync(id, request, userId, CanReadPhotos(), CanReadTags(), cancellationToken);
+        var updated = await service.UpdateAsync(id, request, userId, CanReadPhotos(), CanReadTags(), CanReadFiles(), cancellationToken);
         return updated is null ? NotFound(id) : Ok(await WithAuthorsAsync(updated, cancellationToken));
     }
 
@@ -96,7 +96,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a recipe with its ingredients, steps and links; library photos and tags stay. A delete that loses a race to an edit is 409.")]
+    [SwaggerOperation(Summary = "Delete a recipe with its ingredients, steps and links; library photos, Files-store files and tags stay. A delete that loses a race to an edit is 409.")]
     public async Task<IActionResult> Delete([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -112,6 +112,8 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     private bool CanReadPhotos() => User.HasPermission(PermissionClaims.PhotosRead);
 
     private bool CanReadTags() => User.HasPermission(PermissionClaims.RecipeTagsRead);
+
+    private bool CanReadFiles() => User.HasPermission(PermissionClaims.FilesRead);
 
     // Names only (§7.3): a raw user id never reaches the wire, and a nulled attribution stays null.
     private async Task<ExistingRecipe> WithAuthorsAsync(RecipeResult result, CancellationToken cancellationToken)

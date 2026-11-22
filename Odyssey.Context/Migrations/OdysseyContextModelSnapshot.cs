@@ -2541,6 +2541,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid?>("JournalStoredObjectId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("LibraryStoredObjectId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("Sha256Hash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -2566,6 +2569,9 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("JournalStoredObjectId")
                         .IsUnique();
 
+                    b.HasIndex("LibraryStoredObjectId")
+                        .IsUnique();
+
                     b.HasIndex("Sha256Hash");
 
                     b.HasIndex("UploadedAtUtc");
@@ -2576,7 +2582,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("FileMetadata", t =>
                         {
-                            t.HasCheckConstraint("CK_FileMetadata_ExactlyOneSource", "(`FinanceStoredObjectId` IS NOT NULL) + (`JournalStoredObjectId` IS NOT NULL) + (`ContactAvatarStoredObjectId` IS NOT NULL) = 1");
+                            t.HasCheckConstraint("CK_FileMetadata_ExactlyOneSource", "(`FinanceStoredObjectId` IS NOT NULL) + (`JournalStoredObjectId` IS NOT NULL) + (`ContactAvatarStoredObjectId` IS NOT NULL) + (`LibraryStoredObjectId` IS NOT NULL) = 1");
                         });
                 });
 
@@ -5198,6 +5204,31 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Recipes");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeAttachment", b =>
+                {
+                    b.Property<Guid>("RecipeAttachmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("RecipeAttachmentId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("RecipeId", "FileId")
+                        .IsUnique();
+
+                    b.ToTable("RecipeAttachments");
                 });
 
             modelBuilder.Entity("Odyssey.Context.RecipeIngredient", b =>
@@ -8292,6 +8323,11 @@ namespace Odyssey.Context.Migrations
                         .HasForeignKey("JournalStoredObjectId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("LibraryStoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UploadedByUserId")
@@ -8909,6 +8945,23 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("Odyssey.Context.RecipeAttachment", b =>
+                {
+                    b.HasOne("Odyssey.Context.FileMetadata", null)
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.Recipe", "Recipe")
+                        .WithMany("Attachments")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecipeIngredient", b =>
                 {
                     b.HasOne("Odyssey.Context.Recipe", "Recipe")
@@ -9493,6 +9546,8 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.Recipe", b =>
                 {
+                    b.Navigation("Attachments");
+
                     b.Navigation("Ingredients");
 
                     b.Navigation("Photos");

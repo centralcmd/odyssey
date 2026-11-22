@@ -44,6 +44,9 @@ public sealed record ExistingRecipe : ITagIconRecord
     /// <summary>Null without <c>photos.read</c>.</summary>
     public List<RecipePhotoDto>? Photos { get; set; }
 
+    /// <summary>Linked Files-store files, by file name (links are unordered). Null without <c>files.read</c>.</summary>
+    public List<RecipeAttachmentDto>? Attachments { get; set; }
+
     /// <summary>In tag-name order (issue #345).</summary>
     public List<Guid> TagIds { get; set; } = [];
 
@@ -115,6 +118,25 @@ public sealed record RecipePhotoDto
     public bool ThumbnailsReady { get; set; }
 }
 
+/// <summary>
+/// A recipe's file link — only ever returned to a <c>files.read</c> holder. The name, type and size are what
+/// <c>GET /api/files/{id}</c> already returns under that claim; the bytes stay behind <c>GET /api/files/{id}/content</c>.
+/// </summary>
+public sealed record RecipeAttachmentDto
+{
+    public required Guid RecipeAttachmentId { get; set; }
+
+    public required Guid FileId { get; set; }
+
+    public required string FileName { get; set; }
+
+    public required string ContentType { get; set; }
+
+    public long SizeBytes { get; set; }
+
+    public required DateTime CreatedAt { get; set; }
+}
+
 /// <summary>A row of <c>GET /api/recipes</c>: no ingredients or steps, only their counts.</summary>
 public sealed record RecipeSummary : ITagIconRecord
 {
@@ -137,6 +159,9 @@ public sealed record RecipeSummary : ITagIconRecord
     public int IngredientCount { get; set; }
 
     public int StepCount { get; set; }
+
+    /// <summary>Null without <c>files.read</c>.</summary>
+    public int? AttachmentCount { get; set; }
 
     /// <summary>Null without <c>photos.read</c>.</summary>
     public Guid? CoverPhotoId { get; set; }

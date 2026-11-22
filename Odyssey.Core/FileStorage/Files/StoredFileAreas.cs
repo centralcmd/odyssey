@@ -5,22 +5,24 @@ using Odyssey.Dtos;
 namespace Odyssey.Core.FileStorage.Files;
 
 /// <summary>
-/// The three areas a Files-store file can live in on disk (issue #448 §3). Placement only: no read, link or claim
-/// depends on it. <see cref="ContactAvatars"/> is reachable only through the avatar path, never through
-/// <see cref="FileUploadArea"/>.
+/// The four areas a Files-store file can live in on disk (issue #448 §3, issue #525 §6.2 for <see cref="Library"/>).
+/// Placement only: no read, link or claim depends on it. <see cref="ContactAvatars"/> is reachable only through the
+/// avatar path, never through <see cref="FileUploadArea"/>. The ordinals differ from <see cref="FileUploadArea"/>'s on
+/// purpose (<c>Library</c> is 3 there, 4 here) and are only ever joined through <see cref="StoredFileAreas.For"/>.
 /// </summary>
 public enum StoredFileArea
 {
     Finance = 1,
     Journal = 2,
     ContactAvatars = 3,
+    Library = 4,
 }
 
 /// <summary>The upload year (UTC, of <c>FileMetadata.UploadedAtUtc</c>) and the numbered bucket inside it.</summary>
 public sealed record StoredFileLayout(int Year, int Bucket);
 
 /// <summary>
-/// The three storage features of the Files store (issue #448 §3.2), declared in the module-neutral
+/// The four storage features of the Files store (issue #448 §3.2; <c>LibraryFiles</c>, issue #525 §6.2), declared in the module-neutral
 /// <c>Odyssey.Core.FileStorage.Files</c> namespace so Finance code never names a Journal type to write a file. Layout
 /// <c>&lt;root&gt;/&lt;yyyy&gt;/&lt;bucket&gt;/&lt;stem&gt;.&lt;ext&gt;</c>, original names, released after the deletion grace.
 /// </summary>
@@ -29,6 +31,7 @@ public static class StoredFileAreas
     public const string FinanceFeatureKey = "FinanceFiles";
     public const string JournalFeatureKey = "JournalFiles";
     public const string ContactAvatarFeatureKey = "ContactAvatars";
+    public const string LibraryFeatureKey = "LibraryFiles";
 
     /// <summary>The store's per-folder limit (§3.3 of #346), the same capacity photos use.</summary>
     public const int BucketCapacity = 10_000;
@@ -42,7 +45,11 @@ public static class StoredFileAreas
     public static readonly StorageFeature ContactAvatars = Declare(
         ContactAvatarFeatureKey, "contact-avatars", StorageFeatureReference.To<FileMetadata>(f => f.ContactAvatarStoredObjectId));
 
-    public static readonly IReadOnlyList<StorageFeature> All = [Finance, Journal, ContactAvatars];
+    /// <summary>The Library module's area, shared by its collections (recipes now; books and music later).</summary>
+    public static readonly StorageFeature Library = Declare(
+        LibraryFeatureKey, "library-files", StorageFeatureReference.To<FileMetadata>(f => f.LibraryStoredObjectId));
+
+    public static readonly IReadOnlyList<StorageFeature> All = [Finance, Journal, ContactAvatars, Library];
 
     private static StorageFeature Declare(string key, string root, StorageFeatureReference reference) =>
         StorageFeature.Create<StoredFileLayout>(
@@ -57,6 +64,7 @@ public static class StoredFileAreas
     {
         FileUploadArea.Finance => StoredFileArea.Finance,
         FileUploadArea.Journal => StoredFileArea.Journal,
+        FileUploadArea.Library => StoredFileArea.Library,
         _ => throw new ArgumentOutOfRangeException(nameof(area)),
     };
 
@@ -65,6 +73,7 @@ public static class StoredFileAreas
         StoredFileArea.Finance => FinanceFeatureKey,
         StoredFileArea.Journal => JournalFeatureKey,
         StoredFileArea.ContactAvatars => ContactAvatarFeatureKey,
+        StoredFileArea.Library => LibraryFeatureKey,
         _ => throw new ArgumentOutOfRangeException(nameof(area)),
     };
 
@@ -73,11 +82,13 @@ public static class StoredFileAreas
         file.FinanceStoredObjectId is not null ? StoredFileArea.Finance
         : file.JournalStoredObjectId is not null ? StoredFileArea.Journal
         : file.ContactAvatarStoredObjectId is not null ? StoredFileArea.ContactAvatars
+        : file.LibraryStoredObjectId is not null ? StoredFileArea.Library
         : throw NoSource(file);
 
     /// <summary>The stored object a file names, whichever column holds it.</summary>
     public static Guid StoredObjectIdOf(FileMetadata file) =>
-        file.FinanceStoredObjectId ?? file.JournalStoredObjectId ?? file.ContactAvatarStoredObjectId ?? throw NoSource(file);
+        file.FinanceStoredObjectId ?? file.JournalStoredObjectId ?? file.ContactAvatarStoredObjectId ?? file.LibraryStoredObjectId
+        ?? throw NoSource(file);
 
     private static InvalidOperationException NoSource(FileMetadata file) =>
         new($"File {file.Id} names no stored object; CK_FileMetadata_ExactlyOneSource requires one.");
@@ -95,6 +106,9 @@ public static class StoredFileAreas
                 break;
             case StoredFileArea.ContactAvatars:
                 file.ContactAvatarStoredObjectId = storedObjectId;
+                break;
+            case StoredFileArea.Library:
+                file.LibraryStoredObjectId = storedObjectId;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(area));

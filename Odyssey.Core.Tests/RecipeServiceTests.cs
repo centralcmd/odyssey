@@ -35,7 +35,7 @@ public class RecipeServiceTests
         mutate(request);
 
         var error = await Assert.ThrowsAsync<DomainUnprocessableException>(
-            () => service.CreateAsync(request, "u", canReadPhotos: false, canReadTags: false));
+            () => service.CreateAsync(request, "u", canReadPhotos: false, canReadTags: false, canReadFiles: false));
 
         Assert.Equal([key], error.Errors!.Keys);
     }
@@ -48,7 +48,7 @@ public class RecipeServiceTests
 
         var created = (await service.CreateAsync(
             new NewRecipe { Title = "  Soup  ", Servings = 2, Notes = "   ", Steps = [new() { Section = " ", Text = " Stir. " }] },
-            "u", canReadPhotos: false, canReadTags: false)).Recipe;
+            "u", canReadPhotos: false, canReadTags: false, canReadFiles: false)).Recipe;
 
         Assert.Equal("Soup", created.Title);
         Assert.Null(created.Notes);
@@ -71,7 +71,7 @@ public class RecipeServiceTests
             Ingredients = [new() { Name = Secret, Unit = IngredientUnit.None }],
         };
 
-        var created = (await service.CreateAsync(request, "cook-1", canReadPhotos: false, canReadTags: false)).Recipe;
+        var created = (await service.CreateAsync(request, "cook-1", canReadPhotos: false, canReadTags: false, canReadFiles: false)).Recipe;
         await service.UpdateAsync(created.RecipeId, new UpdateRecipe
         {
             Title = Secret,
@@ -80,7 +80,7 @@ public class RecipeServiceTests
             Source = Secret,
             Version = 1,
             Ingredients = [new() { Name = Secret, Unit = IngredientUnit.None }],
-        }, "cook-1", canReadPhotos: false, canReadTags: false);
+        }, "cook-1", canReadPhotos: false, canReadTags: false, canReadFiles: false);
         Assert.True(await service.DeleteAsync(created.RecipeId, "cook-2"));
 
         var line = Assert.Single(logger.Lines, l => l.Level == LogLevel.Information);

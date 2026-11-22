@@ -5,7 +5,8 @@ namespace Odyssey.Context.ModelConfiguration;
 
 /// <summary>
 /// The Recipes module's keys (issue #525 §4). Children cascade from the recipe; a photo link also cascades from
-/// the library photo (the <see cref="JournalEntryPhotoConfiguration"/> shape); a tag link restricts the tag.
+/// the library photo (the <see cref="JournalEntryPhotoConfiguration"/> shape), a file link from the Files-store file
+/// (the journal attachment shape); a tag link restricts the tag.
 /// </summary>
 internal sealed class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
 {
@@ -58,6 +59,26 @@ internal sealed class RecipePhotoConfiguration : IEntityTypeConfiguration<Recipe
         entity.HasOne<Photo>()
             .WithMany()
             .HasForeignKey(link => link.PhotoId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class RecipeAttachmentConfiguration : IEntityTypeConfiguration<RecipeAttachment>
+{
+    public void Configure(EntityTypeBuilder<RecipeAttachment> entity)
+    {
+        // Safe as unique because the service diffs links in place rather than deleting and re-inserting a pair.
+        entity.HasIndex(link => new { link.RecipeId, link.FileId }).IsUnique();
+
+        entity.HasOne(link => link.Recipe)
+            .WithMany(recipe => recipe.Attachments)
+            .HasForeignKey(link => link.RecipeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Deleting the file from the Files store removes the link, as a journal attachment's does; it never blocks it.
+        entity.HasOne<FileMetadata>()
+            .WithMany()
+            .HasForeignKey(link => link.FileId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

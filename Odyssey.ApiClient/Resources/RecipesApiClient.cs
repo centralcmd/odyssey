@@ -15,6 +15,9 @@ public sealed record RecipeListFilter
     /// <summary>Only for a <c>photos.read</c> holder; the server refuses it otherwise.</summary>
     public bool? HasPhotos { get; init; }
 
+    /// <summary>Needs <c>files.read</c>; without it the server answers <c>403</c>.</summary>
+    public bool? HasAttachments { get; init; }
+
     public ArchivalStatus? Status { get; init; }
 
     public RecipeSortBy? SortBy { get; init; }
@@ -57,6 +60,7 @@ public sealed class RecipesApiClient(IOdysseyApi api) : IRecipesApiClient
             .AddMany("tagIds", filter.TagIds?.Select(id => id.ToString()))
             .Add("maxTotalMinutes", filter.MaxTotalMinutes?.ToString(System.Globalization.CultureInfo.InvariantCulture))
             .AddBool("hasPhotos", filter.HasPhotos)
+            .AddBool("hasAttachments", filter.HasAttachments)
             .Add("status", filter.Status?.ToString())
             .Add("sortBy", filter.SortBy?.ToString())
             .Add("sortDir", filter.SortDir?.ToString())

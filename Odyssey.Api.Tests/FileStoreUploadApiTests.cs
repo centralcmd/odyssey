@@ -71,6 +71,7 @@ public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : Shared
     [Theory]
     [InlineData("Finance", "finance-files/", StoredFileArea.Finance)]
     [InlineData("journal", "journal-files/", StoredFileArea.Journal)]
+    [InlineData("Library", "library-files/", StoredFileArea.Library)]
     public async Task An_upload_lands_in_its_area_on_disk(string area, string root, StoredFileArea expected)
     {
         var factory = Factory.ForCaller(FilesClaims);
@@ -305,6 +306,7 @@ public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : Shared
                     ["FileStorage:Bindings:FinanceFiles"] = "finance",
                     ["FileStorage:Bindings:JournalFiles"] = "primary",
                     ["FileStorage:Bindings:ContactAvatars"] = "primary",
+                    ["FileStorage:Bindings:LibraryFiles"] = "primary",
                     ["FileStorage:Bindings:NewsArticles"] = "primary",
                     ["FileStorage:Bindings:PhotoOriginals"] = "primary",
                     ["FileStorage:Bindings:PhotoThumbnails"] = "primary",

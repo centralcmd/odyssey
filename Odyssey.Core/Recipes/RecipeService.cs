@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
+using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Pagination;
@@ -10,22 +11,22 @@ using Odyssey.Dtos.Recipes;
 namespace Odyssey.Core.Recipes;
 
 /// <summary>
-/// The household's recipes (issue #525). Shared data gated by claims alone; the caller's <c>photos.read</c> and
-/// <c>recipes.tags.read</c> arrive as arguments because the service decides what they unlock.
+/// The household's recipes (issue #525). Shared data gated by claims alone; the caller's <c>photos.read</c>,
+/// <c>files.read</c> and <c>recipes.tags.read</c> arrive as arguments because the service decides what they unlock.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Claim before existence.</b> Adding a photo or tag link is refused for a caller without the claim before any
+/// <b>Claim before existence.</b> Adding a photo, file or tag link is refused for a caller without the claim before any
 /// lookup runs, so a missing claim and a missing id give the same <c>403</c> (§7.4). This deliberately differs from
 /// <see cref="JournalEntryService"/>, which validates existence first.
 /// </para>
 /// <para>
-/// <b>Photos are absent, not hidden.</b> Without <c>photos.read</c> no photo lookup runs and the photo fields are
-/// null (§7.3).
+/// <b>Photos and files are absent, not hidden.</b> Without <c>photos.read</c> no photo lookup runs and the photo fields
+/// are null; without <c>files.read</c> the same holds for the file links (§7.3).
 /// </para>
 /// <para>
 /// <b>Writes.</b> Ingredients and steps are replaced wholesale (tracked <c>RemoveRange</c> + add, safe because their
-/// position index is not unique); photo and tag links are diffed in place so their unique pair indexes never see a
+/// position index is not unique); photo, file and tag links are diffed in place so their unique pair indexes never see a
 /// delete and re-insert of one pair in one save.
 /// </para>
 /// </remarks>
@@ -41,11 +42,16 @@ public sealed class RecipeService(
 
     /// <summary>The paged list (§5 item 1).</summary>
     public async Task<PagedResult<RecipeSummary>> ListAsync(
-        RecipesQueryParams query, bool canReadPhotos, CancellationToken cancellationToken = default)
+        RecipesQueryParams query, bool canReadPhotos, bool canReadFiles, CancellationToken cancellationToken = default)
     {
         if (query.HasPhotos is not null && !canReadPhotos)
         {
             throw new DomainForbiddenException("Filtering by photos requires the photos.read permission.");
+        }
+
+        if (query.HasAttachments is not null && !canReadFiles)
+        {
+            throw new DomainForbiddenException("Filtering by files requires the files.read permission.");
         }
 
         var q = context.Recipes.AsNoTracking();
@@ -76,6 +82,11 @@ public sealed class RecipeService(
             q = hasPhotos ? q.Where(r => r.Photos.Any()) : q.Where(r => !r.Photos.Any());
         }
 
+        if (query.HasAttachments is { } hasAttachments)
+        {
+            q = hasAttachments ? q.Where(r => r.Attachments.Any()) : q.Where(r => !r.Attachments.Any());
+        }
+
         var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: query.SortBy is null or RecipeSortBy.Title);
         IOrderedQueryable<Recipe> sorted = query.SortBy switch
         {
@@ -103,6 +114,7 @@ public sealed class RecipeService(
                 CookMinutes = r.CookMinutes,
                 IngredientCount = r.Ingredients.Count,
                 StepCount = r.Steps.Count,
+                AttachmentCount = r.Attachments.Count,
                 CoverPhotoId = r.Photos
                     .OrderBy(p => p.Position)
                     .ThenBy(p => p.RecipePhotoId)
@@ -131,6 +143,7 @@ public sealed class RecipeService(
             TotalMinutes = Total(row.PrepMinutes, row.CookMinutes),
             IngredientCount = row.IngredientCount,
             StepCount = row.StepCount,
+            AttachmentCount = canReadFiles ? row.AttachmentCount : null,
             CoverPhotoId = canReadPhotos ? row.CoverPhotoId : null,
             UpdatedAt = row.UpdatedAt,
             Archived = row.Archived,
@@ -154,7 +167,7 @@ public sealed class RecipeService(
 
     /// <summary>One recipe, optionally scaled to <paramref name="servings"/>; <c>null</c> when it does not exist.</summary>
     public async Task<RecipeResult?> GetAsync(
-        Guid id, int? servings, bool canReadPhotos, CancellationToken cancellationToken = default)
+        Guid id, int? servings, bool canReadPhotos, bool canReadFiles, CancellationToken cancellationToken = default)
     {
         var recipe = await WithDetails(context.Recipes.AsNoTracking())
             .FirstOrDefaultAsync(r => r.RecipeId == id, cancellationToken);
@@ -163,7 +176,7 @@ public sealed class RecipeService(
             return null;
         }
 
-        var result = await ToResultAsync(recipe, canReadPhotos, cancellationToken);
+        var result = await ToResultAsync(recipe, canReadPhotos, canReadFiles, cancellationToken);
         if (servings is { } wanted)
         {
             RecipeServingsScaler.Apply(result.Recipe, wanted);
@@ -175,15 +188,22 @@ public sealed class RecipeService(
     // ── Writes ───────────────────────────────────────────────────────────────
 
     public async Task<RecipeResult> CreateAsync(
-        NewRecipe request, string userId, bool canReadPhotos, bool canReadTags, CancellationToken cancellationToken = default)
+        NewRecipe request, string userId, bool canReadPhotos, bool canReadTags, bool canReadFiles,
+        CancellationToken cancellationToken = default)
     {
         var photoIds = request.PhotoIds ?? [];
+        var fileIds = request.AttachmentFileIds ?? [];
         var tagIds = request.TagIds ?? [];
 
         // Claims before any lookup (§3 step 5).
         if (photoIds.Length > 0 && !canReadPhotos)
         {
             throw PhotoLinkForbidden();
+        }
+
+        if (fileIds.Length > 0 && !canReadFiles)
+        {
+            throw FileLinkForbidden();
         }
 
         if (tagIds.Length > 0 && !canReadTags)
@@ -193,10 +213,12 @@ public sealed class RecipeService(
 
         var fields = Normalize(request);
         var distinctPhotos = Distinct(photoIds, "photoIds", "photo");
+        var distinctFiles = Distinct(fileIds, "attachmentFileIds", "file");
         var distinctTags = Distinct(tagIds, "tagIds", "tag");
 
         await EnsureTagsLinkable(distinctTags, kept: new HashSet<Guid>(), cancellationToken);
         await EnsurePhotosExist(distinctPhotos, cancellationToken);
+        await EnsureFilesLinkable(distinctFiles, cancellationToken);
 
         var now = clock.GetUtcNow().UtcDateTime;
         var recipe = new Recipe
@@ -216,6 +238,11 @@ public sealed class RecipeService(
             recipe.Photos.Add(new RecipePhoto { PhotoId = distinctPhotos[i], Position = i, CreatedAt = now });
         }
 
+        foreach (var fileId in distinctFiles)
+        {
+            recipe.Attachments.Add(new RecipeAttachment { FileId = fileId, CreatedAt = now });
+        }
+
         foreach (var tagId in distinctTags)
         {
             recipe.Tags.Add(new RecipeTagLink { RecipeTagId = tagId });
@@ -224,12 +251,12 @@ public sealed class RecipeService(
         context.Recipes.Add(recipe);
         await SaveAsync(cancellationToken);
 
-        return await ToResultAsync(recipe, canReadPhotos, cancellationToken);
+        return await ToResultAsync(recipe, canReadPhotos, canReadFiles, cancellationToken);
     }
 
     /// <summary>A full replacement guarded by <see cref="UpdateRecipe.Version"/>; <c>null</c> when the recipe does not exist.</summary>
     public async Task<RecipeResult?> UpdateAsync(
-        Guid id, UpdateRecipe request, string userId, bool canReadPhotos, bool canReadTags,
+        Guid id, UpdateRecipe request, string userId, bool canReadPhotos, bool canReadTags, bool canReadFiles,
         CancellationToken cancellationToken = default)
     {
         // §3 step 4: load first — the claim checks need the current link set — and 404 the same for every caller.
@@ -250,6 +277,12 @@ public sealed class RecipeService(
             throw PhotoLinkForbidden();
         }
 
+        // The same rule for files: without files.read the current links are invisible, so only null is allowed.
+        if (request.AttachmentFileIds is not null && !canReadFiles)
+        {
+            throw FileLinkForbidden();
+        }
+
         if (!canReadTags && tagIds.Any(tagId => !keptTags.Contains(tagId)))
         {
             throw TagLinkForbidden();
@@ -264,11 +297,21 @@ public sealed class RecipeService(
         var fields = Normalize(request);
         var distinctTags = Distinct(tagIds, "tagIds", "tag");
         var distinctPhotos = request.PhotoIds is null ? null : Distinct(request.PhotoIds, "photoIds", "photo");
+        var distinctFiles = request.AttachmentFileIds is null
+            ? null
+            : Distinct(request.AttachmentFileIds, "attachmentFileIds", "file");
 
         await EnsureTagsLinkable(distinctTags, keptTags, cancellationToken);
         if (distinctPhotos is not null)
         {
             await EnsurePhotosExist(distinctPhotos, cancellationToken);
+        }
+
+        if (distinctFiles is not null)
+        {
+            // Only files the recipe does not already hold are checked: a kept link is valid by construction.
+            var keptFiles = recipe.Attachments.Select(a => a.FileId).ToHashSet();
+            await EnsureFilesLinkable([.. distinctFiles.Where(fileId => !keptFiles.Contains(fileId))], cancellationToken);
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
@@ -290,14 +333,19 @@ public sealed class RecipeService(
             DiffPhotos(recipe, distinctPhotos, now);
         }
 
+        if (distinctFiles is not null)
+        {
+            DiffAttachments(recipe, distinctFiles, now);
+        }
+
         DiffTags(recipe, distinctTags);
 
         await SaveAsync(cancellationToken);
 
-        return await ToResultAsync(recipe, canReadPhotos, cancellationToken);
+        return await ToResultAsync(recipe, canReadPhotos, canReadFiles, cancellationToken);
     }
 
-    /// <summary>Hard delete; children cascade, library photos and tags stay. Logs the id and the acting user.</summary>
+    /// <summary>Hard delete; children cascade, library photos, Files-store files and tags stay. Logs the id and the acting user.</summary>
     public async Task<bool> DeleteAsync(Guid id, string userId, CancellationToken cancellationToken = default)
     {
         // Children loaded so the EF InMemory tier, which enforces no keys, cascades them too.
@@ -546,6 +594,32 @@ public sealed class RecipeService(
         }
     }
 
+    /// <summary>
+    /// Every file id must exist and be visible in the Files store (<see cref="FileReferenceCounter.VisibleInFilesStore"/>):
+    /// a photo's own original is reachable only under <c>photos.read</c>, so <c>files.read</c> may not link it.
+    /// </summary>
+    private async Task EnsureFilesLinkable(IReadOnlyCollection<Guid> fileIds, CancellationToken cancellationToken)
+    {
+        if (fileIds.Count == 0)
+        {
+            return;
+        }
+
+        var found = await context.FileMetadata.AsNoTracking()
+            .Where(FileReferenceCounter.VisibleInFilesStore(context))
+            .Where(f => fileIds.Contains(f.Id))
+            .Select(f => f.Id)
+            .ToListAsync(cancellationToken);
+        var missing = fileIds.Where(id => !found.Contains(id)).ToList();
+        if (missing.Count > 0)
+        {
+            throw new DomainUnprocessableException($"Unknown file(s): {string.Join(", ", missing)}.", "attachmentFileIds");
+        }
+    }
+
+    private static DomainForbiddenException FileLinkForbidden() =>
+        new("Linking files requires the files.read permission.");
+
     private static DomainForbiddenException PhotoLinkForbidden() =>
         new("Linking photos requires the photos.read permission.");
 
@@ -602,6 +676,22 @@ public sealed class RecipeService(
         }
     }
 
+    private void DiffAttachments(Recipe recipe, IReadOnlyCollection<Guid> desired, DateTime now)
+    {
+        var wanted = desired.ToHashSet();
+        foreach (var link in recipe.Attachments.Where(a => !wanted.Contains(a.FileId)).ToList())
+        {
+            recipe.Attachments.Remove(link);
+            context.RecipeAttachments.Remove(link);
+        }
+
+        var existing = recipe.Attachments.Select(a => a.FileId).ToHashSet();
+        foreach (var fileId in desired.Where(id => !existing.Contains(id)))
+        {
+            recipe.Attachments.Add(new RecipeAttachment { RecipeId = recipe.RecipeId, FileId = fileId, CreatedAt = now });
+        }
+    }
+
     private void DiffTags(Recipe recipe, IReadOnlyCollection<Guid> desired)
     {
         var wanted = desired.ToHashSet();
@@ -644,6 +734,10 @@ public sealed class RecipeService(
         {
             throw new DomainUnprocessableException("A linked photo no longer exists.", "photoIds");
         }
+        catch (DbUpdateException ex) when (DbErrors.IsMissingReferenceFrom(ex, "RecipeAttachments"))
+        {
+            throw new DomainUnprocessableException("A linked file no longer exists.", "attachmentFileIds");
+        }
         catch (DbUpdateException ex) when (DbErrors.IsMissingReferenceFrom(ex, "RecipeTagLinks"))
         {
             throw new DomainUnprocessableException("A linked recipe tag no longer exists.", "tagIds");
@@ -654,10 +748,12 @@ public sealed class RecipeService(
         .Include(r => r.Ingredients)
         .Include(r => r.Steps)
         .Include(r => r.Photos)
+        .Include(r => r.Attachments)
         .Include(r => r.Tags)
         .AsSplitQuery();
 
-    private async Task<RecipeResult> ToResultAsync(Recipe recipe, bool canReadPhotos, CancellationToken cancellationToken)
+    private async Task<RecipeResult> ToResultAsync(
+        Recipe recipe, bool canReadPhotos, bool canReadFiles, CancellationToken cancellationToken)
     {
         var dto = new ExistingRecipe
         {
@@ -726,6 +822,31 @@ public sealed class RecipeService(
                 .ToList();
         }
 
+        if (canReadFiles)
+        {
+            var links = recipe.Attachments.ToList();
+            var linkedIds = links.Select(a => a.FileId).ToList();
+            var files = await context.FileMetadata.AsNoTracking()
+                .Where(f => linkedIds.Contains(f.Id))
+                .Select(f => new { f.Id, f.FileName, f.ContentType, f.SizeBytes })
+                .ToDictionaryAsync(f => f.Id, cancellationToken);
+            dto.Attachments = links
+                .Where(a => files.ContainsKey(a.FileId))
+                // Links carry no order of their own: by name, as the Files table shows them, then by link id.
+                .OrderBy(a => files[a.FileId].FileName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.RecipeAttachmentId)
+                .Select(a => new RecipeAttachmentDto
+                {
+                    RecipeAttachmentId = a.RecipeAttachmentId,
+                    FileId = a.FileId,
+                    FileName = files[a.FileId].FileName,
+                    ContentType = files[a.FileId].ContentType,
+                    SizeBytes = files[a.FileId].SizeBytes,
+                    CreatedAt = a.CreatedAt,
+                })
+                .ToList();
+        }
+
         return new RecipeResult(dto, recipe.CreatedByUserId, recipe.UpdatedByUserId);
     }
 
@@ -763,6 +884,8 @@ public sealed class RecipeService(
         public int IngredientCount { get; set; }
 
         public int StepCount { get; set; }
+
+        public int AttachmentCount { get; set; }
 
         public Guid? CoverPhotoId { get; set; }
 

@@ -30,7 +30,7 @@ public class FileMetadata
     [MaxLength(64)]
     public required string Sha256Hash { get; set; }
 
-    // The bytes live on the object store, in exactly one of the three stored-object columns below
+    // The bytes live on the object store, in exactly one of the four stored-object columns below
     // (CK_FileMetadata_ExactlyOneSource). The legacy database copy (FileBlob) is gone since RemoveLegacyFileBlobStorage.
 
     /// <summary>The bytes on the store, feature <c>FinanceFiles</c> (RESTRICT, issue #448 §4.1).</summary>
@@ -41,6 +41,9 @@ public class FileMetadata
 
     /// <summary>The bytes on the store, feature <c>ContactAvatars</c> (RESTRICT, issue #448 §4.1).</summary>
     public Guid? ContactAvatarStoredObjectId { get; set; }
+
+    /// <summary>The bytes on the store, feature <c>LibraryFiles</c> (RESTRICT, issue #525 §6.2).</summary>
+    public Guid? LibraryStoredObjectId { get; set; }
 
     [MaxLength(256)]
     public string? Description { get; set; }

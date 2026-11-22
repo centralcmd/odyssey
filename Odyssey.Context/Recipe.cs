@@ -63,5 +63,7 @@ public class Recipe
 
     public ICollection<RecipePhoto> Photos { get; set; } = new List<RecipePhoto>();
 
+    public ICollection<RecipeAttachment> Attachments { get; set; } = new List<RecipeAttachment>();
+
     public ICollection<RecipeTagLink> Tags { get; set; } = new List<RecipeTagLink>();
 }

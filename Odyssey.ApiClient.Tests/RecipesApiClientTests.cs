@@ -29,6 +29,7 @@ public class RecipesApiClientTests
             TagIds = [tagA, tagB],
             MaxTotalMinutes = 30,
             HasPhotos = false,
+            HasAttachments = true,
             Status = ArchivalStatus.Archived,
             SortBy = RecipeSortBy.TotalMinutes,
             SortDir = SortDirection.Desc,
@@ -38,7 +39,7 @@ public class RecipesApiClientTests
         Assert.Equal("/api/recipes", handler.LastRequest.RequestUri.AbsolutePath);
         foreach (var expected in new[]
         {
-            "search=flour", $"tagIds={tagA}", $"tagIds={tagB}", "maxTotalMinutes=30", "hasPhotos=false",
+            "search=flour", $"tagIds={tagA}", $"tagIds={tagB}", "maxTotalMinutes=30", "hasPhotos=false", "hasAttachments=true",
             "status=Archived", "sortBy=TotalMinutes", "sortDir=Desc", "offset=50", "limit=25",
         })
         {
@@ -55,6 +56,7 @@ public class RecipesApiClientTests
 
         var query = handler.LastRequest!.RequestUri!.Query;
         Assert.DoesNotContain("hasPhotos", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("hasAttachments", query, StringComparison.Ordinal);
         Assert.DoesNotContain("tagIds", query, StringComparison.Ordinal);
         Assert.DoesNotContain("status", query, StringComparison.Ordinal);
     }

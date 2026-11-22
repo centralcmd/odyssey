@@ -33,6 +33,9 @@ public sealed class RecipesQueryParams : QueryParams<RecipeSortBy>
     /// <summary><c>403</c> without <c>photos.read</c>: the filter alone would reveal what the read withholds.</summary>
     public bool? HasPhotos { get; set; }
 
+    /// <summary><c>403</c> without <c>files.read</c>, for the same reason as <see cref="HasPhotos"/>.</summary>
+    public bool? HasAttachments { get; set; }
+
     /// <summary>Archived recipes are hidden unless <see cref="ArchivalStatus.Archived"/> is asked for.</summary>
     public ArchivalStatus? Status { get; set; }
 }

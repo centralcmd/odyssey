@@ -53,6 +53,10 @@ public sealed record NewRecipe : RecipeRequest
     /// <summary>Library photo ids in gallery order; the first is the cover. Non-empty needs <c>photos.read</c>.</summary>
     [MaxLength(RecipeLimits.MaxPhotos)]
     public Guid[] PhotoIds { get; set; } = [];
+
+    /// <summary>Files-store file ids to link (unordered). Non-empty needs <c>files.read</c>.</summary>
+    [MaxLength(RecipeLimits.MaxAttachments)]
+    public Guid[] AttachmentFileIds { get; set; } = [];
 }
 
 /// <summary>Full-replacement update for a recipe, guarded by <see cref="Version"/>.</summary>
@@ -71,6 +75,13 @@ public sealed record UpdateRecipe : RecipeRequest
     /// </summary>
     [MaxLength(RecipeLimits.MaxPhotos)]
     public Guid[]? PhotoIds { get; set; }
+
+    /// <summary>
+    /// <c>null</c> leaves the file links unchanged; an array replaces them (<c>[]</c> removes all). A caller without
+    /// <c>files.read</c> cannot see the current set, so it must send <c>null</c> — any array is a <c>403</c>.
+    /// </summary>
+    [MaxLength(RecipeLimits.MaxAttachments)]
+    public Guid[]? AttachmentFileIds { get; set; }
 }
 
 /// <summary>One ingredient line of a recipe request.</summary>

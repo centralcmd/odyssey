@@ -485,11 +485,12 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PhotoAlbum> PhotoAlbums { get; set; }
     public DbSet<PhotoAlbumItem> PhotoAlbumItems { get; set; }
 
-    // Recipes (issue #525): shared household recipes, their ordered children, photo links and tags.
+    // Recipes (issue #525): shared household recipes, their ordered children, photo and file links, and tags.
     public DbSet<Recipe> Recipes { get; set; }
     public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
     public DbSet<RecipeStep> RecipeSteps { get; set; }
     public DbSet<RecipePhoto> RecipePhotos { get; set; }
+    public DbSet<RecipeAttachment> RecipeAttachments { get; set; }
     public DbSet<RecipeTag> RecipeTags { get; set; }
     public DbSet<RecipeTagLink> RecipeTagLinks { get; set; }
 

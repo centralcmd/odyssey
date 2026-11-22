@@ -23,6 +23,9 @@ public static class RecipeLimits
     public const int MaxIngredients = 100;
     public const int MaxSteps = 100;
     public const int MaxPhotos = 20;
+
+    /// <summary>Linked Files-store files (issue #525 Draft v6): the original recipe as a PDF, a scan, a text file.</summary>
+    public const int MaxAttachments = 20;
     public const int MaxTags = 20;
 
     public const int MinServings = 1;

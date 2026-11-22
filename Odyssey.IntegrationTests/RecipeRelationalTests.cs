@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Recipes;
 using Odyssey.Dtos.Recipes;
@@ -46,6 +47,8 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
         Assert.Equal("CASCADE", rules["RecipePhotos.PhotoId"]);
         Assert.Equal("CASCADE", rules["RecipeTagLinks.RecipeId"]);
         Assert.Equal("RESTRICT", rules["RecipeTagLinks.RecipeTagId"]);
+        Assert.Equal("CASCADE", rules["RecipeAttachments.RecipeId"]);
+        Assert.Equal("CASCADE", rules["RecipeAttachments.FileId"]);
         Assert.Equal("SET NULL", rules["Recipes.CreatedByUserId"]);
         Assert.Equal("SET NULL", rules["Recipes.UpdatedByUserId"]);
     }
@@ -70,7 +73,7 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
                 Steps = [new() { Text = "one" }, new() { Text = "two" }],
                 PhotoIds = [photoA, photoB],
                 TagIds = [tag],
-            }, userId: null!, canReadPhotos: true, canReadTags: true)).Recipe;
+            }, userId: null!, canReadPhotos: true, canReadTags: true, canReadFiles: true)).Recipe;
         }
 
         await using (var context = NewContext())
@@ -84,7 +87,7 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
                 PhotoIds = [photoB, photoA],
                 TagIds = [tag],
                 Version = created.Version,
-            }, userId: null!, canReadPhotos: true, canReadTags: true))!.Recipe;
+            }, userId: null!, canReadPhotos: true, canReadTags: true, canReadFiles: true))!.Recipe;
 
             Assert.Equal(["c", "a", "b"], updated.Ingredients.Select(i => i.Name));
             Assert.Equal(["two", "one"], updated.Steps.Select(s => s.Text));
@@ -135,6 +138,56 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
+    public async Task Deleting_a_files_store_file_removes_its_recipe_links_and_deleting_a_recipe_keeps_the_file()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var gone = await SeedFileAsync(StoredFileArea.Library);
+        var kept = await SeedFileAsync(StoredFileArea.Finance);
+        Guid recipeId;
+        await using (var context = NewContext())
+        {
+            recipeId = (await Service(context).CreateAsync(
+                new NewRecipe { Title = "With files", Servings = 1, AttachmentFileIds = [gone, kept] },
+                userId: null!, canReadPhotos: false, canReadTags: false, canReadFiles: true)).Recipe.RecipeId;
+        }
+
+        await using (var context = NewContext())
+        {
+            await context.Database.ExecuteSqlRawAsync($"DELETE FROM `FileMetadata` WHERE `Id` = '{gone}'");
+        }
+
+        await using (var verify = NewContext())
+        {
+            Assert.Equal([kept], await verify.RecipeAttachments.Where(a => a.RecipeId == recipeId).Select(a => a.FileId).ToListAsync());
+            await verify.Database.ExecuteSqlRawAsync($"DELETE FROM `Recipes` WHERE `RecipeId` = '{recipeId}'");
+        }
+
+        await using var after = NewContext();
+        Assert.False(await after.RecipeAttachments.AnyAsync(a => a.RecipeId == recipeId));
+        Assert.True(await after.FileMetadata.AnyAsync(f => f.Id == kept));
+    }
+
+    [SkippableFact]
+    public async Task A_library_file_satisfies_the_one_source_check_and_two_sources_do_not()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var library = await SeedFileAsync(StoredFileArea.Library);
+
+        await using var context = NewContext();
+        var row = await context.FileMetadata.AsNoTracking().SingleAsync(f => f.Id == library);
+        Assert.NotNull(row.LibraryStoredObjectId);
+        Assert.Null(row.FinanceStoredObjectId);
+
+        var second = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "FinanceFiles");
+        await context.SaveChangesAsync();
+        var error = await Assert.ThrowsAsync<MySqlConnector.MySqlException>(() => context.Database.ExecuteSqlRawAsync(
+            $"UPDATE `FileMetadata` SET `FinanceStoredObjectId` = '{second}' WHERE `Id` = '{library}'"));
+        Assert.Contains("CK_FileMetadata_ExactlyOneSource", error.Message, StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
     public async Task A_linked_tag_cannot_be_deleted_and_the_service_answers_conflict()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -162,12 +215,12 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
             foreach (var title in new[] { "Bread 50% rye", "Bread 500 g" })
             {
                 await Service(context).CreateAsync(
-                    new NewRecipe { Title = title, Servings = 1 }, userId: null!, canReadPhotos: false, canReadTags: false);
+                    new NewRecipe { Title = title, Servings = 1 }, userId: null!, canReadPhotos: false, canReadTags: false, canReadFiles: false);
             }
         }
 
         await using var read = NewContext();
-        var page = await Service(read).ListAsync(new RecipesQueryParams { Search = "50%" }, canReadPhotos: false);
+        var page = await Service(read).ListAsync(new RecipesQueryParams { Search = "50%" }, canReadPhotos: false, canReadFiles: false);
 
         Assert.Equal(["Bread 50% rye"], page.Items.Select(i => i.Title));
     }
@@ -184,7 +237,7 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
         // The interceptor bumps the stored version between the service's check and its save: exactly a concurrent PUT.
         await using var context = NewContext(new BeforeSave(() => BumpVersionAsync(recipeId)));
         await Assert.ThrowsAsync<RecipeVersionConflictException>(() =>
-            Service(context).UpdateAsync(recipeId, Update("Late"), userId: null!, canReadPhotos: true, canReadTags: true));
+            Service(context).UpdateAsync(recipeId, Update("Late"), userId: null!, canReadPhotos: true, canReadTags: true, canReadFiles: true));
     }
 
     [SkippableFact]
@@ -220,7 +273,7 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
         var service = new RecipeService(context, new EveryPhotoExists(), NullLogger<RecipeService>.Instance);
         var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() => service.CreateAsync(
             new NewRecipe { Title = "Ghost", Servings = 1, PhotoIds = [Guid.NewGuid()] },
-            userId: null!, canReadPhotos: true, canReadTags: true));
+            userId: null!, canReadPhotos: true, canReadTags: true, canReadFiles: true));
 
         Assert.Equal(["photoIds"], error.Errors!.Keys);
     }
@@ -273,7 +326,7 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
         {
             await AttributionUsers.EnsureAsync(context, userId);
             recipeId = (await Service(context).CreateAsync(
-                new NewRecipe { Title = "Kept", Servings = 1 }, userId, canReadPhotos: false, canReadTags: false)).Recipe.RecipeId;
+                new NewRecipe { Title = "Kept", Servings = 1 }, userId, canReadPhotos: false, canReadTags: false, canReadFiles: false)).Recipe.RecipeId;
             await context.Database.ExecuteSqlRawAsync($"DELETE FROM `AspNetUsers` WHERE `Id` = '{userId}'");
         }
 
@@ -345,7 +398,7 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
             Steps = [new() { Text = "Mix." }],
             PhotoIds = photo is { } p ? [p] : [],
             TagIds = tag is { } t ? [t] : [],
-        }, userId: null!, canReadPhotos: true, canReadTags: true);
+        }, userId: null!, canReadPhotos: true, canReadTags: true, canReadFiles: true);
         return result.Recipe.RecipeId;
     }
 
@@ -369,6 +422,17 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
         context.Photos.Add(photo);
         await context.SaveChangesAsync();
         return photo.PhotoId;
+    }
+
+    /// <summary>A Files-store row whose stored object exists (the key is real here), in <paramref name="area"/>.</summary>
+    private async Task<Guid> SeedFileAsync(StoredFileArea area)
+    {
+        await using var context = NewContext();
+        var file = StoredFileFixtures.Row(area: area);
+        StoredFileAreas.Assign(file, area, StoredFileFixtures.AddStoredObjectRow(context, featureKey: StoredFileAreas.FeatureKey(area)));
+        context.FileMetadata.Add(file);
+        await context.SaveChangesAsync();
+        return file.Id;
     }
 
     private async Task<Guid> SeedTagAsync(string name)
