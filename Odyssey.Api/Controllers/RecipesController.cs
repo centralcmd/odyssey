@@ -53,7 +53,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a recipe. Linking photos needs photos.read, files files.read, tags recipes.tags.read.")]
+    [SwaggerOperation(Summary = "Create a recipe. Linking photos needs photos.read; linking files, files.read; linking tags, recipes.tags.read.")]
     public async Task<IActionResult> Post([FromBody] NewRecipe request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

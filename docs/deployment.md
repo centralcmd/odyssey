@@ -1717,6 +1717,8 @@ A file later attached somewhere else stays where it was put.
 - **Upgrade note (issue #525):** `LibraryFiles` is new. The shipped compose file and AppHost already bind it; an operator
   with a **custom compose file** must add `FileStorage__Bindings__LibraryFiles` to `api` and `worker` (bind it to the
   same volume as the other areas), or both refuse to start after the upgrade.
+  The migration (`AddRecipeAttachmentsAndLibraryFiles`) re-creates the `FileMetadata` one-source CHECK and adds a unique
+  index, both of which scan the table: expect a brief metadata lock on a large installation.
 - **`POST /api/files`** takes a required `area` form field, validates `description` at 256 characters, and is
   rate-limited per user by `RateLimiting:FileUpload` (120 per 10 minutes by default); the contact-avatar upload
   shares that limit. An upload refuses with `507` when the volume is below the reserve (the store's 1 GB floor
