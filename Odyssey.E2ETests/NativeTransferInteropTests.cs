@@ -24,6 +24,7 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
     private const int LargeFileBytes = 48 * 1024 * 1024;
 
     private readonly UploadServer server = new();
+    private readonly string fileDirectory = Directory.CreateTempSubdirectory("odyssey-native-transfer-").FullName;
     private IPlaywright? playwright;
     private IBrowser? browser;
     private string? skipReason;
@@ -49,6 +50,7 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
 
         playwright?.Dispose();
         server.Dispose();
+        Directory.Delete(fileDirectory, recursive: true);
     }
 
     private static async Task<IBrowser?> LaunchAsync(IPlaywright playwright)
@@ -80,12 +82,23 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
         var page = await browser!.NewPageAsync();
         await page.GotoAsync(server.Origin + "/");
         await page.EvaluateAsync("() => window.odysseyNativeTransfer.watch('box')");
-        await page.Locator("#picker").SetInputFilesAsync(new FilePayload
+
+        // A path, not a FilePayload buffer: Playwright ships a buffer base64-encoded in one protocol message, which for
+        // the 48 MiB abort case took ~30 s on an idle machine and timed out under CI load. A path is handed to the
+        // local browser as-is, so no bytes cross the pipe.
+        var path = Path.Combine(fileDirectory, $"{bytes}", "calendar.ics");
+        if (!File.Exists(path))
         {
-            Name = "calendar.ics",
-            MimeType = "text/calendar",
-            Buffer = Encoding.ASCII.GetBytes(new string('A', bytes)),
-        });
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await using var file = File.Create(path);
+            var chunk = Encoding.ASCII.GetBytes(new string('A', Math.Min(bytes, 1024 * 1024)));
+            for (var written = 0; written < bytes; written += chunk.Length)
+            {
+                await file.WriteAsync(chunk.AsMemory(0, Math.Min(chunk.Length, bytes - written)));
+            }
+        }
+
+        await page.Locator("#picker").SetInputFilesAsync(path);
         return page;
     }
 
