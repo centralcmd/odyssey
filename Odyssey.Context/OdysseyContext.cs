@@ -632,6 +632,17 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<NewsArticleTag> NewsArticleTags => Set<NewsArticleTag>();
     public DbSet<NewsFeedCrashEvent> NewsFeedCrashEvents => Set<NewsFeedCrashEvent>();
 
+    // ── Podcasts (issue #556) ───────────────────────────────────────────────────────────────────
+    // A podcast is a news feed of kind Podcast; an episode extends its NewsArticle 1:1. Audio and artwork are files on
+    // the PodcastAudio and PodcastArtwork storage features.
+    public DbSet<PodcastFeedDetails> PodcastFeedDetails => Set<PodcastFeedDetails>();
+    public DbSet<PodcastEpisode> PodcastEpisodes => Set<PodcastEpisode>();
+    public DbSet<PodcastEpisodeAudio> PodcastEpisodeAudio => Set<PodcastEpisodeAudio>();
+    public DbSet<PodcastChapter> PodcastChapters => Set<PodcastChapter>();
+    public DbSet<PodcastArtwork> PodcastArtwork => Set<PodcastArtwork>();
+    public DbSet<PodcastArtworkFile> PodcastArtworkFiles => Set<PodcastArtworkFile>();
+    public DbSet<PodcastArtworkIncident> PodcastArtworkIncidents => Set<PodcastArtworkIncident>();
+
     /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from
     /// <see cref="SystemSettings"/>: every enumeration of that one projects onto the read DTO, so

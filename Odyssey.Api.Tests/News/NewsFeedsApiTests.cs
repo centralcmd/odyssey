@@ -216,7 +216,7 @@ public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests
         var id = await factory.SeedFeedAsync();
         using var client = factory.CreateClient();
         var feed = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
-        var update = new UpdateNewsFeed { Version = feed.Version, Url = feed.Management!.Url, CustomTitle = "Mine", DownloadImages = false, IsActive = true };
+        var update = new UpdateNewsFeed { Version = feed.Version, Url = feed.Management!.Url, CustomTitle = "Mine", DownloadImages = false, IsActive = true, Kind = NewsFeedKind.Article, AutoDownload = false, AutoDeleteEnabled = false, AutoDeleteAfterDays = 30 };
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"{Feeds}/{Guid.NewGuid()}", update)).StatusCode);
         var ok = await client.PutAsJsonAsync($"{Feeds}/{id}", update);
@@ -240,7 +240,7 @@ public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests
         await factory.SeedFeedAsync(url: "https://other.example.org/rss");
         using var client = factory.CreateClient();
         var feed = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
-        var request = new UpdateNewsFeed { Version = feed.Version, Url = feed.Management!.Url, DownloadImages = true, IsActive = true };
+        var request = new UpdateNewsFeed { Version = feed.Version, Url = feed.Management!.Url, DownloadImages = true, IsActive = true, Kind = NewsFeedKind.Article, AutoDownload = false, AutoDeleteEnabled = false, AutoDeleteAfterDays = 30 };
 
         // Unchanged: the suggestion stays pending and the validators are not reset.
         var unchanged = await (await client.PutAsJsonAsync($"{Feeds}/{id}", request)).ReadAsync<ExistingNewsFeed>();
@@ -267,7 +267,7 @@ public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests
         var feed = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
 
         var updated = await (await client.PutAsJsonAsync($"{Feeds}/{id}",
-            new UpdateNewsFeed { Version = feed.Version, Url = "https://mirror.example.org/feed.xml", DownloadImages = true, IsActive = true }))
+            new UpdateNewsFeed { Version = feed.Version, Url = "https://mirror.example.org/feed.xml", DownloadImages = true, IsActive = true, Kind = NewsFeedKind.Article, AutoDownload = false, AutoDeleteEnabled = false, AutoDeleteAfterDays = 30 }))
             .ReadAsync<ExistingNewsFeed>();
 
         Assert.Equal("https://mirror.example.org/feed.xml", updated.Management!.Url);
@@ -459,6 +459,10 @@ public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests
             DownloadImages = f.DownloadImages,
             IsActive = f.IsActive,
             TagIds = tags,
+            Kind = f.Kind,
+            AutoDownload = false,
+            AutoDeleteEnabled = false,
+            AutoDeleteAfterDays = 30,
         };
 
         var kept = await (await client.PutAsJsonAsync($"{Feeds}/{id}", Body(await Current(), null))).ReadAsync<ExistingNewsFeed>();
@@ -539,6 +543,10 @@ public class NewsFeedsApiTests(NewsFeedsApiTests.Host host) : SharedApiHostTests
         DownloadImages = f.DownloadImages,
         IsActive = f.IsActive,
         TagIds = tags,
+        Kind = f.Kind,
+        AutoDownload = false,
+        AutoDeleteEnabled = false,
+        AutoDeleteAfterDays = 30,
     };
 
     [Fact]

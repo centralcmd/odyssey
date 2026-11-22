@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="css/legal.css" />
     <link rel="stylesheet" href="css/weather.css" />
     <link rel="stylesheet" href="css/news.css" />
+    <link rel="stylesheet" href="css/podcasts.css" />
     <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
     <link rel="icon" type="image/svg+xml" href="odyssey-logomark.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
@@ -511,6 +512,10 @@
                 window.odsNewsFocusListStart(rootId);
             });
         };
+        window.odsPageHidden = function () {
+            // The Podcasts page pauses its download-status polling while the tab is hidden (issue #559 §3.2.5).
+            return document.hidden === true;
+        };
         window.odsNewsOpenOriginal = function (href) {
             // Open original from a ⋯ menu (Odyssey Design System · ExternalLink): exactly the href the client
             // already vetted as an absolute http/https URL, in a new tab with no opener and no referrer.
@@ -551,6 +556,20 @@
                 const el = Array.from(host.querySelectorAll(FOCUSABLE)).find(function (e) { return e.offsetParent !== null; });
                 if (el) { el.focus(); return; }
                 if (fallbackToSelf) host.focus();
+            };
+            let n = frames || 0;
+            const tick = function () { if (n-- > 0) requestAnimationFrame(tick); else run(); };
+            tick();
+        };
+        window.odsFocusRadioGroup = function (id, frames) {
+            // OdsRadioGroup.FocusAsync: the CHECKED radio when there is one, else the first enabled radio
+            // (issue #559 §3.4) — the native group's own tab stop.
+            const run = function () {
+                const host = document.getElementById(id);
+                if (!host) return;
+                const target = host.querySelector('input[type="radio"]:checked:not([disabled])') ||
+                    host.querySelector('input[type="radio"]:not([disabled])');
+                if (target) target.focus();
             };
             let n = frames || 0;
             const tick = function () { if (n-- > 0) requestAnimationFrame(tick); else run(); };

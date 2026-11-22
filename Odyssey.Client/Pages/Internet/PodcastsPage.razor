@@ -1,0 +1,177 @@
+@page "/podcasts"
+@attribute [Authorize(Policy = PermissionClaims.NewsRead)]
+@implements IDisposable
+
+<PageTitle>Podcasts</PageTitle>
+
+@*
+    Podcasts — the episode list (issue #559 §3.2; Odyssey Design System · ui_kits/web/Podcasts.jsx and
+    components/PagePodcasts). The News page's frame, item for item, so the two readers read as one module: PageHeader
+    (sub-line, Attention, Overview, the filter bar, New podcast, the ⋯ "Podcast actions" menu), an sr-only h2 kept for
+    the outline and never a focus target, and a scrolling list of expandable episode cards — OdsInfiniteList in its
+    remote mode, "Load N at a time" rows per request by nextCursor. One card open at a time.
+
+    The header's figures come from the podcast feeds' own `podcast` blocks (every podcast, archived included), never
+    from the loaded rows, so they do not move with scrolling or filters. While a loaded episode is queued, downloading
+    or waiting for space, the page polls its status (PodcastAudioPoller); one OdsLiveAnnouncer speaks every change.
+*@
+
+<OdsLiveAnnouncer @ref="_announcer" />
+
+<div class="nw-page pod-page" id="@RootId">
+<MudStack Spacing="4">
+    <PageHeader Title="Podcasts" Icon="@Icons.Material.Filled.Podcasts"
+                Problems="Problems" ProblemsLabel="Attention"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true"
+                PrimaryActionText="New podcast" OnPrimaryAction="NewPodcast" ShowPrimaryAction="@(_canCreateFeeds && _feeds.Count > 0)"
+                ActionMenu="PodcastActions" ActionMenuLabel="Podcast actions" ActionMenuId="@ActionMenuId">
+        <SubLine>@SubLine</SubLine>
+        <OverviewContent>
+            @if (_feeds.Count > 0)
+            {
+                <div class="odc-summary-grid">
+                    <OdsBreakdownTile Label="Podcasts" Rows="PodcastRows" Empty="No podcasts." />
+                    <OdsBreakdownTile Label="By tags" Rows="TagRows" Empty="No tagged podcasts." TotalValue="@_feeds.Count" TotalLabel="Podcasts" />
+                    <OdsBreakdownTile Label="Episodes" Rows="EpisodeRows" Empty="No episodes." TotalValue="@EpisodeTotalText" />
+                    <OdsBreakdownTile Label="On the server" Rows="ServerRows" Empty="Nothing on the server." Total="false" />
+                </div>
+            }
+        </OverviewContent>
+        <SearchContent>
+            @if (_feeds.Count > 0)
+            {
+                <div class="ph-filter-bar">
+                    <div class="ph-search odc-combo-wrap nw-search">
+                        <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged" DebounceInterval="300"
+                                        Placeholder="Search episodes" id="podcast-search"
+                                        aria-describedby="@SearchHelpId" aria-invalid="@(_searchError is not null ? "true" : null)" />
+                        <div id="@SearchHelpId" class="@(_searchError is null ? "odc-sr-only" : "nw-search-help is-error")">
+                            @(_searchError ?? "Searches episode titles, podcast names and summaries.")
+                        </div>
+                    </div>
+                    <OdsMultiSelect Label="Podcast" Values="_feedFilter" ValuesChanged="OnFeedFilterChanged" Options="FeedOptions"
+                                    MaxSelected="NewsLimits.MaxFilterIds" MaxSelectedText="@($"Up to {NewsLimits.MaxFilterIds} podcasts")"
+                                    Class="ph-select">
+                        <OptionContent Context="option"><span lang="@FeedLang(option.Value)">@option.Label</span></OptionContent>
+                    </OdsMultiSelect>
+                    <OdsMultiSelect Label="@(_statuses.Count == 0 ? "Status: All" : "Status")" Values="_statuses" ValuesChanged="OnStatusesChanged"
+                                    Options="StatusOptions" Class="ph-select" />
+                    <OdsSortSelect TRow="PodcastEpisodeSummary" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                    <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Episodes per batch"
+                                       Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+                </div>
+            }
+        </SearchContent>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <div class="nw-loading" aria-busy="true">
+            <span class="odc-sr-only" role="status">Loading episodes…</span>
+            @for (var i = 0; i < 5; i++)
+            {
+                <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="88px" />
+            }
+        </div>
+    }
+    else if (_failure is { } failure)
+    {
+        <NewsLoadProblem Busy="failure.Busy" Noun="episodes" RetryAfter="failure.RetryAfter" Failure="_failureCount"
+                         IdPrefix="pod-load" OnRetry="RetryLoadAsync" />
+    }
+    else if (_feeds.Count == 0)
+    {
+        <OdsEmptyState Icon="podcasts">
+            <Title><h2 class="nw-empty-h" tabindex="-1" id="pod-empty-h">No podcasts yet</h2></Title>
+            <Description>Add a podcast by pasting its RSS address.</Description>
+            <Action>
+                @if (_canCreateFeeds)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="NewPodcast">New podcast</OdsButton>
+                }
+                else
+                {
+                    <span class="nw-muted">Ask an administrator or owner to add one.</span>
+                }
+            </Action>
+        </OdsEmptyState>
+    }
+    else if (_rows.Count == 0)
+    {
+        @if (NoEpisodesYet)
+        {
+            <OdsEmptyState Icon="schedule" MutedIcon="true">
+                <Title><h2 class="nw-empty-h" tabindex="-1" id="pod-empty-h">No episodes yet</h2></Title>
+                <Description>Episodes appear after the first check of each podcast.</Description>
+            </OdsEmptyState>
+        }
+        else
+        {
+            <OdsEmptyState Icon="search_off" MutedIcon="true">
+                <Title><h2 class="nw-empty-h" tabindex="-1" id="pod-empty-h">No episodes match these filters</h2></Title>
+                <Description>
+                    @if (string.IsNullOrWhiteSpace(_listFilter?.Search))
+                    {
+                        <span>Try a different filter.</span>
+                    }
+                    else
+                    {
+                        <span>Nothing matches “<bdi>@_listFilter!.Search</bdi>”.</span>
+                    }
+                </Description>
+                <Action>
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="close" OnClick="ClearFiltersAsync">Clear filters</OdsButton>
+                </Action>
+            </OdsEmptyState>
+        }
+    }
+    else
+    {
+        <h2 class="odc-sr-only">Episodes</h2>
+        <div class="nw-list pod-list" aria-busy="@(_refetching ? "true" : null)">
+            <OdsInfiniteList TItem="PodcastEpisodeSummary" Items="_rows" Noun="episodes" Remote="true"
+                             ItemKey="@(e => (object)e.Id)" Refetching="_refetching"
+                             RemoteTotal="_total" RemoteTotalCapped="_totalCapped" HasMoreRemote="@(_cursor is not null)"
+                             LoadMore="LoadMoreAsync" LoadingMore="_loadingMore" LoadMoreFailed="_loadMoreFailed"
+                             ResetKey="_resetKey">
+                <RenderItem Context="episode">
+                    <PodcastEpisodeCard @key="episode.Id" Episode="episode" FeedLanguage="@FeedLang(episode.FeedId.ToString())"
+                                        ArtworkUrl="@(episode.ArtworkId is { } art ? Podcasts.ArtworkUrl(art, PodcastArtworkSize.Small) : null)"
+                                        ImageUrl="News.ImageUrl" Menu="MenuFor(episode)"
+                                        Open="@(_openId == episode.Id)" OnToggle="open => OnToggleAsync(episode, open)"
+                                        Detail="@_details.GetValueOrDefault(episode.Id)" CardAlert="@_alerts.GetValueOrDefault(episode.Id)"
+                                        CanRequest="_canRequest" CanDelete="_canDelete"
+                                        Pending="@(_pending.TryGetValue(episode.Id, out var pending) ? pending : null)"
+                                        PollTrouble="_poller.Trouble" WaitStopped="_poller.WaitStopped" Now="Now" TimeZone="LocalZone"
+                                        OnAction="action => OnActionAsync(episode, action)" OnCheckAgain="CheckAgainAsync"
+                                        OnRetryDetail="LoadDetailAsync" />
+                </RenderItem>
+            </OdsInfiniteList>
+        </div>
+    }
+</MudStack>
+</div>
+
+@if (_removeEpisode is { } removeEpisode)
+{
+    <OdsConfirmDialog @key="removeEpisode.Id" Open="_removeOpen" OpenChanged="OnRemoveOpenChanged"
+                      Title="Remove audio from the server?"
+                      Body="The episode, its show notes and chapters stay. You can download the audio to the server again later."
+                      ConfirmLabel="Remove" Icon="delete" SubmitIcon="delete"
+                      ReturnFocusToId="@_removeReturnFocusId"
+                      OnConfirm="ConfirmRemoveAsync" />
+}
+
+@if (_feedDialogKey != Guid.Empty)
+{
+    <NewsFeedDialog @key="_feedDialogKey" Open="_feedDialogOpen" OpenChanged="v => _feedDialogOpen = v"
+                    Tags="_tags" InitialKind="NewsFeedKind.Podcast" Saved="OnPodcastCreatedAsync" />
+}
+
+@code {
+    /// <summary>The header's ⋯ "Podcast actions": Manage podcasts (the Feeds page, Podcasts ticked).</summary>
+    private RenderFragment PodcastActions => @<text>
+        <MudMenuItem Icon="@Icons.Material.Filled.RssFeed" Href="news-feeds?kind=Podcast">Manage podcasts</MudMenuItem>
+    </text>;
+}

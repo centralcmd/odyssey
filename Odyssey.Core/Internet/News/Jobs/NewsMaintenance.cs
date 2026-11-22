@@ -68,19 +68,36 @@ public sealed class NewsMaintenance(IServiceScopeFactory scopes, TimeProvider ti
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var image = await context.NewsArticleFiles.AsNoTracking().Where(f => f.Kind == NewsArticleFileKind.Image).SumAsync(f => (long?)f.SizeBytes, cancellationToken) ?? 0;
         var text = await context.NewsArticleFiles.AsNoTracking().Where(f => f.Kind != NewsArticleFileKind.Image).SumAsync(f => (long?)f.SizeBytes, cancellationToken) ?? 0;
+        // Podcasts (issue #556 §3.8): stored audio, artwork, the reservations of live download leases, and the audio
+        // released but not yet deleted by the store (a per-feature read of StoredObjects).
+        var now = Now;
+        var audio = await context.PodcastEpisodeAudio.AsNoTracking()
+            .Where(a => a.State == Dtos.Internet.PodcastAudioState.Stored).SumAsync(a => a.SizeBytes, cancellationToken) ?? 0;
+        var artwork = await context.PodcastArtworkFiles.AsNoTracking().SumAsync(f => (long?)f.SizeBytes, cancellationToken) ?? 0;
+        var reserved = await context.PodcastEpisodeAudio.AsNoTracking()
+            .Where(a => a.State == Dtos.Internet.PodcastAudioState.Downloading && a.LeaseExpiresAtUtc >= now)
+            .SumAsync(a => (long?)a.ReservedBytes, cancellationToken) ?? 0;
+        var pendingRelease = await context.StoredObjects.AsNoTracking()
+            .Where(o => o.FeatureKey == Podcasts.Files.PodcastAudioStorage.FeatureKey && o.State == StoredObjectState.PendingDelete)
+            .SumAsync(o => (long?)o.SizeBytes, cancellationToken) ?? 0;
         var totals = await context.NewsStorageTotals.FirstOrDefaultAsync(t => t.Id == NewsStorageTotal.SingletonId, cancellationToken);
         if (totals is null)
         {
             totals = new NewsStorageTotal { Id = NewsStorageTotal.SingletonId };
             context.NewsStorageTotals.Add(totals);
         }
-        else if (totals.ImageBytes == image && totals.TextAndSourceBytes == text)
+        else if (totals.ImageBytes == image && totals.TextAndSourceBytes == text && totals.AudioBytes == audio && totals.ArtworkBytes == artwork
+            && totals.AudioReservedBytes == reserved && totals.AudioPendingReleaseBytes == pendingRelease)
         {
             return false;
         }
 
         totals.ImageBytes = image;
         totals.TextAndSourceBytes = text;
+        totals.AudioBytes = audio;
+        totals.ArtworkBytes = artwork;
+        totals.AudioReservedBytes = reserved;
+        totals.AudioPendingReleaseBytes = pendingRelease;
         await context.SaveChangesAsync(cancellationToken);
         logger.LogWarning("The news storage totals had drifted; they were recounted.");
         return true;

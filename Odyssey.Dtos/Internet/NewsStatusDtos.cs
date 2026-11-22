@@ -44,6 +44,35 @@ public sealed record NewsStatus
     public long VolumeFreeBytes { get; set; }
 
     public List<NewsFeedImageUsage> TopFeedsByImageBytes { get; set; } = [];
+
+    // ── Podcasts (issue #556 §5.5 #12) ──────────────────────────────────────────────────────────────
+
+    public long AudioBytes { get; set; }
+
+    /// <summary>Audio released but still inside the deletion grace: it counts against the quota until the store deletes it.</summary>
+    public long AudioPendingReleaseBytes { get; set; }
+
+    /// <summary>The resolved <c>PodcastAudioStoreMaxGiB</c> in bytes.</summary>
+    public long AudioQuotaBytes { get; set; }
+
+    public bool AudioQuotaReached { get; set; }
+
+    /// <summary>Podcast artwork, counted inside the image quota.</summary>
+    public long ArtworkBytes { get; set; }
+
+    public List<NewsFeedAudioUsage> TopFeedsByAudioBytes { get; set; } = [];
+}
+
+/// <summary>One feed of <see cref="NewsStatus.TopFeedsByAudioBytes"/>.</summary>
+public sealed record NewsFeedAudioUsage
+{
+    public Guid FeedId { get; set; }
+
+    public string DisplayTitle { get; set; } = string.Empty;
+
+    public string? Language { get; set; }
+
+    public long AudioBytes { get; set; }
 }
 
 /// <summary>One feed of <see cref="NewsStatus.TopFeedsByImageBytes"/>.</summary>

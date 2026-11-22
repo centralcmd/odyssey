@@ -105,13 +105,14 @@ public static class NavModel
             ]),
         ]),
         // Internet (issue #473 §3.1): the news reader, plus Weather points (moved here from Journal). news.read
-        // gates the three news pages and weather.points.read the weather page, so a caller holding neither loses
+        // gates the four news pages (Podcasts, issue #559, sits between News and Feeds) and weather.points.read the weather page, so a caller holding neither loses
         // the whole module (VisibleModules). Reference stays last, as in Finance.
         new("internet", "Internet", "public",
         [
             new("News",
             [
                 new("news", "News", "feed", "news", PermissionClaims.NewsRead),
+                new("podcasts", "Podcasts", "podcasts", "podcasts", PermissionClaims.NewsRead),
                 new("news-feeds", "Feeds", "rss_feed", "news-feeds", PermissionClaims.NewsRead),
             ]),
             new("Weather",

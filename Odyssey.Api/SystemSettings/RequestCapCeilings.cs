@@ -47,6 +47,7 @@ public sealed class RequestCapCeilings
         // ceiling of 0 and make every value — including the compiled default — unsettable.
         UploadMegabytes = (int)Math.Max(1, fileStorage.Value.MaxFileSizeBytes / BytesPerMegabyte);
         NewsImageMaxSizeKb = NewsImageSizeCeiling.Kb(fileStorage.Value.MaxFileSizeBytes);
+        PodcastAudioMaxEpisodeMb = PodcastAudioSizeCeiling.Mb(fileStorage.Value.MaxFileSizeBytes);
     }
 
     /// <summary>The startup transport ceiling, in megabytes.</summary>
@@ -57,6 +58,12 @@ public sealed class RequestCapCeilings
     /// <c>FileStorage:MaxFileSizeBytes</c>, so a higher setting would do nothing. Never below the setting's floor.
     /// </summary>
     public int NewsImageMaxSizeKb { get; }
+
+    /// <summary>
+    /// The podcast episode size cap's derived ceiling, in MB (issue #556 §8.2): the store refuses a larger write, so a
+    /// higher setting would do nothing. Never below the setting's floor.
+    /// </summary>
+    public int PodcastAudioMaxEpisodeMb { get; }
 
     public static int PhotoLinksPerKind => PhotoLimits.MaxLinksPerKind;
 
@@ -73,6 +80,13 @@ public sealed class RequestCapCeilings
         value > NewsImageMaxSizeKb
             ? $"cannot exceed {NewsImageMaxSizeKb}: the file store refuses a write larger than "
               + "FileStorage:MaxFileSizeBytes, so a larger image could never be stored. Lower it, or raise the "
+              + "configured limit first."
+            : null;
+
+    public string? ValidatePodcastAudioMaxEpisodeMb(int value) =>
+        value > PodcastAudioMaxEpisodeMb
+            ? $"cannot exceed {PodcastAudioMaxEpisodeMb}: the file store refuses a write larger than "
+              + "FileStorage:MaxFileSizeBytes, so a larger episode could never be stored. Lower it, or raise the "
               + "configured limit first."
             : null;
 

@@ -566,7 +566,7 @@ public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host
             .ToList();
 
         Assert.Equal(
-            ["ValidateNewsImageMaxSizeKb", "ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidateUploadMegabytes"],
+            ["ValidateNewsImageMaxSizeKb", "ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidatePodcastAudioMaxEpisodeMb", "ValidateUploadMegabytes"],
             validators);
     }
 

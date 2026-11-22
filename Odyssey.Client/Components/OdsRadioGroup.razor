@@ -202,13 +202,15 @@ else
     }
 
     /// <summary>
-    /// Moves focus to the group's first enabled radio — the error summary's apply-to link and the
-    /// <c>409 applyTo</c> re-show both land here (issue #383 §6.8).
+    /// Moves focus to the group's CHECKED radio when there is one, else its first enabled radio — the error
+    /// summary's apply-to link, the <c>409 applyTo</c> re-show (issue #383 §6.8) and the feed dialog's reverted
+    /// Type choice (issue #559 §3.4) all land here. <paramref name="frames"/> defers the move past another focus
+    /// change in flight (a closing dialog restoring its opener).
     /// </summary>
-    public async Task FocusAsync()
+    public async Task FocusAsync(int frames = 1)
     {
         try
-        { await Js.InvokeVoidAsync("odsFocusFirstIn", GroupId, false, 1); }
+        { await Js.InvokeVoidAsync("odsFocusRadioGroup", GroupId, frames); }
         catch (JSException) { /* JS unavailable (prerender / teardown) */ }
         catch (InvalidOperationException) { /* no JS runtime under a static render */ }
     }

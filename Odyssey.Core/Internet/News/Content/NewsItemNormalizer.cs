@@ -88,6 +88,9 @@ public sealed record NewsNormalizedItem
 
     /// <summary>The body was cut (at the length cap, the walk's node cap or its deadline).</summary>
     public bool BodyTruncated { get; init; }
+
+    /// <summary>The episode fields (issue #556 §8.3), or <c>null</c> when the item has no audio enclosure.</summary>
+    public Podcasts.PodcastNormalizedEpisode? Podcast { get; init; }
 }
 
 /// <summary>
@@ -206,6 +209,7 @@ public static class NewsItemNormalizer
             Source = item.Source,
             SourceContentType = item.SourceContentType,
             SourceTooLarge = item.SourceTooLarge,
+            Podcast = Podcasts.PodcastFields.NormalizeEpisode(item.Podcast, baseUrl),
         };
     }
 

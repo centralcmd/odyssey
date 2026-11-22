@@ -43,7 +43,14 @@ public sealed class NewsStatusService(
                          select new { FeedId = g.Key, Bytes = g.Sum(f => f.SizeBytes) })
             .OrderByDescending(g => g.Bytes).ThenBy(g => g.FeedId).Take(TopFeedCount)
             .News().ToListAsync(cancellationToken);
-        var topIds = top.Select(t => t.FeedId).ToList();
+        var topAudio = await (from audio in context.PodcastEpisodeAudio.AsNoTracking()
+                              join feed in live on audio.NewsFeedId equals feed.NewsFeedId
+                              where audio.State == PodcastAudioState.Stored
+                              group audio by audio.NewsFeedId into g
+                              select new { FeedId = g.Key, Bytes = g.Sum(a => a.SizeBytes ?? 0) })
+            .OrderByDescending(g => g.Bytes).ThenBy(g => g.FeedId).Take(TopFeedCount)
+            .News().ToListAsync(cancellationToken);
+        var topIds = top.Select(t => t.FeedId).Concat(topAudio.Select(t => t.FeedId)).Distinct().ToList();
         var titles = await (from feed in context.NewsFeeds.AsNoTracking()
                             join state in context.NewsFeedFetchStates.AsNoTracking() on feed.NewsFeedId equals state.NewsFeedId into states
                             from state in states.DefaultIfEmpty()
@@ -54,6 +61,9 @@ public sealed class NewsStatusService(
         var (storage, volumeName, free) = Storage();
         var imageBytes = totals?.ImageBytes ?? 0;
         var textBytes = totals?.TextAndSourceBytes ?? 0;
+        var artworkBytes = totals?.ArtworkBytes ?? 0;
+        var audioBytes = totals?.AudioBytes ?? 0;
+        var pendingRelease = totals?.AudioPendingReleaseBytes ?? 0;
         return new NewsStatus
         {
             Storage = storage,
@@ -63,7 +73,24 @@ public sealed class NewsStatusService(
             QuarantinedFeedCount = quarantined,
             ImageBytes = imageBytes,
             ImageQuotaBytes = resolved.ImageStoreQuotaBytes,
-            ImageQuotaReached = imageBytes >= resolved.ImageStoreQuotaBytes,
+            // Artwork is an image too (§6.4): it counts inside the image quota.
+            ImageQuotaReached = imageBytes + artworkBytes >= resolved.ImageStoreQuotaBytes,
+            ArtworkBytes = artworkBytes,
+            AudioBytes = audioBytes,
+            AudioPendingReleaseBytes = pendingRelease,
+            AudioQuotaBytes = resolved.PodcastAudioQuotaBytes,
+            AudioQuotaReached = audioBytes + pendingRelease >= resolved.PodcastAudioQuotaBytes,
+            TopFeedsByAudioBytes = [.. topAudio.Select(t =>
+            {
+                var feed = titles.GetValueOrDefault(t.FeedId);
+                return new NewsFeedAudioUsage
+                {
+                    FeedId = t.FeedId,
+                    DisplayTitle = NewsFeedProjection.DisplayTitle(feed?.CustomTitle, feed?.Title, feed?.SiteUrl),
+                    Language = feed?.Language,
+                    AudioBytes = t.Bytes,
+                };
+            })],
             TextAndSourceBytes = textBytes,
             TextAndSourceQuotaBytes = resolved.TextQuotaBytes,
             TextAndSourceQuotaReached = NewsTextQuota.IsReached(textBytes, resolved.TextQuotaBytes),

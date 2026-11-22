@@ -23,6 +23,19 @@ public sealed record NewNewsFeed
 
     [MaxLength(NewsLimits.MaxTagIdsPerRequest)]
     public List<Guid>? TagIds { get; set; }
+
+    /// <summary>What the feed carries (issue #556 §5.1 #1); absent is <see cref="NewsFeedKind.Article"/>.</summary>
+    [EnumDataType(typeof(NewsFeedKind))]
+    public NewsFeedKind Kind { get; set; } = NewsFeedKind.Article;
+
+    /// <summary>Queue newly published episodes for download; <c>true</c> on an article feed is a <c>422</c>.</summary>
+    public bool AutoDownload { get; set; }
+
+    /// <summary>Remove audio a set number of days after it was saved to a device; <c>true</c> on an article feed is a <c>422</c>.</summary>
+    public bool AutoDeleteEnabled { get; set; }
+
+    [Range(PodcastLimits.MinAutoDeleteDays, PodcastLimits.MaxAutoDeleteDays)]
+    public int AutoDeleteAfterDays { get; set; } = PodcastLimits.DefaultAutoDeleteDays;
 }
 
 /// <summary>
@@ -62,6 +75,23 @@ public sealed record UpdateNewsFeed
     /// </summary>
     [MaxLength(NewsLimits.MaxTagIdsPerRequest)]
     public List<Guid>? TagIds { get; set; }
+
+    // Podcasts (issue #556 §5.1 #2). Required and nullable like DownloadImages: a PUT is a full replacement, and an
+    // omitted value must not bind to a default.
+
+    [Required]
+    [EnumDataType(typeof(NewsFeedKind))]
+    public NewsFeedKind? Kind { get; set; }
+
+    [Required]
+    public bool? AutoDownload { get; set; }
+
+    [Required]
+    public bool? AutoDeleteEnabled { get; set; }
+
+    [Required]
+    [Range(PodcastLimits.MinAutoDeleteDays, PodcastLimits.MaxAutoDeleteDays)]
+    public int? AutoDeleteAfterDays { get; set; }
 }
 
 /// <summary>The body of <c>PUT /api/news-feeds/{id}/tags</c>: the feed's whole tag set.</summary>
@@ -130,6 +160,38 @@ public sealed record ExistingNewsFeed
 
     /// <summary>The fetch URL and error detail: <c>null</c> without <c>news-feeds.update</c>.</summary>
     public NewsFeedManagement? Management { get; set; }
+
+    /// <summary>What the feed carries (issue #556 §5.1 #3).</summary>
+    public NewsFeedKind Kind { get; set; }
+
+    /// <summary>The podcast details and automation; <c>null</c> on an article feed. All of it is <c>news.read</c> data.</summary>
+    public NewsFeedPodcast? Podcast { get; set; }
+}
+
+/// <summary>A podcast feed's details, automation and stored-audio figures (issue #556 §5.1 #3).</summary>
+public sealed record NewsFeedPodcast
+{
+    public string? Author { get; set; }
+
+    /// <summary>The show artwork, when stored; served by <c>GET /api/podcast-artwork/{id}/content</c>.</summary>
+    public Guid? ArtworkId { get; set; }
+
+    public bool? Explicit { get; set; }
+
+    public bool AutoDownload { get; set; }
+
+    public bool AutoDeleteEnabled { get; set; }
+
+    public int AutoDeleteAfterDays { get; set; }
+
+    public int EpisodeCount { get; set; }
+
+    /// <summary>Episodes whose audio was ever saved to a device (<c>LastPlayedAtUtc</c> set), stored now or not.</summary>
+    public int SavedEpisodeCount { get; set; }
+
+    public int StoredAudioCount { get; set; }
+
+    public long StoredAudioBytes { get; set; }
 }
 
 /// <summary>The part of a feed only a <c>news-feeds.update</c> holder sees.</summary>
@@ -183,6 +245,9 @@ public sealed record NewsFeedCatalogueEntry
 
     /// <summary><see cref="NewsFeedState.Active"/>, <see cref="NewsFeedState.Paused"/> or <see cref="NewsFeedState.Archived"/>.</summary>
     public NewsFeedState State { get; set; }
+
+    /// <summary>What the feed carries (issue #556 §5.1 #4).</summary>
+    public NewsFeedKind Kind { get; set; }
 }
 
 /// <summary><c>GET /api/news-feeds/unread-counts</c>. Archived feeds and feeds pending deletion are excluded.</summary>

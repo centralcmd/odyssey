@@ -172,7 +172,7 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     [InlineData("Pages/Journal/JournalTagsPage.razor", "journal entry")]
     [InlineData("Pages/Journal/TaskTagsPage.razor", "task")]
     [InlineData("Pages/Photos/PhotoTagsPage.razor", "photo")]
-    [InlineData("Pages/Internet/NewsTagsPage.razor", "feed and article")]
+    [InlineData("Pages/Internet/NewsTagsPage.razor", "feed, article and episode")]
     public void Every_tag_page_turns_icons_on_and_names_its_records(string page, string noun)
     {
         var source = File.ReadAllText(Path.Combine(ClientSource.Root, page));

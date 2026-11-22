@@ -248,7 +248,17 @@ public class NewsRulesTests
             r => r.MemberNames.Contains(nameof(UpdateNewsFeed.IsActive)));
         Assert.Contains(Validate(new UpdateNewsFeed { Url = "https://example.com/feed", DownloadImages = true, IsActive = true }),
             r => r.MemberNames.Contains(nameof(UpdateNewsFeed.Version)));
-        Assert.Empty(Validate(new UpdateNewsFeed { Url = "https://example.com/feed", DownloadImages = true, IsActive = true, Version = Guid.NewGuid() }));
+        Assert.Empty(Validate(new UpdateNewsFeed
+        {
+            Url = "https://example.com/feed",
+            DownloadImages = true,
+            IsActive = true,
+            Version = Guid.NewGuid(),
+            Kind = NewsFeedKind.Article,
+            AutoDownload = false,
+            AutoDeleteEnabled = false,
+            AutoDeleteAfterDays = 30,
+        }));
         Assert.NotEmpty(Validate(new NewsArticleReadState()));
         Assert.NotEmpty(Validate(new MarkNewsRead()));
         Assert.NotEmpty(Validate(new NewsArticlesReadStateBulk { ArticleIds = [], IsRead = true }));

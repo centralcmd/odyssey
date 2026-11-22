@@ -32,7 +32,16 @@ public partial class NewsPage
             return;
         }
 
-        SetCatalogue(catalogue.Value ?? []);
+        var all = catalogue.Value ?? [];
+        if (FeedIdQuery is { } linked && all.Any(f => f.Id == linked && f.Kind == NewsFeedKind.Podcast))
+        {
+            // A podcast's articles are its episodes: /news?feedId=<podcast> goes to /podcasts (issue #559 §3.1).
+            Nav.NavigateTo($"podcasts?feedId={linked}", replace: true);
+            return;
+        }
+
+        // Articles only (#559 §3.5): podcasts have their own page, so their feeds leave every filter, tile and count here.
+        SetCatalogue([.. all.Where(f => f.Kind != NewsFeedKind.Podcast)]);
         SetTags((await tagsTask).ItemsOrToast(Snackbar, "news tags"));
         SetCounts(await countsTask);
         if (statusTask is not null)

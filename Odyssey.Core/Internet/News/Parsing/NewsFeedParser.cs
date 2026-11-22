@@ -152,6 +152,7 @@ public static class NewsFeedParser
         private Uri? feedBase = documentUri;
         private string? feedAuthor;
         private XElement? pendingSy;
+        private NewsParsedPodcastFeed? podcast;
 
         public NewsParsedFeed ReadRss()
         {
@@ -220,6 +221,10 @@ public static class NewsFeedParser
                 else if (element.Name == Atom + "author")
                 {
                     feedAuthor ??= Text(element.Element(Atom + "name"));
+                }
+                else if (element.Name.Namespace == PodcastFeedFields.Itunes)
+                {
+                    podcast = PodcastFeedFields.FoldChannel(podcast, element, feedBase);
                 }
             });
 
@@ -316,10 +321,17 @@ public static class NewsFeedParser
             Items = SelectNewest(items),
             ItemsRead = items.Count,
             ItemLimitReached = limitReached,
+            Podcast = podcast,
         };
 
         private void RssChannelField(XElement element)
         {
+            if (element.Name.Namespace == PodcastFeedFields.Itunes || element.Name == XName.Get("image"))
+            {
+                podcast = PodcastFeedFields.FoldChannel(podcast, element, feedBase);
+                return;
+            }
+
             if (element.Name.Namespace != XNamespace.None)
             {
                 if (element.Name == Sy + "updatePeriod" || element.Name == Sy + "updateFrequency")
@@ -388,6 +400,7 @@ public static class NewsFeedParser
                 Summary = summary is null ? null : new NewsTextField(summary, NewsTextKind.Html),
                 BaseUrl = ItemBase(item, itemBase, link),
                 Images = RssImages(item, itemBase),
+                Podcast = PodcastFeedFields.FromRssItem(item, itemBase),
             };
         }
 
@@ -426,7 +439,7 @@ public static class NewsFeedParser
             var summary = entry.Element(Atom + "summary") is { } summaryElement ? AtomText(summaryElement) : null;
 
             var images = new List<NewsParsedImage>();
-            foreach (var enclosure in links.Where(l => AtomRel(l) == "enclosure" && IsImageOrUntyped(l.Attribute("type")?.Value)))
+            foreach (var enclosure in links.Where(l => AtomRel(l) == "enclosure" && IsImageEnclosure(l.Attribute("type")?.Value, l.Attribute("href")?.Value)))
             {
                 AddImage(images, NewsArticleImageOrigin.Enclosure, enclosure.Attribute("href")?.Value, Rebase(entryBase, enclosure), null, null, null);
             }
@@ -447,6 +460,7 @@ public static class NewsFeedParser
                 Summary = summary,
                 BaseUrl = HasXmlBase(entry, contentElement) ? contentBase : ItemBase(entry, contentBase, resolvedLink),
                 Images = images,
+                Podcast = PodcastFeedFields.FromAtomEntry(entry, entryBase, AtomRel),
             };
         }
 
@@ -467,7 +481,7 @@ public static class NewsFeedParser
         private IReadOnlyList<NewsParsedImage> RssImages(XElement item, Uri? itemBase)
         {
             var images = new List<NewsParsedImage>();
-            foreach (var enclosure in item.Elements("enclosure").Where(e => IsImageOrUntyped(e.Attribute("type")?.Value)))
+            foreach (var enclosure in item.Elements("enclosure").Where(e => IsImageEnclosure(e.Attribute("type")?.Value, e.Attribute("url")?.Value)))
             {
                 AddImage(images, NewsArticleImageOrigin.Enclosure, enclosure.Attribute("url")?.Value, itemBase, null, null, null);
             }
@@ -570,6 +584,13 @@ public static class NewsFeedParser
 
     private static bool IsImageOrUntyped(string? type) =>
         string.IsNullOrWhiteSpace(type) || type.TrimStart().StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// An enclosure queued as an image: an image type, or untyped and not an audio file by its path (issue #556 §3.4
+    /// ingest step 1) — the image validator would otherwise download up to the image cap of an episode before refusing it.
+    /// </summary>
+    private static bool IsImageEnclosure(string? type, string? url) =>
+        IsImageOrUntyped(type) && !(string.IsNullOrWhiteSpace(type) && PodcastFeedFields.HasAudioExtension(url));
 
     private static int? Dimension(XAttribute? attribute) =>
         int.TryParse(attribute?.Value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number is > 0 and <= 100_000
@@ -724,6 +745,7 @@ public static class NewsFeedParser
             Summary = summary is null ? null : new NewsTextField(summary, NewsTextKind.Text),
             BaseUrl = itemBase,
             Images = images,
+            Podcast = PodcastFeedFields.FromJsonItem(item, itemBase),
             Source = source.Length <= MaxSourceBytes ? source : null,
             SourceTooLarge = source.Length > MaxSourceBytes,
             SourceContentType = JsonSourceContentType,

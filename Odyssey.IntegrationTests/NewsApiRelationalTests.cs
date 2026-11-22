@@ -44,7 +44,7 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
         TimeProvider.System, NullLogger<NewsArticleService>.Instance);
 
     private static NewsFeedService Feeds(OdysseyContext context) =>
-        new(context, new DefaultNewsSettings(), new NewsFetchStateFlags(), TimeProvider.System, NullLogger<NewsFeedService>.Instance);
+        new(context, new DefaultNewsSettings(), new NewsFetchStateFlags(), new Odyssey.Core.Internet.News.Podcasts.PodcastAudioRequests(), TimeProvider.System, NullLogger<NewsFeedService>.Instance);
 
     private static async Task<Guid> FeedAsync(OdysseyContext context, string url, string? title = "Feed")
     {
@@ -259,6 +259,10 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
             Url = $"https://moved-{Guid.NewGuid():N}.example.org/rss",
             DownloadImages = true,
             IsActive = true,
+            Kind = NewsFeedKind.Article,
+            AutoDownload = false,
+            AutoDeleteEnabled = false,
+            AutoDeleteAfterDays = 30,
         }, canManage: true, "it-user", CancellationToken.None);
         Assert.NotNull(updated);
         Assert.True(await Feeds(api).RefreshAsync(id, CancellationToken.None));

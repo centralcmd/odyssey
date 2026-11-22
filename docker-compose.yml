@@ -184,6 +184,8 @@ services:
       FileStorage__Bindings__LibraryFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
+      FileStorage__Bindings__PodcastAudio: primary
+      FileStorage__Bindings__PodcastArtwork: primary
       # The location map's basemap (issue #370) — deploy-time, because the client's CSP below is rendered
       # from the same MAP_ALLOWED_ORIGINS at container start. SINGLE-dash ${VAR-default}: the default
       # applies only when the variable is UNSET, so an explicit MAP_ALLOWED_ORIGINS= (the off-switch)
@@ -237,6 +239,9 @@ services:
       # sweeps the disk, and the thumbnail job writes photo thumbnails. Identical to the api service's FileStorage__*
       # block. The worker only verifies a volume — it waits for the API to initialise a new one — and a failing
       # verdict holds the jobs that use the store; weather and exchange-rate sync keep running.
+      # The same transport ceiling as the api: the worker's podcast download caps an episode at it (issue #556 §8.2),
+      # and the store refuses any write above it.
+      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-10737418240}
       FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
       FileStorage__Bindings__PhotoThumbnails: primary
       FileStorage__Bindings__PhotoOriginals: primary
@@ -245,6 +250,8 @@ services:
       FileStorage__Bindings__LibraryFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
+      FileStorage__Bindings__PodcastAudio: primary
+      FileStorage__Bindings__PodcastArtwork: primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
       - files_primary:/var/odyssey/files/primary

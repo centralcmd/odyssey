@@ -30,6 +30,10 @@ public sealed class NewsFeedsQueryParams : QueryParams<NewsFeedSortBy>, IValidat
     [EnumFilter(typeof(NewsFeedHealth), 8)]
     public NewsFeedHealth[]? Health { get; set; }
 
+    /// <summary>Absent means <see cref="NewsFeedKindFilter.All"/> (issue #556 §5.1 #4).</summary>
+    [EnumDataType(typeof(NewsFeedKindFilter))]
+    public NewsFeedKindFilter? Kind { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (Limit is < 1 or > NewsLimits.MaxPageSize)

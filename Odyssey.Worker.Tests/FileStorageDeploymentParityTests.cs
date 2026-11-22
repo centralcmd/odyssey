@@ -51,6 +51,8 @@ public sealed class FileStorageDeploymentParityTests
         var worker = Between(source, "AddProject<Projects.Odyssey_Worker>", ".WaitFor(api);");
         Assert.Contains(".WithFileStorage(fileStorageSettings)", api, StringComparison.Ordinal);
         Assert.Contains(".WithFileStorage(fileStorageSettings)", worker, StringComparison.Ordinal);
+        // The episode cap (issue #556 §8.2) must agree with the API's transport ceiling.
+        Assert.Contains("ForwardOptionalSetting(worker, \"FileStorage__MaxFileSizeBytes\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("\"FileStorage__Volumes", source.Replace("[\"FileStorage__Volumes__primary__RootPath\"]", string.Empty), StringComparison.Ordinal);
     }
 
@@ -99,6 +101,7 @@ public sealed class FileStorageDeploymentParityTests
             .Where(line => !line.StartsWith('#'))
             .Where(line => line.StartsWith("FileStorage__Volumes__", StringComparison.Ordinal)
                 || line.StartsWith("FileStorage__Bindings__", StringComparison.Ordinal)
+                || line.StartsWith("FileStorage__MaxFileSizeBytes", StringComparison.Ordinal)
                 || line.Contains("/var/odyssey/files", StringComparison.Ordinal))
             .Order(StringComparer.Ordinal)];
 }

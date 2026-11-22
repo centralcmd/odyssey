@@ -532,6 +532,66 @@ internal static partial class SystemSettingsRegistry
         },
     ];
 
+    private static SystemSettingDescriptor[] Podcasts() =>
+    [
+        // ── Podcasts (issue #556 §8.2) ───────────────────────────────────────────────────────────
+        // All four are caps read by the news settings lookup (degraded read → min). The episode cap is also bounded by
+        // the derived file-size ceiling, which cannot live in an attribute because it comes from startup configuration.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.PodcastAudioStoreMaxGiB,
+            Min = SystemSettingsBounds.PodcastAudioStoreMaxGiBMin,
+            Max = SystemSettingsBounds.PodcastAudioStoreMaxGiBMax,
+            FieldName = nameof(SystemSettingsUpdate.PodcastAudioStoreMaxGiB),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.PodcastAudioStoreMaxGiB),
+            Read = r => r.PodcastAudioStoreMaxGiB,
+            Write = (dto, v) => dto.PodcastAudioStoreMaxGiB = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+            // An estimate, not a measurement: spoken-word audio runs at roughly 50–100 MB an hour.
+            Advise = SettingAdvisories.AboveDefault(
+                dto => dto.PodcastAudioStoreMaxGiB, SystemSettingsDefaults.PodcastAudioStoreMaxGiB,
+                "Each GiB holds roughly 10–20 hours of podcast audio, on the same volume as household files."),
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.PodcastAudioMaxEpisodeMb,
+            Min = SystemSettingsBounds.PodcastAudioMaxEpisodeMbMin,
+            Max = SystemSettingsBounds.PodcastAudioMaxEpisodeMbMax,
+            FieldName = nameof(SystemSettingsUpdate.PodcastAudioMaxEpisodeMb),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.PodcastAudioMaxEpisodeMb),
+            Validator = (value, ceilings) => ceilings.ValidatePodcastAudioMaxEpisodeMb(value),
+            Read = r => r.PodcastAudioMaxEpisodeMb,
+            Write = (dto, v) => dto.PodcastAudioMaxEpisodeMb = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.PodcastAutoDownloadsPerFeedPerDay,
+            Min = SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMin,
+            Max = SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMax,
+            FieldName = nameof(SystemSettingsUpdate.PodcastAutoDownloadsPerFeedPerDay),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.PodcastAutoDownloadsPerFeedPerDay),
+            Read = r => r.PodcastAutoDownloadsPerFeedPerDay,
+            Write = (dto, v) => dto.PodcastAutoDownloadsPerFeedPerDay = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.PodcastAutoDownloadMaxUnfetchedPerFeed,
+            Min = SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMin,
+            Max = SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMax,
+            FieldName = nameof(SystemSettingsUpdate.PodcastAutoDownloadMaxUnfetchedPerFeed),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.PodcastAutoDownloadMaxUnfetchedPerFeed),
+            Read = r => r.PodcastAutoDownloadMaxUnfetchedPerFeed,
+            Write = (dto, v) => dto.PodcastAutoDownloadMaxUnfetchedPerFeed = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+    ];
+
     private static SystemSettingDescriptor[] FileObjectStorage() =>
     [
         // ── Filesystem object storage (issue #346 §3.9) ──────────────────────────────────────────

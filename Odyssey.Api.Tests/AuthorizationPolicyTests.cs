@@ -77,11 +77,12 @@ public class AuthorizationPolicyTests
     /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
     /// deliberately left out. 107 once the whole-database JSON export was removed with its
     /// <c>data.export</c> claim. 115 once issue #446 added the eight instrument claims, and 123 once issue
-    /// #470 added the eight news-reader claims, and 131 once issue #527 added the eight book claims.
+    /// #470 added the eight news-reader claims, 125 once issue #556 added <c>podcast-audio.create</c> and
+    /// <c>podcast-audio.delete</c>, and 133 once issue #527 added the eight book claims.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(131, DeclaredClaims().Count());
+        Assert.Equal(133, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -365,6 +366,8 @@ public class AuthorizationPolicyTests
     [InlineData(PermissionClaims.NewsTagsCreate, new[] { "Admin", "Owner" })]
     [InlineData(PermissionClaims.NewsTagsUpdate, new[] { "Admin", "Owner" })]
     [InlineData(PermissionClaims.NewsTagsDelete, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.PodcastAudioCreate, new[] { "Admin", "Owner", "User" })]
+    [InlineData(PermissionClaims.PodcastAudioDelete, new[] { "Admin", "Owner", "User" })]
     public void The_news_claims_are_held_by_exactly_the_specified_roles(string claim, string[] expected)
     {
         var holders = MappedRoles()
@@ -396,6 +399,7 @@ public class AuthorizationPolicyTests
         [
             PermissionClaims.NewsUpdate, PermissionClaims.NewsFeedsCreate, PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsFeedsDelete,
             PermissionClaims.NewsTagsCreate, PermissionClaims.NewsTagsUpdate, PermissionClaims.NewsTagsDelete,
+            PermissionClaims.PodcastAudioCreate, PermissionClaims.PodcastAudioDelete,
         ];
 
         Assert.DoesNotContain(MappedRoles(), role =>
@@ -420,6 +424,19 @@ public class AuthorizationPolicyTests
         Assert.True(gaps.Count == 0,
             "Issue #527 needs contacts.read beside books.read/create/update (a required contact author, and contact "
             + "names on every book read). Roles that do not: " + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// Issue #556 §7.2: every role that manages feeds — and so can turn podcast automation on — can also queue and
+    /// remove podcast audio by hand, so no manager is left unable to clean up what automation stored.
+    /// </summary>
+    [Fact]
+    public void Every_role_holding_NewsFeedsUpdate_also_holds_both_podcast_audio_claims()
+    {
+        Assert.Contains(MappedRoles(), role => role.Claims.Contains(PermissionClaims.NewsFeedsUpdate));
+        Assert.DoesNotContain(MappedRoles(), role =>
+            role.Claims.Contains(PermissionClaims.NewsFeedsUpdate)
+            && !(role.Claims.Contains(PermissionClaims.PodcastAudioCreate) && role.Claims.Contains(PermissionClaims.PodcastAudioDelete)));
     }
 
     /// <summary>Issue #446 §7.3: every price read embeds instrument fields, so a price reader must read instruments.</summary>
@@ -1038,6 +1055,8 @@ public class AuthorizationPolicyTests
         Assert.Equal([PermissionClaims.PhotosUpdate], claims[Dtos.Application.JobType.PhotoThumbnails]);
         Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.NewsFeedFetch]);
         Assert.Equal([PermissionClaims.CalendarUpdate], claims[Dtos.Application.JobType.RecurrenceKeyBackfill]);
+        Assert.Empty(claims[Dtos.Application.JobType.PodcastAudioDownload]);
+        Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.PodcastAudioRetention]);
         Assert.Equal(PermissionClaims.SystemSettingsUpdate, Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim);
         Assert.DoesNotContain(DeclaredClaims(), claim => claim.StartsWith("file-storage.", StringComparison.Ordinal)
             && claim != PermissionClaims.FileStorageRead);
@@ -1055,6 +1074,8 @@ public class AuthorizationPolicyTests
         Assert.Equal(PermissionClaims.PhotosRead, claims[Dtos.Application.JobType.PhotoThumbnails]);
         Assert.Equal(PermissionClaims.NewsFeedsUpdate, claims[Dtos.Application.JobType.NewsFeedFetch]);
         Assert.Equal(PermissionClaims.CalendarRead, claims[Dtos.Application.JobType.RecurrenceKeyBackfill]);
+        Assert.Equal(PermissionClaims.NewsRead, claims[Dtos.Application.JobType.PodcastAudioDownload]);
+        Assert.Equal(PermissionClaims.NewsRead, claims[Dtos.Application.JobType.PodcastAudioRetention]);
     }
 
     /// <summary>
