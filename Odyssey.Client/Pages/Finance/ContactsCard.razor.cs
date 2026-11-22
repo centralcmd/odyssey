@@ -54,6 +54,9 @@ public partial class ContactsCard
     private Guid _blockedKey;
     private ExistingContact? _blockedContact;
     private ContactContractBeneficiaryBlockers _blockedContracts = new();
+    private Odyssey.Dtos.Books.ContactBookCreditBlockers? _blockedBooks;
+    private bool _blockedBooksUnreadable;
+    private bool _detachRefused;
 
     private const string PageStateKey = "contacts-page";
     private bool _overviewOpen = true;
@@ -544,20 +547,30 @@ public partial class ContactsCard
         }
 
         var contracts = result.Problem?.Extension<ContactContractBeneficiaryBlockers>("contractBeneficiaries");
+        // A book credit (issue #571 §3.10.1) blocks beside — or instead of — a beneficiary row. A member present but
+        // unreadable still opens the books state, without numbers, rather than falling through to a bare toast.
+        var booksPresent = result.Problem?.Extensions?.ContainsKey(BookCreditsKey) == true;
+        var books = result.Problem?.Extension<Odyssey.Dtos.Books.ContactBookCreditBlockers>(BookCreditsKey);
 
-        // The server omits the class entirely when it has no rows, so "present" is what decides —
+        // The server omits a class entirely when it has no rows, so "present" is what decides —
         // and a count, not a name list, since the names are claim-gated and may legitimately be empty.
-        if (contracts is not { TotalLinks: > 0 })
+        if (contracts is not { TotalLinks: > 0 } && !booksPresent)
         {
             return false;
         }
 
         _blockedContact = contact;
-        _blockedContracts = contracts;
+        _blockedContracts = contracts is { TotalLinks: > 0 } ? contracts : new();
+        _blockedBooks = books;
+        _blockedBooksUnreadable = booksPresent && books is null;
+        _detachRefused = false;
         _blockedKey = Guid.NewGuid();
         _blockedOpen = true;
         return true;
     }
+
+    /// <summary>The contact-delete 409's book-credit member (issue #527).</summary>
+    internal const string BookCreditsKey = "bookCredits";
 
     /// <summary>
     /// The detach path: removes every <c>Beneficiary</c> contract party naming the contact and
@@ -574,6 +587,19 @@ public partial class ContactsCard
         }
 
         var result = await Contacts.DeleteWithDetachAsync(contact.ContactId);
+        if (!result.IsSuccess && result.Status == System.Net.HttpStatusCode.Conflict
+            && result.Problem?.Extensions?.ContainsKey(BookCreditsKey) == true)
+        {
+            // A credit was added in between: the dialog re-renders in its books state, saying nothing was deleted,
+            // with focus on Close (the focused Detach button no longer exists, so focus is placed, never lost).
+            _blockedBooks = result.Problem.Extension<Odyssey.Dtos.Books.ContactBookCreditBlockers>(BookCreditsKey);
+            _blockedBooksUnreadable = _blockedBooks is null;
+            _detachRefused = true;
+            _blockedKey = Guid.NewGuid();
+            StateHasChanged();
+            return null;
+        }
+
         if (!result.IsSuccess)
         {
             Snackbar.Add($"Unable to detach and delete: {result.Error}", Severity.Error);

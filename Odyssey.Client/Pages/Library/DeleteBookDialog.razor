@@ -1,0 +1,100 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Books
+
+@*
+    DeleteBookDialog — the delete confirmation (design system · Books.jsx DeleteBookModal): an alertdialog with focus
+    on Cancel. Deleting removes the book and its links — contributor credits, image links, file links, tag links — in
+    one transaction; the photos stay in the library, the files in Files, the contacts and tags where they are. A count
+    the caller may not read (images without photos.read, files without files.read) is stated without a number, never
+    as "none". The foot points at Sold or given away as the way to keep the record.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="delete" IconTone="OdsModalTone.Error" RequiredLegend="false"
+          Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+          ReturnFocusToId="@ReturnFocusToId"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="prop-del-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <ul class="prop-del-list">
+                <li>
+                    <span class="material-icons" aria-hidden="true">auto_stories</span>
+                    @(Book.ContributorCount == 0
+                        ? "The book and its main-author credit"
+                        : $"The book and its {BookVisuals.Plural(Book.ContributorCount + 1, "credit", "credits")} — the contacts stay")
+                </li>
+                <li>
+                    <span class="material-icons" aria-hidden="true">photo_library</span>
+                    @(Book.ImageCount switch
+                    {
+                        null => "Its image links, if it has any — the photos stay in the library",
+                        0 => "No images",
+                        var n => $"{BookVisuals.Plural(n.Value, "image link", "image links")} — the photos stay in the library",
+                    })
+                </li>
+                <li>
+                    <span class="material-icons" aria-hidden="true">attach_file</span>
+                    @(Book.AttachmentCount switch
+                    {
+                        null => "Its file links, if it has any — the files stay in Files",
+                        0 => "No files",
+                        var n => $"{BookVisuals.Plural(n.Value, "file link", "file links")} — the files stay in Files",
+                    })
+                </li>
+                <li>
+                    <span class="material-icons" aria-hidden="true">local_offer</span>
+                    @(Book.TagIds.Count == 0 ? "No tags" : BookVisuals.Plural(Book.TagIds.Count, "tag link", "tag links"))
+                </li>
+            </ul>
+            <p class="prop-del-foot">
+                This can’t be undone. To keep the record but mark it gone, set its status to <b>Sold or given away</b> instead.
+            </p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete_forever" Loading="_busy" OnClick="DeleteAsync">Delete book</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter, EditorRequired] public BookSummary Book { get; set; } = default!;
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The row menu's trigger: the item that opened this unmounts with its popover.</summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>The host performs the delete; the dialog closes when it returns.</summary>
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private bool _busy;
+
+    private RenderFragment TitleFragment => @<text>Delete @Book.Title?</text>;
+
+    private RenderFragment SubtitleFragment =>
+        @<text>This removes the book record. Its photos stay in your library and its files stay in Files.</text>;
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+
+    private async Task DeleteAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await OnDelete.InvokeAsync();
+            await CloseAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

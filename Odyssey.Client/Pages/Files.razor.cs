@@ -54,7 +54,7 @@ public partial class Files
 
     // Overview reflects the whole file set (issue #277 follow-up), not the server-searched/kind-filtered view.
     private IReadOnlyList<OdsBreakdownRow> TypeRows => OdsBreakdown.TypeRows(
-        _allFiles, f => KindLabel(f.ContentType), ["PDF", "Image", "File"],
+        _allFiles, f => KindLabel(f.ContentType), ["PDF", "E-book", "Image", "File"],
         k => { var m = KindMeta(k); return (m.Icon, m.Color, k); });
 
     private bool _canUpdate;
@@ -544,6 +544,12 @@ public partial class Files
             return "PDF";
         }
 
+        // EPUB (issue #571 §3.10.2): labelled, never previewed (PreviewableContentTypes leaves it out).
+        if (string.Equals(contentType, "application/epub+zip", StringComparison.OrdinalIgnoreCase))
+        {
+            return "E-book";
+        }
+
         if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
         {
             return "Image";
@@ -557,6 +563,7 @@ public partial class Files
     private static OdsFileKindMeta KindMeta(string kindLabel) => kindLabel switch
     {
         "PDF" => new("picture_as_pdf", "var(--mud-palette-error)", "color-mix(in srgb, var(--mud-palette-error) 14%, transparent)"),
+        "E-book" => new("menu_book", "var(--mud-palette-warning)", "color-mix(in srgb, var(--mud-palette-warning) 16%, transparent)"),
         "Image" => new("image", "var(--mud-palette-info)", "color-mix(in srgb, var(--mud-palette-info) 16%, transparent)"),
         _ => new("insert_drive_file", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-disabled-background)"),
     };

@@ -208,6 +208,12 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         var after = (await full.GetFromJsonAsync<ExistingBook>($"{Path}/{created.BookId}"))!;
         Assert.Equal(photo, after.CoverPhotoId);
         Assert.Equal("Dune Messiah", after.Title);
+
+        // The list's image count follows the same claim: a number with it, absent (not 0) without.
+        var listedFull = (await full.GetFromJsonAsync<PagedResult<BookSummary>>(Path))!.Items.Single(b => b.BookId == created.BookId);
+        Assert.Equal(1, listedFull.ImageCount);
+        var listedLimited = (await limited.GetFromJsonAsync<PagedResult<BookSummary>>(Path))!.Items.Single(b => b.BookId == created.BookId);
+        Assert.Null(listedLimited.ImageCount);
     }
 
     [Fact]

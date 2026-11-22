@@ -149,6 +149,9 @@ public sealed record BookSummary : ITagIconRecord
     /// <summary><c>null</c> without <c>files.read</c>.</summary>
     public int? AttachmentCount { get; set; }
 
+    /// <summary>How many images are linked; <c>null</c> without <c>photos.read</c>.</summary>
+    public int? ImageCount { get; set; }
+
     /// <summary><c>null</c> without <c>photos.read</c>.</summary>
     public Guid? CoverPhotoId { get; set; }
 

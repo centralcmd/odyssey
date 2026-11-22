@@ -145,6 +145,7 @@ public sealed class BookService(
                 b.BookId, b.Title, b.Year, b.Isbn, b.Publisher, b.Format, b.Status, b.MainAuthorContactId,
                 b.Contributors.Count,
                 b.Attachments.Count,
+                b.Images.Count,
                 b.Images.Where(i => i.IsCover).Select(i => (Guid?)i.PhotoId).FirstOrDefault(),
                 b.TagLinks.Select(l => l.BookTagId).ToList(),
                 b.UpdatedAt))
@@ -172,6 +173,7 @@ public sealed class BookService(
                 MainAuthor = Reference(r.MainAuthorContactId, refs, caller),
                 ContributorCount = r.ContributorCount,
                 AttachmentCount = caller.CanReadFiles ? r.AttachmentCount : null,
+                ImageCount = caller.CanReadPhotos ? r.ImageCount : null,
                 CoverPhotoId = caller.CanReadPhotos ? r.CoverPhotoId : null,
                 CoverThumbnailsReady = caller.CanReadPhotos && r.CoverPhotoId is { } cover && ready.Contains(cover),
                 UpdatedAt = r.UpdatedAt,
@@ -643,7 +645,7 @@ public sealed class BookService(
 
     private sealed record SummaryRow(
         Guid BookId, string Title, int? Year, string? Isbn, string? Publisher, BookFormat Format, BookStatus Status,
-        Guid MainAuthorContactId, int ContributorCount, int AttachmentCount, Guid? CoverPhotoId, List<Guid> TagIds,
+        Guid MainAuthorContactId, int ContributorCount, int AttachmentCount, int ImageCount, Guid? CoverPhotoId, List<Guid> TagIds,
         DateTime UpdatedAt);
 
     private Task<Book?> LoadAsync(Guid id, bool tracking, CancellationToken cancellationToken)

@@ -1,0 +1,31 @@
+@page "/book-tags"
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Books
+@attribute [Authorize(Policy = PermissionClaims.BookTagsRead)]
+
+<PageTitle>Book Tags</PageTitle>
+
+@*
+    Book Tags (issue #571; design system · Books.jsx BookTags · createTagsPage) — the shared OdsTagAdmin over
+    api/book-tags, exactly like Photo tags: icon, colour, archive / restore. A tag in use refuses delete with a 409
+    (BookTagLinks is RESTRICT), which the admin toasts; archive it, or untag the books. Names are user data and are
+    rendered as auto-encoded text, never MarkupString.
+*@
+
+<OdsTagAdmin TRow="ExistingBookTag"
+             Title="Book tags"
+             Noun="book tags"
+             PageStateKey="book-tags-page"
+             CreateClaim="@PermissionClaims.BookTagsCreate"
+             UpdateClaim="@PermissionClaims.BookTagsUpdate"
+             DeleteClaim="@PermissionClaims.BookTagsDelete"
+             NamePlaceholder="e.g. Favourites"
+             ModalSubtitle="Tags group books however you like."
+             EmptyDesc="Create your first tag to start grouping books."
+             Id="@(t => t.BookTagId)"
+             Name="@(t => t.Name)"
+             Description="@(t => t.Description)"
+             Archived="@(t => t.Archived)"
+             IconOf="@(t => t.Icon)"
+             ColorOf="@(t => t.Color)"
+             IconHelp="Shown for this tag and on every book carrying it. Default keeps the tag icon." />

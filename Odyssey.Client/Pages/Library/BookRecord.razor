@@ -1,0 +1,194 @@
+@using Odyssey.Client.Components
+@using Odyssey.Client.Pages.Attachments
+@using Odyssey.Client.Pages.Photos
+@using Odyssey.Dtos.Books
+
+@*
+    BookRecord — the open book card's body (issue #571; design system · Books.jsx BookDetail). It reads the whole
+    book (GET /api/books/{id}) when the card opens, because the list row carries no people, images or files, and
+    owns every link change made from the record: contributors, images, the cover and files each save through the
+    book's PUT with ONLY that array set — every other array null (unchanged) — and the current version. A stale
+    version (409 book-version-conflict) re-reads the book and says so; nothing is overwritten.
+
+    Order is the RecordCard order: details (the record's own fields, Description and Notes as wide tiles) → People
+    (the contract Parties pattern) → Images (photos.read) → Files (files.read). Without a read claim the section is
+    absent, never empty.
+*@
+
+@if (OffFilter)
+{
+    <p class="bk-offfilter">
+        <span class="material-icons" aria-hidden="true">filter_alt_off</span>
+        Doesn’t match the current filters — it will leave the list when it reloads.
+    </p>
+}
+
+@if (_book is null)
+{
+    @if (_loadFailed)
+    {
+        <OdsEmptyLine>Couldn’t load this book. <OdsButton Variant="OdsButtonVariant.Text" OnClick="LoadAsync">Try again</OdsButton></OdsEmptyLine>
+    }
+    else
+    {
+        <div role="status" aria-live="polite" aria-busy="true">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+            <span class="sr-only">Loading the book…</span>
+        </div>
+    }
+}
+else
+{
+    var b = _book;
+    var format = OdsTypeRegistries.BookFormatOf(b.Format);
+    var status = BookVisuals.StatusOf(b.Status);
+
+    <OdsInfoTileGrid>
+        @if (!string.IsNullOrWhiteSpace(b.Publisher))
+        {
+            <OdsInfoTile Icon="apartment" Label="Publisher" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                <Value>@b.Publisher</Value>
+            </OdsInfoTile>
+        }
+        @if (b.Year is { } year)
+        {
+            <OdsInfoTile Icon="calendar_today" Label="Year" Foot="@(year < 0 ? OdsInfoTile.Caption("before the common era") : null)">
+                <Value>@BookVisuals.Year(year)</Value>
+            </OdsInfoTile>
+        }
+        @if (!string.IsNullOrWhiteSpace(b.Isbn))
+        {
+            <OdsInfoTile Icon="qr_code_2" Label="ISBN" Foot="@OdsInfoTile.Caption(b.Isbn.Length == 10 ? "ISBN-10" : "ISBN-13")">
+                <Value><span class="mono">@b.Isbn</span></Value>
+            </OdsInfoTile>
+        }
+        <OdsInfoTile Icon="@format.Icon" Label="Format" ValueVariant="OdsInfoTileVariant.Text">
+            <Value>@format.Label</Value>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="@status.Icon" IconColor="@OdsBreakdown.Tone(status.Tone)" Label="Status" ValueVariant="OdsInfoTileVariant.Text">
+            <Value>@status.Label</Value>
+        </OdsInfoTile>
+        @if (!string.IsNullOrWhiteSpace(b.CreatedByName))
+        {
+            <OdsInfoTile Icon="person_add" Label="Added by" ValueVariant="OdsInfoTileVariant.Text"
+                         Foot="@OdsInfoTile.Caption(OdsDates.Long(b.CreatedAt))">
+                <Value>@b.CreatedByName</Value>
+            </OdsInfoTile>
+        }
+        @if (!string.IsNullOrWhiteSpace(b.UpdatedByName) && b.UpdatedAt != b.CreatedAt)
+        {
+            <OdsInfoTile Icon="edit_note" Label="Updated by" ValueVariant="OdsInfoTileVariant.Text"
+                         Foot="@OdsInfoTile.Caption(OdsDates.Long(b.UpdatedAt))">
+                <Value>@b.UpdatedByName</Value>
+            </OdsInfoTile>
+        }
+        @* Description and notes belong to the record's own field set: wide tiles in the same grid. *@
+        @if (!string.IsNullOrWhiteSpace(b.Description))
+        {
+            <OdsInfoTile Icon="subject" Label="Description" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
+                <Value><span class="bk-prose">@b.Description</span></Value>
+            </OdsInfoTile>
+        }
+        @if (!string.IsNullOrWhiteSpace(b.Notes))
+        {
+            <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
+                <Value><span class="bk-prose">@b.Notes</span></Value>
+            </OdsInfoTile>
+        }
+    </OdsInfoTileGrid>
+
+    @* PEOPLE — the contract Parties pattern: one tile per credited contact, in the contact TYPE's mark; the overline
+       says what they did on the book, the caption is the contact type. Only contributor tiles carry a menu. *@
+    <div class="con-section">
+        <OdsSectionDivider Label="People" Meta="@BookVisuals.Plural(1 + b.Contributors.Count, "person", "people")" />
+        <OdsInfoTileGrid>
+            <BookPersonTile Contact="b.MainAuthor" Role="Main author" CanReadContacts="CanReadContacts" />
+            @foreach (var (c, i) in b.Contributors.OrderBy(x => x.Position).Select((x, i) => (x, i)))
+            {
+                var index = i;
+                <BookPersonTile @key="c.BookContributorId" Contact="c.Contact" Role="@(string.IsNullOrWhiteSpace(c.Role) ? "Contributor" : c.Role)"
+                                CanReadContacts="CanReadContacts" Menu="@ContributorMenu(index)" />
+            }
+        </OdsInfoTileGrid>
+    </div>
+
+    @if (CanReadPhotos)
+    {
+        var images = OrderedImages;
+        <div class="con-section">
+            <OdsSectionDivider Label="Images"
+                               Meta="@(images.Count == 0 ? "none" : $"{BookVisuals.Plural(images.Count, "image", "images")} · {(b.CoverPhotoId is null ? "no cover" : "cover first")}")" />
+            @if (images.Count == 0)
+            {
+                <OdsEmptyLine>No images yet — add a photo of the cover, the back or the condition.</OdsEmptyLine>
+            }
+            else
+            {
+                <BookImageGrid Images="images" OnOpen="OpenImage"
+                               CanUpdate="CanUpdate" OnSetCover="SetCoverAsync" OnDetach="DetachImageAsync" />
+            }
+        </div>
+    }
+
+    @if (CanReadFiles)
+    {
+        var files = b.Attachments ?? [];
+        <div class="con-section">
+            <OdsSectionDivider Label="Files" Meta="@BookVisuals.Plural(files.Count, "file", "files")" />
+            @if (files.Count == 0)
+            {
+                <OdsEmptyLine>No files yet — attach the e-book, a PDF or a paper.</OdsEmptyLine>
+            }
+            else
+            {
+                <div class="con-files con-tbl-frame odc-scroll">
+                    <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
+                        <OdsFilesTable Files="pageRows"
+                                       TypeFor="@KindMeta"
+                                       Actions="@FileMenu"
+                                       DefaultSort="@(new OdsTableSort("name", OdsSortDirection.Asc))"
+                                       OnDelete="@DetachFileAction"
+                                       DeleteLabel="Detach"
+                                       DeleteIcon="link_off"
+                                       AriaLabel="@($"Files for {b.Title}")" />
+                    </OdsInlinePager>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (_book is { } book)
+{
+    @if (_contributorKey != Guid.Empty)
+    {
+        <BookContributorDialog @key="_contributorKey" @bind-Open="_contributorOpen" Book="book" Index="_contributorIndex"
+                               OnSave="SaveContributorAsync" />
+    }
+
+    @if (_photosKey != Guid.Empty)
+    {
+        <AttachPhotosDialog @key="_photosKey" Open="_photosOpen" OpenChanged="@(v => _photosOpen = v)"
+                            Subtitle="Add photos of this book — the cover, the back, the condition. Photos stay in your library; adding links them here."
+                            AttachedIds="@([.. (book.Images ?? []).Select(i => i.PhotoId)])"
+                            UploadOnly="false" OnSubmit="AddImagesAsync" />
+    }
+
+    @if (_filesKey != Guid.Empty)
+    {
+        <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Library" @key="_filesKey" @bind-Open="_filesOpen"
+                               Subtitle="Attach an e-book, PDF or paper. Files stay in Files; attaching links them here."
+                               UploadExtensions="BookVisuals.FileExtensions"
+                               AttachedIds="@([.. (book.Attachments ?? []).Select(a => a.FileId)])"
+                               Attach="CollectFile"
+                               OnAttached="AddFilesAsync" />
+    }
+
+    @if (_photoIndex is { } pi && _photoSummaries.Count > 0)
+    {
+        <PhotoDetailDialog Photos="_photoSummaries" Index="pi" IndexChanged="@(i => _photoIndex = i)"
+                           OnClose="@(() => _photoIndex = null)" CanUpdate="false" CanDelete="false" />
+    }
+}
+
+<OdsConfirm @ref="_confirm" />

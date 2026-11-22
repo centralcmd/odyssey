@@ -21,3 +21,18 @@ uploaded to the `Library` area, and `BookTags` are their own table. Rules that a
   negative); an ISBN is stored normalised by `IsbnRules`, the one rule the client shares.
 - **EPUB is accepted in every upload area** (stored `mimetype` first, `FileHeaderSignatures.HeaderLength` 64) and is
   download-only; parsing one server-side re-opens the upload review.
+
+**The client** (issue #571; design system `docs/components-books.md`) lives in `Odyssey.Client/Pages/Library/`:
+
+- **Every link change is the book's own `PUT` with one array set** (`BookRecord.Unchanged(book) with { … }`): the
+  record ⋯ menu adds contributors, images and files, the tiles move, detach or re-cover them, and the New / Edit book
+  dialog never sends `contributors`, `photoIds`, `coverPhotoId` or `attachmentFileIds` (empty on `POST`, `null` on
+  `PUT`). `tagIds` follows the `books.tags.read` snapshot at open. A `409 book-version-conflict` re-reads; nothing
+  overwrites.
+- **Format is the record's accent, status is a chip.** `OdsTypeRegistries.BookFormats` / `BookVisuals.Statuses` follow
+  the server ordinals; an unknown ordinal reads *Unknown format* / *Unknown status*, never the trailing *Other*.
+- **A count or section without its read claim is absent, not empty** — the server sends `ImageCount` /
+  `AttachmentCount` as `null` without `photos.read` / `files.read`.
+- **EPUB:** `ToApiUpload` sends an `.epub` the browser typed empty or `application/octet-stream` as
+  `application/epub+zip` (the only content-type rewrite); `OdsTypeRegistries.FileKindOf` labels it *E-book* and never
+  previews it.

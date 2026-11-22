@@ -33,6 +33,9 @@ public interface IBooksApiClient
 {
     Task<ApiResult<PagedResult<BookSummary>>> ListAsync(int page, int pageSize, BooksListFilter? filter = null, CancellationToken ct = default);
 
+    /// <summary>Every page of <see cref="ListAsync"/> under one filter, for a scroll-loaded list that filters on the server.</summary>
+    Task<ApiResult<List<BookSummary>>> ListAllAsync(BooksListFilter? filter = null, CancellationToken ct = default);
+
     Task<ApiResult<ExistingBook>> GetAsync(Guid id, CancellationToken ct = default);
 
     Task<ApiResult<ExistingBook>> CreateAsync(NewBook book, CancellationToken ct = default);
@@ -48,11 +51,16 @@ public sealed class BooksApiClient(IOdysseyApi api) : IBooksApiClient
     private const string BasePath = "api/books";
 
     public Task<ApiResult<PagedResult<BookSummary>>> ListAsync(
-        int page, int pageSize, BooksListFilter? filter = null, CancellationToken ct = default)
+        int page, int pageSize, BooksListFilter? filter = null, CancellationToken ct = default) =>
+        api.GetPagedAsync<BookSummary>(Query(filter).Window(page, pageSize).Build(), ct);
+
+    public Task<ApiResult<List<BookSummary>>> ListAllAsync(BooksListFilter? filter = null, CancellationToken ct = default) =>
+        api.GetAllAsync<BookSummary>(Query(filter).Build(), ct);
+
+    private static PagedQuery Query(BooksListFilter? filter)
     {
         filter ??= new BooksListFilter();
-        var url = PagedQuery.For(BasePath)
-            .Window(page, pageSize)
+        return PagedQuery.For(BasePath)
             .Add("search", filter.Search)
             .AddMany("status", filter.Statuses)
             .AddMany("format", filter.Formats)
@@ -61,9 +69,7 @@ public sealed class BooksApiClient(IOdysseyApi api) : IBooksApiClient
             .AddBool("hasCover", filter.HasCover)
             .AddBool("hasAttachments", filter.HasAttachments)
             .Add("sortBy", filter.SortBy)
-            .Add("sortDir", filter.SortDir)
-            .Build();
-        return api.GetPagedAsync<BookSummary>(url, ct);
+            .Add("sortDir", filter.SortDir);
     }
 
     public Task<ApiResult<ExistingBook>> GetAsync(Guid id, CancellationToken ct = default) =>
