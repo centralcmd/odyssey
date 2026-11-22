@@ -44,7 +44,7 @@ public sealed class FilesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Upload a file",
-        Description = @"Upload a file with optional description. Returns file metadata. 'area' (Finance or Journal) is
+        Description = @"Upload a file with optional description. Returns file metadata. 'area' (Finance, Journal or Library) is
 required and only decides which folder on the file store holds the bytes (issue #448); it never affects who may read or
 link the file. There is no contacts area here: contact images go through the avatar endpoint.")]
     public async Task<IActionResult> UploadFile(

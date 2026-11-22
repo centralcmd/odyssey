@@ -5,6 +5,7 @@ using Odyssey.Dtos.Books;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Internet;
 using Odyssey.Dtos.Journal;
+using Odyssey.Dtos.Recipes;
 
 namespace Odyssey.ApiClient;
 
@@ -47,6 +48,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITagsApiClient<ExistingBookTag>>(sp =>
             new TagsApiClient<ExistingBookTag>(sp.GetRequiredService<IOdysseyApi>(), "api/book-tags"));
         services.AddScoped<IBooksApiClient, BooksApiClient>();
+        services.AddScoped<ITagsApiClient<ExistingRecipeTag>>(sp =>
+            new TagsApiClient<ExistingRecipeTag>(sp.GetRequiredService<IOdysseyApi>(), "api/recipe-tags"));
         services.AddScoped<IFileAnalysisApiClient, FileAnalysisApiClient>();
         services.AddScoped<ICurrenciesApiClient, CurrenciesApiClient>();
         services.AddScoped<IExchangeRatesApiClient, ExchangeRatesApiClient>();
@@ -72,6 +75,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPhotosApiClient, PhotosApiClient>();
         services.AddScoped<IPhotoTagsApiClient, PhotoTagsApiClient>();
         services.AddScoped<IAlbumsApiClient, AlbumsApiClient>();
+        services.AddScoped<IRecipesApiClient, RecipesApiClient>();
         services.AddScoped<IFileExportApiClient, FileExportApiClient>();
         services.AddScoped<IProfileApiClient, ProfileApiClient>();
         services.AddScoped<ISystemSettingsApiClient, SystemSettingsApiClient>();

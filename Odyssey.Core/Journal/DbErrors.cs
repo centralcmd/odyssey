@@ -41,4 +41,19 @@ internal static class DbErrors
     public static bool IsDuplicateKeyOn(DbUpdateException exception, string indexName) =>
         exception.InnerException is MySqlException { Number: 1062 } mysql
         && mysql.Message.Contains($"{indexName}'", StringComparison.Ordinal);
+
+    /// <summary>
+    /// A 1451 (ER_ROW_IS_REFERENCED_2): a delete refused by a <c>RESTRICT</c> key — the race a service's in-use
+    /// check lost.
+    /// </summary>
+    public static bool IsRowReferenced(DbUpdateException exception) =>
+        exception.InnerException is MySqlException { Number: 1451 or 1217 };
+
+    /// <summary>
+    /// A 1452 (ER_NO_REFERENCED_ROW_2) naming <paramref name="table"/>: an insert whose parent row was deleted after
+    /// the service validated it. MariaDB names the child table only in the message text.
+    /// </summary>
+    public static bool IsMissingReferenceFrom(DbUpdateException exception, string table) =>
+        exception.InnerException is MySqlException { Number: 1452 or 1216 } mysql
+        && mysql.Message.Contains($"`{table}`", StringComparison.Ordinal);
 }

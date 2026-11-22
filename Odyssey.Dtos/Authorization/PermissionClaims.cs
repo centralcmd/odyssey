@@ -160,6 +160,17 @@ public static class PermissionClaims
     public const string PhotoAlbumsUpdate = "photos.albums.update";
     public const string PhotoAlbumsDelete = "photos.albums.delete";
 
+    // Recipes module (issue #525). Admin, Owner and User hold all eight; Guest reads recipes and their tags.
+    public const string RecipesCreate = "recipes.create";
+    public const string RecipesRead = "recipes.read";
+    public const string RecipesUpdate = "recipes.update";
+    public const string RecipesDelete = "recipes.delete";
+
+    public const string RecipeTagsCreate = "recipes.tags.create";
+    public const string RecipeTagsRead = "recipes.tags.read";
+    public const string RecipeTagsUpdate = "recipes.tags.update";
+    public const string RecipeTagsDelete = "recipes.tags.delete";
+
     // Calendar module (issue #323). A single claim group covers Calendar, CalendarEvent and
     // RecurrencePattern uniformly — they're always accessed in the context of calendar read/write and
     // don't warrant their own sub-resource claims. Guest is granted none of these — the whole module

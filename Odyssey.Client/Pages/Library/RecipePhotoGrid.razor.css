@@ -1,0 +1,48 @@
+/* Photos — the Books image tile (JournalPhotoGallery size, 120 px auto-fill), the cover named in visible text and a
+   per-tile ⋯ menu on a scrim so it reads on any photo (design system recipes.css). */
+.rc-images {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-16) * 2 - var(--space-2)), 1fr));
+    gap: var(--space-2);
+}
+
+.rc-image-cell { position: relative; }
+
+.rc-image {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--mud-palette-background-gray);
+}
+
+.rc-image ::deep .rc-image-img { object-fit: cover; }
+
+.rc-image ::deep .rc-image-ph { position: absolute; inset: 0; display: block; }
+
+.rc-image-badge {
+    position: absolute;
+    left: var(--space-2);
+    bottom: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, black 74%, transparent);
+    color: white;
+    font: var(--fw-bold) var(--fs-caption)/1.2 var(--font-sans);
+}
+
+.rc-image-menu {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, black 62%, transparent);
+}
+
+.rc-image-menu ::deep .mud-icon-button,
+.rc-image-menu ::deep .material-icons { color: white; }

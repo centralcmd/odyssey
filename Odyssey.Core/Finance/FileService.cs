@@ -46,7 +46,7 @@ public class FileService
     {
         if (!Enum.IsDefined(area))
         {
-            throw new DomainValidationException("Choose where the file is stored: Finance or Journal.", code: null, field: "area");
+            throw new DomainValidationException("Choose where the file is stored: Finance, Journal or Library.", code: null, field: "area");
         }
 
         await validationService.ValidateFileAsync(file, cancellationToken);

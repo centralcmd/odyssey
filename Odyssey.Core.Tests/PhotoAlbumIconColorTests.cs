@@ -59,6 +59,8 @@ public class PhotoAlbumIconColorTests
             $"{nameof(NewsTag)}.{nameof(NewsTag.Icon)}",
             // Book tags (issue #527): the photo tag's shape, catalogue icon included.
             $"{nameof(BookTag)}.{nameof(BookTag.Icon)}",
+            // Recipe tags (issue #525): the photo tag's shape, catalogue icon included.
+            $"{nameof(RecipeTag)}.{nameof(RecipeTag.Icon)}",
         ];
 
         using var context = TestContextFactory.Create();

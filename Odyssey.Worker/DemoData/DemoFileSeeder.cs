@@ -20,7 +20,7 @@ namespace Odyssey.Worker.DemoData;
 /// </para>
 /// <para>
 /// A file is written and saved together with its links (a tax-statement document, a journal-entry or task attachment, a
-/// contact's image), and only when the record it is attached to exists: every link is a real foreign key, and a
+/// recipe file, a contact's image), and only when the record it is attached to exists: every link is a real foreign key, and a
 /// record the migrations job did not seed (its seed turned off, or skipped by a sentinel) gets no file.
 /// </para>
 /// </remarks>
@@ -61,11 +61,13 @@ public sealed class DemoFileSeeder(IServiceScopeFactory scopes, ILogger<DemoFile
             l => context.JournalEntries.AnyAsync(e => e.JournalEntryId == l.JournalEntryId, cancellationToken));
         var taskLinks = await ExistingAsync(data.JournalTaskAttachments.Where(l => l.FileId == id),
             l => context.JournalTasks.AnyAsync(t => t.JournalTaskId == l.JournalTaskId, cancellationToken));
+        var recipeLinks = await ExistingAsync(data.RecipeAttachments.Where(l => l.FileId == id),
+            l => context.Recipes.AnyAsync(r => r.RecipeId == l.RecipeId, cancellationToken));
         var avatarOwners = data.ContactAvatars.Where(a => a.File.Metadata.Id == id).Select(a => a.ContactId).ToList();
         var contacts = await context.Contacts
             .Where(c => avatarOwners.Contains(c.ContactId) && c.AvatarFileId == null)
             .ToListAsync(cancellationToken);
-        if (taxLinks.Count + entryLinks.Count + taskLinks.Count + contacts.Count == 0)
+        if (taxLinks.Count + entryLinks.Count + taskLinks.Count + recipeLinks.Count + contacts.Count == 0)
         {
             // Nothing to attach it to: the record it belongs to was never seeded.
             return false;
@@ -84,6 +86,7 @@ public sealed class DemoFileSeeder(IServiceScopeFactory scopes, ILogger<DemoFile
         context.TaxStatementFiles.AddRange(taxLinks);
         context.JournalEntryAttachments.AddRange(entryLinks);
         context.JournalTaskAttachments.AddRange(taskLinks);
+        context.RecipeAttachments.AddRange(recipeLinks);
         foreach (var contact in contacts)
         {
             contact.AvatarFileId = id;
@@ -121,6 +124,8 @@ public sealed class DemoFileSeeder(IServiceScopeFactory scopes, ILogger<DemoFile
         var links = (await context.PhotoTagLinks.Select(l => new { l.PhotoTagLinkId, l.PhotoId, l.PhotoTagId }).ToListAsync(cancellationToken));
         var people = (await context.PhotoPeople.Select(p => new { p.PhotoPersonId, p.PhotoId, p.ContactId }).ToListAsync(cancellationToken));
         var items = (await context.PhotoAlbumItems.Select(i => new { i.PhotoAlbumItemId, i.PhotoAlbumId, i.PhotoId }).ToListAsync(cancellationToken));
+        var recipeIds = (await context.Recipes.Select(r => r.RecipeId).ToListAsync(cancellationToken)).ToHashSet();
+        var recipePlacements = (await context.RecipePhotos.Select(p => new { p.RecipePhotoId, p.RecipeId, p.PhotoId }).ToListAsync(cancellationToken));
         var placements = (await context.JournalEntryPhotos.Select(p => new { p.JournalEntryPhotoId, p.JournalEntryId, p.PhotoId }).ToListAsync(cancellationToken));
 
         // The surrogate key is what the database enforces, and on a database seeded by an older generator the pair and
@@ -150,8 +155,12 @@ public sealed class DemoFileSeeder(IServiceScopeFactory scopes, ILogger<DemoFile
             .Where(p => entryIds.Contains(p.JournalEntryId) && photoIds.Contains(p.PhotoId)
                         && !placements.Any(x => x.JournalEntryPhotoId == p.JournalEntryPhotoId || (x.JournalEntryId == p.JournalEntryId && x.PhotoId == p.PhotoId)))
             .ToList();
+        var newRecipePlacements = data.RecipePhotos
+            .Where(p => recipeIds.Contains(p.RecipeId) && photoIds.Contains(p.PhotoId)
+                        && !recipePlacements.Any(x => x.RecipePhotoId == p.RecipePhotoId || (x.RecipeId == p.RecipeId && x.PhotoId == p.PhotoId)))
+            .ToList();
 
-        if (newTags.Count + newAlbums.Count + newLinks.Count + newPeople.Count + newItems.Count + newPlacements.Count > 0)
+        if (newTags.Count + newAlbums.Count + newLinks.Count + newPeople.Count + newItems.Count + newPlacements.Count + newRecipePlacements.Count > 0)
         {
             context.PhotoTags.AddRange(newTags);
             context.PhotoAlbums.AddRange(newAlbums);
@@ -159,6 +168,7 @@ public sealed class DemoFileSeeder(IServiceScopeFactory scopes, ILogger<DemoFile
             context.PhotoPeople.AddRange(newPeople);
             context.PhotoAlbumItems.AddRange(newItems);
             context.JournalEntryPhotos.AddRange(newPlacements);
+            context.RecipePhotos.AddRange(newRecipePlacements);
             // A replica that raced this save to the same rows fails it; the next pass finds them present.
             await context.SaveChangesAsync(cancellationToken);
         }

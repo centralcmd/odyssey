@@ -6,9 +6,9 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
 Deploy-time volumes (`FileStorage:Volumes:<name>:RootPath`) hold the bytes; `StoredObjects` rows say what is
 where; code-declared *storage features* (`StorageFeature`, registered in DI, assembled into
 `StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **The production
-catalogue holds six features, all `Graced`**: `PhotoOriginals` (#428), `PhotoThumbnails` (#362), the three file
-areas `FinanceFiles`, `JournalFiles`, `ContactAvatars` (#448), and `NewsArticles` (#470). Every host with volumes must
-bind all six (check B1); `FileStorageMaintenanceTests` fails on an `Immediate` production feature. The three
+catalogue holds seven features, all `Graced`**: `PhotoOriginals` (#428), `PhotoThumbnails` (#362), the four file
+areas `FinanceFiles`, `JournalFiles`, `ContactAvatars` (#448) and `LibraryFiles` (#527), and `NewsArticles` (#470).
+Every host with volumes must bind all seven (check B1); `FileStorageMaintenanceTests` fails on an `Immediate` production feature. The three
 `TestShared/FileStorage` features exercise the store's own tests.
 Every file and photo has its bytes on the store: the legacy database copy (`FileBlob`) is gone. Rules a consumer
 inherits, and that are easy to get backwards:
@@ -114,7 +114,8 @@ wrapped a Files-store file through `Photo.FileId`; every production system finis
 **Every other file lives on the object store too, by AREA** (issue #448). `FileMetadata` has one nullable `RESTRICT`
 column per feature — `FinanceStoredObjectId` (`FinanceFiles`, `finance-files/`), `JournalStoredObjectId` (`JournalFiles`,
 `journal-files/`), `ContactAvatarStoredObjectId` (`ContactAvatars`, `contact-avatars/`) and `LibraryStoredObjectId`
-(`LibraryFiles`, `library-files/`, issue #527) — and `CK_FileMetadata_ExactlyOneSource` keeps exactly one of the four set. **The legacy database copy is gone**: every
+(`LibraryFiles`, `library-files/`, issues #527 and #525: the Library module's area, shared by books and recipes) — and
+`CK_FileMetadata_ExactlyOneSource` keeps exactly one of the four set. **The legacy database copy is gone**: every
 production system finished the `FileBlobBackfill` move, and `RemoveLegacyFileBlobStorage` dropped `FileBlob`,
 `FileMetadata.FileBlobId`, the job and its tables (its guard refuses to run while any legacy row is left). All of it
 lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that are easy to get backwards:

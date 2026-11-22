@@ -91,17 +91,19 @@ public static class NavModel
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),
             ]),
         ]),
-        // Library (issue #571 §3.1): a navigation grouping, not a shared data model — Books now, Recipes and Music
+        // Library (issues #571 §3.1, #526): a navigation grouping, not a shared data model — Books and Recipes now, Music
         // later. Collections first, the tag pages under Reference last, as in Finance.
         new("library", "Library", "local_library",
         [
             new(null,
             [
                 new("books", "Books", "auto_stories", "books", PermissionClaims.BooksRead),
+                new("recipes", "Recipes", "restaurant_menu", "recipes", PermissionClaims.RecipesRead),
             ]),
             new("Reference",
             [
                 new("book-tags", "Book Tags", "local_offer", "book-tags", PermissionClaims.BookTagsRead),
+                new("recipe-tags", "Recipe Tags", "local_offer", "recipe-tags", PermissionClaims.RecipeTagsRead),
             ]),
         ]),
         // Internet (issue #473 §3.1): the news reader, plus Weather points (moved here from Journal). news.read

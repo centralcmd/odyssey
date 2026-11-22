@@ -6,7 +6,7 @@ namespace Odyssey.Core.Journal;
 
 /// <summary>
 /// Fills <see cref="ITagIconRecord.TagIds"/>, <see cref="ITagIconRecord.DisplayIcon"/> and <see cref="ITagIconRecord.DisplayColor"/> on every journal
-/// entry, task and photo response (issue #345) — list, detail, create and update alike.
+/// entry, task, photo and recipe response (issue #345) — list, detail, create and update alike.
 /// </summary>
 /// <remarks>
 /// This and <c>Finance/MapsterConfig.cs</c> are the only places a display icon is assigned; both call
@@ -54,6 +54,13 @@ public static class TagIconProjection
         context.JournalTaskTags.AsNoTracking()
             .Where(tag => ids.Contains(tag.JournalTaskTagId))
             .Select(tag => new TagIconCandidate(tag.JournalTaskTagId, tag.Name, tag.Icon, tag.Color))
+            .ToDictionaryAsync(tag => tag.Id, cancellationToken);
+
+    public static Task<Dictionary<Guid, TagIconCandidate>> RecipeTagsAsync(
+        OdysseyContext context, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
+        context.RecipeTags.AsNoTracking()
+            .Where(tag => ids.Contains(tag.RecipeTagId))
+            .Select(tag => new TagIconCandidate(tag.RecipeTagId, tag.Name, tag.Icon, tag.Color))
             .ToDictionaryAsync(tag => tag.Id, cancellationToken);
 
     public static Task<Dictionary<Guid, TagIconCandidate>> PhotoTagsAsync(

@@ -358,6 +358,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<Photo>(modelBuilder, nameof(Photo.CreatedByUserId), nameof(Photo.UpdatedByUserId));
         DeclareUserAttribution<PhotoAlbum>(modelBuilder, nameof(PhotoAlbum.CreatedByUserId), nameof(PhotoAlbum.UpdatedByUserId));
         DeclareUserAttribution<Book>(modelBuilder, nameof(Book.CreatedByUserId), nameof(Book.UpdatedByUserId));
+        DeclareUserAttribution<Recipe>(modelBuilder, nameof(Recipe.CreatedByUserId), nameof(Recipe.UpdatedByUserId));
         DeclareUserAttribution<RecurrencePattern>(modelBuilder, nameof(RecurrencePattern.CreatedByUserId), nameof(RecurrencePattern.UpdatedByUserId));
         DeclareUserAttribution<RecurrenceExclusion>(modelBuilder, nameof(RecurrenceExclusion.CreatedByUserId));
 
@@ -492,6 +493,14 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<BookAttachment> BookAttachments { get; set; }
     public DbSet<BookTag> BookTags { get; set; }
     public DbSet<BookTagLink> BookTagLinks { get; set; }
+    // Recipes (issue #525): shared household recipes, their ordered children, photo and file links, and tags.
+    public DbSet<Recipe> Recipes { get; set; }
+    public DbSet<RecipeIngredient> RecipeIngredients { get; set; }
+    public DbSet<RecipeStep> RecipeSteps { get; set; }
+    public DbSet<RecipePhoto> RecipePhotos { get; set; }
+    public DbSet<RecipeAttachment> RecipeAttachments { get; set; }
+    public DbSet<RecipeTag> RecipeTags { get; set; }
+    public DbSet<RecipeTagLink> RecipeTagLinks { get; set; }
 
     // Calendar (issue #330), merged in.
     public DbSet<Calendar> Calendars { get; set; }
