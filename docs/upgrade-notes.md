@@ -16,6 +16,23 @@ starts at 0.16.0) is filed under *Before 0.16.0*.
 
 ## Unreleased
 
+### Sign-in broke behind the client nginx at 0.50.0: larger request-header buffers
+
+0.50.0 added 18 permission claims (books, recipes and their tags, podcast audio). The Identity auth cookie carries
+every claim, so it grew past nginx's default request-header buffer of `4 8k` — about 8.3 KB for Admin and 7.6 KB
+for Owner before any other cookie. The client nginx then answered **every** request after sign-in, static files
+included, with `400 Request Header Or Cookie Too Large`. Sessions already signed in broke within a minute of the
+deploy, when the security-stamp check rewrote their cookie with the new claims.
+
+- **The shipped client image now sets `large_client_header_buffers 4 32k;`.** Pull the new image; nothing else to do
+  with the shipped compose files and `Caddyfile` (Caddy's own header limit is far larger).
+- **If you run your own reverse proxy in front of the client or the API**, raise its request-header limit to match:
+  at least 16 KB for a single header line, 32 KB for all headers. 32 KB is Kestrel's `MaxRequestHeadersTotalSize`,
+  so more buys nothing. In nginx that is `large_client_header_buffers 4 32k;` in the `server` (default server) or
+  `http` block that receives the browser's request.
+- This only buys headroom: each new module adds roughly 8 claims. A structural fix that stops the cookie growing
+  with the claim catalogue is tracked in issue #583.
+
 ### Legacy file storage removed (`RemoveLegacyFileBlobStorage`)
 
 Issues #428 and #448 moved every photo original and file out of the `FileBlob` table with two worker jobs (the
