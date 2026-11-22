@@ -576,6 +576,8 @@ builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.INewsArticleSearch
 builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.NewsListCursor>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsFeedService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsArticleService>();
+builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.PodcastEpisodeCursor>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Podcasts.PodcastEpisodeService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsTagService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsStatusService>();
 // OPML import and export (issue #508): the services, and the one-import-at-a-time permit, shared by every request.

@@ -13,10 +13,16 @@
     and, last and full width, the Feed URL with its own ⋯ menu. Under the grid, the https → http note when it applies.
     View articles is the first item of the card's ⋯ menu. Nothing interactive sits inside the card's expand button.
     Every publisher string is encoded text.
+
+    A podcast (kind = Podcast, issue #559 §3.3) is the same card with: the show artwork as the mark (podcasts glyph
+    fallback; the accent stays the health), a Podcast chip before the health chip, the author first in the meta line,
+    Episodes · On the server in place of unread · articles, View episodes in the menu (the page's) and the
+    Auto-download · Auto-delete · Audio on the server tiles.
 *@
 
 <OdsRecordCard Id="@CardId(Feed.Id)"
-               Icon="rss_feed"
+               Icon="@(IsPodcast ? "podcasts" : "rss_feed")"
+               Image="@(IsPodcast && ArtworkUrl is { } art ? new OdsRecordImage(art) : null)"
                Accent="@Accent"
                AccentSoft="@AccentSoft"
                HeadingLevel="3"
@@ -29,6 +35,10 @@
                Open="Open"
                OnToggle="OnToggle">
     <Chips>
+        @if (IsPodcast)
+        {
+            <OdsChip Tone="OdsChipTone.Outline" Icon="podcasts" Class="sm">Podcast</OdsChip>
+        }
         <NewsFeedHealthChip Health="Feed.Health" DescribedBy="@(QuotaText is null ? null : QuotaId)" />
         @if (QuotaText is { } quota)
         {
@@ -88,6 +98,18 @@
             <OdsInfoTile Icon="image" Label="Download images" ValueVariant="OdsInfoTileVariant.Text">
                 <Value>@(Feed.DownloadImages ? "On" : "Off")</Value>
             </OdsInfoTile>
+            @if (Feed.Podcast is { } podcast)
+            {
+                <OdsInfoTile Icon="cloud_download" Label="Auto-download" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value>@(podcast.AutoDownload ? "On" : "Off")</Value>
+                </OdsInfoTile>
+                <OdsInfoTile Icon="auto_delete" Label="Auto-delete" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value>@(podcast.AutoDeleteEnabled ? $"After {NewsFeedback.Count(podcast.AutoDeleteAfterDays, "day", "days")}" : "Off")</Value>
+                </OdsInfoTile>
+                <OdsInfoTile Icon="sd_storage" Label="Audio on the server" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value>@($"{NewsFeedback.Count(podcast.StoredAudioCount, "episode", "episodes")} · {PodcastFormat.Size(podcast.StoredAudioBytes)}")</Value>
+                </OdsInfoTile>
+            }
             <OdsInfoTile Icon="power_settings_new" Label="Active" ValueVariant="OdsInfoTileVariant.Text">
                 <Value>@(Feed.ArchivedAtUtc is not null ? "Archived" : Feed.IsActive ? "Yes" : "Paused")</Value>
             </OdsInfoTile>

@@ -306,8 +306,57 @@ public class NewsFeedJobRun : JobRun
     /// <summary>The manual run's counter: feeds it marked due.</summary>
     public int FeedsMarked { get; set; }
 
+    /// <summary>Podcast artwork stored with its renditions (issue #556 §3.8).</summary>
+    public int ArtworkStored { get; set; }
+
+    public int ArtworkFailed { get; set; }
+
+    /// <summary>Podcasting 2.0 chapter files fetched (issue #556 §3.8).</summary>
+    public int ChaptersFetched { get; set; }
+
     protected override (int Processed, int Failed) HeadlineCounts() =>
-        (FeedsFetched + ItemsStored + ItemsRevised + ImagesStored + FeedsMarked, FeedsQuarantined);
+        (FeedsFetched + ItemsStored + ItemsRevised + ImagesStored + FeedsMarked + ArtworkStored + ChaptersFetched,
+            FeedsQuarantined + ArtworkFailed);
+}
+
+/// <summary>
+/// A burst of the podcast audio download queue (issue #556 §3.6). The audio rows' guard columns and fences are the
+/// job's guard, so a burst is not exclusive; it has no manual run.
+/// </summary>
+public class PodcastAudioDownloadJobRun : JobRun
+{
+    public PodcastAudioDownloadJobRun() : base(Dtos.Application.JobType.PodcastAudioDownload)
+    {
+    }
+
+    public int DownloadsStored { get; set; }
+
+    public int DownloadsFailed { get; set; }
+
+    public int DownloadsDeferred { get; set; }
+
+    /// <summary>Expired-lease downloads returned to the queue (§3.6 step 1).</summary>
+    public int DownloadsRecovered { get; set; }
+
+    public int ReservationsRefused { get; set; }
+
+    public long AudioBytesStored { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (DownloadsStored, DownloadsFailed);
+}
+
+/// <summary>A daily or manual run of the podcast audio auto-delete (issue #556 §3.7).</summary>
+public class PodcastAudioRetentionJobRun : JobRun
+{
+    public PodcastAudioRetentionJobRun() : base(Dtos.Application.JobType.PodcastAudioRetention)
+    {
+    }
+
+    public int AudioReleased { get; set; }
+
+    public long AudioBytesReleased { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (AudioReleased, 0);
 }
 
 /// <summary>

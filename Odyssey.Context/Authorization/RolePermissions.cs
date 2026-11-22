@@ -105,13 +105,20 @@ public static class RolePermissions
         NewsTagsCreate,
         NewsTagsUpdate,
         NewsTagsDelete,
+        PodcastAudioCreate,
+        PodcastAudioDelete,
     ];
 
-    /// <summary>What User holds of <see cref="NewsModuleClaims"/>: reading, read state and article tags.</summary>
+    /// <summary>
+    /// What User holds of <see cref="NewsModuleClaims"/>: reading, read state, article tags and podcast audio on the
+    /// server (issue #556 §7.2).
+    /// </summary>
     public static readonly string[] NewsReaderClaims =
     [
         NewsRead,
         NewsUpdate,
+        PodcastAudioCreate,
+        PodcastAudioDelete,
     ];
 
     public static readonly string[] AllClaims =

@@ -1,0 +1,62 @@
+/* =============================================================
+   Internet module — Podcasts (/podcasts) and the podcast parts of Feeds
+   (centralcmd/odyssey#559; synced from the design system ui_kits/web/podcasts.css). Loads after news.css and reuses its nw-* rules
+   (filter bar, list, reading cards, dialogs); this sheet adds only what an
+   episode needs. Page-level layout only: every colour is a token, every
+   control is a DS component. Prefix: pod-.
+   ============================================================= */
+
+/* The tiles inside an episode stay neutral grey, as on News: the card's
+   accent (the audio state's tone) marks the row, not every fact in it. */
+.pod-card-wrap .odc-infotile { --odc-infotile-accent: var(--mud-palette-text-secondary); --odc-infotile-accent-soft: var(--mud-palette-action-default-hover); }
+.pod-list .odc-record { scroll-margin-top: calc(var(--appbar-h, var(--space-16)) + var(--space-6)); scroll-margin-bottom: var(--space-16); }
+/* Several chips (state, Trailer, Explicit) wrap under the title at phone width (1.4.10). */
+@media (max-width: 600px) {
+  .pod-page .odc-record-namerow { flex-wrap: wrap; row-gap: var(--space-1); }
+}
+
+/* ---------- The Audio panel (PodcastAudioActions) ----------
+   One outlined card (surface, 1px divider border, --radius-md, no shadow) —
+   the reading cards' surface, so the panel reads as part of the episode. */
+.pod-content { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.pod-audio {
+  display: flex; flex-direction: column; gap: var(--space-3); min-width: 0;
+  padding: var(--space-4) var(--space-5); border: var(--border-thin) solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); background: var(--mud-palette-surface);
+}
+@media (max-width: 600px) { .pod-audio { padding: var(--space-4); } }
+.pod-audio-head { display: flex; align-items: flex-start; gap: var(--space-2); min-width: 0; }
+.pod-audio-ic { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+.pod-audio-line { margin: 0; flex: 1 1 auto; min-width: 0; font: var(--fw-medium) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
+.pod-audio-spin { display: inline-flex; align-items: center; }
+.pod-audio-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pod-act { display: inline-flex; }
+/* Long labels wrap at 320 px instead of overflowing (1.4.10). */
+.pod-audio-actions .odc-btn, .pod-audio-trouble .odc-btn { white-space: normal; text-align: start; height: auto; min-height: var(--space-8); }
+.pod-audio-sub { margin: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-secondary); }
+.pod-audio-trouble { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+
+/* ---------- Sections (About · Chapters · Show notes · Images) ---------- */
+.pod-section { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.pod-media { max-inline-size: 40rem; }
+
+/* ---------- PodcastChapterList ---------- */
+.pod-chapters { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pod-chapter {
+  display: grid; grid-template-columns: minmax(4.5rem, max-content) minmax(0, 1fr); gap: var(--space-1) var(--space-4);
+  padding: var(--space-2) 0; border-top: var(--border-thin) solid var(--mud-palette-divider);
+}
+.pod-chapter:first-child { border-top: 0; }
+.pod-chapter-time { font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); }
+.pod-chapter-main { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.pod-chapter-title { font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+@media (max-width: 600px) { .pod-chapter { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Feed dialog: the Podcast settings fieldset (#559 §3.4) ----------
+   A plain fieldset under the Type radio group: the legend is the standard
+   field label, the help lines sit under their switch and describe it. */
+.pod-fieldset { margin: 0; padding: var(--space-4); border: var(--border-thin) solid var(--mud-palette-divider); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.pod-fieldset > legend { padding: 0 var(--space-1); font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); }
+.pod-switch-row { display: flex; flex-direction: column; gap: var(--space-1); }
+.pod-help { margin: 0; padding-inline-start: calc(var(--space-10) + var(--space-2)); font: var(--fw-regular) var(--fs-caption)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-secondary); }
+@media (max-width: 600px) { .pod-help { padding-inline-start: 0; } }

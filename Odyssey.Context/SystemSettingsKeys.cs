@@ -267,6 +267,12 @@ public static class SystemSettingsKeys
     public const string NewsOpmlMaxImportMegabytes = "NewsOpmlMaxImportMegabytes";
     public const string NewsOpmlMaxImportEntries = "NewsOpmlMaxImportEntries";
 
+    // Podcasts (issue #556 §8.2): the audio quota, the per-episode size cap, and the two auto-download caps.
+    public const string PodcastAudioStoreMaxGiB = "PodcastAudioStoreMaxGiB";
+    public const string PodcastAudioMaxEpisodeMb = "PodcastAudioMaxEpisodeMb";
+    public const string PodcastAutoDownloadsPerFeedPerDay = "PodcastAutoDownloadsPerFeedPerDay";
+    public const string PodcastAutoDownloadMaxUnfetchedPerFeed = "PodcastAutoDownloadMaxUnfetchedPerFeed";
+
     public static readonly string[] AllKeys =
     [
         RequireTwoFactor,
@@ -358,6 +364,10 @@ public static class SystemSettingsKeys
         NewsPrivateHostAllowList,
         NewsOpmlMaxImportMegabytes,
         NewsOpmlMaxImportEntries,
+        PodcastAudioStoreMaxGiB,
+        PodcastAudioMaxEpisodeMb,
+        PodcastAutoDownloadsPerFeedPerDay,
+        PodcastAutoDownloadMaxUnfetchedPerFeed,
     ];
 
     /// <summary>

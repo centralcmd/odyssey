@@ -1846,6 +1846,62 @@ An export carries every feed's fetch URL, so it is gated on `news-feeds.update`,
 is sent `Cache-Control: no-store`. A downloaded file keeps any token a private feed URL embeds after the caller's claim
 is revoked — an accepted residual for a single-household instance.
 
+### Podcasts (issue #556)
+
+A feed can be marked a **podcast** (`NewsFeeds.Kind`). Its items become episodes on their own page, and the worker can
+store their audio on the server so a household member downloads it to a device from Odyssey rather than from the
+publisher.
+
+**Release note.**
+
+- **Two new storage features**, `PodcastAudio` (`podcast-audio/<feedId>/<xx>/<yy>/…`) and `PodcastArtwork`
+  (`podcast-artwork/<feedId>/…`), both opaque-named and graced. Both compose files and the AppHost bind them to
+  `primary` for `api` and `worker`. **An operator with their own bindings must add `FileStorage__Bindings__PodcastAudio`
+  and `FileStorage__Bindings__PodcastArtwork` to both containers**, or startup check B1 fails with `UnboundFeature`.
+- **Two new background jobs**: *Podcast downloads* (`JobType.PodcastAudioDownload = 11`, no manual run, detail under
+  `news.read`) and *Podcast audio clean-up* (`JobType.PodcastAudioRetention = 12`, a daily pass; a manual run needs
+  `news-feeds.update`).
+- **Two new claims**, `podcast-audio.create` (queue a server download) and `podcast-audio.delete` (remove stored audio),
+  held by Admin, Owner and User — not Guest. They reach live sessions at the next security-stamp check (≤ 1 minute).
+- **Four settings** under **`/settings` → Podcasts**: the audio store limit (`PodcastAudioStoreMaxGiB`, 50 GiB), the
+  per-episode size limit (`PodcastAudioMaxEpisodeMb`, 1,024 MB, never above `FileStorage:MaxFileSizeBytes`), and the
+  auto-download daily and back-catalogue caps (5 each).
+- **The client nginx gains one location**, `/api/api/podcast-episodes/<id>/audio/content`, unbuffered with an hour's
+  send timeout. Keep it in your own proxy config: a buffering proxy makes a slow or aborted download look complete to
+  the API, which then stamps the episode as downloaded and starts its auto-delete countdown.
+- **`PUT /api/news-feeds/{id}` now requires `kind`, `autoDownload`, `autoDeleteEnabled` and `autoDeleteAfterDays`**
+  (a full replacement, like `downloadImages`); a body without them is a `400`. The shipped client sends them. A script
+  or a browser still running a cached client from before this release must be refreshed.
+- **Rolling back** past this release drops every podcast table; the podcast `StoredObjects` rows remain and log the B4
+  Critical. Switch every podcast feed back to an article feed (or delete it) and wait out the deletion grace first.
+
+**What leaves the deployment.** The worker fetches the audio enclosure, the show and episode artwork and Podcasting 2.0
+chapter files, through the same egress policy as feeds: connect-time vetting, no proxy, the fixed anonymous User-Agent,
+no `Referer`, no `Authorization`, no cookies. Audio is requested with `Accept-Encoding: identity`; a compressed response
+is refused. Audio redirects may chain up to **ten** hops (tracking prefixes routinely chain three to six); every hop is
+re-checked. Publisher and tracking-prefix hosts learn the server's IP and when it downloaded, and auto-download makes
+that periodic. The browser never contacts them. Enclosure URLs, which private feeds use to carry tokens, are never
+returned by the API or logged — logs name hosts and episode ids only.
+
+**Bounds.** At most two downloads per worker process and one per feed and per host across all replicas (generated
+unique guard columns on MariaDB). A download must send its headers within 30 s, may not stall for 60 s, must average
+32 KiB/s over each two-minute window after its first minute, and gets `min(60 min, 2 min + size ÷ 32 KiB/s)` in all.
+The chapter-marker reader reads at most 16 MiB of an ID3 head tag or 4 MiB of an MP4 `moov`, with a two-second
+deadline. Memory: two 80 KiB download buffers plus the chapter window, on top of the news job's peak. A process's two downloads run inside one run of the job, so a long download holds that
+process's next run (and its next claim) until it ends — up to the hour's total deadline; other replicas keep claiming.
+
+**Storage.** Podcast files share the news headroom threshold (upload threshold plus 1 GiB), and a download also
+reserves its expected size against both the audio quota and the free space, under a lock on the storage totals, so two
+replicas cannot both pass a check that only one of them fits. The quota counts stored audio, audio released but still
+in the deletion grace, and in-flight reservations; removing audio frees quota only when the store deletes the file. A
+full quota or low headroom puts a download in `Deferred` and retries it hourly without spending an attempt. Artwork
+counts inside the **image** quota. The hourly maintenance pass recounts all four podcast totals from the rows.
+
+**Retention.** Archiving a podcast feed keeps its stored audio and still serves it. Switching a feed back to articles,
+or deleting it, releases its audio within a tick or two. The auto-delete rule (per feed, off by default) releases audio
+only after a household member downloaded the whole file to a device and the chosen number of days has passed since that
+download or since the rule last changed, whichever is later. Audio never downloaded is never auto-deleted.
+
 ## Security checklist
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**

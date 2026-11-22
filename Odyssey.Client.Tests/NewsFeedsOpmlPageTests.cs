@@ -91,7 +91,9 @@ public class NewsFeedsOpmlPageTests
 
         public void OpenMenu()
         {
-            Cut.Find($"#{NewsFeedsPage.ActionMenuId} button").Click();
+            // Re-find and retry: right after MenuItems() closes the menu, a re-render still in flight can replace the
+            // button's handler, and clicking the element found before it lands throws an unknown-event-handler error.
+            Cut.WaitForAssertion(() => Cut.Find($"#{NewsFeedsPage.ActionMenuId} button").Click());
             Cut.WaitForElement(".mud-menu-item");
         }
 

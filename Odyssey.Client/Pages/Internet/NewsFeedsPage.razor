@@ -34,6 +34,7 @@
                 <div class="odc-summary-grid">
                     <OdsBreakdownTile Label="By tags" Rows="TagRows" Empty="No tagged feeds." />
                     <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No feeds." TotalValue="@_feeds.Count" />
+                    <OdsBreakdownTile Label="By type" Rows="KindRows" Empty="No feeds." />
                 </div>
             }
         </OverviewContent>
@@ -43,6 +44,8 @@
                                 Placeholder="Search name or site…" Class="ph-search" />
                 <OdsMultiSelect Label="@(_statuses.Count == 0 ? "Status: All" : "Status")" Values="_statuses"
                                 ValuesChanged="OnStatusesChanged" Options="NewsVisuals.StatusOptions" Class="ph-select" />
+                <OdsMultiSelect Label="@(_kinds.Count == 0 ? "Type: All" : "Type")" Values="_kinds"
+                                ValuesChanged="OnKindsChanged" Options="KindOptions" Class="ph-select" />
                 <OdsMultiSelect Label="Tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
                                 Options="TagFilterOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingNewsFeed" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
@@ -108,7 +111,7 @@
             <OdsInfiniteList TItem="ExistingNewsFeed" Items="Filtered" BatchSize="_batch" Noun="feeds"
                              ItemKey="@(f => (object)f.Id)" RevealKey="_revealId">
                 <RenderItem Context="feed">
-                    <NewsFeedCard @key="feed.Id" Feed="feed" TagsById="_tagsById" Menu="MenuFor(feed)"
+                    <NewsFeedCard @key="feed.Id" Feed="feed" TagsById="_tagsById" Menu="MenuFor(feed)" ArtworkUrl="@ArtworkFor(feed)"
                                   Open="@(_openId == feed.Id)" OnToggle="open => OnToggle(feed, open)"
                                   Highlight="@(_revealId == feed.Id)"
                                   Busy="@_busyIds.Contains(feed.Id)"

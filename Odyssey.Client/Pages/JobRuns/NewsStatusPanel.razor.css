@@ -15,3 +15,6 @@
 .bgj-news-top li .mono { margin-inline-start: var(--space-2); color: var(--mud-palette-text-secondary); }
 .bgj-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; }
 .bgj-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+/* The Audio bar and its "awaiting removal" caption (issue #559 §3.6; design system background-jobs.css .bgj-caption). */
+.bgj-quota-group { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.bgj-news-caption { margin: 0; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }

@@ -29,7 +29,9 @@ public sealed class NewsSettingsLookupTests : IDisposable
         cache.Dispose();
     }
 
-    private NewsSettingsLookup Lookup(long maxFileSizeBytes = 64L * 1024 * 1024) =>
+    // The shipped transport ceiling (10 GiB), so neither derived ceiling — the image size's or, since issue #556, the
+    // podcast episode size's — clamps a shipped default. Ceiling tests pass their own value.
+    private NewsSettingsLookup Lookup(long maxFileSizeBytes = 10L * 1024 * 1024 * 1024) =>
         new(context, cache, Options.Create(new FileStorageOptions { MaxFileSizeBytes = maxFileSizeBytes }), NullLogger<NewsSettingsLookup>.Instance);
 
     private async Task SetAsync(string key, string value)

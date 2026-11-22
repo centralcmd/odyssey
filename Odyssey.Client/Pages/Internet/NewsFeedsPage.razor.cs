@@ -49,6 +49,11 @@ public partial class NewsFeedsPage
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
 
+    [Inject] private IPodcastsApiClient Podcasts { get; set; } = default!;
+
+    /// <summary><c>?kind=Podcast</c> (the Podcasts page's Manage podcasts) ticks that Type for this visit (#559 §3.3).</summary>
+    [SupplyParameterFromQuery(Name = "kind")] public string? KindQuery { get; set; }
+
     /// <summary><c>?state=All</c> opens the page with the Status filter cleared (§3.1).</summary>
     [SupplyParameterFromQuery(Name = "state")] public string? StateQuery { get; set; }
 
@@ -93,12 +98,37 @@ public partial class NewsFeedsPage
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _statuses = [NewsVisuals.Key(NewsFeedStatus.Active)];
     private IReadOnlyCollection<string> _tagFilter = [];
+    private IReadOnlyCollection<string> _kinds = [];
     private OdsTableSort _sort = DefaultSort;
     private int _batch = OdsPageSizes.Batch[1];
     private Guid? _openId;
     private Guid? _revealId;
 
-    private bool HasFilters => !string.IsNullOrWhiteSpace(_search) || _tagFilter.Count > 0;
+    private bool HasFilters => !string.IsNullOrWhiteSpace(_search) || _tagFilter.Count > 0 || _kinds.Count > 0;
+
+    /// <summary>The Type filter (#559 §3.3): Articles · Podcasts, after Status; none ticked = every feed.</summary>
+    internal static readonly OdsBreakdownDef<string>[] KindDefs =
+    [
+        new(nameof(NewsFeedKind.Article), "Articles", "outline", "article"),
+        new(nameof(NewsFeedKind.Podcast), "Podcasts", "outline", "podcasts"),
+    ];
+
+    internal static readonly IReadOnlyList<OdsOption> KindOptions = OdsBreakdown.Options(KindDefs);
+
+    private static string KindKey(ExistingNewsFeed feed) =>
+        feed.Kind == NewsFeedKind.Podcast ? nameof(NewsFeedKind.Podcast) : nameof(NewsFeedKind.Article);
+
+    private IReadOnlyList<OdsBreakdownRow> KindRows =>
+    [
+        .. KindDefs.Select(d => new OdsBreakdownRow
+        {
+            Key = d.Key, Label = d.Label, Icon = d.Icon, IconColor = OdsBreakdown.Tone(d.Tone),
+            Count = _feeds.Count(f => KindKey(f) == d.Key),
+        }),
+    ];
+
+    private string? ArtworkFor(ExistingNewsFeed feed) =>
+        feed.Podcast?.ArtworkId is { } art ? Podcasts.ArtworkUrl(art, PodcastArtworkSize.Small) : null;
 
     private int AttentionCount => _feeds.Count(f => OdsNewsFeedHealth.NeedsAttention(f.Health));
 
@@ -118,6 +148,7 @@ public partial class NewsFeedsPage
         var shown = feeds.Where(f =>
             NewsVisuals.MatchesStatus(f, _statuses)
             && (tagIds.Count == 0 || f.TagIds.Any(tagIds.Contains))
+            && (_kinds.Count == 0 || _kinds.Contains(KindKey(f)))
             && (term.Length == 0
                 || f.DisplayTitle.Contains(term, StringComparison.CurrentCultureIgnoreCase)
                 || (NewsFeedCard.SiteHostOf(f.SiteUrl)?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)));
@@ -232,6 +263,11 @@ public partial class NewsFeedsPage
             _tagFilter = [];
         }
 
+        if (_kinds.Count > 0 && !_kinds.Contains(KindKey(feed)))
+        {
+            _kinds = [];
+        }
+
         if (!Shows(feed))
         {
             _search = string.Empty;
@@ -260,6 +296,14 @@ public partial class NewsFeedsPage
             _statuses = [];
         }
 
+        if (KindQuery is { } kind)
+        {
+            // Parsed, never trusted (§3.1): exactly Article or Podcast, else ignored.
+            _kinds = string.Equals(kind, nameof(NewsFeedKind.Podcast), StringComparison.OrdinalIgnoreCase) ? [nameof(NewsFeedKind.Podcast)]
+                : string.Equals(kind, nameof(NewsFeedKind.Article), StringComparison.OrdinalIgnoreCase) ? [nameof(NewsFeedKind.Article)]
+                : _kinds;
+        }
+
         await LoadAsync();
 
         if (RevealQuery is { } reveal && _feeds.Any(f => f.Id == reveal))
@@ -268,6 +312,7 @@ public partial class NewsFeedsPage
             _revealId = reveal;
             _search = string.Empty;
             _tagFilter = [];
+            _kinds = [];
         }
     }
 
@@ -303,6 +348,7 @@ public partial class NewsFeedsPage
         public string Search { get; set; } = string.Empty;
         public List<string>? Statuses { get; set; }
         public List<string> TagIds { get; set; } = [];
+        public List<string> Kinds { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
         public int BatchSize { get; set; } = OdsPageSizes.Batch[1];
@@ -315,6 +361,7 @@ public partial class NewsFeedsPage
         _search = state.Search ?? string.Empty;
         _statuses = state.Statuses is null ? _statuses : NewsVisuals.StatusOptions.KnownValues(state.Statuses);
         _tagFilter = state.TagIds ?? [];
+        _kinds = KindOptions.KnownValues(state.Kinds ?? []);
         _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
         _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
@@ -326,6 +373,7 @@ public partial class NewsFeedsPage
         Search = _search,
         Statuses = [.. _statuses],
         TagIds = [.. _tagFilter],
+        Kinds = [.. _kinds],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
         BatchSize = _batch,
@@ -345,6 +393,8 @@ public partial class NewsFeedsPage
 
     private Task OnTagFilterChanged(IReadOnlyCollection<string> values) { _tagFilter = values ?? []; return FiltersChangedAsync(); }
 
+    private Task OnKindsChanged(IReadOnlyCollection<string> values) { _kinds = values ?? []; return FiltersChangedAsync(); }
+
     private Task OnSortChanged(OdsTableSort sort) { _sort = sort; return FiltersChangedAsync(); }
 
     private void OnBatchChanged(int size) { _batch = size; Persist(); }
@@ -353,6 +403,7 @@ public partial class NewsFeedsPage
     {
         _search = string.Empty;
         _tagFilter = [];
+        _kinds = [];
         return FiltersChangedAsync(focusListStart: true);
     }
 
@@ -500,7 +551,9 @@ public partial class NewsFeedsPage
         var archived = feed.ArchivedAtUtc is not null;
         var name = feed.DisplayTitle;
         var id = feed.Id;
-        items.Add(Item("feed", "View articles", name, () => Nav.NavigateTo($"news?feedId={id}")));
+        items.Add(feed.Kind == NewsFeedKind.Podcast
+            ? Item("podcasts", "View episodes", name, () => Nav.NavigateTo($"podcasts?feedId={id}"))
+            : Item("feed", "View articles", name, () => Nav.NavigateTo($"news?feedId={id}")));
         items.Add(new OdsMenuItem { Divider = true });
         if (_canUpdate)
         {

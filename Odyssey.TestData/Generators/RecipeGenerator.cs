@@ -1,6 +1,7 @@
 using System.Text;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage.Files;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Recipes;
 
 namespace Odyssey.TestData.Generators;
@@ -39,12 +40,12 @@ public static class RecipeGenerator
 
     private static readonly TagSpec[] TagDefinitions =
     [
-        new("Weeknight", "Done in under an hour on a work day.", "schedule", "#006B5A", false),
-        new("Baking", "Bread, buns and cakes.", "bakery_dining", "#F59E0B", false),
-        new("Vegetarian", null, "local_florist", "#15803D", false),
-        new("Family", "Handed down — keep the notes.", "family_restroom", "#6D28D9", false),
+        new("Weeknight", "Done in under an hour on a work day.", "schedule", Swatch("teal"), false),
+        new("Baking", "Bread, buns and cakes.", "bakery_dining", Swatch("amber"), false),
+        new("Vegetarian", null, "local_florist", Swatch("green"), false),
+        new("Family", "Handed down — keep the notes.", "family_restroom", Swatch("violet"), false),
         new("Soup", null, null, null, false),
-        new("Christmas", null, "celebration", "#B23B3B", true),
+        new("Christmas", null, "celebration", Swatch("coral"), true),
     ];
 
     private sealed record Line(
@@ -74,6 +75,9 @@ public static class RecipeGenerator
         string? EditorRole,
         int CreatedDaysAgo,
         bool Archived);
+
+    // The palette is declared once (ColorPalette); a tag names a swatch by key.
+    private static string Swatch(string key) => ColorPalette.All.Single(s => s.Key == key).Hex;
 
     public static Guid TagIdFor(string name) => DeterministicGuid.From($"recipe-tag::{name}");
 

@@ -482,7 +482,8 @@ public class UnifiedLocationsComponentTests
 
         Assert.Equal("ThisRecord", chosen);
         Assert.Equal("apply", cut.Find("fieldset").Id);
-        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], "apply"));
+        // The CHECKED radio when there is one, else the first enabled (issue #559 §3.4): odsFocusRadioGroup decides.
+        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusRadioGroup" && Equals(i.Arguments[0], "apply"));
     }
 
     // ── OdsModal role (AC 9, 10) ────────────────────────────────────────────────
