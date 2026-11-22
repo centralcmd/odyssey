@@ -8,6 +8,21 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 Entries start at 0.16.0; releases before it are recorded only in the
 [GitHub tags](https://github.com/centralcmd/odyssey/tags).
 
+## [0.50.0](https://github.com/centralcmd/odyssey/compare/v0.49.0...v0.50.0) (2026-11-22)
+
+
+### Features
+
+* add recipes ([#573](https://github.com/centralcmd/odyssey/issues/573)) ([4e94156](https://github.com/centralcmd/odyssey/commit/4e94156f04eaf528a888e8e0615248c623f6ee3f))
+* add the books catalogue ([#577](https://github.com/centralcmd/odyssey/issues/577)) ([8e3740a](https://github.com/centralcmd/odyssey/commit/8e3740aa62f067ca7b71157aebc6072acccf83f9))
+* add the tiingo price source, the phase 1 amendments and their UI ([#471](https://github.com/centralcmd/odyssey/issues/471)) ([023fd4b](https://github.com/centralcmd/odyssey/commit/023fd4b17b070b13a87cde33f0a860a7b1082148))
+* podcasts in the news reader ([#575](https://github.com/centralcmd/odyssey/issues/575)) ([cf0077f](https://github.com/centralcmd/odyssey/commit/cf0077fc25d2b9bb2165c16da8629b61e2fc6d19))
+
+
+### CI/CD
+
+* check whitespace formatting and pr titles ([#579](https://github.com/centralcmd/odyssey/issues/579)) ([8656c35](https://github.com/centralcmd/odyssey/commit/8656c35d2f2182f8cef0e5355bd03e70efc5bb95))
+
 ## [0.49.0](https://github.com/centralcmd/odyssey/compare/v0.48.0...v0.49.0) (2026-11-21)
 
 
