@@ -186,6 +186,9 @@ public sealed record NewsFeedPodcast
 
     public int EpisodeCount { get; set; }
 
+    /// <summary>Episodes whose audio was ever saved to a device (<c>LastPlayedAtUtc</c> set), stored now or not.</summary>
+    public int SavedEpisodeCount { get; set; }
+
     public int StoredAudioCount { get; set; }
 
     public long StoredAudioBytes { get; set; }

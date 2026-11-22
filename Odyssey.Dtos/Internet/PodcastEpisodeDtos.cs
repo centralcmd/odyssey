@@ -3,8 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Internet;
 
 /// <summary>
-/// <c>GET /api/podcast-episodes</c> (issue #556 §5.2 #6). Feeds are OR'd and the audio states OR'd; the two lists are
-/// AND'd. A <see cref="Cursor"/> continues a keyset page and is bound to every filter here except the page size.
+/// <c>GET /api/podcast-episodes</c> (issue #556 §5.2 #6). Feeds are OR'd and the audio states OR'd; the two lists and
+/// <see cref="SavedToDevice"/> are AND'd. A <see cref="Cursor"/> continues a keyset page and is bound to every filter here
+/// except the page size.
 /// </summary>
 public sealed class PodcastEpisodesQueryParams : QueryParams<PodcastEpisodeSortBy>, IValidatableObject
 {
@@ -20,6 +21,12 @@ public sealed class PodcastEpisodesQueryParams : QueryParams<PodcastEpisodeSortB
     public PodcastAudioState[]? AudioState { get; set; }
 
     public bool IncludeArchivedFeeds { get; set; }
+
+    /// <summary>
+    /// <c>true</c>: only episodes whose audio was ever saved to a device (<c>LastPlayedAtUtc</c> set); <c>false</c>: only
+    /// those never saved; omitted: both. v1 has no player, so this is the episode list's only "played" signal (#559).
+    /// </summary>
+    public bool? SavedToDevice { get; set; }
 
     [StringLength(NewsLimits.MaxCursorLength)]
     public string? Cursor { get; set; }

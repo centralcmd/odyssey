@@ -140,7 +140,8 @@ public sealed record PodcastEpisodeFilter(
     IReadOnlyList<PodcastAudioState> AudioStates,
     string? Search,
     bool IncludeArchivedFeeds,
-    PodcastEpisodeSortBy SortBy)
+    PodcastEpisodeSortBy SortBy,
+    bool? SavedToDevice = null)
 {
     public byte[] Hash()
     {
@@ -150,6 +151,7 @@ public sealed record PodcastEpisodeFilter(
             .Append("|s:").Append(Search ?? string.Empty)
             .Append("|ar:").Append(IncludeArchivedFeeds ? '1' : '0')
             .Append("|o:").Append((int)SortBy)
+            .Append("|d:").Append(SavedToDevice switch { true => '1', false => '0', null => '-' })
             .ToString();
         return SHA256.HashData(Encoding.UTF8.GetBytes(canonical))[..NewsListCursor.FilterHashLength];
     }

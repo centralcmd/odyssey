@@ -552,7 +552,8 @@ public sealed class NewsFeedService(
 
     /// <summary>
     /// The podcast block's facts for the podcast feeds of one projection (issue #556 §5.1 #3): the details row, the show
-    /// artwork when stored, and three grouped counts on the per-feed audio index.
+    /// artwork when stored, three grouped counts on the per-feed audio index, and the episodes ever saved to a device
+    /// (read on <c>IX_PodcastEpisodes_Feed_Sort</c>'s feed prefix).
     /// </summary>
     private async Task<Dictionary<Guid, NewsFeedPodcastFacts>> LoadPodcastFactsAsync(List<Guid> ids, CancellationToken cancellationToken)
     {
@@ -578,6 +579,11 @@ public sealed class NewsFeedService(
                 Bytes = g.Where(a => a.State == PodcastAudioState.Stored).Sum(a => a.SizeBytes ?? 0),
             })
             .ToDictionaryAsync(g => g.FeedId, cancellationToken);
+        var saved = await context.PodcastEpisodes.AsNoTracking().News()
+            .Where(e => ids.Contains(e.NewsFeedId) && e.LastPlayedAtUtc != null)
+            .GroupBy(e => e.NewsFeedId)
+            .Select(g => new { FeedId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.FeedId, g => g.Count, cancellationToken);
         return ids.ToDictionary(id => id, id =>
         {
             var detail = details.GetValueOrDefault(id);
@@ -587,7 +593,8 @@ public sealed class NewsFeedService(
                 detail?.ArtworkId is { } artwork && storedArtwork.Contains(artwork) ? artwork : null,
                 counts?.Episodes ?? 0,
                 counts?.Stored ?? 0,
-                counts?.Bytes ?? 0);
+                counts?.Bytes ?? 0,
+                saved.GetValueOrDefault(id));
         });
     }
 

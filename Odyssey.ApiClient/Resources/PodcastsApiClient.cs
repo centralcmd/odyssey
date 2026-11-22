@@ -13,6 +13,9 @@ public sealed record PodcastEpisodeListFilter
 
     public bool IncludeArchivedFeeds { get; init; }
 
+    /// <summary><c>true</c> saved to a device, <c>false</c> never saved, <c>null</c> both.</summary>
+    public bool? SavedToDevice { get; init; }
+
     public PodcastEpisodeSortBy SortBy { get; init; } = PodcastEpisodeSortBy.Newest;
 }
 
@@ -63,6 +66,7 @@ public sealed class PodcastsApiClient(IOdysseyApi api) : IPodcastsApiClient
             .AddMany("audioState", filter.AudioStates?.Select(s => s.ToString()))
             .Add("search", filter.Search)
             .AddBool("includeArchivedFeeds", filter.IncludeArchivedFeeds ? true : null)
+            .AddBool("savedToDevice", filter.SavedToDevice)
             .Add("sortBy", filter.SortBy.ToString())
             .Add("cursor", cursor);
         return api.GetAsync<PodcastEpisodePage>(query.Build(), ct);

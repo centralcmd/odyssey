@@ -149,6 +149,37 @@ public class PodcastEpisodesApiTests(PodcastEpisodesApiTests.Host host) : Shared
     }
 
     [Fact]
+    public async Task The_saved_to_device_filter_ands_with_audio_state_binds_the_cursor_and_feeds_the_podcast_count()
+    {
+        var feed = await PodcastFeedAsync();
+        var savedRemoved = await EpisodeAsync(feed, PodcastAudioState.None, Base);
+        var savedQueued = await EpisodeAsync(feed, PodcastAudioState.Queued, Base.AddHours(1));
+        var neverSaved = await EpisodeAsync(feed, PodcastAudioState.None, Base.AddHours(2));
+        await Factory.WithContextAsync(async c =>
+        {
+            foreach (var episode in await c.PodcastEpisodes.Where(e => e.NewsArticleId == savedRemoved || e.NewsArticleId == savedQueued).ToListAsync())
+            {
+                episode.LastPlayedAtUtc = Base.AddDays(1);
+            }
+
+            await c.SaveChangesAsync();
+        });
+        using var client = Factory.ForCaller(ReadOnly).CreateClient();
+
+        var saved = await client.GetFromJsonAsync<PodcastEpisodePage>($"{Episodes}?savedToDevice=true&limit=1");
+        var unsaved = await client.GetFromJsonAsync<PodcastEpisodePage>($"{Episodes}?savedToDevice=false");
+        var savedAndNone = await client.GetFromJsonAsync<PodcastEpisodePage>($"{Episodes}?savedToDevice=true&audioState=None");
+        var foreign = await client.GetAsync($"{Episodes}?savedToDevice=false&limit=1&cursor={Uri.EscapeDataString(saved!.NextCursor!)}");
+        var podcast = (await client.GetFromJsonAsync<ExistingNewsFeed>($"/api/news-feeds/{feed}"))!.Podcast!;
+
+        Assert.Equal((2, savedQueued), (saved.TotalCount, Assert.Single(saved.Items).Id));
+        Assert.Equal([neverSaved], unsaved!.Items.Select(i => i.Id));
+        Assert.Equal([savedRemoved], savedAndNone!.Items.Select(i => i.Id));
+        Assert.Equal(HttpStatusCode.BadRequest, foreign.StatusCode);
+        Assert.Equal((3, 2), (podcast.EpisodeCount, podcast.SavedEpisodeCount));
+    }
+
+    [Fact]
     public async Task AC25_The_detail_shows_notes_and_the_highest_precedence_chapters_and_an_article_feed_is_404()
     {
         var feed = await PodcastFeedAsync();

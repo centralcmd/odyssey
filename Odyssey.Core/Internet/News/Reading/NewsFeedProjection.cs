@@ -20,7 +20,8 @@ public sealed record NewsFeedRow(
 /// set only when the artwork is stored, so a read never names an image the content endpoint would <c>404</c>.
 /// </summary>
 public sealed record NewsFeedPodcastFacts(
-    PodcastFeedDetails? Details, Guid? StoredArtworkId, int EpisodeCount, int StoredAudioCount, long StoredAudioBytes);
+    PodcastFeedDetails? Details, Guid? StoredArtworkId, int EpisodeCount, int StoredAudioCount, long StoredAudioBytes,
+    int SavedEpisodeCount = 0);
 
 /// <summary>The feed projections: one display-title rule, one health derivation, one management gate.</summary>
 public static class NewsFeedProjection
@@ -102,6 +103,7 @@ public static class NewsFeedProjection
         AutoDeleteEnabled = feed.AutoDeleteEnabled,
         AutoDeleteAfterDays = feed.AutoDeleteAfterDays,
         EpisodeCount = facts?.EpisodeCount ?? 0,
+        SavedEpisodeCount = facts?.SavedEpisodeCount ?? 0,
         StoredAudioCount = facts?.StoredAudioCount ?? 0,
         StoredAudioBytes = facts?.StoredAudioBytes ?? 0,
     };

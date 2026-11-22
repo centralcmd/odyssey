@@ -48,7 +48,8 @@ public sealed class PodcastEpisodeService(
                 [.. (query.AudioState ?? []).Distinct().Order()],
                 ListQuery.NormalizeSearch(query.Search),
                 query.IncludeArchivedFeeds,
-                query.SortBy ?? PodcastEpisodeSortBy.Newest);
+                query.SortBy ?? PodcastEpisodeSortBy.Newest,
+                query.SavedToDevice);
             var terms = filter.Search is null ? [] : NewsSearchTerms.Parse(filter.Search);
             if (filter.Search is not null && terms.Count == 0)
             {
@@ -149,6 +150,13 @@ public sealed class PodcastEpisodeService(
         {
             var states = filter.AudioStates;
             episodes = episodes.Where(e => context.PodcastEpisodeAudio.Any(a => a.NewsArticleId == e.NewsArticleId && states.Contains(a.State)));
+        }
+
+        // "Saved to a device" (#559): the last complete device download is stamped on the episode itself. Like the
+        // read-state filters it can change between pages; the cursor's position, not the filter, keeps the walk stable.
+        if (filter.SavedToDevice is { } saved)
+        {
+            episodes = saved ? episodes.Where(e => e.LastPlayedAtUtc != null) : episodes.Where(e => e.LastPlayedAtUtc == null);
         }
 
         return feedIds.Count > 0

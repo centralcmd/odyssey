@@ -45,3 +45,6 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
 - **Last-played is stamped only after one response delivered the whole file to a `news.update` holder**, which is why
   the client nginx streams `…/audio/content` unbuffered. Auto-delete counts from it, so a stamp on a partial transfer
   would delete audio nobody has.
+- **"Saved to a device" is the only played signal, and it is `LastPlayedAtUtc`.** v1 has no player and no played
+  flag (#556 non-goal 10); the episode list's `savedToDevice` filter and the podcast block's `SavedEpisodeCount` both
+  read that stamp (#559 design note). Never word it as "played" in the API or the UI.
