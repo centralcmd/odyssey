@@ -82,7 +82,7 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// A superseded set AFTER the baseline (issue #581 AC 17): the newest table-creating migration's history row
+    /// A superseded set AFTER the baseline (issue #581 AC 17): a table-creating migration's history row
     /// carries an id this build does not ship, as a renumber leaves it. The baseline row is intact, so the cut-point
     /// guard passes, and the drift message names the superseded set — listing the unknown id — rather than offering
     /// both causes.
@@ -104,9 +104,9 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
             string supersededId;
             string createdTable;
 
-            await using (var context = new OdysseyContext(OdysseyOptions()))
+            await using (var context = new OdysseyContext(ProbeOptions()))
             {
-                (migrationId, createdTable) = NewestTableCreatingMigration(context);
+                (migrationId, createdTable) = (ProbeMigrationsAssembly.ProbeId, ProbeMigrationsAssembly.ProbeTable);
                 supersededId = migrationId + "Renumbered";
                 await MigrationRunner.MigrateAsync(context, CancellationToken.None);
             }
@@ -118,7 +118,7 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
                     supersededId, migrationId);
             }
 
-            await using (var context = new OdysseyContext(OdysseyOptions()))
+            await using (var context = new OdysseyContext(ProbeOptions()))
             {
                 var error = await Assert.ThrowsAsync<MigrationDriftException>(
                     () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
@@ -152,9 +152,9 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
         {
             string migrationId;
 
-            await using (var context = new OdysseyContext(OdysseyOptions()))
+            await using (var context = new OdysseyContext(ProbeOptions()))
             {
-                (migrationId, _) = NewestTableCreatingMigration(context);
+                migrationId = ProbeMigrationsAssembly.ProbeId;
                 await MigrationRunner.MigrateAsync(context, CancellationToken.None);
             }
 
@@ -166,7 +166,7 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
                     "INSERT INTO `__EFMigrationsHistory` (MigrationId, ProductVersion) VALUES ('20200101000000_Retired', '9.0.0')");
             }
 
-            await using (var context = new OdysseyContext(OdysseyOptions()))
+            await using (var context = new OdysseyContext(ProbeOptions()))
             {
                 var error = await Assert.ThrowsAsync<MigrationDriftException>(
                     () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
@@ -182,21 +182,18 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
         }
     }
 
-    /// <summary>The newest migration that creates a table, and the first table it creates.</summary>
-    private static (string MigrationId, string Table) NewestTableCreatingMigration(OdysseyContext context)
+    /// <summary>
+    /// The real chain plus <see cref="ProbeMigrationsAssembly"/>'s one table-creating migration after head, so the
+    /// two after-the-baseline scenarios can be built whatever the chain holds — including right after a rebaseline,
+    /// when nothing after the baseline creates a table.
+    /// </summary>
+    private DbContextOptions<OdysseyContext> ProbeOptions()
     {
-        var assembly = context.GetService<IMigrationsAssembly>();
-        foreach (var id in assembly.Migrations.Keys.OrderDescending(StringComparer.Ordinal))
-        {
-            var created = assembly.CreateMigration(assembly.Migrations[id], context.Database.ProviderName!)
-                .UpOperations.OfType<CreateTableOperation>().FirstOrDefault();
-            if (created is not null && id != MigrationBaseline.Current.BaselineMigrationId)
-            {
-                return (id, created.Name);
-            }
-        }
-
-        throw new InvalidOperationException("No migration after the baseline creates a table.");
+        var connection = fixture.ConnectionStringFor(Database);
+        return new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(connection, ServerVersion.AutoDetect(connection))
+            .ReplaceService<IMigrationsAssembly, ProbeMigrationsAssembly>()
+            .Options;
     }
 
     [SkippableFact]
@@ -381,5 +378,45 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
         var connection = fixture.ConnectionStringFor(Database);
         return new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connection, ServerVersion.AutoDetect(connection)).Options;
+    }
+}
+
+#pragma warning disable EF1001 // MigrationsAssembly is EF's own implementation; subclassing it keeps the real chain.
+
+/// <summary>
+/// The real migrations plus one probe migration, later than any real id, that creates <see cref="ProbeTable"/>. It
+/// gives the drift tests a table-creating migration after the baseline that does not depend on the chain.
+/// </summary>
+internal sealed class ProbeMigrationsAssembly(
+    Microsoft.EntityFrameworkCore.Infrastructure.ICurrentDbContext currentContext,
+    Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptions options,
+    IMigrationsIdGenerator idGenerator,
+    Microsoft.EntityFrameworkCore.Diagnostics.IDiagnosticsLogger<DbLoggerCategory.Migrations> logger)
+    : Microsoft.EntityFrameworkCore.Migrations.Internal.MigrationsAssembly(currentContext, options, idGenerator, logger)
+{
+    public const string ProbeId = "29991231235959_DriftProbe";
+    public const string ProbeTable = "DriftProbes";
+
+    private IReadOnlyDictionary<string, System.Reflection.TypeInfo>? withProbe;
+
+    public override IReadOnlyDictionary<string, System.Reflection.TypeInfo> Migrations =>
+        withProbe ??= new Dictionary<string, System.Reflection.TypeInfo>(base.Migrations)
+        {
+            [ProbeId] = System.Reflection.IntrospectionExtensions.GetTypeInfo(typeof(DriftProbe)),
+        };
+
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(OdysseyContext))]
+    [Migration(ProbeId)]
+    internal sealed class DriftProbe : Migration
+    {
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        {
+        }
+
+        protected override void Up(MigrationBuilder migrationBuilder) =>
+            migrationBuilder.CreateTable(
+                name: ProbeTable,
+                columns: table => new { Id = table.Column<int>(nullable: false) },
+                constraints: table => table.PrimaryKey("PK_DriftProbes", x => x.Id));
     }
 }

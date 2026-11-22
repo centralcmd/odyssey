@@ -71,7 +71,10 @@ public class SchemaFingerprintParityTests(MariaDbFixture fixture)
         }
     }
 
-    /// <summary>AC 10–11, 13 — the comparison sees a changed CHECK, a changed seeded default, a new row and a view.</summary>
+    /// <summary>
+    /// AC 10–11, 13 — the comparison sees a changed CHECK, a changed seeded default, an inserted row and a view.
+    /// Each change is made to the DATABASE and read back through the real capture, so every case can fail.
+    /// </summary>
     [SkippableFact]
     public async Task The_comparison_fails_on_a_check_a_seeded_default_an_inserted_row_and_a_view()
     {
@@ -79,32 +82,85 @@ public class SchemaFingerprintParityTests(MariaDbFixture fixture)
         try
         {
             var connectionString = await ParityFingerprint.CreateAtAsync(fixture, First, Baseline);
-            var clean = SchemaFingerprint.WithoutHeader(await ParityFingerprint.CaptureAsync(connectionString));
             var committed = SchemaFingerprint.WithoutHeader(Committed());
-            Assert.Equal(committed, clean);
+            async Task<string> CaptureAsync() => SchemaFingerprint.WithoutHeader(await ParityFingerprint.CaptureAsync(connectionString));
+            Assert.Equal(committed, await CaptureAsync());
 
-            // A CHECK expression altered in the committed file.
-            var checkLine = committed.Split('\n').First(line => line.Contains("CONSTRAINT", StringComparison.Ordinal) && line.Contains("CHECK", StringComparison.Ordinal));
-            Assert.NotEqual(committed.Replace(checkLine, checkLine + " ", StringComparison.Ordinal), clean);
+            // A CHECK expression altered: dropped and re-added under its own name with a different clause.
+            var (table, name, clause) = await FirstCheckAsync(connectionString);
+            await ExecuteAsync(connectionString,
+                $"ALTER TABLE `{table}` DROP CONSTRAINT `{name}`; ALTER TABLE `{table}` ADD CONSTRAINT `{name}` CHECK (({clause}) AND 1 = 1)");
+            var withCheck = await CaptureAsync();
+            Assert.NotEqual(committed, withCheck);
+            Assert.Contains("1 = 1", withCheck[..withCheck.IndexOf(SchemaFingerprint.SeedRowsSection, StringComparison.Ordinal)]);
+            await ExecuteAsync(connectionString,
+                $"ALTER TABLE `{table}` DROP CONSTRAINT `{name}`; ALTER TABLE `{table}` ADD CONSTRAINT `{name}` CHECK ({clause})");
+            Assert.Equal(committed, await CaptureAsync());
 
-            // A seeded SystemSettings default altered in the committed file's parity section.
-            var parity = committed[committed.IndexOf(SchemaFingerprint.ParityRowsSection, StringComparison.Ordinal)..];
-            var settings = parity[parity.IndexOf("table `SystemSettings`", StringComparison.Ordinal)..].Split('\n');
-            var settingRow = settings[2];
-            Assert.NotEqual(committed.Replace(settingRow, settingRow + "0", StringComparison.Ordinal), clean);
+            // A seeded SystemSettings default changed.
+            await ExecuteAsync(connectionString,
+                "UPDATE `SystemSettings` SET `Value` = CONCAT(`Value`, '0') ORDER BY `Key` LIMIT 1");
+            Assert.NotEqual(committed, await CaptureAsync());
+            await ExecuteAsync(connectionString,
+                "UPDATE `SystemSettings` SET `Value` = LEFT(`Value`, CHAR_LENGTH(`Value`) - 1) ORDER BY `Key` LIMIT 1");
+            Assert.Equal(committed, await CaptureAsync());
 
             // A row inserted into the database.
             await ExecuteAsync(connectionString,
                 "INSERT INTO `Currencies` (`CurrencyCode`, `Name`, `MinorUnits`) VALUES ('ZZZ', 'Test', 2)");
-            Assert.NotEqual(committed, SchemaFingerprint.WithoutHeader(await ParityFingerprint.CaptureAsync(connectionString)));
+            Assert.NotEqual(committed, await CaptureAsync());
             await ExecuteAsync(connectionString, "DELETE FROM `Currencies` WHERE `CurrencyCode` = 'ZZZ'");
-            Assert.Equal(committed, SchemaFingerprint.WithoutHeader(await ParityFingerprint.CaptureAsync(connectionString)));
+            Assert.Equal(committed, await CaptureAsync());
 
             // A view.
             await ExecuteAsync(connectionString, "CREATE VIEW `ParityProbe` AS SELECT 1 AS `One`");
-            var withView = SchemaFingerprint.WithoutHeader(await ParityFingerprint.CaptureAsync(connectionString));
+            var withView = await CaptureAsync();
             Assert.Contains("other object: view ParityProbe", withView);
             Assert.NotEqual(committed, withView);
+        }
+        finally
+        {
+            await ParityFingerprint.DropAsync(fixture, First);
+        }
+    }
+
+    private static async Task<(string Table, string Name, string Clause)> FirstCheckAsync(string connectionString)
+    {
+        await using var connection = new MySqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new MySqlCommand(
+            "SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS " +
+            "WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY TABLE_NAME, CONSTRAINT_NAME LIMIT 1", connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync(), "The baseline creates no CHECK constraint to alter.");
+        return (reader.GetString(0), reader.GetString(1), reader.GetString(2));
+    }
+
+    /// <summary>
+    /// The volatile-column mechanism itself, with a synthetic exclusion (the declared list is empty today, so the
+    /// live test above cannot exercise it): a value of the declared shape is masked, any other is refused.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_volatile_column_is_masked_only_when_its_value_has_the_declared_shape()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        try
+        {
+            var connectionString = await ParityFingerprint.CreateAtAsync(fixture, First, Baseline);
+            await using var connection = new MySqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            var guid = new ParityFingerprint.VolatileColumn("AspNetRoles", "ConcurrencyStamp", "synthetic",
+                new System.Text.RegularExpressions.Regex("^[0-9a-f-]{36}$"));
+            var masked = new StringWriter();
+            await ParityFingerprint.WriteParityRowsAsync(connection, masked, [guid]);
+            var roles = masked.ToString()[masked.ToString().IndexOf("table `AspNetRoles`", StringComparison.Ordinal)..]
+                .Split('\n').Skip(2).Take(4).ToList();
+            Assert.All(roles, row => Assert.EndsWith("\t" + ParityFingerprint.VolatilePlaceholder, row));
+
+            var digits = guid with { Shape = new System.Text.RegularExpressions.Regex("^[0-9]+$") };
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => ParityFingerprint.WriteParityRowsAsync(connection, new StringWriter(), [digits]));
         }
         finally
         {
@@ -155,6 +211,27 @@ public class SchemaFingerprintParityTests(MariaDbFixture fixture)
                 SchemaFingerprint.WithoutHeader(SchemaFingerprint.OperatorSectionsOf(Committed())),
                 SchemaFingerprint.WithoutHeader(output.ToString()));
             Assert.Equal(before, await ParityFingerprint.CaptureAsync(connectionString));
+        }
+        finally
+        {
+            await ParityFingerprint.DropAsync(fixture, First);
+        }
+    }
+
+    /// <summary>The mode's session refuses a write, whatever the account could do.</summary>
+    [SkippableFact]
+    public async Task The_fingerprint_session_is_read_only()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        try
+        {
+            var connectionString = await ParityFingerprint.CreateAtAsync(fixture, First, Baseline);
+            await using var connection = await SchemaFingerprintCommand.OpenReadOnlyAsync(connectionString);
+            await using var insert = new MySqlCommand(
+                "INSERT INTO `Currencies` (`CurrencyCode`, `Name`, `MinorUnits`) VALUES ('ZZZ', 'Test', 2)", connection);
+
+            var error = await Assert.ThrowsAsync<MySqlException>(() => insert.ExecuteNonQueryAsync());
+            Assert.Equal(MySqlErrorCode.CannotExecuteInReadOnlyTransaction, error.ErrorCode);
         }
         finally
         {

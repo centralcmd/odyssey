@@ -330,6 +330,46 @@ public partial class MigrationRebaselineTests
     private static IConfiguration Configuration(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
+    /// <summary>
+    /// The switch is handled in <c>Program.cs</c> BEFORE the host is built: the real executable, asked for a
+    /// fingerprint of an in-memory database, refuses with the mode's own exit code and writes no host log line —
+    /// a host that had started would run the worker, migrate and log instead.
+    /// </summary>
+    [Fact]
+    public async Task The_executable_handles_the_switch_before_building_the_host()
+    {
+        var start = new System.Diagnostics.ProcessStartInfo("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            WorkingDirectory = AppContext.BaseDirectory,
+        };
+        start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "Odyssey.MigrationService.dll"));
+        start.ArgumentList.Add(SchemaFingerprintCommand.Switch);
+        start.Environment["UseInMemoryDatabase"] = "true";
+
+        using var process = System.Diagnostics.Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+        await process.WaitForExitAsync(timeout.Token);
+
+        Assert.Equal(SchemaFingerprintCommand.Refused, process.ExitCode);
+        Assert.Equal("", await output);
+        Assert.Contains("Schema fingerprint refused", await error);
+    }
+
+    [Fact]
+    public void The_configuration_reads_the_command_line_and_drops_the_switch()
+    {
+        var configuration = SchemaFingerprintCommand.BuildConfiguration(
+            [SchemaFingerprintCommand.Switch, "--ConnectionStrings:OdysseyConnection=Server=from-args"]);
+
+        Assert.Equal("Server=from-args", configuration.GetConnectionString("OdysseyConnection"));
+        Assert.DoesNotContain(configuration.AsEnumerable(), pair => pair.Key.Contains("schema-fingerprint", StringComparison.Ordinal));
+    }
+
     // The guard's non-relational short-circuit
 
     [Fact]

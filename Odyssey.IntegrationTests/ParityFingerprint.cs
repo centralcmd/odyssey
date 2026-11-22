@@ -104,8 +104,11 @@ internal static partial class ParityFingerprint
     }
 
     /// <summary>Appends <c>[parity-rows]</c>: every row of every base table but the history, in key order.</summary>
-    public static async Task WriteParityRowsAsync(DbConnection connection, TextWriter output)
+    /// <param name="volatileColumns">The exclusions to apply; <see cref="VolatileColumns"/> when null.</param>
+    public static async Task WriteParityRowsAsync(
+        DbConnection connection, TextWriter output, IReadOnlyList<VolatileColumn>? volatileColumns = null)
     {
+        volatileColumns ??= VolatileColumns;
         await RefuseUnlessParityDatabaseAsync(connection);
 
         var tables = await SchemaCapture.ReadBaseTablesAsync(connection);
@@ -120,7 +123,7 @@ internal static partial class ParityFingerprint
             output.Write($"table {SchemaCapture.Quote(table)}\n{string.Join('\t', names)}\n");
 
             var volatileAt = names
-                .Select((name, index) => (index, column: VolatileColumns.SingleOrDefault(v => v.Table == table && v.Column == name)))
+                .Select((name, index) => (index, column: volatileColumns.SingleOrDefault(v => v.Table == table && v.Column == name)))
                 .Where(pair => pair.column is not null)
                 .ToDictionary(pair => pair.index, pair => pair.column!);
 

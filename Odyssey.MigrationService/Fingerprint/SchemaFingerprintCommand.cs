@@ -40,6 +40,28 @@ internal static class SchemaFingerprintCommand
             .Build();
     }
 
+    /// <summary>
+    /// Opens the session the mode reads through: every statement after this one runs in a <c>READ ONLY</c>
+    /// transaction, so a write to a table fails even when the account could make it.
+    /// </summary>
+    internal static async Task<MySqlConnection> OpenReadOnlyAsync(string connectionString, CancellationToken ct = default)
+    {
+        var connection = new MySqlConnection(connectionString);
+        try
+        {
+            await connection.OpenAsync(ct);
+            await using var readOnly = connection.CreateCommand();
+            readOnly.CommandText = "SET SESSION TRANSACTION READ ONLY";
+            await readOnly.ExecuteNonQueryAsync(ct);
+            return connection;
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
+    }
+
     public static async Task<int> RunAsync(
         IConfiguration configuration, TextWriter output, TextWriter error, CancellationToken ct = default)
     {
@@ -53,14 +75,7 @@ internal static class SchemaFingerprintCommand
         try
         {
             var connectionString = configuration.GetRequiredConnectionString("OdysseyConnection");
-            await using var connection = new MySqlConnection(connectionString);
-            await connection.OpenAsync(ct);
-
-            await using (var readOnly = connection.CreateCommand())
-            {
-                readOnly.CommandText = "SET SESSION TRANSACTION READ ONLY";
-                await readOnly.ExecuteNonQueryAsync(ct);
-            }
+            await using var connection = await OpenReadOnlyAsync(connectionString, ct);
 
             // Buffered, so a failure part-way prints nothing rather than a truncated fingerprint.
             var buffer = new StringWriter();

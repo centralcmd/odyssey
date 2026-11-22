@@ -73,8 +73,15 @@ environment. The mode builds no host, so it starts no seeder or migration, and i
 `READ ONLY`. It refuses `UseInMemoryDatabase`. On a failure it prints one fixed line and the
 exception's type name, never the connector's message, which can carry the host, port and user.
 
-Give it a dedicated account where you can. `SELECT` is enough, since it reads only
-`information_schema`, `SHOW CREATE TABLE` and the seeded tables.
+Give it a dedicated account that can only read: `SELECT` on the database is enough, since it reads
+only `information_schema`, `SHOW CREATE TABLE` and the seeded tables. The session's `READ ONLY` is a
+second barrier, not a substitute for least privilege. Also note:
+
+- **Pass the connection string through the environment, as above,** never as a command-line argument.
+  The mode accepts `--ConnectionStrings:OdysseyConnection=…` like the host does, but an argument shows
+  the password in `ps` and in shell history.
+- **Treat the output as internal.** It discloses the server version and the full schema. Attach it to
+  the rebaseline PR only while the repository is private, and nowhere public.
 
 Compare the output with the committed file, dropping the header lines and the parity section:
 
