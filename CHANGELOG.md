@@ -8,6 +8,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 Entries start at 0.16.0; releases before it are recorded only in the
 [GitHub tags](https://github.com/centralcmd/odyssey/tags).
 
+## [0.50.1](https://github.com/centralcmd/odyssey/compare/v0.50.0...v0.50.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **infra:** raise the client nginx request-header buffers to 32k ([#584](https://github.com/centralcmd/odyssey/issues/584)) ([f4d7702](https://github.com/centralcmd/odyssey/commit/f4d77026e382fa84da5eef3c918bf9f7899a0a69))
+
 ## [0.50.0](https://github.com/centralcmd/odyssey/compare/v0.49.0...v0.50.0) (2026-11-22)
 
 
