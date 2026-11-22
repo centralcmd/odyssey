@@ -440,6 +440,218 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Book", b =>
+                {
+                    b.Property<Guid>("BookId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<int>("Format")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Isbn")
+                        .HasMaxLength(13)
+                        .HasColumnType("varchar(13)");
+
+                    b.Property<Guid>("MainAuthorContactId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(8000)
+                        .HasColumnType("varchar(8000)");
+
+                    b.Property<string>("Publisher")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("BookId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Isbn");
+
+                    b.HasIndex("MainAuthorContactId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Title");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("Books");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookAttachment", b =>
+                {
+                    b.Property<Guid>("BookAttachmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("BookId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("BookAttachmentId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("BookId", "FileId")
+                        .IsUnique();
+
+                    b.ToTable("BookAttachments");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookContributor", b =>
+                {
+                    b.Property<Guid>("BookContributorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("BookId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ContactId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("BookContributorId");
+
+                    b.HasIndex("ContactId");
+
+                    b.HasIndex("BookId", "ContactId")
+                        .IsUnique();
+
+                    b.ToTable("BookContributors");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookImage", b =>
+                {
+                    b.Property<Guid>("BookImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("BookId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsCover")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("BookImageId");
+
+                    b.HasIndex("PhotoId");
+
+                    b.HasIndex("BookId", "PhotoId")
+                        .IsUnique();
+
+                    b.ToTable("BookImages");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookTag", b =>
+                {
+                    b.Property<Guid>("BookTagId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("Archived")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("BookTagId");
+
+                    b.HasIndex("Archived");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("BookTags");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookTagLink", b =>
+                {
+                    b.Property<Guid>("BookTagLinkId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("BookId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("BookTagId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("BookTagLinkId");
+
+                    b.HasIndex("BookTagId");
+
+                    b.HasIndex("BookId", "BookTagId")
+                        .IsUnique();
+
+                    b.ToTable("BookTagLinks");
+                });
+
             modelBuilder.Entity("Odyssey.Context.Budget", b =>
                 {
                     b.Property<Guid>("BudgetId")
@@ -8634,6 +8846,95 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Location");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Book", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("MainAuthorContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookAttachment", b =>
+                {
+                    b.HasOne("Odyssey.Context.Book", "Book")
+                        .WithMany("Attachments")
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.FileMetadata", null)
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookContributor", b =>
+                {
+                    b.HasOne("Odyssey.Context.Book", "Book")
+                        .WithMany("Contributors")
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookImage", b =>
+                {
+                    b.HasOne("Odyssey.Context.Book", "Book")
+                        .WithMany("Images")
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookTagLink", b =>
+                {
+                    b.HasOne("Odyssey.Context.Book", "Book")
+                        .WithMany("TagLinks")
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.BookTag", "BookTag")
+                        .WithMany("Links")
+                        .HasForeignKey("BookTagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+
+                    b.Navigation("BookTag");
+                });
+
             modelBuilder.Entity("Odyssey.Context.Budget", b =>
                 {
                     b.HasOne("Odyssey.Context.Currency", null)
@@ -10139,6 +10440,22 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("SmartTags");
 
                     b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.Book", b =>
+                {
+                    b.Navigation("Attachments");
+
+                    b.Navigation("Contributors");
+
+                    b.Navigation("Images");
+
+                    b.Navigation("TagLinks");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.BookTag", b =>
+                {
+                    b.Navigation("Links");
                 });
 
             modelBuilder.Entity("Odyssey.Context.Budget", b =>

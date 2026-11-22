@@ -56,8 +56,8 @@ Until then, treat **v9** as the truth.
   only in a `material-icons` span (`OdsMIcon`, the Ods pickers and rails) — never in `MudIcon.Icon`.
 - **Attaching a file or a photo goes through ONE dialog per medium**, never a per-surface upload
   dialog: `Pages/Attachments/AttachDocumentsDialog` (Upload new · From Files) for accounts,
-  transactions, tax statements, contracts, properties, journal entries and tasks, and
-  `AttachPhotosDialog` (Upload new · From Photos) for journal entries, albums and the Photos page
+  transactions, tax statements, contracts, properties, journal entries, tasks and books, and
+  `AttachPhotosDialog` (Upload new · From Photos) for journal entries, albums, books and the Photos page
   (DS `ui_kits/web/AttachDocumentsModal.jsx` / `AttachPhotosModal.jsx`). They live under `Pages/`,
   not `Components/`, because they inject API clients — no `Ods*` atom does. The dialog uploads and
   hands each file to the host's `Attach` callback; the host owns the link, its request shape and

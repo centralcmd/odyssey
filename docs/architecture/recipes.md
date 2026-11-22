@@ -15,7 +15,7 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
   it, `hasAttachments` is a `403`, and `attachmentFileIds: null` on `PUT` leaves the links alone. A linked file must be
   visible in the Files store (`FileReferenceCounter.VisibleInFilesStore`), so a photo's own original cannot be linked
   under `files.read`. Links are unordered and come back by file name. Recipe uploads go to the shared **Library** area
-  (`FileUploadArea.Library`, `library-files/`), which books and music will reuse — placement only, never access.
+  (`FileUploadArea.Library`, `library-files/`), shared with books (#527) — placement only, never access.
 - **Ingredient and step positions are not unique; photo, file and tag pairs are.** Children are replaced wholesale in one
   save, which a unique position index would break on MariaDB (EF does not order a delete before an insert); links
   are diffed in place so their unique pairs never see a delete and re-insert. Only `Odyssey.IntegrationTests` shows

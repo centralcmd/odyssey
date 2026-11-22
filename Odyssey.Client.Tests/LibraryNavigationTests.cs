@@ -13,14 +13,16 @@ public class LibraryNavigationTests
     private static Func<NavPage, bool> Holding(params string[] claims) => page => page.Claim is null || claims.Contains(page.Claim);
 
     [Fact]
-    public void The_library_module_holds_recipes_then_recipe_tags()
+    public void The_library_module_holds_books_and_recipes_then_their_tag_pages()
     {
         var module = NavModel.All.Single(m => m.Key == "library");
 
         Assert.Equal(("Library", "local_library"), (module.Label, module.Icon));
         Assert.Equal([null, "Reference"], module.Groups.Select(g => g.Label));
         Assert.Equal(
-            [("recipes", "Recipes", "restaurant_menu", "recipes", PermissionClaims.RecipesRead),
+            [("books", "Books", "auto_stories", "books", PermissionClaims.BooksRead),
+                ("recipes", "Recipes", "restaurant_menu", "recipes", PermissionClaims.RecipesRead),
+                ("book-tags", "Book Tags", "local_offer", "book-tags", PermissionClaims.BookTagsRead),
                 ("recipe-tags", "Recipe Tags", "local_offer", "recipe-tags", PermissionClaims.RecipeTagsRead)],
             module.Groups.SelectMany(g => g.Items).Select(p => (p.Key, p.Label, p.Icon, p.Href, p.Claim)));
     }

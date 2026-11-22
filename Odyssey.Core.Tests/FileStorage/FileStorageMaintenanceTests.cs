@@ -143,7 +143,7 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
     [Fact]
     public void Every_key_to_stored_objects_belongs_to_one_feature_and_is_restrict()
     {
-        // Production: photo thumbnails (issue #362), photo originals (issue #428) and the four file areas (issue #448, Library: issue #525,
+        // Production: photo thumbnails (issue #362), photo originals (issue #428) and the four file areas (issues #448, #527,
         // one column per feature on FileMetadata), the news articles (issue #470, NewsArticleFiles), podcast audio and
         // artwork (issue #556, PodcastEpisodeAudio and PodcastArtworkFiles), and exactly their keys.
         using var production = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-prod").Options);
@@ -227,7 +227,8 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
 
         Assert.Equal(
             [StoredFileAreas.ContactAvatarFeatureKey, StoredFileAreas.FinanceFeatureKey, StoredFileAreas.JournalFeatureKey,
-             StoredFileAreas.LibraryFeatureKey, NewsArticleStorage.FeatureKey, PhotoOriginalStorage.FeatureKey, PhotoThumbnailStorage.FeatureKey,
+             StoredFileAreas.LibraryFeatureKey,
+             NewsArticleStorage.FeatureKey, PhotoOriginalStorage.FeatureKey, PhotoThumbnailStorage.FeatureKey,
              Odyssey.Core.Internet.News.Podcasts.Files.PodcastArtworkStorage.FeatureKey, Odyssey.Core.Internet.News.Podcasts.Files.PodcastAudioStorage.FeatureKey],
             features.Select(f => f.Key).Order(StringComparer.Ordinal));
         Assert.All(features, f => Assert.Equal(StorageReleaseMode.Graced, f.ReleaseMode));

@@ -1,0 +1,81 @@
+@using Odyssey.Client.Components
+@using Odyssey.Client.Services
+@using Odyssey.Dtos.Books
+@using Odyssey.Dtos.Journal
+@inject IPhotosApiClient PhotosApi
+
+@*
+    BookImageGrid — a book's images (design system · Books.jsx BookImageGrid): the JournalPhotoGallery tile (the
+    shared odc-photogrid classes and OdsPhotoImage), cover first, the cover labelled "Cover" in VISIBLE text — never
+    by position or colour alone. The gallery has no badge or per-tile menu yet, so this is the page-local addition
+    the design records. Each tile carries its own ⋯ menu with books.update (the contract party-tile shape):
+    Make cover / Remove cover · Open · — · Detach (the link only; the photo stays in the library).
+*@
+
+<ul class="odc-photogrid-list bk-images" aria-label="@BookVisuals.Plural(Images.Count, "image", "images")">
+    @foreach (var (image, index) in Images.Select((x, i) => (x, i)))
+    {
+        var img = image;
+        var name = PhotoMappers.Label(img.Title, img.FileName, $"Image {index + 1}");
+        var cover = img.IsCover;
+        var source = PhotoImageSources.For(img.PhotoId, img.ThumbnailsReady, ThumbnailSize.Small, new PhotoImageAccess(true), PhotosApi);
+        <li class="odc-photogrid-item bk-image-cell" @key="img.PhotoId">
+            <button type="button" class="odc-photogrid-tile bk-image"
+                    aria-label="@($"Open {name}{(cover ? ", cover" : "")}")" title="@name"
+                    @onclick="@(() => OnOpen.InvokeAsync(img.PhotoId))">
+                @if (!source.IsEmpty)
+                {
+                    <OdsPhotoImage Source="source" Alt="" Class="odc-photogrid-img"
+                                   PlaceholderClass="odc-photogrid-ph odc-photogrid-ph-fallback">
+                        <Placeholder><span class="odc-photogrid-ph-label mono">photo</span></Placeholder>
+                    </OdsPhotoImage>
+                }
+                else
+                {
+                    <span class="odc-photogrid-ph" aria-hidden="true"><span class="odc-photogrid-ph-label mono">photo</span></span>
+                }
+                @if (cover)
+                {
+                    <span class="bk-image-badge" aria-hidden="true">Cover</span>
+                }
+            </button>
+            @if (CanUpdate)
+            {
+                <span class="bk-image-menu">
+                    <OdsMenu Items="@MenuFor(img, name)" AriaLabel="@($"Actions for image: {name}")" />
+                </span>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    /// <summary>The images, already in display order (cover first).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<BookImageDto> Images { get; set; } = [];
+
+    [Parameter] public EventCallback<Guid> OnOpen { get; set; }
+
+    /// <summary><c>books.update</c>: the per-tile menu.</summary>
+    [Parameter] public bool CanUpdate { get; set; }
+
+    /// <summary>Make cover (the photo id) or Remove cover (<c>null</c>).</summary>
+    [Parameter] public EventCallback<Guid?> OnSetCover { get; set; }
+
+    [Parameter] public EventCallback<Guid> OnDetach { get; set; }
+
+    private IReadOnlyList<OdsMenuItem> MenuFor(BookImageDto image, string name) =>
+    [
+        image.IsCover
+            ? new OdsMenuItem { Icon = "hide_image", Label = "Remove cover", OnClick = EventCallback.Factory.Create(this, () => OnSetCover.InvokeAsync(null)) }
+            : new OdsMenuItem { Icon = "star", Label = "Make cover", OnClick = EventCallback.Factory.Create(this, () => OnSetCover.InvokeAsync(image.PhotoId)) },
+        new OdsMenuItem { Icon = "open_in_full", Label = "Open", OnClick = EventCallback.Factory.Create(this, () => OnOpen.InvokeAsync(image.PhotoId)) },
+        new OdsMenuItem { Divider = true },
+        new OdsMenuItem
+        {
+            Icon = "link_off",
+            Label = "Detach",
+            Danger = true,
+            OnClick = EventCallback.Factory.Create(this, () => OnDetach.InvokeAsync(image.PhotoId)),
+        },
+    ];
+}

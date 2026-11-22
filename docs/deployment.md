@@ -1704,7 +1704,7 @@ access boundary: who may read a file is still decided by the claim of the record
 | Finance | `FinanceFiles` | `finance-files/` | Account, transaction, contract, tax-statement and property documents; file-analysis uploads; anything not linked to a journal record |
 | Journal | `JournalFiles` | `journal-files/` | Journal-entry and task attachments |
 | Contacts | `ContactAvatars` | `contact-avatars/` | Contact images |
-| Library | `LibraryFiles` | `library-files/` | Files uploaded from the Library module — recipe attachments (issue #525), and books and music when they ship |
+| Library | `LibraryFiles` | `library-files/` | Library-module files: book attachments (e-books, PDFs, papers; #527) and recipe files (#525) |
 
 Each file sits at `<root>/<upload year>/<bucket>/<sanitized original name>.<extension>`. The area is chosen once,
 at upload: the upload form sends `area` (`Finance`, `Journal` or `Library`), the avatar path always writes `ContactAvatars`.
@@ -1714,11 +1714,6 @@ A file later attached somewhere else stays where it was put.
   `__ContactAvatars`, `__LibraryFiles`) on **both** `api` and `worker`; the base compose file and the AppHost bind them
   to `primary`. Without them both refuse to start (check B1). `FileStorageDeploymentParityTests` keeps the shipped
   files identical.
-- **Upgrade note (issue #525):** `LibraryFiles` is new. The shipped compose file and AppHost already bind it; an operator
-  with a **custom compose file** must add `FileStorage__Bindings__LibraryFiles` to `api` and `worker` (bind it to the
-  same volume as the other areas), or both refuse to start after the upgrade.
-  The migration (`AddRecipeAttachmentsAndLibraryFiles`) re-creates the `FileMetadata` one-source CHECK and adds a unique
-  index, both of which scan the table: expect a brief metadata lock on a large installation.
 - **`POST /api/files`** takes a required `area` form field, validates `description` at 256 characters, and is
   rate-limited per user by `RateLimiting:FileUpload` (120 per 10 minutes by default); the contact-avatar upload
   shares that limit. An upload refuses with `507` when the volume is below the reserve (the store's 1 GB floor
@@ -1748,9 +1743,38 @@ old volume must stay mounted. Plan the split before the upgrade, while the area 
 A deleted file waits for the deletion grace (default 24 h) before the hourly maintenance pass removes it from disk;
 for an erasure request that cannot wait, follow the procedure under [Erasure of a photo
 original](#erasure-of-a-photo-original). The file name on disk is the sanitized original name — personal data —
-so never log or share a volume listing. All three areas are **primary data**: every volume they are bound to
+so never log or share a volume listing. All four areas are **primary data**: every volume they are bound to
 must be in every backup, copied after the database dump and within the grace (see [Backup and
 restore](#backup-and-restore)).
+
+## Books: the Library file area and EPUB uploads
+
+Books (issue #527) adds a fourth file area, `LibraryFiles` (`library-files/`), for the files attached to book
+records, and accepts EPUB (`application/epub+zip`) on **every** upload surface.
+
+### Release note
+
+- **Bind `LibraryFiles` before you upgrade.** Add `FileStorage__Bindings__LibraryFiles` to **both** `api` and
+  `worker` (the base compose file and the AppHost bind it to `primary`, like the other three areas). A host with
+  volumes and the feature unbound refuses to start (check B1). Keep the two services identical.
+- **One migration**, `AddBooks`: the six book tables, one nullable column `FileMetadata.LibraryStoredObjectId`
+  (`RESTRICT` to `StoredObjects`, unique), and `CK_FileMetadata_ExactlyOneSource` re-created to count it. Re-adding
+  the check re-validates every `FileMetadata` row, which on MariaDB rebuilds the table under a lock: **time it on a
+  production-sized copy** before the upgrade window.
+- **Rollback.** `Down()` restores the schema only. Once any file has been uploaded with `area: Library`, dropping the
+  column would orphan those files, so roll back by **restoring a backup**, not by `Down()`.
+- **A contact credited on a book can no longer be deleted** until it is removed from those books (`409` with a
+  `bookCredits` body). `detachBlockingLinks=true` does not remove book credits.
+- **EPUB is accepted everywhere files are uploaded.** The server checks the EPUB container signature (a ZIP whose
+  first entry is the uncompressed `mimetype` file naming `application/epub+zip`); an EPUB is downloaded, never
+  rendered.
+
+### Erasure of a credited contact
+
+Deleting a contact who is the main author or a contributor on any book is refused. An erasure request is handled by
+reassigning the main author (or deleting the book) and removing the contributor rows, then deleting the contact.
+That needs `books.update` (or `books.delete`), `contacts.read` and `contacts.delete`; in the shipped roles it is an
+Admin or Owner task.
 
 ## News reader: feeds, what leaves the deployment, and the worker's network
 

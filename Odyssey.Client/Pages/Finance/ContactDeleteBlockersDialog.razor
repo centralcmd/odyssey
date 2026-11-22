@@ -1,4 +1,5 @@
 @using Odyssey.Client.Components
+@using Odyssey.Dtos.Books
 @using Odyssey.Dtos.Finance
 
 @*
@@ -22,105 +23,193 @@
     Meaning never rides on a glyph: the blocking role is named in text alongside its row count.
 *@
 
-<OdsFormDialog Open="Open"
-               OpenChanged="OpenChanged"
-               Icon="@(_result is null ? "block" : "link_off")"
-               IconTone="@(_result is null ? OdsModalTone.Error : OdsModalTone.Brand)"
-               Title="@(_result is null ? "Unable to delete this contact" : "Contact deleted")"
-               Subtitle="@(_result is null
-                   ? "It is named as a beneficiary on contracts. Detach those links to delete it."
-                   : "The links and the contact were removed in one transaction.")"
-               ShowCancel="@(_result is null)"
-               SubmitLabel="@(_result is null ? "Detach links & delete" : "Done")"
-               SubmitIcon="@(_result is null ? "link_off" : "check")"
-               SubmitVariant="@(_result is null ? OdsButtonVariant.Danger : OdsButtonVariant.Filled)"
-               ShowSubmit="@(_result is not null || CanDetach)"
-               OnSubmit="SubmitAsync">
-
-    @if (_result is { } result)
-    {
-        <OdsAlert Severity="Severity.Info">
-            <strong>@result.ContractBeneficiaryLinks link@(result.ContractBeneficiaryLinks == 1 ? "" : "s") detached</strong>
-            @if (result.AffectedContractIds.Count > 0)
+@*
+    The books state (issue #571 §3.10.1; DS ContactLinksBlockedModal): a contact credited as a book's main author or
+    a contributor cannot be deleted (RESTRICT keys) and nothing here releases it — the credit is removed on the Books
+    page. So no detach and no contracts-permission warning; Close only, which is where focus starts. Mixed with
+    contract beneficiaries, the subtitle says the books come first.
+*@
+@if (BlockedByBooks && _result is null)
+{
+    <OdsFormDialog Open="Open"
+                   OpenChanged="OpenChanged"
+                   Icon="block"
+                   IconTone="OdsModalTone.Error"
+                   Title="Unable to delete this contact"
+                   Subtitle="@(BlockedByContracts
+                       ? "It is credited as an author or contributor on books and named as a beneficiary on contracts. Remove it from those books first; the contract links can then be detached here."
+                       : "It is credited as an author or contributor on books. Remove it from those books first.")"
+                   RequiredLegend="false"
+                   InitialFocus="OdsModalInitialFocus.Cancel"
+                   CancelLabel="Close"
+                   ShowSubmit="false">
+        <OdsAlert Severity="Severity.Error" Live="@(DetachRefused ? OdsAlertLive.Alert : null)">
+            @if (DetachRefused)
             {
-                <text> across @result.AffectedContractIds.Count contract@(result.AffectedContractIds.Count == 1 ? "" : "s")</text>
-            }, then the contact was deleted.
+                <text>Nothing was deleted. This contact is also credited on books. </text>
+            }
+            @if (BookCountsKnown)
+            {
+                <strong>@ContactName</strong> <text>is credited on @BookCredits!.BookCount book@(BookCredits.BookCount == 1 ? "" : "s")
+                (@BookCredits.TotalCredits credit@(BookCredits.TotalCredits == 1 ? "" : "s")).</text>
+            }
+            else
+            {
+                <strong>@ContactName</strong> <text>is credited on one or more books.</text>
+            }
         </OdsAlert>
 
         <ul class="cpl-kinds">
             <li>
-                <span class="material-icons" aria-hidden="true">handshake</span>
-                <span class="cpl-kind-name">Contract beneficiary</span>
-                <span class="cpl-kind-count">@result.ContractBeneficiaryLinks</span>
-            </li>
-        </ul>
-
-        <p class="cpl-note">
-            The contracts themselves are untouched — each stands with one fewer party.
-        </p>
-    }
-    else
-    {
-        <OdsAlert Severity="Severity.Error">
-            <strong>@ContactName</strong> holds @TotalBlockingLinks
-            link@(TotalBlockingLinks == 1 ? "" : "s") that must be detached first.
-        </OdsAlert>
-
-        @* Which KIND blocks, always — the counts are link rows, the same thing every other surface
-           counts, and the part no claim withholds. *@
-        <ul class="cpl-kinds">
-            <li>
-                <span class="material-icons" aria-hidden="true">handshake</span>
-                <span class="cpl-kind-name">Contract beneficiary</span>
-                <span class="cpl-kind-note">receives under the agreement</span>
-                <span class="cpl-kind-count">@ContractBeneficiaries.TotalLinks</span>
-            </li>
-        </ul>
-
-        @if (ContractBeneficiaries.Contracts.Count > 0)
-        {
-            <OdsSectionDivider Label="Blocking contracts"
-                               Meta="@($"{ContractBeneficiaries.ContractCount} record{(ContractBeneficiaries.ContractCount == 1 ? "" : "s")}")"
-                               HeadingLevel="0" />
-            @* A list of records, marked up as one — same as the .cpl-kinds block above. Reading as
-               a list visually while being a run of divs programmatically is exactly the 1.3.1 gap. *@
-            <ul class="cpl-policies">
-                @foreach (var contract in ContractBeneficiaries.Contracts)
+                <span class="material-icons" aria-hidden="true">auto_stories</span>
+                <span class="cpl-kind-name">Book credit</span>
+                <span class="cpl-kind-note">author or contributor</span>
+                @if (BookCountsKnown)
                 {
-                    <li class="cpl-policy">
-                        <span class="material-icons" aria-hidden="true">handshake</span>
-                        <span class="cpl-policy-name">@contract.ContractName</span>
-                        <span class="cpl-policy-kinds">Beneficiary</span>
-                    </li>
+                    <span class="cpl-kind-count">@BookCredits!.TotalCredits</span>
                 }
-            </ul>
-        }
-        else
-        {
-            @* The server withheld the identifiers because the caller cannot read contract records.
-               Saying so beats rendering an empty list that reads as "no contracts". The COUNT above
-               is what the detach actually needs, so the absence costs the user nothing. *@
-            <p class="cpl-note">
-                Which contracts these are is not shown, because you do not have access to contract
-                records. The count is what the detach needs.
-            </p>
-        }
+            </li>
+            @if (BlockedByContracts)
+            {
+                <li>
+                    <span class="material-icons" aria-hidden="true">handshake</span>
+                    <span class="cpl-kind-name">Contract beneficiary</span>
+                    <span class="cpl-kind-note">receives under the agreement</span>
+                    <span class="cpl-kind-count">@ContractBeneficiaries.TotalLinks</span>
+                </li>
+            }
+        </ul>
 
-        @if (CanDetach)
+        @if (BookCountsKnown)
         {
+            @if (BookCredits!.Books.Count > 0)
+            {
+                <OdsSectionDivider Label="Blocking books"
+                                   Meta="@($"{BookCredits.BookCount} record{(BookCredits.BookCount == 1 ? "" : "s")}")"
+                                   HeadingLevel="0" />
+                <ul class="cpl-policies">
+                    @foreach (var book in BookCredits.Books)
+                    {
+                        <li class="cpl-policy" @key="book.BookId">
+                            <span class="material-icons" aria-hidden="true">auto_stories</span>
+                            <span class="cpl-policy-name">@book.Title</span>
+                        </li>
+                    }
+                </ul>
+                @if (BookCredits.BookCount > BookCredits.Books.Count)
+                {
+                    <p class="cpl-note">And @(BookCredits.BookCount - BookCredits.Books.Count) more.</p>
+                }
+            }
+            else
+            {
+                @* The server withheld the titles because the caller cannot read book records. *@
+                <p class="cpl-note">Which books these are is not shown, because you do not have access to book records.</p>
+            }
+        }
+    </OdsFormDialog>
+}
+else
+{
+    <OdsFormDialog Open="Open"
+                   OpenChanged="OpenChanged"
+                   Icon="@(_result is null ? "block" : "link_off")"
+                   IconTone="@(_result is null ? OdsModalTone.Error : OdsModalTone.Brand)"
+                   Title="@(_result is null ? "Unable to delete this contact" : "Contact deleted")"
+                   Subtitle="@(_result is null
+                       ? "It is named as a beneficiary on contracts. Detach those links to delete it."
+                       : "The links and the contact were removed in one transaction.")"
+                   ShowCancel="@(_result is null)"
+                   SubmitLabel="@(_result is null ? "Detach links & delete" : "Done")"
+                   SubmitIcon="@(_result is null ? "link_off" : "check")"
+                   SubmitVariant="@(_result is null ? OdsButtonVariant.Danger : OdsButtonVariant.Filled)"
+                   ShowSubmit="@(_result is not null || CanDetach)"
+                   OnSubmit="SubmitAsync">
+        @if (_result is { } result)
+        {
+            <OdsAlert Severity="Severity.Info">
+                <strong>@result.ContractBeneficiaryLinks link@(result.ContractBeneficiaryLinks == 1 ? "" : "s") detached</strong>
+                @if (result.AffectedContractIds.Count > 0)
+                {
+                    <text> across @result.AffectedContractIds.Count contract@(result.AffectedContractIds.Count == 1 ? "" : "s")</text>
+                }, then the contact was deleted.
+            </OdsAlert>
+
+            <ul class="cpl-kinds">
+                <li>
+                    <span class="material-icons" aria-hidden="true">handshake</span>
+                    <span class="cpl-kind-name">Contract beneficiary</span>
+                    <span class="cpl-kind-count">@result.ContractBeneficiaryLinks</span>
+                </li>
+            </ul>
+
             <p class="cpl-note">
-                <strong>Detach links &amp; delete</strong> removes all @TotalBlockingLinks
-                link@(TotalBlockingLinks == 1 ? "" : "s") and the contact in one transaction — either
-                all of it happens, or none of it does. The contracts survive with one fewer party.
-                This cannot be undone.
+                The contracts themselves are untouched — each stands with one fewer party.
             </p>
         }
         else
         {
-            <OdsAlert Severity="Severity.Warning">
-                Detaching needs permission to edit contracts, which you do not have. Ask someone who
-                does, then delete the contact.
+            <OdsAlert Severity="Severity.Error">
+                <strong>@ContactName</strong> holds @TotalBlockingLinks
+                link@(TotalBlockingLinks == 1 ? "" : "s") that must be detached first.
             </OdsAlert>
+
+            @* Which KIND blocks, always — the counts are link rows, the same thing every other surface
+               counts, and the part no claim withholds. *@
+            <ul class="cpl-kinds">
+                <li>
+                    <span class="material-icons" aria-hidden="true">handshake</span>
+                    <span class="cpl-kind-name">Contract beneficiary</span>
+                    <span class="cpl-kind-note">receives under the agreement</span>
+                    <span class="cpl-kind-count">@ContractBeneficiaries.TotalLinks</span>
+                </li>
+            </ul>
+
+            @if (ContractBeneficiaries.Contracts.Count > 0)
+            {
+                <OdsSectionDivider Label="Blocking contracts"
+                                   Meta="@($"{ContractBeneficiaries.ContractCount} record{(ContractBeneficiaries.ContractCount == 1 ? "" : "s")}")"
+                                   HeadingLevel="0" />
+                @* A list of records, marked up as one — same as the .cpl-kinds block above. Reading as
+                   a list visually while being a run of divs programmatically is exactly the 1.3.1 gap. *@
+                <ul class="cpl-policies">
+                    @foreach (var contract in ContractBeneficiaries.Contracts)
+                    {
+                        <li class="cpl-policy">
+                            <span class="material-icons" aria-hidden="true">handshake</span>
+                            <span class="cpl-policy-name">@contract.ContractName</span>
+                            <span class="cpl-policy-kinds">Beneficiary</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                @* The server withheld the identifiers because the caller cannot read contract records.
+                   Saying so beats rendering an empty list that reads as "no contracts". The COUNT above
+                   is what the detach actually needs, so the absence costs the user nothing. *@
+                <p class="cpl-note">
+                    Which contracts these are is not shown, because you do not have access to contract
+                    records. The count is what the detach needs.
+                </p>
+            }
+
+            @if (CanDetach)
+            {
+                <p class="cpl-note">
+                    <strong>Detach links &amp; delete</strong> removes all @TotalBlockingLinks
+                    link@(TotalBlockingLinks == 1 ? "" : "s") and the contact in one transaction — either
+                    all of it happens, or none of it does. The contracts survive with one fewer party.
+                    This cannot be undone.
+                </p>
+            }
+            else
+            {
+                <OdsAlert Severity="Severity.Warning">
+                    Detaching needs permission to edit contracts, which you do not have. Ask someone who
+                    does, then delete the contact.
+                </OdsAlert>
+            }
         }
-    }
-</OdsFormDialog>
+    </OdsFormDialog>
+}

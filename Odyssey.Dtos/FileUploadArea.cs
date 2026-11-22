@@ -15,6 +15,6 @@ public enum FileUploadArea
     Finance = 1,
     Journal = 2,
 
-    /// <summary>The Library module's files — recipe attachments today, books and music next (issue #525 §6.2).</summary>
+    /// <summary>Book attachments (#527). <c>library-files/</c> on disk.</summary>
     Library = 3,
 }

@@ -323,6 +323,7 @@ public partial class AttachDocumentsDialog
 
     internal static string ContentTypeIcon(string? contentType) =>
         contentType == "application/pdf" ? "picture_as_pdf"
+        : contentType == "application/epub+zip" ? "menu_book"
         : contentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true ? "image"
         : contentType == "text/html" ? "code"
         : "description";
@@ -330,6 +331,7 @@ public partial class AttachDocumentsDialog
     internal static string ContentTypeShort(string? contentType) => contentType?.ToLowerInvariant() switch
     {
         "application/pdf" => "PDF",
+        "application/epub+zip" => "EPUB",
         "image/png" => "PNG",
         "image/jpeg" => "JPEG",
         "image/webp" => "WebP",

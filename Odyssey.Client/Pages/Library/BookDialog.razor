@@ -1,0 +1,93 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Books
+
+@*
+    BookDialog — New book / Edit book (issue #571; design system · AddBookModal.jsx). The book's own fields, the main
+    author and tags — NOT contributors, images or files, which are linked from the record's ⋯ menu (the subtitle says
+    so). Standard width: `Wide` is for batch grids.
+
+    Arrays sent: tagIds follows the claim snapshot at open (the edited list with books.tags.read; without it null on
+    PUT, [] on POST). contributors, photoIds, coverPhotoId and attachmentFileIds are never edited here — null on PUT,
+    empty on POST. A stale version (409 book-version-conflict) shows an alert with Reload, which confirms and reseeds
+    the draft; there is no overwrite path. Cancel with changes asks first.
+*@
+
+<OdsFormDialog Open="_shown" OpenChanged="OnShownChanged"
+               Icon="@(IsEdit ? "edit" : "auto_stories")"
+               Title="@(IsEdit ? "Edit book" : "New book")"
+               Subtitle="@(IsEdit
+                   ? "Update the details, the main author and tags. Contributors, images and files are managed from the book’s ⋯ menu."
+                   : "Add a book on the shelf, an e-book, an audiobook — or one you want. Contributors, images and files are added from the book once it exists.")"
+               SubmitLabel="@(IsEdit ? "Save" : "Create book")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               SubmitDisabled="_conflict"
+               OnSubmit="SaveAsync">
+
+    @if (_conflict)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+            Someone else changed this book while you were editing. Your changes are still here.
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" OnClick="AskReloadAsync">Reload</OdsButton>
+        </OdsAlert>
+    }
+
+    <OdsSectionDivider Label="Details" HeadingLevel="0" />
+    <OdsField Label="Title" Required="true" AutoFocus="true" MaxLength="BookLimits.MaxTitleLength"
+              Value="@_title" ValueChanged="@(v => { _title = v; Touch("title"); })" Error="@Err("title")" />
+    <OdsFormRow>
+        <OdsField Label="Publisher" MaxLength="BookLimits.MaxPublisherLength"
+                  Value="@_publisher" ValueChanged="@(v => { _publisher = v; Touch("publisher"); })" Error="@Err("publisher")" />
+        <OdsField Label="Year" MaxLength="BookVisuals.YearMaxLength" Placeholder="e.g. 1965"
+                  Value="@_year" ValueChanged="@(v => { _year = v; Touch("year"); })"
+                  Help="@YearHelp" Error="@(Err("year") ?? YearError)" />
+    </OdsFormRow>
+    <OdsField Label="ISBN" MaxLength="BookLimits.MaxIsbnInputLength" Placeholder="e.g. 978-0-441-17271-9"
+              Value="@_isbn" ValueChanged="@(v => { _isbn = v; Touch("isbn"); })"
+              Help="@IsbnHelp" Error="@(Err("isbn") ?? IsbnError)" />
+    <OdsFormRow>
+        <OdsSelect Label="Format" Required="true" Value="@_format" ValueChanged="@(v => { _format = v; Touch("format"); })"
+                   Options="OdsTypeRegistries.BookFormatOptions" Error="@Err("format")" />
+        <OdsSelect Label="Status" Required="true" Value="@_status" ValueChanged="@(v => { _status = v; Touch("status"); })"
+                   Options="BookVisuals.StatusPickerOptions" Error="@Err("status")" />
+    </OdsFormRow>
+    <OdsNoteField Label="Description" MaxLength="BookLimits.MaxDescriptionLength" Rows="3"
+                  Value="@_description" ValueChanged="@(v => { _description = v; Touch("description"); })" Error="@Err("description")" />
+    <OdsNoteField Label="Notes" MaxLength="BookLimits.MaxNotesLength" Rows="3"
+                  Help="Who has a lent-out book, condition, where it came from."
+                  Value="@_notes" ValueChanged="@(v => { _notes = v; Touch("notes"); })" Error="@Err("notes")" />
+
+    <OdsSectionDivider Label="People" HeadingLevel="0" />
+    <OdsContactSelect Label="Main author" Required="true" Value="@_mainAuthorId" ValueChanged="OnAuthorChanged"
+                      Options="_authorOptions" Loading="_contactsLoading" Error="@Err("mainAuthorContactId")"
+                      Help="Pick an existing contact. Contributors are added from the book’s ⋯ menu." />
+
+    @if (_tagsSnapshot)
+    {
+        <OdsSectionDivider Label="Tags" HeadingLevel="0" />
+        <OdsTagMultiSelect Label="Tags" Value="_tagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
+                           Placeholder="No tags" AddLabel="Add tag" UnknownLabel="Unavailable tag"
+                           PreserveOnClear="PreserveTag" Help="@TagHelp" Error="@Err("tagIds")" />
+    }
+</OdsFormDialog>
+
+<OdsFormDialog Open="_discardOpen" OpenChanged="OnDiscardOpenChanged"
+               Icon="undo" IconTone="OdsModalTone.Warning"
+               Title="Discard changes to this book?"
+               RequiredLegend="false"
+               InitialFocus="OdsModalInitialFocus.Cancel"
+               CancelLabel="Keep editing"
+               SubmitLabel="Discard changes" SubmitIcon="undo" SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="DiscardAsync">
+    <p class="bk-dialog-body">Your changes to this book haven’t been saved.</p>
+</OdsFormDialog>
+
+<OdsFormDialog Open="_reloadOpen" OpenChanged="@(v => _reloadOpen = v)"
+               Icon="refresh" IconTone="OdsModalTone.Warning"
+               Title="Replace your changes with the latest version?"
+               RequiredLegend="false"
+               InitialFocus="OdsModalInitialFocus.Cancel"
+               CancelLabel="Keep editing"
+               SubmitLabel="Reload" SubmitIcon="refresh" SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="ReloadAsync">
+    <p class="bk-dialog-body">The book is read again and the form shows what is saved now. What you typed here is lost.</p>
+</OdsFormDialog>

@@ -470,6 +470,11 @@ builder.Services.AddScoped<Odyssey.Core.Journal.PhotoTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoAlbumService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.IPhotoLookup, Odyssey.Core.Journal.PhotoLookup>();
 
+// Books (issue #527), a Library-module feature. Gated by the books.* claims only; IContactBookCredits lets the
+// Journal-side contact delete ask about book credits without referencing the Books namespace.
+builder.Services.AddScoped<Odyssey.Core.Books.BookService>();
+builder.Services.AddScoped<Odyssey.Core.Books.BookTagService>();
+builder.Services.AddScoped<Odyssey.Core.Journal.IContactBookCredits, Odyssey.Core.Books.ContactBookCredits>();
 // Recipes (issue #525). No feature toggle — gated by the recipes.* claims only; links library photos through
 // IPhotoLookup above.
 builder.Services.AddScoped<Odyssey.Core.Recipes.RecipeService>();

@@ -41,6 +41,8 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("JournalTasks", "CreatedByUserId"), ("JournalTasks", "UpdatedByUserId"),
         ("Photos", "CreatedByUserId"), ("Photos", "UpdatedByUserId"),
         ("PhotoAlbums", "CreatedByUserId"), ("PhotoAlbums", "UpdatedByUserId"),
+        // The books catalogue (issue #527): shared household data, like the photo library.
+        ("Books", "CreatedByUserId"), ("Books", "UpdatedByUserId"),
         // Recipes (issue #525): shared household data that outlives its author.
         ("Recipes", "CreatedByUserId"), ("Recipes", "UpdatedByUserId"),
         ("RecurrencePatterns", "CreatedByUserId"), ("RecurrencePatterns", "UpdatedByUserId"),

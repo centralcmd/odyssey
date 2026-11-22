@@ -78,6 +78,33 @@ namespace Odyssey.Context.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "RecipeAttachments",
+                columns: table => new
+                {
+                    RecipeAttachmentId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    RecipeId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    FileId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RecipeAttachments", x => x.RecipeAttachmentId);
+                    table.ForeignKey(
+                        name: "FK_RecipeAttachments_FileMetadata_FileId",
+                        column: x => x.FileId,
+                        principalTable: "FileMetadata",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_RecipeAttachments_Recipes_RecipeId",
+                        column: x => x.RecipeId,
+                        principalTable: "Recipes",
+                        principalColumn: "RecipeId",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "RecipeIngredients",
                 columns: table => new
                 {
@@ -186,6 +213,17 @@ namespace Odyssey.Context.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RecipeAttachments_FileId",
+                table: "RecipeAttachments",
+                column: "FileId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RecipeAttachments_RecipeId_FileId",
+                table: "RecipeAttachments",
+                columns: new[] { "RecipeId", "FileId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RecipeIngredients_RecipeId_Position",
                 table: "RecipeIngredients",
                 columns: new[] { "RecipeId", "Position" });
@@ -257,6 +295,9 @@ namespace Odyssey.Context.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "RecipeAttachments");
+
             migrationBuilder.DropTable(
                 name: "RecipeIngredients");
 

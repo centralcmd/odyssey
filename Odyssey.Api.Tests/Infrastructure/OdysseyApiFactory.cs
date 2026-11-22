@@ -161,7 +161,7 @@ public class OdysseyApiFactory(
                 settings["FileStorage:Volumes:photos:RootPath"] = fileVolumePath;
                 settings["FileStorage:Bindings:PhotoOriginals"] = "photos";
                 settings["FileStorage:Bindings:PhotoThumbnails"] = "photos";
-                // Files on the store (issue #448): every upload writes a real file, so every host binds the three areas.
+                // Files on the store (issue #448): every upload writes a real file, so every host binds the four areas.
                 settings["FileStorage:Bindings:FinanceFiles"] = "photos";
                 settings["FileStorage:Bindings:JournalFiles"] = "photos";
                 settings["FileStorage:Bindings:ContactAvatars"] = "photos";

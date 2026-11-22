@@ -91,17 +91,18 @@ public static class NavModel
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),
             ]),
         ]),
-        // Library (issue #526; design system components-recipes.md · Navigation): the household's collections first,
-        // then the tag pages under Reference. recipes.read and recipes.tags.read gate the two pages, so a caller holding
-        // neither loses the whole module (VisibleModules). It sits between Journal and Internet.
+        // Library (issues #571 §3.1, #526): a navigation grouping, not a shared data model — Books and Recipes now, Music
+        // later. Collections first, the tag pages under Reference last, as in Finance.
         new("library", "Library", "local_library",
         [
             new(null,
             [
+                new("books", "Books", "auto_stories", "books", PermissionClaims.BooksRead),
                 new("recipes", "Recipes", "restaurant_menu", "recipes", PermissionClaims.RecipesRead),
             ]),
             new("Reference",
             [
+                new("book-tags", "Book Tags", "local_offer", "book-tags", PermissionClaims.BookTagsRead),
                 new("recipe-tags", "Recipe Tags", "local_offer", "recipe-tags", PermissionClaims.RecipeTagsRead),
             ]),
         ]),

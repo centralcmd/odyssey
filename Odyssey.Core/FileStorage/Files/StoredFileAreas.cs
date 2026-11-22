@@ -5,16 +5,19 @@ using Odyssey.Dtos;
 namespace Odyssey.Core.FileStorage.Files;
 
 /// <summary>
-/// The four areas a Files-store file can live in on disk (issue #448 §3, issue #525 §6.2 for <see cref="Library"/>).
-/// Placement only: no read, link or claim depends on it. <see cref="ContactAvatars"/> is reachable only through the
-/// avatar path, never through <see cref="FileUploadArea"/>. The ordinals differ from <see cref="FileUploadArea"/>'s on
-/// purpose (<c>Library</c> is 3 there, 4 here) and are only ever joined through <see cref="StoredFileAreas.For"/>.
+/// The four areas a Files-store file can live in on disk (issue #448 §3; Library added by the Books feature, #527).
+/// Placement only: no read, link or claim depends on it. <see cref="ContactAvatars"/> is reachable only through the avatar path, never through
+/// <see cref="FileUploadArea"/>.
 /// </summary>
 public enum StoredFileArea
 {
     Finance = 1,
     Journal = 2,
     ContactAvatars = 3,
+
+    /// <summary>Book attachments (e-books, PDFs, papers). Not 3: that is <see cref="ContactAvatars"/>, so the ordinal
+    /// differs from <see cref="FileUploadArea.Library"/> and the two are joined only through
+    /// <see cref="StoredFileAreas.For"/>.</summary>
     Library = 4,
 }
 
@@ -22,7 +25,7 @@ public enum StoredFileArea
 public sealed record StoredFileLayout(int Year, int Bucket);
 
 /// <summary>
-/// The four storage features of the Files store (issue #448 §3.2; <c>LibraryFiles</c>, issue #525 §6.2), declared in the module-neutral
+/// The four storage features of the Files store (issue #448 §3.2), declared in the module-neutral
 /// <c>Odyssey.Core.FileStorage.Files</c> namespace so Finance code never names a Journal type to write a file. Layout
 /// <c>&lt;root&gt;/&lt;yyyy&gt;/&lt;bucket&gt;/&lt;stem&gt;.&lt;ext&gt;</c>, original names, released after the deletion grace.
 /// </summary>
@@ -45,7 +48,6 @@ public static class StoredFileAreas
     public static readonly StorageFeature ContactAvatars = Declare(
         ContactAvatarFeatureKey, "contact-avatars", StorageFeatureReference.To<FileMetadata>(f => f.ContactAvatarStoredObjectId));
 
-    /// <summary>The Library module's area, shared by its collections (recipes now; books and music later).</summary>
     public static readonly StorageFeature Library = Declare(
         LibraryFeatureKey, "library-files", StorageFeatureReference.To<FileMetadata>(f => f.LibraryStoredObjectId));
 

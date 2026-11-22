@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Auth;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Dtos.Books;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Internet;
 using Odyssey.Dtos.Journal;
@@ -44,6 +45,9 @@ public static class ServiceCollectionExtensions
             new TagsApiClient<ExistingPhotoTag>(sp.GetRequiredService<IOdysseyApi>(), "api/photo-tags"));
         services.AddScoped<ITagsApiClient<ExistingNewsTag>>(sp =>
             new TagsApiClient<ExistingNewsTag>(sp.GetRequiredService<IOdysseyApi>(), "api/news-tags"));
+        services.AddScoped<ITagsApiClient<ExistingBookTag>>(sp =>
+            new TagsApiClient<ExistingBookTag>(sp.GetRequiredService<IOdysseyApi>(), "api/book-tags"));
+        services.AddScoped<IBooksApiClient, BooksApiClient>();
         services.AddScoped<ITagsApiClient<ExistingRecipeTag>>(sp =>
             new TagsApiClient<ExistingRecipeTag>(sp.GetRequiredService<IOdysseyApi>(), "api/recipe-tags"));
         services.AddScoped<IFileAnalysisApiClient, FileAnalysisApiClient>();

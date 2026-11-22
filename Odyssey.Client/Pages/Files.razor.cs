@@ -54,7 +54,7 @@ public partial class Files
 
     // Overview reflects the whole file set (issue #277 follow-up), not the server-searched/kind-filtered view.
     private IReadOnlyList<OdsBreakdownRow> TypeRows => OdsBreakdown.TypeRows(
-        _allFiles, f => KindLabel(f.ContentType), ["PDF", "Image", "File"],
+        _allFiles, f => KindLabel(f.ContentType), ["PDF", "E-book", "Image", "File"],
         k => { var m = KindMeta(k); return (m.Icon, m.Color, k); });
 
     private bool _canUpdate;
@@ -518,7 +518,7 @@ public partial class Files
     }
 
     // ── Helpers ──
-    private static bool IsPreviewable(string contentType) =>
+    internal static bool IsPreviewable(string contentType) =>
         PreviewableContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase);
 
     private static string FormatFileSize(long bytes)
@@ -537,11 +537,17 @@ public partial class Files
     }
 
     // The flat file has no document type, so its kind is derived from the MIME type.
-    private static string KindLabel(string contentType)
+    internal static string KindLabel(string contentType)
     {
         if (string.Equals(contentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
         {
             return "PDF";
+        }
+
+        // EPUB (issue #571 §3.10.2): labelled, never previewed (PreviewableContentTypes leaves it out).
+        if (string.Equals(contentType, "application/epub+zip", StringComparison.OrdinalIgnoreCase))
+        {
+            return "E-book";
         }
 
         if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
@@ -557,6 +563,7 @@ public partial class Files
     private static OdsFileKindMeta KindMeta(string kindLabel) => kindLabel switch
     {
         "PDF" => new("picture_as_pdf", "var(--mud-palette-error)", "color-mix(in srgb, var(--mud-palette-error) 14%, transparent)"),
+        "E-book" => new(OdsTypeRegistries.EbookKind.Icon, OdsTypeRegistries.EbookKind.Color, OdsTypeRegistries.EbookKind.Soft),
         "Image" => new("image", "var(--mud-palette-info)", "color-mix(in srgb, var(--mud-palette-info) 16%, transparent)"),
         _ => new("insert_drive_file", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-disabled-background)"),
     };

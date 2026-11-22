@@ -27,17 +27,20 @@ public sealed class ContactsController : ControllerBase
     private readonly ContactService contactService;
     private readonly IContactReferenceGuard referenceGuard;
     private readonly ContactAuditLog audit;
+    private readonly IContactBookCredits bookCredits;
 
     public ContactsController(
         ILogger<ContactsController> logger,
         ContactService contactService,
         IContactReferenceGuard referenceGuard,
-        ContactAuditLog audit)
+        ContactAuditLog audit,
+        IContactBookCredits bookCredits)
     {
         this.logger = logger;
         this.contactService = contactService;
         this.referenceGuard = referenceGuard;
         this.audit = audit;
+        this.bookCredits = bookCredits;
     }
 
     [HttpGet(Name = "GetContacts")]
@@ -260,6 +263,27 @@ Beneficiary contract parties — and delete it in one transaction, instead of re
 Requires contracts.update when that class is actually present.")] bool detachBlockingLinks = false,
         CancellationToken cancellationToken = default)
     {
+        // Book credits refuse the delete on BOTH paths, and the valve never removes them (issue #527 §5 item 12). This
+        // pre-check is a second snapshot, which is safe because it only decides a refusal: nothing it reads is ever
+        // destroyed, so the single-snapshot rule for the detach valve (CWE-367) does not apply. The service re-checks
+        // inside its transaction, and a credit added in between comes back below as the same shaped 409.
+        if (await BookCreditConflictAsync(id, cancellationToken) is { } blockedByBooks)
+        {
+            return blockedByBooks;
+        }
+
+        try
+        {
+            return await DeleteCheckedAsync(id, detachBlockingLinks, cancellationToken);
+        }
+        catch (DomainConflictException conflict) when (conflict.Message == ContactService.BookCreditMessage)
+        {
+            return await BookCreditConflictAsync(id, cancellationToken) ?? this.ConflictProblem(ContactService.BookCreditMessage);
+        }
+    }
+
+    private async Task<IActionResult> DeleteCheckedAsync(Guid id, bool detachBlockingLinks, CancellationToken cancellationToken)
+    {
         if (detachBlockingLinks)
         {
             // Composed from existing claims rather than a new one — no RolePermissions change, no
@@ -310,15 +334,9 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
             // contract NAMES need contracts.read. The boundary costs nothing today (every shipped role
             // holding contacts.delete also holds contracts.read, asserted by a guard test) and is kept
             // for a future role.
-            var canReadContracts = User.HasPermission(PermissionClaims.ContractsRead);
             var extensions = new Dictionary<string, object?>
             {
-                ["contractBeneficiaries"] = new ContactContractBeneficiaryBlockers
-                {
-                    TotalLinks = blockers.ContractBeneficiaryLinks,
-                    ContractCount = blockers.Contracts.Count,
-                    Contracts = canReadContracts ? [.. blockers.Contracts] : [],
-                },
+                ["contractBeneficiaries"] = ContractBeneficiaryExtension(blockers),
             };
 
             return this.ConflictProblem(
@@ -331,6 +349,49 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
         await contactService.Delete(id, detachBlockingLinks: false, null, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// The claim-conditional <c>409</c> for a contact credited on books (issue #527 §5 item 12), or <see langword="null"/>
+    /// when nothing credits it. The counts are always present; book ids and titles need <c>books.read</c>. When contract
+    /// beneficiaries also block, both extensions are present and the message does not suggest the detach valve, which
+    /// cannot remove a book credit.
+    /// </summary>
+    private async Task<ObjectResult?> BookCreditConflictAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (await bookCredits.GetCreditsAsync(id, cancellationToken) is not { } credits)
+        {
+            return null;
+        }
+
+        if (!User.HasPermission(PermissionClaims.BooksRead))
+        {
+            credits = credits with { Books = [] };
+        }
+
+        var extensions = new Dictionary<string, object?> { ["bookCredits"] = credits };
+        var contracts = await referenceGuard.GetDeleteBlockersAsync(id, cancellationToken);
+        if (contracts.Any)
+        {
+            extensions["contractBeneficiaries"] = ContractBeneficiaryExtension(contracts);
+            return this.ConflictProblem(
+                "This contact is credited on one or more books and named as a beneficiary on one or more contracts, "
+                + "and cannot be deleted. Remove it from those books first; the contract links can then be detached.",
+                extensions);
+        }
+
+        return this.ConflictProblem(ContactService.BookCreditMessage, extensions);
+    }
+
+    /// <summary>
+    /// The <c>contractBeneficiaries</c> extension. The COUNT is unconditional; contract names need
+    /// <c>contracts.read</c>.
+    /// </summary>
+    private ContactContractBeneficiaryBlockers ContractBeneficiaryExtension(ContactDeleteBlockers blockers) => new()
+    {
+        TotalLinks = blockers.ContractBeneficiaryLinks,
+        ContractCount = blockers.Contracts.Count,
+        Contracts = User.HasPermission(PermissionClaims.ContractsRead) ? [.. blockers.Contracts] : [],
+    };
 
     /// <summary>
     /// The lead sentence of the blocked-delete 409. Class name only — never a contract name, which
