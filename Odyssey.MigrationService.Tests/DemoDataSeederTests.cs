@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
+using Odyssey.Dtos.Recipes;
 using Odyssey.Context.Legal;
 using Odyssey.Dtos.Application;
 using Odyssey.TestData;
@@ -591,6 +592,48 @@ public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, Demo
         var entryUids = await journal.JournalEntries.Select(e => e.ExternalUid).ToListAsync();
         Assert.All(entryUids, uid => Assert.False(string.IsNullOrWhiteSpace(uid)));
         Assert.Equal(entryUids.Count, entryUids.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Seeds_recipes_module_dataset()
+    {
+        using var scope = seededOnce.Provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var expected = DemoDataSet.Build();
+
+        Assert.Equal(expected.RecipeTags.Count, await context.RecipeTags.CountAsync());
+        Assert.Equal(expected.Recipes.Count, await context.Recipes.CountAsync());
+        Assert.Equal(expected.RecipeIngredients.Count, await context.RecipeIngredients.CountAsync());
+        Assert.Equal(expected.RecipeSteps.Count, await context.RecipeSteps.CountAsync());
+        Assert.Equal(expected.RecipeTagLinks.Count, await context.RecipeTagLinks.CountAsync());
+        // The photo and file links name rows only the worker's demo-file seeder writes.
+        Assert.Equal(0, await context.RecipePhotos.CountAsync());
+        Assert.Equal(0, await context.RecipeAttachments.CountAsync());
+
+        // The read surfaces each have data: an archived recipe and tag, a range, a to-taste line, Pinch, a labelled
+        // yield, a recipe with no times, an edited recipe, and recipes with photos and files to come.
+        Assert.Equal(1, await context.Recipes.CountAsync(r => r.Archived != null));
+        Assert.Equal(1, await context.RecipeTags.CountAsync(t => t.Archived != null));
+        Assert.True(await context.RecipeIngredients.AnyAsync(i => i.AmountMax != null));
+        Assert.True(await context.RecipeIngredients.AnyAsync(i => i.Unit == IngredientUnit.ToTaste && i.Amount == null));
+        Assert.True(await context.RecipeIngredients.AnyAsync(i => i.Unit == IngredientUnit.Pinch));
+        Assert.True(await context.Recipes.AnyAsync(r => r.ServingsLabel != null));
+        Assert.True(await context.Recipes.AnyAsync(r => r.PrepMinutes == null && r.CookMinutes == null));
+        Assert.True(await context.Recipes.AnyAsync(r => r.UpdatedByUserId != r.CreatedByUserId));
+        Assert.NotEmpty(expected.RecipePhotos);
+        Assert.NotEmpty(expected.RecipeAttachments);
+
+        // Every icon is in the shared vocabulary and every position is dense per recipe.
+        Assert.All(expected.RecipeTags.Where(t => t.Icon is not null), t => Assert.True(Odyssey.Dtos.TagIcons.IsKnown(t.Icon!), t.Icon));
+        foreach (var recipe in expected.Recipes)
+        {
+            Assert.Equal(
+                Enumerable.Range(0, expected.RecipeIngredients.Count(i => i.RecipeId == recipe.RecipeId)),
+                expected.RecipeIngredients.Where(i => i.RecipeId == recipe.RecipeId).Select(i => i.Position));
+            Assert.Equal(
+                Enumerable.Range(0, expected.RecipeSteps.Count(s => s.RecipeId == recipe.RecipeId)),
+                expected.RecipeSteps.Where(s => s.RecipeId == recipe.RecipeId).Select(s => s.Position));
+        }
     }
 
     /// <summary>The photo library is the worker's DemoFileSeeder's in full (Odyssey.Worker.Tests): every photo owns its bytes.</summary>

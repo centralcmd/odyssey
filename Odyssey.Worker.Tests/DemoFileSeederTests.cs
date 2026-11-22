@@ -71,6 +71,11 @@ public sealed class DemoFileSeederTests : IAsyncLifetime
         Assert.Equal(expected.JournalEntryAttachments.Count, await context.JournalEntryAttachments.CountAsync());
         Assert.Equal(expected.JournalTaskAttachments.Count, await context.JournalTaskAttachments.CountAsync());
         Assert.Equal(expected.JournalEntryPhotos.Count, await context.JournalEntryPhotos.CountAsync());
+        Assert.Equal(expected.RecipeAttachments.Count, await context.RecipeAttachments.CountAsync());
+        Assert.Equal(expected.RecipePhotos.Count, await context.RecipePhotos.CountAsync());
+        Assert.NotEmpty(expected.RecipeAttachments);
+        Assert.All(expected.Files.Where(f => expected.RecipeAttachments.Any(a => a.FileId == f.Metadata.Id)),
+            f => Assert.Equal(StoredFileArea.Library, f.Area));
         Assert.Equal(expected.PhotoTags.Count, await context.PhotoTags.CountAsync());
         Assert.Equal(expected.PhotoTagLinks.Count, await context.PhotoTagLinks.CountAsync());
         Assert.Equal(expected.PhotoPeople.Count, await context.PhotoPeople.CountAsync());
@@ -209,6 +214,7 @@ public sealed class DemoFileSeederTests : IAsyncLifetime
         context.TaxStatements.AddRange(data.TaxStatements);
         context.JournalEntries.AddRange(data.JournalEntries);
         context.JournalTasks.AddRange(data.JournalTasks);
+        context.Recipes.AddRange(data.Recipes);
         await context.SaveChangesAsync();
     }
 
@@ -218,8 +224,8 @@ public sealed class DemoFileSeederTests : IAsyncLifetime
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         return (await context.FileMetadata.CountAsync(), await context.Photos.CountAsync(),
             await context.StoredObjects.CountAsync(o => o.State == StoredObjectState.Committed),
-            await context.TaxStatementFiles.CountAsync() + await context.JournalEntryAttachments.CountAsync() + await context.JournalTaskAttachments.CountAsync(),
-            await context.JournalEntryPhotos.CountAsync() + await context.PhotoTagLinks.CountAsync() + await context.PhotoPeople.CountAsync(),
+            await context.TaxStatementFiles.CountAsync() + await context.JournalEntryAttachments.CountAsync() + await context.JournalTaskAttachments.CountAsync() + await context.RecipeAttachments.CountAsync(),
+            await context.JournalEntryPhotos.CountAsync() + await context.RecipePhotos.CountAsync() + await context.PhotoTagLinks.CountAsync() + await context.PhotoPeople.CountAsync(),
             await context.PhotoTags.CountAsync() + await context.PhotoAlbums.CountAsync() + await context.PhotoAlbumItems.CountAsync());
     }
 

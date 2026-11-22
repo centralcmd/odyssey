@@ -43,6 +43,8 @@ public class DemoDataDeterminismTests
         Assert.All(concurrent, set => Assert.Equal(baseline.JournalEntryTags.Count, set.JournalEntryTags.Count));
         Assert.All(concurrent, set => Assert.Equal(baseline.JournalTasks.Count, set.JournalTasks.Count));
         Assert.All(concurrent, set => Assert.Equal(baseline.JournalTaskTagLinks.Count, set.JournalTaskTagLinks.Count));
+        Assert.All(concurrent, set => Assert.Equal(baseline.Recipes.Select(r => r.RecipeId), set.Recipes.Select(r => r.RecipeId)));
+        Assert.All(concurrent, set => Assert.Equal(baseline.RecipeIngredients.Select(i => i.RecipeIngredientId), set.RecipeIngredients.Select(i => i.RecipeIngredientId)));
         Assert.All(concurrent, set => Assert.Equal(baseline.Transactions.Count, set.Transactions.Count));
         Assert.All(concurrent, set => Assert.Equal(baseline.TransactionTagLinks.Count, set.TransactionTagLinks.Count));
 

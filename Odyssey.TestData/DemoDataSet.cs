@@ -41,7 +41,7 @@ public sealed class DemoDataSet
     // the migrations job: only a host with the file volumes can put a file on the object store, and the links are
     // real foreign keys. The migrations job seeds everything else in this set.
 
-    /// <summary>Every demo Files-store file — tax-statement documents, journal and task attachments, contact images.</summary>
+    /// <summary>Every demo Files-store file — tax-statement documents, journal and task attachments, contact images, recipe files.</summary>
     public required IReadOnlyList<DemoFile> Files { get; init; }
 
     /// <summary>The seeded contact images (issue #86), each a file of <see cref="Files"/>.</summary>
@@ -68,6 +68,15 @@ public sealed class DemoDataSet
     public required IReadOnlyList<PhotoPerson> PhotoPeople { get; init; }
     public required IReadOnlyList<PhotoAlbum> PhotoAlbums { get; init; }
     public required IReadOnlyList<PhotoAlbumItem> PhotoAlbumItems { get; init; }
+
+    // Recipes (issue #525 §11), the Library module. The photo and file links are written with their photos and files.
+    public required IReadOnlyList<RecipeTag> RecipeTags { get; init; }
+    public required IReadOnlyList<Recipe> Recipes { get; init; }
+    public required IReadOnlyList<RecipeIngredient> RecipeIngredients { get; init; }
+    public required IReadOnlyList<RecipeStep> RecipeSteps { get; init; }
+    public required IReadOnlyList<RecipeTagLink> RecipeTagLinks { get; init; }
+    public required IReadOnlyList<RecipePhoto> RecipePhotos { get; init; }
+    public required IReadOnlyList<RecipeAttachment> RecipeAttachments { get; init; }
 
     // Calendar module (issue #323), now part of the merged OdysseyContext.
     public required IReadOnlyList<CalendarEntity> Calendars { get; init; }
@@ -101,13 +110,14 @@ public sealed class DemoDataSet
         var journalTasks = JournalTaskGenerator.Generate(anchor);
         var photoLibrary = PhotoGenerator.Generate(anchor);
         var calendar = CalendarGenerator.Generate(anchor);
+        var recipes = RecipeGenerator.Generate(anchor);
 
         // The photo library is the single home for all photos: the journal's shared library records plus
         // the standalone demo photos (a journal photo is one library Photo).
-        var allPhotos = journal.LibraryPhotos.Concat(photoLibrary.Photos).ToList();
+        var allPhotos = journal.LibraryPhotos.Concat(photoLibrary.Photos).Concat(recipes.LibraryPhotos).ToList();
 
         var contactAvatars = Catalog.Contacts.BuildAvatarFiles();
-        var allFiles = taxFiles.Concat(journal.Files).Concat(journalTasks.Files).Concat(contactAvatars.Select(a => a.File)).ToList();
+        var allFiles = taxFiles.Concat(journal.Files).Concat(journalTasks.Files).Concat(contactAvatars.Select(a => a.File)).Concat(recipes.Files).ToList();
 
         return new DemoDataSet
         {
@@ -154,6 +164,13 @@ public sealed class DemoDataSet
             PhotoPeople = photoLibrary.People,
             PhotoAlbums = photoLibrary.Albums,
             PhotoAlbumItems = photoLibrary.AlbumItems,
+            RecipeTags = recipes.Tags,
+            Recipes = recipes.Recipes,
+            RecipeIngredients = recipes.Ingredients,
+            RecipeSteps = recipes.Steps,
+            RecipeTagLinks = recipes.TagLinks,
+            RecipePhotos = recipes.Photos,
+            RecipeAttachments = recipes.Attachments,
             Calendars = calendar.Calendars,
             CalendarEvents = calendar.CalendarEvents,
             RecurrencePatterns = calendar.RecurrencePatterns,

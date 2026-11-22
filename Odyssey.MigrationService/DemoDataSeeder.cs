@@ -57,6 +57,8 @@ public sealed class DemoDataSeeder(
         await SeedPropertiesAsync(context, data, cancellationToken);
         await SeedJournalAsync(context, data, cancellationToken);
         await SeedCalendarAsync(context, data, cancellationToken);
+        // After the users: a recipe records who created and last edited it (SET NULL keys).
+        await SeedRecipesAsync(context, data, cancellationToken);
         // Last, and not part of the demo DATASET: the one settings row a dev stack cannot function
         // without and cannot be seeded with a fixed value. See its own remarks.
         await SeedClientBaseUrlAsync(context, cancellationToken);
@@ -490,6 +492,34 @@ public sealed class DemoDataSeeder(
         logger.LogInformation(
             "Seeded {Entries} journal entries, {Tasks} tasks, {JournalTags} journal tags, {JournalTaskTags} task tags.",
             data.JournalEntries.Count, data.JournalTasks.Count, data.JournalTags.Count, data.JournalTaskTags.Count);
+    }
+
+    private async Task SeedRecipesAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
+    {
+        if (data.Recipes.Count == 0)
+        {
+            return;
+        }
+
+        var sentinelId = data.Recipes[0].RecipeId;
+        if (await context.Recipes.AnyAsync(recipe => recipe.RecipeId == sentinelId, cancellationToken))
+        {
+            logger.LogInformation("Demo recipes already present; skipping recipe seed.");
+            return;
+        }
+
+        // Tags first (principals for the links), then the recipes and their children, in one SaveChanges so EF orders
+        // the inserts by the FK graph. The photo and file links are the worker's: they name files only it can write.
+        await context.RecipeTags.AddRangeAsync(data.RecipeTags, cancellationToken);
+        await context.Recipes.AddRangeAsync(data.Recipes, cancellationToken);
+        await context.RecipeIngredients.AddRangeAsync(data.RecipeIngredients, cancellationToken);
+        await context.RecipeSteps.AddRangeAsync(data.RecipeSteps, cancellationToken);
+        await context.RecipeTagLinks.AddRangeAsync(data.RecipeTagLinks, cancellationToken);
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Seeded {Recipes} recipes and {RecipeTags} recipe tags.", data.Recipes.Count, data.RecipeTags.Count);
     }
 
     private async Task SeedLocationsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

@@ -27,3 +27,6 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
 - **Every bound is a `RecipeLimits` constant**, named by the entity, the DTO annotations and the client alike.
 - **Author ids never reach the wire**: the controller resolves them to names (`NameForOptional`), because Guest holds
   `profile-images.read`. **Finance must not reference `Odyssey.Core.Recipes`** (`RecipeModuleSourceLintTests`).
+- **Demo data** (`RecipeGenerator`, issue #525 §11): six tags (one archived) and five recipes (one archived) covering
+  sections, a range, `ToTaste`, `Pinch`, a servings label and a recipe with no times. `DemoDataSeeder` writes the
+  recipe rows; the worker's `DemoFileSeeder` writes the photos, the Library-area files and their links.
