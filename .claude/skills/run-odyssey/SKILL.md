@@ -149,7 +149,7 @@ Override target/creds via env: `ODYSSEY_BASE_URL`, `ODYSSEY_API_URL`, `ODYSSEY_E
 ## Run (human path)
 
 `docker compose up --build` (foreground) then open `http://localhost:5199` and sign in with any
-login above. Swagger is at `http://localhost:5188/swagger`. Useless headless — the driver is the
+login above. The API reference is at `http://localhost:5188/scalar/v1` (same browser session). Useless headless — the driver is the
 agent path.
 
 ## Reset / reseed

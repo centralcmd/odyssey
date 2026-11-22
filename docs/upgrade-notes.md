@@ -33,6 +33,22 @@ deploy, when the security-stamp check rewrote their cookie with the new claims.
 - This only buys headroom: each new module adds roughly 8 claims. A structural fix that stops the cookie growing
   with the claim catalogue is tracked in issue #583.
 
+### API documentation moved to Scalar; `SWAGGER_ENABLED` became `API_DOCS_ENABLED`
+
+Issue #569 replaced Swashbuckle with the built-in OpenAPI generator and Swagger UI with Scalar.
+
+- **New URLs:** the reference is `/scalar/v1` and the OpenAPI 3.1 document is `/openapi/v1.json` (through the
+  client's proxy, `/api/scalar/v1` and `/api/openapi/v1.json`). `/swagger` serves nothing; there is no redirect.
+- **`SWAGGER_ENABLED` / `Swagger:Enabled` is no longer read**, and nothing falls back to it. Set
+  `API_DOCS_ENABLED` (`ApiDocs:Enabled`) instead. On Compose the default is now `false`; a stack run as
+  Development still serves the docs whatever it says, but any other non-Production stack needs
+  `API_DOCS_ENABLED=true`. A host that still sets the old key logs one warning naming the new one at startup.
+- **New: `API_DOCS_REQUIRE_LOGIN` (`ApiDocs:RequireLogin`), default `true` everywhere, Development included.**
+  Sign in to the client first, then open the docs; without a session they answer `401`. Set it to `false` for
+  the previous anonymous behaviour. A value other than `true`/`false` stops the API at startup, in every
+  environment.
+- **Production is unchanged:** the docs are never served there.
+
 ### Legacy file storage removed (`RemoveLegacyFileBlobStorage`)
 
 Issues #428 and #448 moved every photo original and file out of the `FileBlob` table with two worker jobs (the

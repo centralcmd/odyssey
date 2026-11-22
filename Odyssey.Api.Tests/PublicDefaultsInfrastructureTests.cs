@@ -36,22 +36,38 @@ public class PublicDefaultsInfrastructureTests
     }
 
     /// <summary>
-    /// The overlay's <c>environment:</c> map is the container's environment, so it must use the key the
-    /// app binds. <c>SWAGGER_ENABLED</c> there was inert: the base file's
-    /// <c>Swagger__Enabled: ${SWAGGER_ENABLED:-true}</c> is compose-level interpolation from the env
-    /// file, and it resolved to false only because <c>.env.prod.example</c> happens to set the variable.
+    /// The overlay's <c>environment:</c> map is the container's environment, so it must use the key the app binds.
+    /// An env-file variable there would be inert: the base file's value is compose-level interpolation from the env
+    /// file. The overlay also pins Production, which is what makes the app refuse the docs outright
+    /// (issue #451 §1.3; key renamed from <c>Swagger__Enabled</c> by issue #569).
     /// </summary>
     [Fact]
-    public void TheProductionOverlay_DisablesSwaggerWithTheKeyTheAppReads()
+    public void TheProductionOverlay_DisablesTheApiDocsWithTheKeyTheAppReads()
     {
         var overlay = SourceTree.ReadAllText("docker-compose.prod.yml");
+        var lines = overlay.Split('\n').Select(line => line.Trim()).ToList();
 
-        Assert.Contains("Swagger__Enabled: \"false\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("ApiDocs__Enabled: \"false\"", lines);
+        Assert.Contains("ASPNETCORE_ENVIRONMENT: Production", lines);
 
-        // As a mapping key, not as prose: the comment above it names the variable it replaced.
-        Assert.DoesNotContain(
-            overlay.Split('\n').Select(line => line.Trim()),
-            line => line.StartsWith("SWAGGER_ENABLED:", StringComparison.Ordinal));
+        // As a mapping key, not as prose.
+        Assert.DoesNotContain(lines, line => line.StartsWith("API_DOCS_ENABLED:", StringComparison.Ordinal));
+        Assert.DoesNotContain(lines, line => line.StartsWith("Swagger__Enabled:", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The base file's default is OFF (issue #569 §7.1.2). Development serves the docs regardless, so the dev stack is
+    /// unchanged; any other environment shows them only when the env file asks — and an old <c>SWAGGER_ENABLED</c>,
+    /// which nothing forwards any more, cannot turn them on.
+    /// </summary>
+    [Fact]
+    public void TheBaseStack_DefaultsTheApiDocsOff_AndRequiresALogin()
+    {
+        var compose = SourceTree.ReadAllText("docker-compose.yml");
+
+        Assert.Contains("ApiDocs__Enabled: ${API_DOCS_ENABLED:-false}", compose, StringComparison.Ordinal);
+        Assert.Contains("ApiDocs__RequireLogin: ${API_DOCS_REQUIRE_LOGIN:-true}", compose, StringComparison.Ordinal);
+        Assert.DoesNotContain("SWAGGER_ENABLED", compose, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -79,7 +95,7 @@ public class PublicDefaultsInfrastructureTests
     /// </summary>
     /// <remarks>
     /// The overlay has to pin its own value rather than inherit the base file's, for the same reason
-    /// the Swagger key does: the base interpolates from the <em>env file</em>, while the overlay map is
+    /// the API docs key does: the base interpolates from the <em>env file</em>, while the overlay map is
     /// the container's environment. An overlay used without a matching <c>.env.prod</c> would otherwise
     /// run the migrations job as Development in production.
     /// </remarks>

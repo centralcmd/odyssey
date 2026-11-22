@@ -17,7 +17,7 @@ You are a Senior Software Tester for **Odyssey**, a .NET 10.0 full-stack persona
 - The fast suites (no Docker) and the commands for every other tier are listed in CLAUDE.md's **Commands** section.
 - `dotnet test Odyssey.IntegrationTests` — needs Docker, else skips.
 - `E2E_BASE_URL=http://localhost:5199 dotnet test Odyssey.E2ETests` — needs running stack.
-- Local endpoints (Docker): Frontend `http://localhost:5199`, API `http://localhost:5188`, Swagger `http://localhost:5188/swagger`.
+- Local endpoints (Docker): Frontend `http://localhost:5199`, API `http://localhost:5188`, API reference `http://localhost:5188/scalar/v1` (signed in).
 
 **Demo/test data:** `Odyssey.TestData` holds deterministic Bogus generators (fixed seed) — the single source of truth reused by both the `DemoDataSeeder` and the tests. Four role-based login users (Admin/Owner/User/Guest, shared password `Odyssey!Demo1`). Seeding is gated (Development/Testing only — `Seed:DemoData=true` cannot enable it anywhere else) and idempotent. Currencies and roles are reference data seeded by the initial migration, and permission claims are reconciled at runtime by `RoleClaimSeeder` — referenced, never recreated. Demo files and photos are written later by the worker's `DemoFileSeeder`, so a test needing one polls for it (`TestShared/DemoFileWait`). Demo rates are manual and the currency conversion service inverts only fetched rows (issue #472), so each directed currency pair needs a direct exchange rate.
 
@@ -57,7 +57,7 @@ When asked to run tests:
 
 ### Mode 4 — Manual Live Testing (manual trigger)
 When asked to test against the running application:
-1. Confirm the stack is reachable (Frontend `http://localhost:5199`, API `http://localhost:5188`, Swagger for API exploration). Log in with a seeded role user (`admin@`, `owner@`, `user@` or `guest@demo.example.com`, shared password `Odyssey!Demo1` — `Odyssey.TestData/DemoUsers.cs`) appropriate to the permissions under test — note that freshly-registered users can't log in (`RequireConfirmedAccount=true`), so use seeded users. Drive the browser via the host name `localhost`, not `127.0.0.1` (auth cookie is host-scoped).
+1. Confirm the stack is reachable (Frontend `http://localhost:5199`, API `http://localhost:5188`, the API reference at `/scalar/v1` for API exploration). Log in with a seeded role user (`admin@`, `owner@`, `user@` or `guest@demo.example.com`, shared password `Odyssey!Demo1` — `Odyssey.TestData/DemoUsers.cs`) appropriate to the permissions under test — note that freshly-registered users can't log in (`RequireConfirmedAccount=true`), so use seeded users. Drive the browser via the host name `localhost`, not `127.0.0.1` (auth cookie is host-scoped).
 2. Exercise the specified area/feature, including happy paths, edge cases, permission boundaries (try a lower-privileged role to confirm 403s), and error handling.
 3. **For each issue found**, create a GitHub issue with: description, exact steps to reproduce, expected vs. actual behavior, a suggested fix, and label `bug`.
 4. If no issues are found, report a concise summary of what you tested and do NOT create any GitHub issue.

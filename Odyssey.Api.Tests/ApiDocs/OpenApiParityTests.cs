@@ -181,5 +181,5 @@ public class OpenApiParityTests(OpenApiParityTests.Host host) : SharedApiHostTes
         failures.Add($"{key}: {what} \"{want}\" → \"{got}\"");
     }
 
-    public sealed class Host() : OdysseyApiFactory(configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+    public sealed class Host() : OdysseyApiFactory(configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 }

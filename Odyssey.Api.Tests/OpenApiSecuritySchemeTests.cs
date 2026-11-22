@@ -15,7 +15,7 @@ public class OpenApiSecuritySchemeTests
     private static async Task<JsonElement> GetOpenApiDocumentAsync()
     {
         using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
         var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

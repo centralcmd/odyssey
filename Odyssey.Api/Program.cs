@@ -795,16 +795,18 @@ identityApi.LogPasswordResetCompletion(
 // /api/account. Whether the block landed is checked, fail-fast, at the bottom of this file.
 identityApi.BlockManageInfoWrites();
 
-// Swagger is on by default in Development, and elsewhere only when Swagger:Enabled says so — but
-// NEVER in Production (issue #451 §1.3). The config half used to be the whole story, and it defaults
-// to true in the container stack, so any deployment that did not explicitly pass the variable served
-// the API's full surface at /api/swagger through the client's nginx proxy. The environment check is
-// the half that cannot be forgotten in an env file.
-var enableSwagger = app.Environment.IsDevelopment()
-    || (app.Configuration.GetValue<bool>("Swagger:Enabled") && !app.Environment.IsProduction());
-if (enableSwagger)
+// API documentation (issue #569): the OpenAPI document at /openapi/v1.json and the Scalar reference at
+// /scalar/v1. On by default in Development, elsewhere only when ApiDocs:Enabled says so — and NEVER in
+// Production (issue #451 §1.3): the environment check is the half that cannot be forgotten in an env file.
+// ApiDocs:RequireLogin is parsed in every environment, so a malformed value stops the host wherever it was
+// written, even where the docs are off.
+var apiDocsRequireLogin = ApiDocsConfiguration.ReadRequireLogin(app.Configuration);
+ApiDocsConfiguration.WarnOnRetiredKey(
+    app.Configuration, app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(ApiDocsConfiguration)));
+if (ApiDocsConfiguration.IsEnabled(app.Environment, app.Configuration))
 {
-    app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
+    app.UseApiDocsHeaders();
+    app.MapApiDocs(apiDocsRequireLogin);
 }
 
 app.UseExceptionHandler(new ExceptionHandlerOptions

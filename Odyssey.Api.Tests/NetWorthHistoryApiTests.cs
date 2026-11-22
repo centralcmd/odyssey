@@ -372,10 +372,10 @@ public class NetWorthHistoryApiTests(NetWorthHistoryApiTests.Host host) : Shared
     // ── AC24 — the OpenAPI document ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Swagger_RendersFromAndToAsIsoDates()
+    public async Task OpenApi_RendersFromAndToAsIsoDates()
     {
         await using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
         var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -399,10 +399,10 @@ public class NetWorthHistoryApiTests(NetWorthHistoryApiTests.Host host) : Shared
     }
 
     [Fact]
-    public async Task Swagger_DeclaresTheForbiddenResponse()
+    public async Task OpenApi_DeclaresTheForbiddenResponse()
     {
         await using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
         var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

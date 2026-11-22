@@ -73,5 +73,5 @@ public class OpenApiSchemaIdTests(OpenApiSchemaIdTests.Host host) : SharedApiHos
     }
 
     /// <summary>The class's shared host: the document is anonymous, so only the configuration differs.</summary>
-    public sealed class Host() : OdysseyApiFactory(configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+    public sealed class Host() : OdysseyApiFactory(configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 }

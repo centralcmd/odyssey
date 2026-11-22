@@ -46,7 +46,7 @@ public sealed class FilesController : ControllerBase
 required and only decides which folder on the file store holds the bytes (issue #448); it never affects who may read or
 link the file. There is no contacts area here: contact images go through the avatar endpoint.")]
     public async Task<IActionResult> UploadFile(
-        //[FromForm] // Swagger doesn't handle [FromForm] on IFormFile correctly, so we rely on the default binding behavior for multipart/form-data
+        //[FromForm] // The OpenAPI generator did not handle [FromForm] on IFormFile correctly, so we rely on the default binding behavior for multipart/form-data
         IFormFile file,
         // Nullable with [Required], so an omitted area reads as required rather than as an invalid enum value (the
         // ContractPartyRequest.Role precedent); FileUploadArea has no 0 and no contacts member.
