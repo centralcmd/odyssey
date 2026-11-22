@@ -27,6 +27,7 @@ public sealed class InstrumentPriceSourceAdminService(
     public async Task<InstrumentPriceSourcesStatus> GetStatusAsync(CancellationToken cancellationToken = default)
     {
         var today = OsloDate.Today(timeProvider);
+        var hour = SourceRequestQuota.HourOf(Now);
         var keys = sources.All.Select(s => s.Key).ToList();
         var states = await context.InstrumentPriceSourceStates.AsNoTracking()
             .Where(s => keys.Contains(s.SourceKey))
@@ -36,6 +37,8 @@ public sealed class InstrumentPriceSourceAdminService(
         foreach (var source in sources.All.OrderBy(s => s.DisplayName, StringComparer.Ordinal))
         {
             states.TryGetValue(source.Key, out var state);
+            // A bucket for a later hour (another replica's clock ran ahead) still counts: the bucket only moves forward.
+            var requestsThisHour = state?.RequestHourUtc is { } bucket && bucket >= hour ? state.RequestHourCount : 0;
             var configured = true;
             foreach (var key in source.SecretKeys)
             {
@@ -53,6 +56,13 @@ public sealed class InstrumentPriceSourceAdminService(
                 BackOffReason = state?.BackOffUntilUtc > Now ? state.BackOffReason : null,
                 RequestsToday = state?.RequestDay == today ? state.RequestCount : 0,
                 MaxRequestsPerDay = source.Limits.MaxRequestsPerDay,
+                MaxRequestsPerHour = source.Limits.MaxRequestsPerHour,
+                RequestsThisHour = requestsThisHour,
+                HourlyLimitResetsAtUtc = source.Limits.MaxRequestsPerHour is { } perHour && requestsThisHour >= perHour
+                    ? hour.AddHours(1)
+                    : null,
+                SymbolExample = source.SymbolExample,
+                DataProcessingNote = source.DataProcessingNote,
             });
         }
 
@@ -169,7 +179,8 @@ public sealed class InstrumentPriceSourceAdminService(
                 var input = update.Bindings[i];
                 var key = input.SourceKey.Trim();
                 var row = new InstrumentPriceSourceBinding { InstrumentId = instrumentId, SourceKey = key, SourceSymbol = input.SourceSymbol };
-                if (previous.TryGetValue(key, out var kept) && string.Equals(kept.SourceSymbol, input.SourceSymbol, StringComparison.Ordinal))
+                previous.TryGetValue(key, out var kept);
+                if (kept is not null && string.Equals(kept.SourceSymbol, input.SourceSymbol, StringComparison.Ordinal))
                 {
                     row.NewestFetched = kept.NewestFetched;
                     row.BackfilledFrom = kept.BackfilledFrom;
@@ -184,6 +195,16 @@ public sealed class InstrumentPriceSourceAdminService(
                 row.HistoryStartDate = input.HistoryStartDate;
                 row.UpdatedAtUtc = now;
                 row.UpdatedByUserId = userId;
+
+                // An unchanged binding keeps its edit stamp: the stamp is what clears a binding skipped for the rest of
+                // the day after an UnsupportedInput failure (issue #447 A9), and re-saving the list must not do that
+                // for a binding nobody touched.
+                if (kept is not null && string.Equals(kept.SourceSymbol, input.SourceSymbol, StringComparison.Ordinal)
+                    && kept.Priority == row.Priority && kept.Enabled == row.Enabled && kept.HistoryStartDate == row.HistoryStartDate)
+                {
+                    row.UpdatedAtUtc = kept.UpdatedAtUtc;
+                    row.UpdatedByUserId = kept.UpdatedByUserId;
+                }
                 context.InstrumentPriceSourceBindings.Add(row);
             }
 
@@ -213,6 +234,7 @@ public sealed class InstrumentPriceSourceAdminService(
         LastFailure = binding.LastFailure,
         LastFailureUtc = binding.LastFailureUtc,
         ConsecutiveFailures = binding.ConsecutiveFailures,
+        RetryOn = InstrumentPriceSyncService.IsSkippedToday(binding, today) ? today.AddDays(1) : null,
         SourceRegistered = sources.Find(binding.SourceKey) is not null,
     };
 }
