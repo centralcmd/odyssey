@@ -12,12 +12,12 @@ namespace Odyssey.Api.Tests;
 /// </summary>
 public class OpenApiSecuritySchemeTests
 {
-    private static async Task<JsonElement> GetSwaggerDocumentAsync()
+    private static async Task<JsonElement> GetOpenApiDocumentAsync()
     {
         using var factory = new OdysseyApiFactory(
             configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -27,7 +27,7 @@ public class OpenApiSecuritySchemeTests
     [Fact]
     public async Task TheDocument_DescribesTheAntiforgeryHeaderAlongsideTheCookie()
     {
-        var root = await GetSwaggerDocumentAsync();
+        var root = await GetOpenApiDocumentAsync();
 
         var schemes = root.GetProperty("components").GetProperty("securitySchemes");
 
@@ -47,13 +47,14 @@ public class OpenApiSecuritySchemeTests
     }
 
     /// <summary>
-    /// The controllers carry <c>[SwaggerOperation]</c> summaries and descriptions, which Swashbuckle ignores
-    /// unless <c>EnableAnnotations()</c> is called — without it some 380 attributes describe nothing.
+    /// The controllers carry <c>[EndpointSummary]</c> summaries and <c>[EndpointDescription]</c> descriptions
+    /// (Swashbuckle's <c>[SwaggerOperation]</c> before issue #569); this is the spot check that they reach the
+    /// document. <c>OpenApiParityTests</c> checks every one.
     /// </summary>
     [Fact]
-    public async Task SwaggerOperationAnnotations_ReachTheDocument()
+    public async Task EndpointSummaryAttributes_ReachTheDocument()
     {
-        var root = await GetSwaggerDocumentAsync();
+        var root = await GetOpenApiDocumentAsync();
 
         var summaries = root.GetProperty("paths")
             .EnumerateObject()
@@ -69,7 +70,7 @@ public class OpenApiSecuritySchemeTests
     [Fact]
     public async Task BothSchemes_AreListedAsDocumentLevelRequirements()
     {
-        var root = await GetSwaggerDocumentAsync();
+        var root = await GetOpenApiDocumentAsync();
 
         var required = root.GetProperty("security")
             .EnumerateArray()

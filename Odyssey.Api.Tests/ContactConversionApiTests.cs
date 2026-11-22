@@ -329,7 +329,7 @@ public class ContactConversionApiTests(ContactConversionApiTests.Host host) : Sh
         using var factory = new OdysseyApiFactory(
             configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var responses = document.RootElement.GetProperty("paths").GetProperty("/api/contacts/{id}")
             .GetProperty("put").GetProperty("responses");

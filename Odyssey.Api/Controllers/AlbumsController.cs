@@ -8,7 +8,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
@@ -35,7 +34,7 @@ public sealed class AlbumsController : ControllerBase
     [Authorize(Policy = PermissionClaims.PhotoAlbumsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<PhotoAlbumSummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List albums with search, archival-status filter, sort and paging.")]
+    [EndpointSummary("List albums with search, archival-status filter, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] AlbumsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -54,7 +53,7 @@ public sealed class AlbumsController : ControllerBase
     [Authorize(Policy = PermissionClaims.PhotoAlbumsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingPhotoAlbum))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get an album with its ordered member photo IDs and cover.")]
+    [EndpointSummary("Get an album with its ordered member photo IDs and cover.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -73,7 +72,7 @@ public sealed class AlbumsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingPhotoAlbum))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create an album with optional initial member photos.")]
+    [EndpointSummary("Create an album with optional initial member photos.")]
     public async Task<IActionResult> Post(
         [FromBody] NewPhotoAlbum request, CancellationToken cancellationToken = default)
     {
@@ -93,7 +92,7 @@ public sealed class AlbumsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update an album: rename/describe, replace ordered membership, set cover, archive.")]
+    [EndpointSummary("Update an album: rename/describe, replace ordered membership, set cover, archive.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdatePhotoAlbum request, CancellationToken cancellationToken = default)
@@ -117,7 +116,7 @@ public sealed class AlbumsController : ControllerBase
     [Authorize(Policy = PermissionClaims.PhotoAlbumsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an album and its membership rows; member photos are untouched.")]
+    [EndpointSummary("Delete an album and its membership rows; member photos are untouched.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

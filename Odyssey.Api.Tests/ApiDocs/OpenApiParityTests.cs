@@ -144,7 +144,7 @@ public class OpenApiParityTests(OpenApiParityTests.Host host) : SharedApiHostTes
     }
 
     /// <summary>The document the inventory is read from.</summary>
-    internal const string OpenApiDocumentPath = "/swagger/v1/swagger.json";
+    internal const string OpenApiDocumentPath = "/openapi/v1.json";
 
     private async Task<string> FetchDocumentAsync()
     {

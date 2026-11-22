@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Odyssey.Core.Profiles;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -37,7 +36,7 @@ public sealed class ProfileController : ControllerBase
     [PasswordChangeExempt]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ProfileDto))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [SwaggerOperation(Summary = "Read the current user's own profile and its completeness flag.")]
+    [EndpointSummary("Read the current user's own profile and its completeness flag.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -52,7 +51,7 @@ public sealed class ProfileController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ProfileDto))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [SwaggerOperation(Summary = "Set the current user's own profile (required fields must be present & valid).")]
+    [EndpointSummary("Set the current user's own profile (required fields must be present & valid).")]
     public async Task<IActionResult> Put(
         [FromBody] ProfileDto request,
         CancellationToken cancellationToken = default)
@@ -98,8 +97,8 @@ public sealed class ProfileController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Attach or replace the caller's own profile picture.",
-        Description = @"Takes the image BYTES as multipart/form-data under the part name 'file' — never a
+    [EndpointSummary("Attach or replace the caller's own profile picture.")]
+    [EndpointDescription(@"Takes the image BYTES as multipart/form-data under the part name 'file' — never a
 fileId. A caller-supplied id would let a self-service write point an identity row at arbitrary stored
 bytes and read them back through the authenticated read, an arbitrary-file-read primitive from two
 innocuous capabilities.
@@ -155,8 +154,8 @@ at most 1024 x 1024; not animated), stripped of all embedded metadata and re-val
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove the caller's own profile picture.",
-        Description = @"Deletes the stored bytes as well as the row — one of the three destructive routes
+    [EndpointSummary("Remove the caller's own profile picture.")]
+    [EndpointDescription(@"Deletes the stored bytes as well as the row — one of the three destructive routes
 that satisfy a GDPR Art. 17 erasure request (the others being the replace half of POST and the account
 delete's cascade).
 

@@ -377,7 +377,7 @@ public class NetWorthHistoryApiTests(NetWorthHistoryApiTests.Host host) : Shared
         await using var factory = new OdysseyApiFactory(
             configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -404,7 +404,7 @@ public class NetWorthHistoryApiTests(NetWorthHistoryApiTests.Host host) : Shared
         await using var factory = new OdysseyApiFactory(
             configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         var responses = document.RootElement

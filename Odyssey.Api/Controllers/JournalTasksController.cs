@@ -12,7 +12,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
@@ -42,7 +41,7 @@ public sealed class JournalTasksController : ControllerBase
     [Authorize(Policy = PermissionClaims.TasksRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<JournalTaskSummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List tasks (search/tag/status filter, sort, paginate).")]
+    [EndpointSummary("List tasks (search/tag/status filter, sort, paginate).")]
     public async Task<IActionResult> Get(
         [FromQuery] JournalTasksQueryParams query,
         CancellationToken cancellationToken = default)
@@ -61,7 +60,7 @@ public sealed class JournalTasksController : ControllerBase
     [Authorize(Policy = PermissionClaims.TasksRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingJournalTask))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a task with its tag IDs and attachment metadata.")]
+    [EndpointSummary("Get a task with its tag IDs and attachment metadata.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -81,7 +80,7 @@ public sealed class JournalTasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a task.")]
+    [EndpointSummary("Create a task.")]
     public async Task<IActionResult> Post(
         [FromBody] NewJournalTask request, CancellationToken cancellationToken = default)
     {
@@ -107,7 +106,7 @@ public sealed class JournalTasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a task's fields, links, lifecycle status and board position.")]
+    [EndpointSummary("Update a task's fields, links, lifecycle status and board position.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateJournalTask request, CancellationToken cancellationToken = default)
@@ -136,7 +135,7 @@ public sealed class JournalTasksController : ControllerBase
     [Authorize(Policy = PermissionClaims.TasksDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a task (cascades its owned attachment links).")]
+    [EndpointSummary("Delete a task (cascades its owned attachment links).")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -155,7 +154,7 @@ public sealed class JournalTasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export the current filtered task view as an RFC 5545 VTODO .ics file, attached files inline.")]
+    [EndpointSummary("Export the current filtered task view as an RFC 5545 VTODO .ics file, attached files inline.")]
     public async Task<IActionResult> ExportIcs(
         [FromQuery] JournalTasksQueryParams query, CancellationToken cancellationToken = default)
     {
@@ -179,7 +178,7 @@ public sealed class JournalTasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TaskIcsExportSummary))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Summarize what a VTODO .ics export of the filtered task view would contain.")]
+    [EndpointSummary("Summarize what a VTODO .ics export of the filtered task view would contain.")]
     public async Task<ActionResult<TaskIcsExportSummary>> SummarizeIcsExport(
         [FromQuery] JournalTasksQueryParams query, CancellationToken cancellationToken = default) =>
         await icsService.SummarizeExportAsync(query, CanLinkFiles(), cancellationToken);
@@ -210,7 +209,7 @@ public sealed class JournalTasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TaskIcsImportResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Import an RFC 5545 VTODO .ics file into the shared task board.")]
+    [EndpointSummary("Import an RFC 5545 VTODO .ics file into the shared task board.")]
     public async Task<IActionResult> ImportIcs(
         IFormFile file, CancellationToken cancellationToken = default)
     {

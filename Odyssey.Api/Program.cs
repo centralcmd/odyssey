@@ -3,6 +3,7 @@ using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Api;
+using Odyssey.Api.ApiDocs;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Legal;
@@ -340,7 +341,7 @@ builder.Services.AddSingleton<Odyssey.Api.GlobalExportConcurrencyLimiter>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
-builder.AddOpenApiExplorer();
+builder.AddOpenApiDocument();
 
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<TermService>();
@@ -803,8 +804,7 @@ var enableSwagger = app.Environment.IsDevelopment()
     || (app.Configuration.GetValue<bool>("Swagger:Enabled") && !app.Environment.IsProduction());
 if (enableSwagger)
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
 }
 
 app.UseExceptionHandler(new ExceptionHandlerOptions

@@ -6,7 +6,6 @@ using Odyssey.Core.Weather;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -30,7 +29,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingWeatherPoint>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [SwaggerOperation(Summary = "Every weather point, paged; sortBy=LinkedLocationCount needs locations.read.")]
+    [EndpointSummary("Every weather point, paged; sortBy=LinkedLocationCount needs locations.read.")]
     public async Task<IActionResult> Get([FromQuery] WeatherPointsQueryParams query, CancellationToken cancellationToken = default)
     {
         // The order alone counts places, so it is refused rather than served unsorted (AC 19).
@@ -46,7 +45,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [Authorize(Policy = PermissionClaims.WeatherPointsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingWeatherPoint))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One weather point.")]
+    [EndpointSummary("One weather point.")]
     public async Task<IActionResult> Get([FromRoute] Guid weatherPointId, CancellationToken cancellationToken = default)
     {
         var point = await service.GetAsync(weatherPointId, CanReadLocations(), cancellationToken);
@@ -58,7 +57,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [Authorize(Policy = PermissionClaims.LocationsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IReadOnlyList<WeatherPointLinkedLocation>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The places that use a weather point: id, name and whole-km distance only.")]
+    [EndpointSummary("The places that use a weather point: id, name and whole-km distance only.")]
     public async Task<IActionResult> LinkedLocations([FromRoute] Guid weatherPointId, CancellationToken cancellationToken = default)
     {
         var linked = await service.LinkedLocationsAsync(weatherPointId, cancellationToken);
@@ -74,7 +73,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a weather point from coordinates, or by copying a reviewed place's position. Links nothing.")]
+    [EndpointSummary("Create a weather point from coordinates, or by copying a reviewed place's position. Links nothing.")]
     public async Task<IActionResult> Post([FromBody] NewWeatherPoint request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -101,7 +100,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Change a weather point's settings; a changed position, altitude or time zone starts a new site. Not an upsert.")]
+    [EndpointSummary("Change a weather point's settings; a changed position, altitude or time zone starts a new site. Not an upsert.")]
     public async Task<IActionResult> Put(
         [FromRoute] Guid weatherPointId, [FromBody] UpdateWeatherPoint request, CancellationToken cancellationToken = default)
     {
@@ -122,7 +121,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Fetch the forecast now, still honouring MET's expiry and any pause.")]
+    [EndpointSummary("Fetch the forecast now, still honouring MET's expiry and any pause.")]
     public async Task<IActionResult> Refresh([FromRoute] Guid weatherPointId, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -141,7 +140,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a weather point's measured data once its history is off. The point and its forecast stay.")]
+    [EndpointSummary("Delete a weather point's measured data once its history is off. The point and its forecast stay.")]
     public async Task<IActionResult> DeleteHistory([FromRoute] Guid weatherPointId, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -159,7 +158,7 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a weather point and all its data once both halves are off. Its places become unlinked.")]
+    [EndpointSummary("Delete a weather point and all its data once both halves are off. Its places become unlinked.")]
     public async Task<IActionResult> Delete([FromRoute] Guid weatherPointId, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

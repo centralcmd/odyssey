@@ -8,7 +8,6 @@ using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Internet;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -34,21 +33,21 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingNewsFeed>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List news feeds by state, derived health, tag and search.")]
+    [EndpointSummary("List news feeds by state, derived health, tag and search.")]
     public async Task<IActionResult> List([FromQuery] NewsFeedsQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await feeds.ListAsync(query, CanManage, cancellationToken));
 
     [HttpGet("catalogue")]
     [Authorize(Policy = PermissionClaims.NewsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<NewsFeedCatalogueEntry>))]
-    [SwaggerOperation(Summary = "Every feed not pending deletion, unpaged and with no URL.")]
+    [EndpointSummary("Every feed not pending deletion, unpaged and with no URL.")]
     public async Task<IActionResult> Catalogue([FromQuery] NewsFeedKindFilter? kind = null, CancellationToken cancellationToken = default) =>
         Ok(await feeds.CatalogueAsync(cancellationToken, kind));
 
     [HttpGet("unread-counts")]
     [Authorize(Policy = PermissionClaims.NewsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(NewsUnreadCounts))]
-    [SwaggerOperation(Summary = "Unread counts in total, by feed and by effective tag; archived feeds excluded.")]
+    [EndpointSummary("Unread counts in total, by feed and by effective tag; archived feeds excluded.")]
     public async Task<IActionResult> UnreadCounts(CancellationToken cancellationToken = default) =>
         Ok(await feeds.UnreadCountsAsync(cancellationToken));
 
@@ -62,7 +61,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export every feed not pending deletion as an OPML 2.0 file, each tag a folder.")]
+    [EndpointSummary("Export every feed not pending deletion as an OPML 2.0 file, each tag a folder.")]
     public Task<IActionResult> ExportOpml([FromServices] NewsOpmlExportService export, CancellationToken cancellationToken = default) =>
         WriteOpmlAsync(export, null, cancellationToken);
 
@@ -77,7 +76,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export the named feeds as an OPML 2.0 file; unknown ids and feeds pending deletion are skipped.")]
+    [EndpointSummary("Export the named feeds as an OPML 2.0 file; unknown ids and feeds pending deletion are skipped.")]
     public Task<IActionResult> ExportOpmlFiltered(
         [FromBody] NewsOpmlExportRequest request, [FromServices] NewsOpmlExportService export, CancellationToken cancellationToken = default) =>
         WriteOpmlAsync(export, request.FeedIds!, cancellationToken);
@@ -95,7 +94,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Subscribe to the feeds of an OPML file in one step and report each. No outbound request is made.")]
+    [EndpointSummary("Subscribe to the feeds of an OPML file in one step and report each. No outbound request is made.")]
     public async Task<IActionResult> ImportOpml(
         IFormFile? file, [FromServices] NewsOpmlImportService import, CancellationToken cancellationToken = default)
     {
@@ -158,7 +157,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [Authorize(Policy = PermissionClaims.NewsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingNewsFeed))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One news feed. Never writes.")]
+    [EndpointSummary("One news feed. Never writes.")]
     public async Task<IActionResult> Get([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         await feeds.GetAsync(id, CanManage, cancellationToken) is { } feed ? Ok(feed) : NotFound(id);
 
@@ -168,7 +167,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Subscribe to a feed. No outbound request is made; the worker fetches it on its next tick.")]
+    [EndpointSummary("Subscribe to a feed. No outbound request is made; the worker fetches it on its next tick.")]
     public async Task<IActionResult> Create([FromBody] NewNewsFeed request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -187,7 +186,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace a feed's settings under its version; a url equal to the pending suggestion accepts it.")]
+    [EndpointSummary("Replace a feed's settings under its version; a url equal to the pending suggestion accepts it.")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateNewsFeed request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -204,7 +203,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace a feed's tags; every article of the feed inherits them.")]
+    [EndpointSummary("Replace a feed's tags; every article of the feed inherits them.")]
     public async Task<IActionResult> SetTags([FromRoute] Guid id, [FromBody] NewsFeedTagsUpdate request, CancellationToken cancellationToken = default) =>
         await feeds.SetTagsAsync(id, request, CanManage, cancellationToken) is { } feed ? Ok(feed) : NotFound(id);
 
@@ -213,7 +212,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Ask the worker to fetch the feed soon (no sooner than 60 s after its last attempt).")]
+    [EndpointSummary("Ask the worker to fetch the feed soon (no sooner than 60 s after its last attempt).")]
     public async Task<IActionResult> Refresh([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         await feeds.RefreshAsync(id, cancellationToken) ? Accepted() : NotFound(id);
 
@@ -221,7 +220,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [Authorize(Policy = PermissionClaims.NewsFeedsUpdate)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingNewsFeed))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Archive a feed: it stops being fetched and leaves the default lists.")]
+    [EndpointSummary("Archive a feed: it stops being fetched and leaves the default lists.")]
     public Task<IActionResult> Archive([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         SetArchivedAsync(id, true, cancellationToken);
 
@@ -229,7 +228,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [Authorize(Policy = PermissionClaims.NewsFeedsUpdate)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingNewsFeed))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Unarchive a feed.")]
+    [EndpointSummary("Unarchive a feed.")]
     public Task<IActionResult> Unarchive([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         SetArchivedAsync(id, false, cancellationToken);
 
@@ -238,7 +237,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an archived feed: hidden at once, purged by the worker in batches.")]
+    [EndpointSummary("Delete an archived feed: hidden at once, purged by the worker in batches.")]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -254,7 +253,7 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingNewsFeed))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Release a quarantined feed so the worker fetches it again.")]
+    [EndpointSummary("Release a quarantined feed so the worker fetches it again.")]
     public async Task<IActionResult> ReleaseQuarantine([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

@@ -31,8 +31,7 @@ namespace Odyssey.Api.Tests;
 public class SwaggerProductionLockoutTests
 {
     [Theory]
-    [InlineData("/swagger/v1/swagger.json")]
-    [InlineData("/swagger/index.html")]
+    [InlineData("/openapi/v1.json")]
     public async Task Production_DoesNotServeSwagger_EvenWhenTheFlagIsOn(string path)
     {
         using var factory = new SwaggerFactory("Production");
@@ -54,7 +53,7 @@ public class SwaggerProductionLockoutTests
         using var factory = new SwaggerFactory("Staging");
         using var client = CreateClient(factory);
 
-        var response = await client.GetAsync("/swagger/v1/swagger.json");
+        var response = await client.GetAsync("/openapi/v1.json");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("openapi", await response.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);

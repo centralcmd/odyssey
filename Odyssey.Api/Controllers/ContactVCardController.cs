@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Avatar;
@@ -47,11 +47,11 @@ public sealed class ContactVCardController : ControllerBase
     [Produces("text/vcard")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export a single contact as an RFC 6350 vCard 4.0 .vcf file.",
-        Description = ExportDisclosure)]
+    [EndpointSummary("Export a single contact as an RFC 6350 vCard 4.0 .vcf file.")]
+    [EndpointDescription(ExportDisclosure)]
     public async Task<IActionResult> ExportVCard(
         [FromRoute(Name = "id")] Guid id,
-        [FromQuery] [SwaggerParameter(Description = @"Embed the contact's image as a PHOTO (person) or
+        [FromQuery] [Description(@"Embed the contact's image as a PHOTO (person) or
 LOGO (organization) data URI. Opt-in and default false on BOTH export endpoints: flipping the
 single-contact default would silently change what an existing caller receives from a shipped endpoint.")]
         bool includeImages = false,
@@ -84,12 +84,12 @@ death, an organization's establishment and dissolution dates, the archive date, 
     [Produces("text/vcard")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export every contact matching the supplied filters as a multi-entry RFC 6350 vCard 4.0 .vcf file.",
-        Description = "Omit all filters to export everything; pass the page's current filter state to export exactly the filtered set.\n\n"
+    [EndpointSummary("Export every contact matching the supplied filters as a multi-entry RFC 6350 vCard 4.0 .vcf file.")]
+    [EndpointDescription("Omit all filters to export everything; pass the page's current filter state to export exactly the filtered set.\n\n"
             + ExportDisclosure)]
     public async Task<IActionResult> ExportVCards(
         [FromQuery] ContactsQueryParams query,
-        [FromQuery] [SwaggerParameter(Description = @"Embed each contact's image. Opt-in, default false.
+        [FromQuery] [Description(@"Embed each contact's image. Opt-in, default false.
 With images on, the output byte cap makes truncation the common case rather than a corner, so a
 truncated response reports itself rather than returning a silently short document.")]
         bool includeImages = false,
@@ -162,7 +162,7 @@ truncated response reports itself rather than returning a silently short documen
     [EnableRateLimiting(ImportExportRateLimiting.ImportConcurrencyPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VCardImportResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Import an RFC 6350 vCard 4.0 .vcf file, creating or updating contacts matched by ExternalUid.")]
+    [EndpointSummary("Import an RFC 6350 vCard 4.0 .vcf file, creating or updating contacts matched by ExternalUid.")]
     public async Task<IActionResult> ImportVCard(IFormFile file, CancellationToken cancellationToken = default)
     {
         if (file is null || file.Length == 0)

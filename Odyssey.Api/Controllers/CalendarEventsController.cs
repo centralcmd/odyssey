@@ -9,7 +9,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -35,7 +34,7 @@ public sealed class CalendarEventsController : ControllerBase
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingCalendarEvent>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List calendar events overlapping a required From/To window (max 92 days), filterable by calendar.")]
+    [EndpointSummary("List calendar events overlapping a required From/To window (max 92 days), filterable by calendar.")]
     public async Task<IActionResult> Get(
         [FromQuery] CalendarEventsQueryParams query, CancellationToken cancellationToken = default)
     {
@@ -56,7 +55,7 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export every matching event, across every calendar, as a single multi-VEVENT .ics file.")]
+    [EndpointSummary("Export every matching event, across every calendar, as a single multi-VEVENT .ics file.")]
     public Task<IActionResult> ExportIcs(
         [FromQuery] CalendarEventsIcsExportQueryParams query, CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.StreamAsync(
@@ -70,7 +69,7 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarIcsExportSummary))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Summarize what the aggregate .ics export would contain for the same query.")]
+    [EndpointSummary("Summarize what the aggregate .ics export would contain for the same query.")]
     public Task<ActionResult<CalendarIcsExportSummary>> SummarizeIcsExport(
         [FromQuery] CalendarEventsIcsExportQueryParams query, CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.SummarizeAsync(
@@ -80,7 +79,7 @@ public sealed class CalendarEventsController : ControllerBase
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingCalendarEvent))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a calendar event.")]
+    [EndpointSummary("Get a calendar event.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -98,7 +97,7 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export a single event as a standalone RFC 5545 .ics VEVENT.")]
+    [EndpointSummary("Export a single event as a standalone RFC 5545 .ics VEVENT.")]
     public Task<IActionResult> ExportEventIcs(
         [FromRoute(Name = "id")] Guid id,
         [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
@@ -114,7 +113,7 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Summarize what a single event's .ics export would contain.")]
+    [EndpointSummary("Summarize what a single event's .ics export would contain.")]
     public Task<ActionResult<CalendarIcsExportSummary>> SummarizeEventIcsExport(
         [FromRoute(Name = "id")] Guid id,
         [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
@@ -129,7 +128,7 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a standalone (non-recurring) calendar event.")]
+    [EndpointSummary("Create a standalone (non-recurring) calendar event.")]
     public async Task<IActionResult> Post(
         [FromBody] NewCalendarEvent request, CancellationToken cancellationToken = default)
     {
@@ -151,7 +150,7 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update this occurrence only; on a series row it becomes an override that a series edit keeps. Times are wall-clock in timeZoneId. RecurrencePatternId is immutable — use PUT /api/recurrence-patterns/{id} to edit a series.")]
+    [EndpointSummary("Update this occurrence only; on a series row it becomes an override that a series edit keeps. Times are wall-clock in timeZoneId. RecurrencePatternId is immutable — use PUT /api/recurrence-patterns/{id} to edit a series.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewCalendarEvent request, CancellationToken cancellationToken = default)
@@ -171,7 +170,7 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarEventDeleteResult))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete this occurrence only. On a series row it also records an exclusion for the occurrence's key, so a later series edit or re-import does not bring it back. Always 200 with what keying a legacy series detached (zero and false otherwise).")]
+    [EndpointSummary("Delete this occurrence only. On a series row it also records an exclusion for the occurrence's key, so a later series edit or re-import does not bring it back. Always 200 with what keying a legacy series detached (zero and false otherwise).")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

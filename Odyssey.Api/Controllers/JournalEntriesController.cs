@@ -13,7 +13,6 @@ using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
@@ -43,7 +42,7 @@ public sealed class JournalEntriesController : ControllerBase
     [Authorize(Policy = PermissionClaims.JournalRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<JournalEntrySummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List journal entries with search, tag/contact/date-range/attachment-presence filters, sort and paging.")]
+    [EndpointSummary("List journal entries with search, tag/contact/date-range/attachment-presence filters, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] JournalEntriesQueryParams query,
         CancellationToken cancellationToken = default)
@@ -68,7 +67,7 @@ public sealed class JournalEntriesController : ControllerBase
     [Authorize(Policy = PermissionClaims.JournalRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingJournalEntry))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a journal entry with its tag, contact, photo and attachment link IDs.")]
+    [EndpointSummary("Get a journal entry with its tag, contact, photo and attachment link IDs.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -89,7 +88,7 @@ public sealed class JournalEntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a journal entry.")]
+    [EndpointSummary("Create a journal entry.")]
     public async Task<IActionResult> Post(
         [FromBody] NewJournalEntry request, CancellationToken cancellationToken = default)
     {
@@ -117,7 +116,7 @@ public sealed class JournalEntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a journal entry and replace its tag, contact, photo and attachment links.")]
+    [EndpointSummary("Update a journal entry and replace its tag, contact, photo and attachment links.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateJournalEntry request, CancellationToken cancellationToken = default)
@@ -147,7 +146,7 @@ public sealed class JournalEntriesController : ControllerBase
     [Authorize(Policy = PermissionClaims.JournalDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Permanently delete a journal entry and its owned photo/attachment rows.")]
+    [EndpointSummary("Permanently delete a journal entry and its owned photo/attachment rows.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -169,7 +168,7 @@ public sealed class JournalEntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export a single journal entry as an RFC 5545 VJOURNAL .ics file, attached files and photos inline.")]
+    [EndpointSummary("Export a single journal entry as an RFC 5545 VJOURNAL .ics file, attached files and photos inline.")]
     public async Task<IActionResult> ExportSingleVJournal(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -188,7 +187,7 @@ public sealed class JournalEntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Summarize what a single journal entry's VJOURNAL export would contain.")]
+    [EndpointSummary("Summarize what a single journal entry's VJOURNAL export would contain.")]
     public async Task<ActionResult<JournalEntryIcsExportSummary>> SummarizeSingleVJournalExport(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
         await icsService.SummarizeExportAsync(new JournalEntriesQueryParams(), CanLinkFiles(), CanReadPhotos(), id, cancellationToken)
@@ -207,7 +206,7 @@ public sealed class JournalEntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export journal entries matching the given filters as an RFC 5545 VJOURNAL .ics file, attached files and photos inline.")]
+    [EndpointSummary("Export journal entries matching the given filters as an RFC 5545 VJOURNAL .ics file, attached files and photos inline.")]
     public async Task<IActionResult> ExportVJournal(
         [FromQuery] JournalEntriesQueryParams query, CancellationToken cancellationToken = default) =>
         await StreamVJournalAsync(query, null, cancellationToken);
@@ -220,7 +219,7 @@ public sealed class JournalEntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JournalEntryIcsExportSummary))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Summarize what a VJOURNAL export of the filtered journal view would contain.")]
+    [EndpointSummary("Summarize what a VJOURNAL export of the filtered journal view would contain.")]
     public async Task<ActionResult<JournalEntryIcsExportSummary>> SummarizeVJournalExport(
         [FromQuery] JournalEntriesQueryParams query, CancellationToken cancellationToken = default) =>
         (await icsService.SummarizeExportAsync(query, CanLinkFiles(), CanReadPhotos(), null, cancellationToken))!;
@@ -262,7 +261,7 @@ public sealed class JournalEntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JournalEntryIcsImportResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Import an RFC 5545 VJOURNAL .ics file into the shared journal-entries board.")]
+    [EndpointSummary("Import an RFC 5545 VJOURNAL .ics file into the shared journal-entries board.")]
     public async Task<IActionResult> ImportVJournal(
         IFormFile file, CancellationToken cancellationToken = default)
     {

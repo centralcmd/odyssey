@@ -7,7 +7,6 @@ using Odyssey.Core.Identity;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Books;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -25,7 +24,7 @@ public sealed class BooksController(BookService service, IUserDisplayNameResolve
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<BookSummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List books with search, status/format/tag/author/cover/file filters, sort and paging.")]
+    [EndpointSummary("List books with search, status/format/tag/author/cover/file filters, sort and paging.")]
     public async Task<IActionResult> Get([FromQuery] BooksQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await service.ListAsync(query, Caller(string.Empty), cancellationToken));
 
@@ -33,7 +32,7 @@ public sealed class BooksController(BookService service, IUserDisplayNameResolve
     [Authorize(Policy = PermissionClaims.BooksRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingBook))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get one book.")]
+    [EndpointSummary("Get one book.")]
     public async Task<IActionResult> Get([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var book = await service.GetAsync(id, Caller(string.Empty), cancellationToken);
@@ -48,7 +47,7 @@ public sealed class BooksController(BookService service, IUserDisplayNameResolve
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a book. Links are scalar ids; each non-empty array needs its read claim.")]
+    [EndpointSummary("Create a book. Links are scalar ids; each non-empty array needs its read claim.")]
     public async Task<IActionResult> Post([FromBody] NewBook request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -70,7 +69,7 @@ public sealed class BooksController(BookService service, IUserDisplayNameResolve
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace a book (not an upsert). version must match; a null array leaves that set unchanged.")]
+    [EndpointSummary("Replace a book (not an upsert). version must match; a null array leaves that set unchanged.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id, [FromBody] UpdateBook request, CancellationToken cancellationToken = default)
     {
@@ -87,7 +86,7 @@ public sealed class BooksController(BookService service, IUserDisplayNameResolve
     [Authorize(Policy = PermissionClaims.BooksDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a book and its links. Photos, files, contacts and tags are untouched.")]
+    [EndpointSummary("Delete a book and its links. Photos, files, contacts and tags are untouched.")]
     public async Task<IActionResult> Delete([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

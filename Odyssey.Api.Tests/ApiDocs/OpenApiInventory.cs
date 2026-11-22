@@ -111,9 +111,23 @@ internal static class OpenApiInventory
             return name;
         }
 
-        return schema.TryGetProperty("items", out var items) && RefName(items) is { } itemName
-            ? itemName + "[]"
-            : null;
+        if (schema.TryGetProperty("items", out var items) && RefName(items) is { } itemName)
+        {
+            return itemName + "[]";
+        }
+
+        // OpenAPI 3.1 states a nullable reference as oneOf/anyOf [{ "type": "null" }, { "$ref": … }]; the name is
+        // the same schema, only its nullability is spelled differently.
+        foreach (var keyword in (string[])["oneOf", "anyOf"])
+        {
+            if (schema.TryGetProperty(keyword, out var options)
+                && options.EnumerateArray().Select(RefName).OfType<string>().ToList() is [var single])
+            {
+                return single;
+            }
+        }
+
+        return null;
     }
 
     private static string? RefName(JsonElement schema) =>
