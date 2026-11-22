@@ -42,7 +42,7 @@ public class FileStorageApiTests(FileStorageApiTests.Host host) : SharedApiHostT
         Assert.Equal(["archive", "primary"], volumes.Select(v => v.Name));
         var primary = volumes.Single(v => v.Name == "primary");
         Assert.Equal(FileStorageVolumeState.Available, primary.State);
-        Assert.Equal(["ContactAvatars", "FinanceFiles", "JournalFiles", "NewsArticles", "PhotoOriginals", "PhotoThumbnails", "PodcastArtwork", "PodcastAudio", "TestFiles", "TestSecrets"], primary.BoundFeatures);
+        Assert.Equal(["ContactAvatars", "FinanceFiles", "JournalFiles", "LibraryFiles", "NewsArticles", "PhotoOriginals", "PhotoThumbnails", "PodcastArtwork", "PodcastAudio", "TestFiles", "TestSecrets"], primary.BoundFeatures);
         var usage = Assert.Single(primary.Features);
         Assert.Equal("TestFiles", usage.FeatureKey);
         Assert.Equal(1, usage.ObjectCount);
@@ -50,7 +50,7 @@ public class FileStorageApiTests(FileStorageApiTests.Host host) : SharedApiHostT
         Assert.NotNull(primary.FreeBytes);
         Assert.Contains("\"state\":\"Available\"", body, StringComparison.Ordinal);
         // Feature keys are canonical PascalCase on the wire, compared case-sensitively.
-        Assert.Contains("\"boundFeatures\":[\"ContactAvatars\",\"FinanceFiles\",\"JournalFiles\",\"NewsArticles\",\"PhotoOriginals\",\"PhotoThumbnails\",\"PodcastArtwork\",\"PodcastAudio\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"boundFeatures\":[\"ContactAvatars\",\"FinanceFiles\",\"JournalFiles\",\"LibraryFiles\",\"NewsArticles\",\"PhotoOriginals\",\"PhotoThumbnails\",\"PodcastArtwork\",\"PodcastAudio\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
         Assert.Contains("\"featureKey\":\"TestFiles\"", body, StringComparison.Ordinal);
 
         Assert.DoesNotContain("/", body.Replace("\\u002F", "/"), StringComparison.Ordinal);

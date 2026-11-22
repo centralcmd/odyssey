@@ -42,6 +42,9 @@ public class FileMetadata
     /// <summary>The bytes on the store, feature <c>ContactAvatars</c> (RESTRICT, issue #448 §4.1).</summary>
     public Guid? ContactAvatarStoredObjectId { get; set; }
 
+    /// <summary>The bytes on the store, feature <c>LibraryFiles</c> (RESTRICT; book attachments, #527).</summary>
+    public Guid? LibraryStoredObjectId { get; set; }
+
     [MaxLength(256)]
     public string? Description { get; set; }
 

@@ -91,6 +91,19 @@ public static class NavModel
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),
             ]),
         ]),
+        // Library (issue #571 §3.1): a navigation grouping, not a shared data model — Books now, Recipes and Music
+        // later. Collections first, the tag pages under Reference last, as in Finance.
+        new("library", "Library", "local_library",
+        [
+            new(null,
+            [
+                new("books", "Books", "auto_stories", "books", PermissionClaims.BooksRead),
+            ]),
+            new("Reference",
+            [
+                new("book-tags", "Book Tags", "local_offer", "book-tags", PermissionClaims.BookTagsRead),
+            ]),
+        ]),
         // Internet (issue #473 §3.1): the news reader, plus Weather points (moved here from Journal). news.read
         // gates the four news pages (Podcasts, issue #559, sits between News and Feeds) and weather.points.read the weather page, so a caller holding neither loses
         // the whole module (VisibleModules). Reference stays last, as in Finance.

@@ -137,13 +137,13 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
 
     /// <summary>
     /// AC 15: every foreign key to <c>StoredObjects</c> belongs to exactly one catalogue feature and is RESTRICT. The
-    /// production model has its features — photo thumbnails, photo originals, the three file areas and news
+    /// production model has its features — photo thumbnails, photo originals, the four file areas and news
     /// articles — and exactly their keys; the test model adds one per test feature.
     /// </summary>
     [Fact]
     public void Every_key_to_stored_objects_belongs_to_one_feature_and_is_restrict()
     {
-        // Production: photo thumbnails (issue #362), photo originals (issue #428) and the three file areas (issue #448,
+        // Production: photo thumbnails (issue #362), photo originals (issue #428) and the four file areas (issues #448, #527,
         // one column per feature on FileMetadata), the news articles (issue #470, NewsArticleFiles), podcast audio and
         // artwork (issue #556, PodcastEpisodeAudio and PodcastArtworkFiles), and exactly their keys.
         using var production = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-prod").Options);
@@ -154,7 +154,7 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
              Odyssey.Core.Internet.News.Podcasts.Files.PodcastArtworkStorage.Feature,
              .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All]);
         Assert.Equal(
-            [nameof(FileMetadata), nameof(FileMetadata), nameof(FileMetadata), nameof(NewsArticleFile), nameof(Photo), nameof(PhotoThumbnail),
+            [nameof(FileMetadata), nameof(FileMetadata), nameof(FileMetadata), nameof(FileMetadata), nameof(NewsArticleFile), nameof(Photo), nameof(PhotoThumbnail),
              nameof(PodcastArtworkFile), nameof(PodcastEpisodeAudio)],
             KeysTo(production.Model).Select(fk => fk.DeclaringEntityType.ClrType.Name).Order());
         Assert.Empty(ReferenceViolations(production.Model, productionCatalogue));
@@ -166,7 +166,7 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
              Odyssey.Core.Internet.News.Podcasts.Files.PodcastAudioStorage.Feature,
              Odyssey.Core.Internet.News.Podcasts.Files.PodcastArtworkStorage.Feature,
              .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All]);
-        Assert.Equal(11, KeysTo(test.Model).Count);
+        Assert.Equal(12, KeysTo(test.Model).Count);
         Assert.Empty(ReferenceViolations(test.Model, testCatalogue));
 
         // And it bites: drop a feature from the catalogue and its key is reported.
@@ -176,8 +176,8 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
              Odyssey.Core.Internet.News.Podcasts.Files.PodcastAudioStorage.Feature,
              Odyssey.Core.Internet.News.Podcasts.Files.PodcastArtworkStorage.Feature,
              .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All])));
-        Assert.Equal(7, ReferenceViolations(production.Model, new StorageFeatureCatalogue([Journal.Thumbnails.PhotoThumbnailStorage.Feature])).Count);
-        Assert.Equal(8, ReferenceViolations(production.Model, new StorageFeatureCatalogue([])).Count);
+        Assert.Equal(8, ReferenceViolations(production.Model, new StorageFeatureCatalogue([Journal.Thumbnails.PhotoThumbnailStorage.Feature])).Count);
+        Assert.Equal(9, ReferenceViolations(production.Model, new StorageFeatureCatalogue([])).Count);
     }
 
     internal static IReadOnlyList<IForeignKey> KeysTo(IModel model) =>
@@ -227,6 +227,7 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
 
         Assert.Equal(
             [StoredFileAreas.ContactAvatarFeatureKey, StoredFileAreas.FinanceFeatureKey, StoredFileAreas.JournalFeatureKey,
+             StoredFileAreas.LibraryFeatureKey,
              NewsArticleStorage.FeatureKey, PhotoOriginalStorage.FeatureKey, PhotoThumbnailStorage.FeatureKey,
              Odyssey.Core.Internet.News.Podcasts.Files.PodcastArtworkStorage.FeatureKey, Odyssey.Core.Internet.News.Podcasts.Files.PodcastAudioStorage.FeatureKey],
             features.Select(f => f.Key).Order(StringComparer.Ordinal));

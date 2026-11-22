@@ -21,7 +21,14 @@ public static class FileHeaderSignatures
     /// How many leading bytes any signature below needs. A caller holding a whole buffer should slice
     /// to this rather than passing megabytes of it.
     /// </summary>
-    public const int HeaderLength = 16;
+    /// <para>64 since EPUB (#527): its check reads 58 bytes. A shorter header simply never matches EPUB, and every
+    /// other signature still matches on its first bytes.</para>
+    public const int HeaderLength = 64;
+
+    /// <summary>The EPUB OCF container: a ZIP whose first entry is the uncompressed file <c>mimetype</c>.</summary>
+    private static ReadOnlySpan<byte> EpubMimetypeName => "mimetype"u8;
+
+    private static ReadOnlySpan<byte> EpubMediaType => "application/epub+zip"u8;
 
     /// <summary>
     /// Whether <paramref name="header"/> matches a known signature for <paramref name="contentType"/>.
@@ -48,6 +55,14 @@ public static class FileHeaderSignatures
                 // RIFF container with a "WEBP" form type at offset 8.
                 return StartsWith(header, "RIFF"u8)
                     && header.Length >= 12 && header.Slice(8, 4).SequenceEqual("WEBP"u8);
+            case "application/epub+zip":
+                // ZIP local-file header, then (OCF 3.3) the first entry is the stored file "mimetype" whose
+                // name starts at offset 30 and whose content, "application/epub+zip", follows at offset 38.
+                // A plain ZIP renamed .epub has a different first entry, so it fails here.
+                return StartsWith(header, [0x50, 0x4B, 0x03, 0x04])
+                    && header.Length >= 38 + EpubMediaType.Length
+                    && header.Slice(30, EpubMimetypeName.Length).SequenceEqual(EpubMimetypeName)
+                    && header.Slice(38, EpubMediaType.Length).SequenceEqual(EpubMediaType);
             case "application/zip":
             case "application/x-zip-compressed":
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":

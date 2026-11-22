@@ -1,0 +1,70 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Books
+
+@*
+    BookPersonTile — one credited contact on a book (design system · Books.jsx BookPersonTile): the contract party
+    tile. Icon and colour are the CONTACT TYPE's (a reference keeps its own mark, not the book's accent), the overline
+    is what the contact did on the book (Main author, the contributor's role), the value the name, the caption the
+    contact type — "· archived" and a muted tile for an archived contact. Without contacts.read the value reads
+    "Name not available". Only a contributor tile carries a menu; the main author changes in the Edit book dialog.
+*@
+
+@if (!CanReadContacts)
+{
+    <OdsInfoTile Icon="person_off" Label="@Role" ValueVariant="OdsInfoTileVariant.Text" Tone="OdsInfoTileTone.Muted"
+                 Foot="@OdsInfoTile.Caption("You don’t have access to contact names")">
+        <Value>Name not available</Value>
+    </OdsInfoTile>
+}
+else if (Contact is null)
+{
+    @* Defensive only — the main author is a required key — but a record without one says so in the tile. *@
+    <OdsInfoTile Icon="person_off" Label="@Role" ValueVariant="OdsInfoTileVariant.Text" Tone="OdsInfoTileTone.Muted"
+                 Foot="@OdsInfoTile.Caption("Edit the book to choose one")">
+        <Value>No main author</Value>
+    </OdsInfoTile>
+}
+else
+{
+    var type = OdsTypeRegistries.ContactTypeOf(Contact.Type?.ToString());
+    var muted = Contact.Archived == true || Contact.Name is null;
+    <div class="con-party-tile">
+        <OdsInfoTile Icon="@type.Icon"
+                     IconColor="@(muted ? null : type.Color)"
+                     IconSoft="@(muted ? null : type.Soft)"
+                     LabelContent="@LabelFragment"
+                     ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
+                     Tone="@(muted ? OdsInfoTileTone.Muted : OdsInfoTileTone.Default)"
+                     Value="@(b => b.AddContent(0, Contact.Name ?? "Unavailable"))"
+                     Foot="@OdsInfoTile.Caption(Caption(type.Label))" />
+    </div>
+}
+
+@code {
+    /// <summary>The credited contact; <c>null</c> draws the defensive <i>No main author</i> tile.</summary>
+    [Parameter] public BookContactReference? Contact { get; set; }
+
+    /// <summary>The overline: <i>Main author</i>, or the contributor's role (<i>Contributor</i> when empty).</summary>
+    [Parameter, EditorRequired] public string Role { get; set; } = string.Empty;
+
+    [Parameter] public bool CanReadContacts { get; set; }
+
+    /// <summary>The contributor tile's ⋯ menu; <c>null</c> or empty for none (the main author, or no <c>books.update</c>).</summary>
+    [Parameter] public IReadOnlyList<OdsMenuItem>? Menu { get; set; }
+
+    private string Caption(string typeLabel) =>
+        Contact?.Archived == true ? $"{typeLabel} · archived" : typeLabel;
+
+    // Razor syntax (@<text>), so this inline fragment cannot live in a code-behind.
+    private RenderFragment LabelFragment =>
+        Menu is { Count: > 0 } menu
+            ? @<text>
+                  <span class="con-role"><span>@Role</span></span>
+                  <span class="con-tile-menu">
+                      <OdsMenu Items="@menu" AriaLabel="@MenuLabel" />
+                  </span>
+              </text>
+            : @<text>@Role</text>;
+
+    private string MenuLabel => $"Actions for {Role}: {Contact?.Name ?? "contact"}";
+}

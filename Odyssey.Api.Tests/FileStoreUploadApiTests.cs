@@ -60,6 +60,54 @@ public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : Shared
         Assert.False(await context.StoredFileBuckets.AnyAsync());
         Assert.Empty(FilesUnder(factory.FileVolumeRoot, "finance-files"));
         Assert.Empty(FilesUnder(factory.FileVolumeRoot, "journal-files"));
+        Assert.Empty(FilesUnder(factory.FileVolumeRoot, "library-files"));
+    }
+
+    /// <summary>A ZIP local-file header whose first entry is <paramref name="firstName"/> holding <paramref name="content"/>.</summary>
+    private static byte[] Zip(string firstName, string content)
+    {
+        var header = new byte[30];
+        header[0] = 0x50;
+        header[1] = 0x4B;
+        header[2] = 0x03;
+        header[3] = 0x04;
+        header[26] = (byte)firstName.Length;
+        return [.. header, .. System.Text.Encoding.ASCII.GetBytes(firstName), .. System.Text.Encoding.ASCII.GetBytes(content), .. new byte[64]];
+    }
+
+    /// <summary>Issue #527 §6.1: an EPUB container uploads to the Library area and is stored with its own extension.</summary>
+    [Fact]
+    public async Task An_epub_uploads_to_the_library_area()
+    {
+        var factory = Factory.ForCaller(FilesClaims);
+        using var client = factory.CreateClient();
+        var epub = Zip("mimetype", "application/epub+zip");
+
+        var response = await UploadAsync(client, "Library", epub, "Dune.epub", "application/epub+zip");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var row = await RowAsync(factory, (await response.Content.ReadFromJsonAsync<FileUploadResponse>())!.Id);
+        Assert.Equal(StoredFileArea.Library, StoredFileAreas.AreaOf(row));
+        Assert.Equal("application/epub+zip", row.ContentType);
+        using var scope = factory.Services.CreateScope();
+        var stored = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().StoredObjects.AsNoTracking()
+            .SingleAsync(o => o.Id == StoredFileAreas.StoredObjectIdOf(row));
+        Assert.EndsWith(".epub", stored.RelativePath, StringComparison.Ordinal);
+    }
+
+    /// <summary>A plain ZIP, or a ZIP whose <c>mimetype</c> names another type, declared as EPUB is refused before any write.</summary>
+    [Theory]
+    [InlineData("chapter1.html", "<html></html>.......")]
+    [InlineData("mimetype", "application/zip")]
+    public async Task A_zip_declared_epub_without_the_epub_mimetype_is_a_400(string firstName, string content)
+    {
+        var factory = Factory.ForCaller(FilesClaims);
+        using var client = factory.CreateClient();
+
+        var response = await UploadAsync(client, "Library", Zip(firstName, content), "fake.epub", "application/epub+zip");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await AssertNothingWrittenAsync(factory);
     }
 
     private static IEnumerable<string> FilesUnder(string root, string folder)
@@ -71,6 +119,7 @@ public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : Shared
     [Theory]
     [InlineData("Finance", "finance-files/", StoredFileArea.Finance)]
     [InlineData("journal", "journal-files/", StoredFileArea.Journal)]
+    [InlineData("Library", "library-files/", StoredFileArea.Library)]
     public async Task An_upload_lands_in_its_area_on_disk(string area, string root, StoredFileArea expected)
     {
         var factory = Factory.ForCaller(FilesClaims);
@@ -305,6 +354,7 @@ public class FileStoreUploadApiTests(FileStoreUploadApiTests.Host host) : Shared
                     ["FileStorage:Bindings:FinanceFiles"] = "finance",
                     ["FileStorage:Bindings:JournalFiles"] = "primary",
                     ["FileStorage:Bindings:ContactAvatars"] = "primary",
+                    ["FileStorage:Bindings:LibraryFiles"] = "primary",
                     ["FileStorage:Bindings:NewsArticles"] = "primary",
                     ["FileStorage:Bindings:PodcastAudio"] = "primary",
                     ["FileStorage:Bindings:PodcastArtwork"] = "primary",

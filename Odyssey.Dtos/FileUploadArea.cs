@@ -14,4 +14,7 @@ public enum FileUploadArea
 {
     Finance = 1,
     Journal = 2,
+
+    /// <summary>Book attachments (#527). <c>library-files/</c> on disk.</summary>
+    Library = 3,
 }

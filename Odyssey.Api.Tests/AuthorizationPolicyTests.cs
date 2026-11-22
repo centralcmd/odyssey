@@ -77,12 +77,12 @@ public class AuthorizationPolicyTests
     /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
     /// deliberately left out. 107 once the whole-database JSON export was removed with its
     /// <c>data.export</c> claim. 115 once issue #446 added the eight instrument claims, and 123 once issue
-    /// #470 added the eight news-reader claims, and 125 once issue #556 added <c>podcast-audio.create</c> and
-    /// <c>podcast-audio.delete</c>.
+    /// #470 added the eight news-reader claims, 125 once issue #556 added <c>podcast-audio.create</c> and
+    /// <c>podcast-audio.delete</c>, and 133 once issue #527 added the eight book claims.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(125, DeclaredClaims().Count());
+        Assert.Equal(133, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -407,6 +407,26 @@ public class AuthorizationPolicyTests
     }
 
     /// <summary>
+    /// Issue #527 §7.2: the main author is a required contact, so a role able to create or update a book without
+    /// <c>contacts.read</c> could never save one; and a book read names its contacts (§7.3), which is no disclosure
+    /// only while every <c>books.read</c> holder also holds <c>contacts.read</c>.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_a_book_claim_without_ContactsRead()
+    {
+        string[] bookClaims = [PermissionClaims.BooksRead, PermissionClaims.BooksCreate, PermissionClaims.BooksUpdate];
+        var gaps = MappedRoles()
+            .Where(role => bookClaims.Any(claim => role.Claims.Contains(claim, StringComparer.Ordinal)))
+            .Where(role => !role.Claims.Contains(PermissionClaims.ContactsRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #527 needs contacts.read beside books.read/create/update (a required contact author, and contact "
+            + "names on every book read). Roles that do not: " + string.Join(", ", gaps));
+    }
+
+    /// <summary>
     /// Issue #556 §7.2: every role that manages feeds — and so can turn podcast automation on — can also queue and
     /// remove podcast audio by hand, so no manager is left unable to clean up what automation stored.
     /// </summary>
@@ -572,6 +592,7 @@ public class AuthorizationPolicyTests
         { PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate, PermissionClaims.JournalTagsRead },
         { PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate, PermissionClaims.TaskTagsRead },
         { PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate, PermissionClaims.PhotoTagsRead },
+        { PermissionClaims.BooksRead, PermissionClaims.BooksCreate, PermissionClaims.BooksUpdate, PermissionClaims.BookTagsRead },
     };
 
     /// <summary>
@@ -614,6 +635,8 @@ public class AuthorizationPolicyTests
             [typeof(Odyssey.Dtos.Journal.JournalTaskSummary)] = [PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate],
             [typeof(Odyssey.Dtos.Journal.ExistingPhoto)] = [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate],
             [typeof(Odyssey.Dtos.Journal.PhotoSummary)] = [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate],
+            [typeof(Odyssey.Dtos.Books.ExistingBook)] = [PermissionClaims.BooksRead, PermissionClaims.BooksCreate, PermissionClaims.BooksUpdate],
+            [typeof(Odyssey.Dtos.Books.BookSummary)] = [PermissionClaims.BooksRead, PermissionClaims.BooksCreate, PermissionClaims.BooksUpdate],
         };
 
         var controllers = typeof(Program).Assembly.GetTypes()

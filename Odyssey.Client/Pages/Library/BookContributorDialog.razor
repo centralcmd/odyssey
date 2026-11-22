@@ -1,0 +1,111 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Books
+@using Odyssey.Dtos.Journal
+@inject IReferenceDataCache ReferenceData
+
+@*
+    BookContributorDialog — New / Edit contributor (design system · Books.jsx AddBookContributorModal; the contract
+    party dialog). Contact * — existing active contacts, with the main author and the book's other contributors left
+    out so the duplicate 422 is unreachable — and a free-text Role (64). The host saves through the book's PUT with
+    only `contributors` set: the whole ordered list with this row added (last) or replaced.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="@(IsEdit ? "edit" : "person_add")"
+               Title="@(IsEdit ? "Edit contributor" : "New contributor")"
+               Subtitle="@(IsEdit
+                   ? "Change who contributed or what they did on this book."
+                   : $"Credit a translator, editor, illustrator or anyone else on “{Book.Title}”.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create contributor")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SubmitAsync">
+
+    <OdsContactSelect Label="Contact" Required="true" Value="@_contactId" ValueChanged="OnContactChanged"
+                      Options="_options" Loading="_loading" Error="@_contactError"
+                      Help="Pick an existing contact. Add new people in Contacts first." />
+    <OdsField Label="Role" MaxLength="BookLimits.MaxRoleLength" @bind-Value="_role" Placeholder="e.g. Translator"
+              Help="What they did on the book. Leave empty to show them as a contributor." />
+    @if (!IsEdit)
+    {
+        <p class="prop-del-foot">New contributors are added after the existing ones. Reorder them from each person’s ⋯ menu.</p>
+    }
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter, EditorRequired] public ExistingBook Book { get; set; } = default!;
+
+    /// <summary>The contributor being edited (its position in order), or <c>null</c> for a new one.</summary>
+    [Parameter] public int? Index { get; set; }
+
+    /// <summary>Saves the row; <c>true</c> closes the dialog.</summary>
+    [Parameter, EditorRequired] public Func<BookContributorRequest, Task<bool>> OnSave { get; set; } = default!;
+
+    private string? _contactId;
+    private string? _role;
+    private string? _contactError;
+    private bool _loading = true;
+    private IReadOnlyList<OdsOption> _options = [];
+
+    private ExistingBookContributor? Current =>
+        Index is { } i ? Book.Contributors.OrderBy(c => c.Position).ElementAtOrDefault(i) : null;
+
+    private bool IsEdit => Current is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _contactId = Current?.Contact.ContactId.ToString();
+        _role = Current?.Role;
+        if (!OperatingSystem.IsBrowser())
+        {
+            return;
+        }
+
+        UseContacts(await ReferenceData.ContactsAsync());
+    }
+
+    /// <summary>Test seam: the contacts the picker offers, filtered as the dialog filters them.</summary>
+    internal void UseContacts(IEnumerable<ExistingContact> contacts)
+    {
+        _options = [.. Candidates(Book, Current, contacts).Select(OdsContactOptions.From)];
+        _loading = false;
+    }
+
+    /// <summary>
+    /// Active contacts that are not already credited on the book: the main author and every other contributor are
+    /// left out. The contact being edited stays, even when it has since been archived.
+    /// </summary>
+    internal static IEnumerable<ExistingContact> Candidates(ExistingBook book, ExistingBookContributor? current, IEnumerable<ExistingContact> contacts)
+    {
+        var taken = book.Contributors
+            .Where(c => current is null || c.BookContributorId != current.BookContributorId)
+            .Select(c => c.Contact.ContactId)
+            .Append(book.MainAuthor.ContactId)
+            .ToHashSet();
+        return contacts
+            .Where(c => !taken.Contains(c.ContactId) && (c.Archived is null || c.ContactId == current?.Contact.ContactId))
+            .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase);
+    }
+
+    private void OnContactChanged(string? value)
+    {
+        _contactId = value;
+        _contactError = null;
+    }
+
+    private async Task<bool> SubmitAsync()
+    {
+        if (!Guid.TryParse(_contactId, out var contactId))
+        {
+            _contactError = "Pick the contact who contributed.";
+            StateHasChanged();
+            return false;
+        }
+
+        var role = string.IsNullOrWhiteSpace(_role) ? null : _role.Trim();
+        return await OnSave(new BookContributorRequest { ContactId = contactId, Role = role });
+    }
+}

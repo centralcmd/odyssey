@@ -191,8 +191,32 @@ public partial class ContactService
         // with, holding a pinned connection and a 10-second timeout per delete.
         DetachedContactLinks? detached = null;
 
-        await ExecuteAtomicallyAsync(async () =>
+        try
         {
+            await ExecuteAtomicallyAsync(async () =>
+            {
+                await DeleteInTransactionAsync();
+            });
+        }
+        catch (DbUpdateException exception) when (DbErrors.ReferencedRowFrom(exception, "Books") || DbErrors.ReferencedRowFrom(exception, "BookContributors"))
+        {
+            // A book credit added between the in-transaction check and the delete: a Books/BookContributors RESTRICT
+            // key refused it (issue #527 §7.10). Caught OUTSIDE ExecuteAtomicallyAsync, so the transaction —
+            // ClearAndCascadeReferencesAsync's relational statements included — has rolled back first.
+            throw new DomainConflictException(BookCreditMessage);
+        }
+
+        return detached;
+
+        async Task DeleteInTransactionAsync()
+        {
+            // Book credits are never detachable (a required main author has nothing to detach to), so they refuse
+            // the delete on both paths, before anything is staged (issue #527 §7.10).
+            if (bookCredits is not null && await bookCredits.HasCreditsAsync(id, cancellationToken))
+            {
+                throw new DomainConflictException(BookCreditMessage);
+            }
+
             if (detachBlockingLinks)
             {
                 // ONE snapshot, read inside this transaction, drives both decisions below (issue #157
@@ -235,10 +259,12 @@ public partial class ContactService
 
             context.Contacts.Remove(contact);
             await context.SaveChangesAsync(cancellationToken);
-        });
-
-        return detached;
+        }
     }
+
+    /// <summary>The refusal when a contact is credited on any book (issue #527 §9 <c>ContactCreditedOnBooks</c>).</summary>
+    public const string BookCreditMessage =
+        "This contact is credited on one or more books and cannot be deleted. Remove it from those books first.";
 
     /// <summary>
     /// Refuses the detach when the caller has not proved the claim for a blocker class the snapshot
