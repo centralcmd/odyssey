@@ -279,6 +279,66 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
+    public async Task A_file_deleted_after_validation_is_unprocessable_on_attachment_file_ids()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var file = await SeedFileAsync(StoredFileArea.Library);
+
+        // The file passes EnsureFilesLinkable, then disappears before the save (1452 on RecipeAttachments.FileId).
+        await using var context = NewContext(new BeforeSave(async () =>
+        {
+            await using var other = NewContext();
+            await other.Database.ExecuteSqlRawAsync($"DELETE FROM `FileMetadata` WHERE `Id` = '{file}'");
+        }));
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() => Service(context).CreateAsync(
+            new NewRecipe { Title = "Ghost file", Servings = 1, AttachmentFileIds = [file] },
+            userId: null!, canReadPhotos: false, canReadTags: false, canReadFiles: true));
+
+        Assert.Equal(["attachmentFileIds"], error.Errors!.Keys);
+    }
+
+    [SkippableFact]
+    public async Task The_library_column_and_the_attachment_pair_carry_their_keys_and_unique_indexes()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        await using var context = NewContext();
+
+        var rule = await context.Database.SqlQuery<ForeignKeyRule>($"""
+                SELECT CONCAT(k.TABLE_NAME, '.', k.COLUMN_NAME) AS ColumnName, r.DELETE_RULE AS DeleteRule
+                FROM information_schema.KEY_COLUMN_USAGE k
+                JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+                  ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+                WHERE k.CONSTRAINT_SCHEMA = DATABASE() AND k.TABLE_NAME = 'FileMetadata' AND k.COLUMN_NAME = 'LibraryStoredObjectId'
+                """).SingleAsync();
+        Assert.Equal("RESTRICT", rule.DeleteRule);
+
+        var unique = await context.Database.SqlQuery<UniqueIndexColumns>($"""
+                SELECT CONCAT(TABLE_NAME, ':', GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',')) AS Columns
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE() AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'
+                  AND TABLE_NAME IN ('FileMetadata', 'RecipeAttachments')
+                GROUP BY TABLE_NAME, INDEX_NAME
+                """).Select(row => row.Columns).ToListAsync();
+        Assert.Contains("FileMetadata:LibraryStoredObjectId", unique);
+        Assert.Contains("RecipeAttachments:RecipeId,FileId", unique);
+    }
+
+    [SkippableFact]
+    public async Task A_file_with_no_source_fails_the_one_source_check()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        var library = await SeedFileAsync(StoredFileArea.Library);
+
+        await using var context = NewContext();
+        var error = await Assert.ThrowsAsync<MySqlConnector.MySqlException>(() => context.Database.ExecuteSqlRawAsync(
+            $"UPDATE `FileMetadata` SET `LibraryStoredObjectId` = NULL WHERE `Id` = '{library}'"));
+        Assert.Contains("CK_FileMetadata_ExactlyOneSource", error.Message, StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
     public async Task A_tag_linked_between_the_check_and_the_delete_is_still_a_conflict()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -457,4 +517,6 @@ public class RecipeRelationalTests(MariaDbFixture fixture)
     }
 
     private sealed record ForeignKeyRule(string ColumnName, string DeleteRule);
+
+    private sealed record UniqueIndexColumns(string Columns);
 }

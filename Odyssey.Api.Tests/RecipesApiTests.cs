@@ -196,8 +196,6 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         static string Strip(string body) => WithoutTraceId(body);
     }
 
-    // ── Scaling (§8.3) ──────────────────────────────────────────────────────
-
     // ── File links (Draft v6) ────────────────────────────────────────────────
 
     [Fact]
@@ -215,7 +213,6 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         Assert.Equal([pdf, scan], created.Attachments!.Select(a => a.FileId));
         Assert.Equal(["original.pdf", "scan.png"], created.Attachments!.Select(a => a.FileName));
         var original = created.Attachments!.Single(a => a.FileId == pdf);
-        Assert.Equal("original.pdf", original.FileName);
         Assert.Equal("application/pdf", original.ContentType);
         Assert.Equal(12, original.SizeBytes);
         var row = (await client.GetFromJsonAsync<PagedResultDto>(Path))!.Items.Single(r => r.RecipeId == created.RecipeId);
@@ -361,6 +358,140 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         Assert.False(await context.RecipeAttachments.AnyAsync(l => l.RecipeId == created.RecipeId));
         Assert.True(await context.FileMetadata.AnyAsync(f => f.Id == file));
     }
+
+    // Every area the Files store shows is linkable: the area is placement, never access (issue #448).
+    [Theory]
+    [InlineData(StoredFileArea.Finance)]
+    [InlineData(StoredFileArea.Journal)]
+    [InlineData(StoredFileArea.ContactAvatars)]
+    [InlineData(StoredFileArea.Library)]
+    public async Task Create_LinksAFileFromAnyFilesStoreArea(StoredFileArea area)
+    {
+        var file = await SeedFileAsync("a.pdf", "application/pdf", "a", area);
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+
+        var created = await CreateAsync(client, request);
+
+        Assert.Equal([file], created.Attachments!.Select(a => a.FileId));
+    }
+
+    [Fact]
+    public async Task HasAttachmentsFalse_WithFilesRead_ReturnsOnlyRecipesWithoutFiles()
+    {
+        var file = await SeedFileAsync("a.pdf", "application/pdf", "a");
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+        var withFile = await CreateAsync(client, request);
+        var without = await CreateAsync(client, Pancakes());
+
+        var items = (await client.GetFromJsonAsync<PagedResultDto>($"{Path}?hasAttachments=false"))!.Items;
+
+        Assert.Contains(items, r => r.RecipeId == without.RecipeId);
+        Assert.DoesNotContain(items, r => r.RecipeId == withFile.RecipeId);
+        Assert.All(items, r => Assert.Equal(0, r.AttachmentCount));
+    }
+
+    [Fact]
+    public async Task Update_WithFilesRead_NullKeepsLinks_AndAnEmptyArrayClearsThem()
+    {
+        var file = await SeedFileAsync("a.pdf", "application/pdf", "a");
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+        var created = await CreateAsync(client, request);
+
+        var keep = Update(created);
+        Assert.Null(keep.AttachmentFileIds);
+        var kept = (await (await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", keep)).Content.ReadFromJsonAsync<ExistingRecipe>())!;
+        Assert.Equal([file], kept.Attachments!.Select(a => a.FileId));
+
+        var clear = Update(kept);
+        clear.AttachmentFileIds = [];
+        var cleared = (await (await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", clear)).Content.ReadFromJsonAsync<ExistingRecipe>())!;
+        Assert.Empty(cleared.Attachments!);
+    }
+
+    // Only ids the PUT adds are validated. A linked file cannot turn invisible (the link itself keeps it visible,
+    // FileReferenceCounter), so a held id is skipped; an id the recipe no longer holds is new and checked again.
+    [Fact]
+    public async Task Update_RevalidatesAnIdTheRecipeNoLongerHolds()
+    {
+        var file = await SeedFileAsync("a.pdf", "application/pdf", "a");
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+        var created = await CreateAsync(client, request);
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.RecipeAttachments.RemoveRange(context.RecipeAttachments.Where(a => a.FileId == file));
+            await context.SaveChangesAsync();
+        }
+
+        // The link is gone underneath; re-adding the same id is a new id and is checked again.
+        var photo = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "orig.jpg");
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            (await context.Photos.SingleAsync(p => p.PhotoId == photo)).LegacyFileId = file;
+            await context.SaveChangesAsync();
+        }
+
+        var readd = Update(created);
+        readd.AttachmentFileIds = [file];
+        var refused = await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", readd);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        Assert.Equal(["attachmentFileIds"], await ErrorKeys(refused));
+    }
+
+    [Fact]
+    public async Task Update_KeepsAnAlreadyLinkedFile_AndRejectsItWithAnUnknownId()
+    {
+        var file = await SeedFileAsync("a.pdf", "application/pdf", "a");
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [file];
+        var created = await CreateAsync(client, request);
+
+        var same = Update(created);
+        same.AttachmentFileIds = [file];
+        var ok = await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", same);
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        var current = (await ok.Content.ReadFromJsonAsync<ExistingRecipe>())!;
+
+        var bad = Update(current);
+        bad.AttachmentFileIds = [file, Guid.NewGuid()];
+        var refused = await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", bad);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        Assert.Equal(["attachmentFileIds"], await ErrorKeys(refused));
+        var read = (await client.GetFromJsonAsync<ExistingRecipe>($"{Path}/{created.RecipeId}"))!;
+        Assert.Equal([file], read.Attachments!.Select(a => a.FileId));
+    }
+
+    [Fact]
+    public async Task Create_AtExactlyTheFileCap_IsCreated_AndAPutOverIt_IsBadRequest()
+    {
+        var files = new List<Guid>();
+        for (var i = 0; i < RecipeLimits.MaxAttachments; i++)
+        {
+            files.Add(await SeedFileAsync($"f{i:00}.txt", "text/plain", "x"));
+        }
+
+        using var client = Factory.ClientWith(EditorWithFiles);
+        var request = Pancakes();
+        request.AttachmentFileIds = [.. files];
+        var created = await CreateAsync(client, request);
+        Assert.Equal(RecipeLimits.MaxAttachments, created.Attachments!.Count);
+
+        var over = Update(created);
+        over.AttachmentFileIds = [.. files, Guid.NewGuid()];
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"{Path}/{created.RecipeId}", over)).StatusCode);
+    }
+
+    // ── Scaling (§8.3) ──────────────────────────────────────────────────────
 
     [Fact]
     public async Task Get_WithServings_ScalesOnlyScalableAmounts_AndWritesNothing()
@@ -1045,7 +1176,6 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         await context.SaveChangesAsync();
     }
 
-    // The trace id differs per request; nothing else may.
     private async Task<Guid> SeedFileAsync(
         string fileName, string contentType, string content, StoredFileArea area = StoredFileArea.Finance)
     {
@@ -1056,6 +1186,7 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         return file.Id;
     }
 
+    // The trace id differs per request; nothing else may.
     private static string WithoutTraceId(string body) =>
         System.Text.RegularExpressions.Regex.Replace(body, "\"traceId\":\"[^\"]*\"", string.Empty);
 
