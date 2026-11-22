@@ -14,7 +14,7 @@ using Xunit;
 namespace Odyssey.Api.Tests;
 
 /// <summary>HTTP coverage of the instrument watchlist, manual prices, purge and dashboard read (issue #446 §12).</summary>
-public class InstrumentsApiTests
+public class InstrumentsApiTests(InstrumentsApiTests.Host host) : SharedApiHostTests<InstrumentsApiTests.Host>(host)
 {
     private const string ActorUserId = "instruments-actor-id";
 
@@ -27,7 +27,7 @@ public class InstrumentsApiTests
 
     private static readonly string[] Admin = [.. Owner, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate];
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharing = null)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharing = null)
         : OdysseyApiFactory(permissions, ActorUserId, sharingStoreWith: sharing);
 
     private static NewInstrument Stock(string symbol = "EQNR", string mic = "XOSL", string currency = "NOK") => new()
@@ -61,7 +61,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Create_Get_AndDuplicate_AreHandled()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, Stock());
@@ -81,12 +81,16 @@ public class InstrumentsApiTests
     [InlineData(InstrumentType.Fund, "ODIN", "NO0010096986", "Isin")]
     public async Task Create_IdentityRules_Return422OnTheField(InstrumentType type, string symbol, string? isin, string field)
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/instruments", new NewInstrument
         {
-            Symbol = symbol, Isin = isin, Name = "x", Type = type, CurrencyCode = "NOK",
+            Symbol = symbol,
+            Isin = isin,
+            Name = "x",
+            Type = type,
+            CurrencyCode = "NOK",
         });
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -97,7 +101,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Price_Rules_FutureDate_Decimals_Duplicate_AndLockedIdentity()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
 
@@ -123,7 +127,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Purge_RequiresTheExactCount_ThenDeleteSucceeds()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
         await AddPriceAsync(client, instrument.InstrumentId, Day.AddDays(-1), 10m);
@@ -148,7 +152,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Purge_OfFetchedRows_WithoutSystemSettingsUpdate_IsForbidden()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
 
@@ -160,7 +164,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Watchlist_ShowsChangeInTheDisplayCurrency_AndNamesAnUnconvertibleRow()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
         var nok = await CreateAsync(client, Stock());
         var usd = await CreateAsync(client, Stock(symbol: "AAPL", mic: "XNAS", currency: "USD"));
@@ -186,7 +190,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Watchlist_UnknownCurrency_Is422_AndMalformedIs400()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, (await client.GetAsync("/api/instruments/watchlist?mainCurrency=XXQ")).StatusCode);
@@ -196,7 +200,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task InstrumentsReadOnly_SeesNoPriceFields_AndCannotSortByLatestDate()
     {
-        await using var reader = new ApiFactory([PermissionClaims.InstrumentsRead]);
+        var reader = Factory.ForCaller([PermissionClaims.InstrumentsRead]);
         using var readerClient = reader.CreateClient();
         // A fresh factory has its own database: seed the reader's directly.
         using (var scope = reader.Services.CreateScope())
@@ -206,12 +210,23 @@ public class InstrumentsApiTests
             var id = Guid.NewGuid();
             context.Instruments.Add(new Instrument
             {
-                InstrumentId = id, Symbol = "EQNR", MicCode = "XOSL", Name = "Equinor", Type = InstrumentType.Stock,
-                CurrencyCode = "NOK", ListingKey = "EQNR@XOSL", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
+                InstrumentId = id,
+                Symbol = "EQNR",
+                MicCode = "XOSL",
+                Name = "Equinor",
+                Type = InstrumentType.Stock,
+                CurrencyCode = "NOK",
+                ListingKey = "EQNR@XOSL",
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow,
             });
             context.InstrumentPrices.Add(new InstrumentPrice
             {
-                InstrumentPriceId = Guid.NewGuid(), InstrumentId = id, TradingDate = Day, Close = 10m, CreatedAtUtc = DateTime.UtcNow,
+                InstrumentPriceId = Guid.NewGuid(),
+                InstrumentId = id,
+                TradingDate = Day,
+                Close = 10m,
+                CreatedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -232,7 +247,7 @@ public class InstrumentsApiTests
     [InlineData("EQNR\r\n")]
     public async Task Create_RefusesAnIdentifierWithATrailingNewline(string symbol)
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/instruments", Stock(symbol))).StatusCode);
@@ -241,7 +256,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task List_StatusNarrowsToActiveOrArchived_AndOverridesIncludeArchived()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
         var kept = await CreateAsync(client, Stock("EQNR"));
         var archived = await CreateAsync(client, Stock("TEL"));
@@ -259,7 +274,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Archive_HidesFromTheListAndTheWatchlist_AndUnarchiveRestores()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
 
@@ -277,7 +292,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task ManualPrice_UpdatesAndDeletes()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
         var price = (await (await AddPriceAsync(client, instrument.InstrumentId, Day, 10m)).Content.ReadFromJsonAsync<ExistingInstrumentPrice>())!;
@@ -296,7 +311,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task FetchedPrice_CannotBeEditedOrDeletedOnItsOwn()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
         var fetched = await SeedFetchedAsync(factory, instrument.InstrumentId, Day);
@@ -312,7 +327,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task PurgeFetched_DeletesOnlyFetchedRows_AndResetsTheBindingWatermark()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
         await AddPriceAsync(client, instrument.InstrumentId, Day, 10m);
@@ -323,8 +338,14 @@ public class InstrumentsApiTests
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.InstrumentPriceSourceBindings.Add(new InstrumentPriceSourceBinding
             {
-                InstrumentId = instrument.InstrumentId, SourceKey = "fake-primary", SourceSymbol = "EQNR.OL", Priority = 1, Enabled = true,
-                NewestFetched = Day, BackfilledFrom = Day.AddDays(-1), UpdatedAtUtc = DateTime.UtcNow,
+                InstrumentId = instrument.InstrumentId,
+                SourceKey = "fake-primary",
+                SourceSymbol = "EQNR.OL",
+                Priority = 1,
+                Enabled = true,
+                NewestFetched = Day,
+                BackfilledFrom = Day.AddDays(-1),
+                UpdatedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
@@ -345,7 +366,7 @@ public class InstrumentsApiTests
     [Fact]
     public async Task Summary_AndSeries_ReportThePrices()
     {
-        await using var factory = new ApiFactory(Owner);
+        var factory = Factory.ForCaller(Owner);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, Stock());
         await AddPriceAsync(client, instrument.InstrumentId, Day.AddDays(-1), 10m);
@@ -369,14 +390,14 @@ public class InstrumentsApiTests
     [Fact]
     public async Task EveryWrite_IsForbiddenToAReader()
     {
-        await using var owner = new ApiFactory(Owner);
+        var owner = Factory.ForCaller(Owner);
         using var ownerClient = owner.CreateClient();
         var instrument = await CreateAsync(ownerClient, Stock());
         var price = (await (await AddPriceAsync(ownerClient, instrument.InstrumentId, Day, 10m)).Content.ReadFromJsonAsync<ExistingInstrumentPrice>())!;
 
         // A Guest: both read claims, nothing else.
-        await using var guest = new ApiFactory([PermissionClaims.InstrumentsRead, PermissionClaims.InstrumentPricesRead], sharing: owner);
-        using var client = guest.CreateClient();
+        var guest = Factory;
+        using var client = guest.ClientFor([PermissionClaims.InstrumentsRead, PermissionClaims.InstrumentPricesRead]);
         var id = instrument.InstrumentId;
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/instruments/{id}")).StatusCode);
@@ -400,7 +421,12 @@ public class InstrumentsApiTests
         var id = Guid.NewGuid();
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = id, InstrumentId = instrumentId, TradingDate = date, Close = 9m, SourceKey = "fake-primary", CreatedAtUtc = DateTime.UtcNow,
+            InstrumentPriceId = id,
+            InstrumentId = instrumentId,
+            TradingDate = date,
+            Close = 9m,
+            SourceKey = "fake-primary",
+            CreatedAtUtc = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();
         return id;
@@ -411,4 +437,7 @@ public class InstrumentsApiTests
         public const string InstrumentDuplicate = "instrument-duplicate";
         public const string PriceDuplicate = "price-duplicate";
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

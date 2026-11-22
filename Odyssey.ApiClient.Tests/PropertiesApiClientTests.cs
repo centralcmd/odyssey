@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -12,23 +13,9 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class PropertiesApiClientTests
 {
-    private sealed class RecordingHandler(string body) : HttpMessageHandler
+    private static (IPropertiesApiClient Client, RecordingHttpHandler Handler) Create(string body)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
-            });
-        }
-    }
-
-    private static (IPropertiesApiClient Client, RecordingHandler Handler) Create(string body)
-    {
-        var handler = new RecordingHandler(body);
+        var handler = new RecordingHttpHandler(body);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new PropertiesApiClient(api), handler);
     }
@@ -83,13 +70,18 @@ public class PropertiesApiClientTests
 
     private static readonly NewProperty Body = new()
     {
-        Name = "Storgata 14", Description = "Home", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
+        Name = "Storgata 14",
+        Description = "Home",
+        Type = PropertyType.RealEstate,
+        CurrencyCode = "NOK",
         RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House },
     };
 
     private static readonly NewPropertyEstimate EstimateBody = new()
     {
-        Value = 100m, CurrencyCode = "NOK", EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        Value = 100m,
+        CurrencyCode = "NOK",
+        EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
     };
 
     /// <summary>
@@ -164,7 +156,9 @@ public class PropertiesApiClientTests
 
         var query = handler.LastRequest!.RequestUri!.Query;
         foreach (var part in new[] { "search=storgata", "types=RealEstate", "types=Vehicle", "statuses=Owned", "sortBy=value", "sortDir=desc" })
+        {
             Assert.Contains(part, query, StringComparison.Ordinal);
+        }
     }
 
     /// <summary>Both smart-tag writes are identified entirely by the path; there is no body to forge.</summary>

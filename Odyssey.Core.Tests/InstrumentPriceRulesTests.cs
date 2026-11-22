@@ -9,6 +9,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 using Odyssey.TestShared.InstrumentPrices;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -84,7 +85,7 @@ public class InstrumentPriceRulesTests
     [Fact]
     public void No_file_in_Odyssey_Core_restates_the_newest_price_ordering()
     {
-        var files = SourceFiles("Odyssey.Core");
+        var files = SourceTree.Files("Odyssey.Core").ToList();
         Assert.Contains(files, path => path.EndsWith("InstrumentPriceOrdering.cs", StringComparison.Ordinal));
 
         var pattern = new Regex(@"TradingDate\s*\)\s*\.ThenBy(Descending)?\(\s*\w+\s*=>\s*\w+\.SourceKey", RegexOptions.Singleline);
@@ -106,7 +107,7 @@ public class InstrumentPriceRulesTests
             InstrumentIdentifierRules.SymbolPattern, InstrumentIdentifierRules.MicPattern, InstrumentIdentifierRules.IsinPattern,
             InstrumentIdentifierRules.SourceSymbolPattern, InstrumentIdentifierRules.SourceKeyPattern,
         };
-        var offenders = SourceFiles("Odyssey.Core").Concat(SourceFiles("Odyssey.Context"))
+        var offenders = SourceTree.Files("Odyssey.Core").Concat(SourceTree.Files("Odyssey.Context"))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}"))
             .Where(path => literals.Any(literal => File.ReadAllText(path).Contains(literal, StringComparison.Ordinal)))
             .Select(Path.GetFileName)
@@ -246,7 +247,7 @@ public class InstrumentPriceRulesTests
 
     private sealed class UnlimitedQuota : ISourceRequestQuota
     {
-        public Task<bool> TryReserveAsync(string sourceKey, int maxPerDay, CancellationToken cancellationToken) => Task.FromResult(true);
+        public Task<QuotaReservation> TryReserveAsync(string sourceKey, InstrumentPriceSourceLimits limits, CancellationToken cancellationToken) => Task.FromResult(QuotaReservation.Reserved);
     }
 
     private static (SourceHttp Http, ScriptedPriceHandler Handler) Transport(IInstrumentPriceSource source, SecretResult? secret = null)
@@ -339,19 +340,4 @@ public class InstrumentPriceRulesTests
     [Fact]
     public void A_secret_never_prints_its_value() =>
         Assert.DoesNotContain("s3cret", new SourceSecret("s3cret").ToString(), StringComparison.Ordinal);
-
-    private static List<string> SourceFiles(string project)
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        var root = Path.Combine(directory?.FullName ?? throw new InvalidOperationException("No solution root."), project);
-        return Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
-            .ToList();
-    }
 }

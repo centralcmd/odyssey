@@ -18,9 +18,25 @@ public static class ApiInteropExtensions
     /// </summary>
     public static ApiUpload ToApiUpload(this IBrowserFile file, long maxSizeBytes) =>
         new(file.Name,
-            file.ContentType,
+            UploadContentType(file.Name, file.ContentType),
             file.Size,
             () => file.OpenReadStream(maxSizeBytes));
+
+    /// <summary>The EPUB content type (issue #571 §3.10.3).</summary>
+    public const string EpubContentType = "application/epub+zip";
+
+    /// <summary>
+    /// The content type an upload is sent with. The only rewrite in the client (issue #571 §3.10.3): most browsers
+    /// report no type, or <c>application/octet-stream</c>, for an <c>.epub</c>, which the server's allow-list would
+    /// refuse, so a name ending <c>.epub</c> with one of those two is sent as <see cref="EpubContentType"/>. Every
+    /// other combination is sent as declared. It decides nothing: the server's signature check still accepts or
+    /// refuses the bytes.
+    /// </summary>
+    internal static string UploadContentType(string name, string? declared) =>
+        name.EndsWith(".epub", StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(declared) || string.Equals(declared, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
+            ? EpubContentType
+            : declared ?? string.Empty;
 
     /// <summary>
     /// Returns the value on success; on failure toasts "{failureLead}: {detail}" and returns
@@ -30,7 +46,9 @@ public static class ApiInteropExtensions
         where T : class
     {
         if (result.IsSuccess)
+        {
             return result.Value;
+        }
 
         snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
         return null;
@@ -46,7 +64,9 @@ public static class ApiInteropExtensions
         where T : class
     {
         if (result.IsSuccess)
+        {
             return result.Value;
+        }
 
         snackbar.Add($"{failureLead}: {result.Error}", Severity.Error,
             config => config.RequireInteraction = requireInteraction,
@@ -62,7 +82,9 @@ public static class ApiInteropExtensions
     public static T ValueOrToast<T>(this ApiResult<T> result, ISnackbar snackbar, string what, T fallback)
     {
         if (!result.IsSuccess)
+        {
             snackbar.Add($"Unable to load {what}: {result.Error}", Severity.Error);
+        }
 
         return result.ValueOr(fallback);
     }
@@ -85,7 +107,9 @@ public static class ApiInteropExtensions
     public static PagedLoad<T> PagedOrToast<T>(this ApiResult<PagedResult<T>> result, ISnackbar snackbar, string what)
     {
         if (!result.IsSuccess)
+        {
             snackbar.Add($"Unable to load {what}: {result.Error}", Severity.Error);
+        }
 
         return PagedLoad<T>.From(result);
     }
@@ -107,7 +131,9 @@ public static class ApiInteropExtensions
         if (result.IsSuccess)
         {
             if (!string.IsNullOrEmpty(successMessage))
+            {
                 snackbar.Add(successMessage, Severity.Success);
+            }
 
             return true;
         }
@@ -140,7 +166,9 @@ public static class ApiInteropExtensions
         if (result.IsSuccess)
         {
             if (!string.IsNullOrEmpty(successMessage))
+            {
                 snackbar.Add(successMessage, Severity.Success);
+            }
 
             return true;
         }

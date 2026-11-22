@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -19,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// status-code contract, the wire shape, and parity with <c>GET /api/transactions</c> — the endpoint's
 /// items come from the same pipeline, so they must search, sort, page and project identically.
 /// </summary>
-public partial class ContractSmartTagTransactionsApiTests
+public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransactionsApiTests.Host host) : SharedApiHostTests<ContractSmartTagTransactionsApiTests.Host>(host)
 {
     private const string UploaderUserId = "smart-tag-txn-uploader";
 
@@ -34,7 +35,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new OdysseyApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(Path(Guid.NewGuid()))).StatusCode);
@@ -45,7 +46,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [InlineData(PermissionClaims.TransactionsRead)]
     public async Task EitherClaimAlone_ReturnsForbidden(string claim)
     {
-        await using var factory = new OdysseyApiFactory([claim]);
+        var factory = Factory.ForCaller([claim]);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -55,7 +56,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task BothClaims_ReturnsOk()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -76,7 +77,7 @@ public partial class ContractSmartTagTransactionsApiTests
     {
         var claims = (string[])typeof(RolePermissions).GetField(role)!.GetValue(null)!;
 
-        await using var factory = new OdysseyApiFactory(claims);
+        var factory = Factory.ForCaller(claims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -87,13 +88,16 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task EveryTransaction_CarriesTheResolvedDisplayIcon()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             foreach (var tag in db.TransactionTags)
+            {
                 tag.Icon = "bolt";
+            }
+
             await db.SaveChangesAsync();
         }
 
@@ -114,7 +118,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task UnknownContract_Returns404_EchoingOnlyTheRouteId()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
@@ -133,7 +137,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [InlineData("?sortBy=Nonsense")]
     public async Task InvalidQuery_Returns400(string query)
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -143,7 +147,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task LimitAboveMax_Returns400()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -155,7 +159,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task OverLongSearch_Returns400()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
         var search = new string('a', ListDefaults.MaxSearchLength + 1);
@@ -170,7 +174,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task Envelope_IsCamelCase_WithAnOrdinalReasonAndNumericAmounts()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -188,14 +192,17 @@ public partial class ContractSmartTagTransactionsApiTests
         var row = summary.GetProperty("byCurrency")[0];
         Assert.Equal(["currencyCode", "net", "totalIn", "totalOut", "transactionCount"], Names(row));
         foreach (var amount in new[] { "net", "totalIn", "totalOut" })
+        {
             Assert.Equal(JsonValueKind.Number, row.GetProperty(amount).ValueKind);
+        }
+
         Assert.Equal(["items", "limit", "offset", "totalCount"], Names(root.GetProperty("page")));
     }
 
     [Fact]
     public async Task EmptyReason_SerialisesAsOrdinal_AndTheEmptySummaryHasAnArray()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory, withSmartTag: false);
         using var client = factory.CreateClient();
 
@@ -231,7 +238,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [InlineData("?search=nothing-matches-this")]
     public async Task Items_MatchTheTransactionList(string query)
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -250,7 +257,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task EachItem_IsFieldForFieldTheSingleRead()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -284,7 +291,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task WithoutAnyContactsClaim_TheMerchantEmbedIsIdAndNameOnly()
     {
-        await using var factory = new OdysseyApiFactory(BothClaims);
+        var factory = Factory.ForCaller(BothClaims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -292,7 +299,9 @@ public partial class ContractSmartTagTransactionsApiTests
 
         Assert.Contains("Hafslund", body);
         foreach (var leaked in new[] { "organizationNumber", "legalName", "aliases", "notes", "personDetails" })
+        {
             Assert.DoesNotContain(leaked, body, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     // ── AC 21: GET /api/transactions pinned across the extraction ─────────────
@@ -304,7 +313,7 @@ public partial class ContractSmartTagTransactionsApiTests
     [Fact]
     public async Task TransactionList_SearchSortAndPaging_ArePinned()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -388,10 +397,15 @@ public partial class ContractSmartTagTransactionsApiTests
         await db.SaveChangesAsync();
 
         if (withSmartTag)
+        {
             db.ContractSmartTags.Add(new ContractSmartTag
             {
-                ContractId = contract.ContractId, TransactionTagId = tag.TransactionTagId, AddedAt = DateTime.UtcNow,
+                ContractId = contract.ContractId,
+                TransactionTagId = tag.TransactionTagId,
+                AddedAt = DateTime.UtcNow,
             });
+        }
+
         db.ContractParties.AddRange(
             new ContractParty { ContractId = contract.ContractId, ContactId = supplier.ContactId, Role = ContractPartyRole.Other },
             new ContractParty { ContractId = contract.ContractId, ContactId = landlord.ContactId, Role = ContractPartyRole.Guarantor });
@@ -415,7 +429,7 @@ public partial class ContractSmartTagTransactionsApiTests
             Txn("Grid fee", -850m, 1, landlord.ContactId, TransactionStatus.New, day: 10));
         await db.SaveChangesAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -424,10 +438,9 @@ public partial class ContractSmartTagTransactionsApiTests
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash-invoice",
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = new DateTime(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc),
         };
-        db.FileBlob.Add(blob);
         db.FileMetadata.Add(metadata);
         await db.SaveChangesAsync();
         db.TransactionFiles.Add(new TransactionFile
@@ -442,4 +455,7 @@ public partial class ContractSmartTagTransactionsApiTests
 
         return new Seeded(contract.ContractId, landlord.ContactId, 4);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

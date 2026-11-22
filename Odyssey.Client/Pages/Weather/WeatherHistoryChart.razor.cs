@@ -72,9 +72,16 @@ public partial class WeatherHistoryChart : IAsyncDisposable
             var date = From.AddDays(i);
             return new Column(i, date, byDate.GetValueOrDefault(date));
         })];
-        if (_hover >= N) _hover = null;
+        if (_hover >= N)
+        {
+            _hover = null;
+        }
+
         _shown = [.. Measures.Select(WeatherMeasures.Of)];
-        if (_shown.Length == 0) _shown = [WeatherMeasures.Of(WeatherMeasures.Temperature)];
+        if (_shown.Length == 0)
+        {
+            _shown = [WeatherMeasures.Of(WeatherMeasures.Temperature)];
+        }
 
         // The domain: every plotted value. An amount (millimetres, metres per second) starts at zero — a bar or
         // a speed measured from anywhere else overstates it. Temperature has no floor.
@@ -89,7 +96,11 @@ public partial class WeatherHistoryChart : IAsyncDisposable
         _yMin = Temp ? Math.Floor((lo - 1) / step) * step : 0;
         _yMax = Math.Max(_yMin + step, Math.Ceiling((hi + (Temp ? 1 : 0.5)) / step) * step);
         var ticks = new List<double>();
-        for (var v = _yMin; v <= _yMax; v += step) ticks.Add(v);
+        for (var v = _yMin; v <= _yMax; v += step)
+        {
+            ticks.Add(v);
+        }
+
         _ticks = [.. ticks];
     }
 
@@ -102,7 +113,11 @@ public partial class WeatherHistoryChart : IAsyncDisposable
     private Task OnPlotWidth(double width) => InvokeAsync(() =>
     {
         var w = Math.Round(width);
-        if (w <= 0 || w == _vbW) return;
+        if (w <= 0 || w == _vbW)
+        {
+            return;
+        }
+
         _vbW = w;
         StateHasChanged();
     });
@@ -110,7 +125,10 @@ public partial class WeatherHistoryChart : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_widthObserver is not null)
+        {
             await _widthObserver.DisposeAsync();
+        }
+
         GC.SuppressFinalize(this);
     }
 
@@ -123,8 +141,12 @@ public partial class WeatherHistoryChart : IAsyncDisposable
         List<Column>? current = null;
         foreach (var c in cols)
         {
-            if (has(c)) { if (current is null) { current = []; runs.Add(current); } current.Add(c); }
-            else current = null;
+            if (has(c))
+            { if (current is null) { current = []; runs.Add(current); } current.Add(c); }
+            else
+            {
+                current = null;
+            }
         }
         return runs;
     }
@@ -231,7 +253,11 @@ public partial class WeatherHistoryChart : IAsyncDisposable
         var x = Cx(l.Index);
         var width = l.Text.Length * OdsLineChart.AxisCharWidth;
         var anchor = l.Start ? (x + width > _vbW ? "end" : "start") : (x + width / 2 > _vbW ? "end" : "middle");
-        if (anchor == "end") x = _vbW - 1;
+        if (anchor == "end")
+        {
+            x = _vbW - 1;
+        }
+
         return new AxisLabel(F(x), F(YBot + 24), anchor, l.Text);
     });
 
@@ -251,13 +277,21 @@ public partial class WeatherHistoryChart : IAsyncDisposable
 
     private void OnPlotFocus()
     {
-        if (N > 0) ShowHover(_hover ?? N - 1, byKey: true);
+        if (N > 0)
+        {
+            ShowHover(_hover ?? N - 1, byKey: true);
+        }
     }
 
     private void OnPlotKey(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape") { ClearHover(); return; }
-        if (N == 0 || e.Key is not ("ArrowLeft" or "ArrowRight")) return;
+        if (e.Key == "Escape")
+        { ClearHover(); return; }
+        if (N == 0 || e.Key is not ("ArrowLeft" or "ArrowRight"))
+        {
+            return;
+        }
+
         var from = _hover ?? N - 1;
         ShowHover(Math.Clamp(from + (e.Key == "ArrowRight" ? 1 : -1), 0, N - 1), byKey: true);
     }
@@ -272,7 +306,10 @@ public partial class WeatherHistoryChart : IAsyncDisposable
     private double? TipAnchor(Column c)
     {
         if (c.Observed is not { } o)
+        {
             return null;
+        }
+
         var values = _shown.SelectMany(m => m.Key == WeatherMeasures.Temperature ? new[] { o.MaxTempC, o.MeanTempC } : [m.Pick(o)])
             .Where(v => v is not null).Select(v => (double)v!.Value).ToList();
         return values.Count > 0 ? values.Max() : null;

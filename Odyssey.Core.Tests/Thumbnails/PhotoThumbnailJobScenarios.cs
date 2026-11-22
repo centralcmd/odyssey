@@ -554,12 +554,7 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
         var run = Job(host).RunOnceAsync(default);
         await UntilAsync(() => Renderer.Entered.IsSet, "the decode to start");
 
-        var fileId = await WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync());
-        await using (var scope = host.Scope())
-        {
-            await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId!.Value, default);
-            await scope.ServiceProvider.GetRequiredService<OdysseyContext>().SaveChangesAsync();
-        }
+        await StageRenameAsync(host, photoId);
 
         var running = await JobRowAsync(host, photoId);
         Assert.Equal((PhotoThumbnailJobState.Running, true), (running.State, running.RerunRequested));
@@ -700,8 +695,7 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
     {
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var fileId = await context.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync();
-        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId!.Value, default);
+        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameForPhotoAsync(photoId, default);
         await context.SaveChangesAsync();
     }
 

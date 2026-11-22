@@ -18,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// The contract smart-tag endpoints over HTTP (issue #166): the authorization matrix, the status-code
 /// contract, the cap, the list count and the claim-free limits endpoint.
 /// </summary>
-public class ContractSmartTagsApiTests
+public class ContractSmartTagsApiTests(ContractSmartTagsApiTests.Host host) : SharedApiHostTests<ContractSmartTagsApiTests.Host>(host)
 {
     private const string ActorUserId = "contract-smart-tags-actor-id";
     private const string ContractsPath = "/api/contracts";
@@ -39,7 +39,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = await NewFactoryAsync(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         Assert.Equal(
@@ -49,7 +49,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task List_WithoutContractsRead_ReturnsForbidden()
     {
-        await using var factory = await NewFactoryAsync(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         Assert.Equal(
@@ -67,7 +67,7 @@ public class ContractSmartTagsApiTests
             [.. RolePermissions.AllClaims.Where(c =>
                 c is not (PermissionClaims.ContractsRead or PermissionClaims.ContractsUpdate))];
 
-        await using var factory = await NewFactoryAsync(everythingElse);
+        var factory = Factory.ForCaller(everythingElse);
         using var client = factory.CreateClient();
         var id = Guid.NewGuid();
 
@@ -79,7 +79,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Writes_WithReadOnlyPermission_ReturnForbidden_WhileTheReadSucceeds()
     {
-        await using var factory = await NewFactoryAsync(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         var contractId = await SeedContractDirectlyAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -97,7 +97,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task List_AContractWithNoSmartTags_ReturnsOkAndEmpty()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -110,7 +110,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task List_AMissingContract_ReturnsNotFound()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         Assert.Equal(
@@ -124,7 +124,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task List_OrdersByAddedAtAscending_NotByInsertionOrder()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -150,7 +150,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task List_CarriesEachTagsIcon_NormalisingAnUnknownKey()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         var iconned = await SeedTagAsync(factory, "Streaming");
         var stale = await SeedTagAsync(factory, "Legacy");
@@ -171,7 +171,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_AValidTag_ReturnsCreatedWithTheTagAndALocationResolvingToTheList()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         var tagId = await SeedTagAsync(factory, "Streaming");
         using var client = factory.CreateClient();
@@ -193,7 +193,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_ARepeatOfTheSamePair_ReturnsConflict_AndLeavesOneRow()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -209,7 +209,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_AnArchivedTag_ReturnsUnprocessableEntity_AndCreatesNoRow()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         var tagId = await SeedTagAsync(factory, "Retired", archived: true);
         using var client = factory.CreateClient();
@@ -223,7 +223,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_AMissingContract_ReturnsNotFound()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
 
@@ -234,7 +234,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_AMissingTag_ReturnsNotFound()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         using var client = factory.CreateClient();
 
@@ -251,7 +251,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_OverTheConfiguredCap_ReturnsUnprocessable_AndNamesTheEffectiveCap()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.ContractMaxSmartTagsPerContract, "3");
         var contractId = await SeedContractDirectlyAsync(factory);
@@ -281,7 +281,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_WithAPopulatedBody_HonoursTheRouteOnly_AndMutatesNoTag()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         var otherContractId = await SeedContractDirectlyAsync(factory, "Other contract");
         var tagId = await SeedTagAsync(factory, "Streaming");
@@ -314,7 +314,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Delete_AnExistingLink_ReturnsNoContent_AndLeavesTheTagAndContractIntact()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -333,7 +333,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Delete_APairThatIsNotLinked_ReturnsNotFound()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var contractId = await SeedContractDirectlyAsync(factory);
         var tagId = await SeedTagAsync(factory);
         using var client = factory.CreateClient();
@@ -373,7 +373,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task List_CarriesTheSmartTagCount_Correlated()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var watched = await SeedContractDirectlyAsync(factory, "Watched");
         var unwatched = await SeedContractDirectlyAsync(factory, "Unwatched");
         using var client = factory.CreateClient();
@@ -395,7 +395,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task ContractLimits_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = await NewFactoryAsync(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(LimitsPath)).StatusCode);
@@ -408,7 +408,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task ContractLimits_ForACallerWithNoClaims_ReturnsTheEffectiveCap()
     {
-        await using var factory = await NewFactoryAsync(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<ContractLimitsDto>(LimitsPath);
@@ -423,7 +423,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task ContractLimits_WithNoRowPresent_ReturnsOkWithTheCompiledDefault()
     {
-        await using var factory = await NewFactoryAsync(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(LimitsPath);
@@ -436,7 +436,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task ContractLimits_WithAConfiguredValue_ReturnsIt()
     {
-        await using var factory = await NewFactoryAsync(permissions: []);
+        var factory = Factory.ForCaller([]);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.ContractMaxSmartTagsPerContract, "7");
         using var client = factory.CreateClient();
@@ -453,7 +453,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task ContractLimits_WithAnUnusableStoredValue_Returns503()
     {
-        await using var factory = await NewFactoryAsync(permissions: []);
+        var factory = Factory.ForCaller([]);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.ContractMaxSmartTagsPerContract, "not-a-number");
         using var client = factory.CreateClient();
@@ -470,7 +470,7 @@ public class ContractSmartTagsApiTests
     [Fact]
     public async Task Post_WithADegradedLimitsRead_IsStillRefusedAtTheConservativeCap()
     {
-        await using var factory = await NewFactoryAsync(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.ContractMaxSmartTagsPerContract, "not-a-number");
         var contractId = await SeedContractDirectlyAsync(factory);
@@ -644,6 +644,9 @@ public class ContractSmartTagsApiTests
             .ContractSmartTags.AsNoTracking().CountAsync();
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

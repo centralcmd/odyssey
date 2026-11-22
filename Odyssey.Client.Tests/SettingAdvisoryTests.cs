@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -33,7 +34,7 @@ public class SettingAdvisoryTests
         var markup = ComponentMarkup();
         var code = markup.IndexOf("@code {", StringComparison.Ordinal);
         var body = code < 0 ? markup : markup[..code];
-        return Regex.Replace(body, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+        return SourceLint.StripComments(body);
     }
 
     private static string ComponentCss() =>
@@ -115,7 +116,7 @@ public class SettingAdvisoryTests
     public void The_advisory_is_referenced_from_the_controls_describedby()
     {
         var page = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
-        var codeBehind = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var codeBehind = ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
         Assert.Contains("AdvisoryId=\"@AdvisoryId(item.Key)\"", page, StringComparison.Ordinal);
         Assert.Contains("AriaDescribedBy=\"@DescribedBy(item)\"", page, StringComparison.Ordinal);
@@ -142,7 +143,7 @@ public class SettingAdvisoryTests
     [Fact]
     public void The_advisory_does_not_block_saving()
     {
-        var codeBehind = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var codeBehind = ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
         var errorFor = Section(codeBehind, "private string? ErrorFor(SettingItem item)");
         Assert.DoesNotContain("Advisory", errorFor, StringComparison.Ordinal);

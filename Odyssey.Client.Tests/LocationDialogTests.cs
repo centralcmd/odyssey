@@ -24,12 +24,16 @@ public class LocationDialogTests
 {
     private static readonly LocationAttribution Kartverket = new()
     {
-        Text = "© Kartverket", License = "CC BY 4.0", Url = "https://www.kartverket.no/",
+        Text = "© Kartverket",
+        License = "CC BY 4.0",
+        Url = "https://www.kartverket.no/",
     };
 
     private static readonly LocationAttribution OpenMeteo = new()
     {
-        Text = "© Open-Meteo", License = "CC BY 4.0", Url = "https://open-meteo.com/",
+        Text = "© Open-Meteo",
+        License = "CC BY 4.0",
+        Url = "https://open-meteo.com/",
     };
 
     private static LocationCandidate Storgata(string? timeZone = "Europe/Oslo") => new()
@@ -86,17 +90,23 @@ public class LocationDialogTests
             .ReturnsAsync((LocationSearchRequest r, CancellationToken _) => search?.Invoke(r)
                 ?? ApiResult<LocationSearchResponse>.Success(new LocationSearchResponse
                 {
-                    Region = r.Region!.Value, Candidates = [Storgata()], Attribution = Kartverket,
+                    Region = r.Region!.Value,
+                    Candidates = [Storgata()],
+                    Attribution = Kartverket,
                 }, HttpStatusCode.OK));
         api.Setup(a => a.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((NewLocation body, CancellationToken _) => saveResult ?? ApiResult<ExistingLocation>.Success(new ExistingLocation
             {
-                LocationId = Guid.NewGuid(), Name = body.Name, TimeZoneId = body.TimeZoneId!,
+                LocationId = Guid.NewGuid(),
+                Name = body.Name,
+                TimeZoneId = body.TimeZoneId!,
             }, HttpStatusCode.Created));
         api.Setup(a => a.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateLocation>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, UpdateLocation body, CancellationToken _) => saveResult ?? ApiResult<ExistingLocation>.Success(new ExistingLocation
             {
-                LocationId = id, Name = body.Name, TimeZoneId = body.TimeZoneId!,
+                LocationId = id,
+                Name = body.Name,
+                TimeZoneId = body.TimeZoneId!,
             }, HttpStatusCode.OK));
         ctx.Services.AddSingleton(api.Object);
 
@@ -226,7 +236,7 @@ public class LocationDialogTests
     public async Task The_dialog_closes_before_the_host_hears_about_the_save()
     {
         var order = new List<string>();
-        var (cut, _) = Render(onOpenChanged: open => { if (!open) order.Add("closed"); }, onSaved: _ => order.Add("saved"));
+        var (cut, _) = Render(onOpenChanged: open => { if (!open) { order.Add("closed"); } }, onSaved: _ => order.Add("saved"));
         Type(cut, "Storgata 1");
         PickFirst(cut);
 
@@ -289,7 +299,10 @@ public class LocationDialogTests
     {
         var (cut, _) = Render(search: r => ApiResult<LocationSearchResponse>.Success(new LocationSearchResponse
         {
-            Region = LocationSearchRegion.Norway, Candidates = [Storgata()], Partial = true, Attribution = Kartverket,
+            Region = LocationSearchRegion.Norway,
+            Candidates = [Storgata()],
+            Partial = true,
+            Attribution = Kartverket,
         }, HttpStatusCode.OK));
 
         Type(cut, "Storgata 1");
@@ -302,7 +315,9 @@ public class LocationDialogTests
     {
         var (cut, _) = Render(search: r => ApiResult<LocationSearchResponse>.Success(new LocationSearchResponse
         {
-            Region = LocationSearchRegion.Norway, Candidates = [], Attribution = Kartverket,
+            Region = LocationSearchRegion.Norway,
+            Candidates = [],
+            Attribution = Kartverket,
         }, HttpStatusCode.OK));
 
         Type(cut, "Nowhere");

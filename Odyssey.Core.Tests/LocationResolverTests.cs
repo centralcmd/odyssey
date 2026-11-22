@@ -165,17 +165,24 @@ public class LocationResolverTests
         var pointId = Guid.NewGuid();
         context.WeatherPoints.Add(new Odyssey.Context.WeatherPoint
         {
-            WeatherPointId = pointId, Name = "Oslo", CurrentSiteVersion = 1,
+            WeatherPointId = pointId,
+            Name = "Oslo",
+            CurrentSiteVersion = 1,
         });
         (await context.Locations.SingleAsync(l => l.LocationId == linked)).WeatherPointId = pointId;
         context.UserPreferences.Add(new Odyssey.Context.UserPreference
         {
-            UserPreferenceId = Guid.NewGuid(), UserId = "u", Key = "weather-preferences",
-            PreferencesJson = $"{{\"defaultPointId\":\"{preferred}\"}}", UpdatedAt = DateTime.UtcNow,
+            UserPreferenceId = Guid.NewGuid(),
+            UserId = "u",
+            Key = "weather-preferences",
+            PreferencesJson = $"{{\"defaultPointId\":\"{preferred}\"}}",
+            UpdatedAt = DateTime.UtcNow,
         });
         context.SystemSettings.Add(new Odyssey.Context.SystemSetting
         {
-            Key = Odyssey.Context.SystemSettingsKeys.WeatherDefaultPointId, Value = household.ToString(), UpdatedAt = DateTime.UtcNow,
+            Key = Odyssey.Context.SystemSettingsKeys.WeatherDefaultPointId,
+            Value = household.ToString(),
+            UpdatedAt = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();
         var guard = new LocationReferenceGuard(context);

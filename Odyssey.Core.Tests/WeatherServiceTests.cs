@@ -5,6 +5,7 @@ using Odyssey.Context.Secrets;
 using Odyssey.Core.Preferences;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -215,16 +216,26 @@ public class WeatherServiceTests
             var issued = Noon.AddMinutes(-60 + i);
             var run = new Odyssey.Context.WeatherForecastRun
             {
-                WeatherForecastRunId = Guid.NewGuid(), WeatherPointId = location.Id, SiteVersion = 1,
-                Provider = WeatherProvider.MetNorway, ProviderUpdatedAt = issued, FetchedAtUtc = issued,
+                WeatherForecastRunId = Guid.NewGuid(),
+                WeatherPointId = location.Id,
+                SiteVersion = 1,
+                Provider = WeatherProvider.MetNorway,
+                ProviderUpdatedAt = issued,
+                FetchedAtUtc = issued,
             };
             for (var hour = 0; hour < 24; hour++)
             {
                 run.Steps.Add(new Odyssey.Context.WeatherForecastStep
                 {
-                    WeatherForecastRunId = run.WeatherForecastRunId, WeatherPointId = location.Id, SiteVersion = 1,
-                    RunProviderUpdatedAt = issued, RunFetchedAtUtc = issued, TimeUtc = Noon.AddHours(hour),
-                    PeriodHours = 1, AirTemperatureC = i, SymbolCode = "cloudy",
+                    WeatherForecastRunId = run.WeatherForecastRunId,
+                    WeatherPointId = location.Id,
+                    SiteVersion = 1,
+                    RunProviderUpdatedAt = issued,
+                    RunFetchedAtUtc = issued,
+                    TimeUtc = Noon.AddHours(hour),
+                    PeriodHours = 1,
+                    AirTemperatureC = i,
+                    SymbolCode = "cloudy",
                 });
             }
 
@@ -435,7 +446,10 @@ public class WeatherServiceTests
         var schedule = await h.Context.WeatherPointSchedules.SingleAsync(s => s.WeatherPointId == location.Id);
         schedule.NextObservationFetchAfterUtc = new DateTime(2026, 10, 23, 6, 0, 0);
         if (failed)
+        {
             schedule.ObservationFailureKind = WeatherFetchFailureKind.RateLimited;
+        }
+
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();
 
@@ -500,7 +514,10 @@ public class WeatherServiceTests
             {
                 context.WeatherStations.Add(new Odyssey.Context.WeatherStation
                 {
-                    WeatherPointId = point.Id, Group = group, StationId = "SN18700", ResolvedAtUtc = h.Time.GetUtcNow().UtcDateTime,
+                    WeatherPointId = point.Id,
+                    Group = group,
+                    StationId = "SN18700",
+                    ResolvedAtUtc = h.Time.GetUtcNow().UtcDateTime,
                 });
             }
 
@@ -526,8 +543,13 @@ public class WeatherServiceTests
         var point = await new WeatherPointService(h.Context, h.Fetch(), h.Settings, new TrackedWeatherHistoryPurger(h.Context), h.Time, pointLog)
             .CreateAsync(new NewWeatherPoint
             {
-                Name = "Secret Street 7", Latitude = 59.91349m, Longitude = 10.73889m, TimeZoneId = "Europe/Oslo",
-                ForecastEnabled = false, HistoryEnabled = false, IsTracked = false,
+                Name = "Secret Street 7",
+                Latitude = 59.91349m,
+                Longitude = 10.73889m,
+                TimeZoneId = "Europe/Oslo",
+                ForecastEnabled = false,
+                HistoryEnabled = false,
+                IsTracked = false,
             }, WeatherTestHarness.AdminId, CancellationToken.None);
         var first = await h.AddLocationAsync("Hidden Place One");
         var second = await h.AddLocationAsync("Hidden Place Two");
@@ -542,11 +564,11 @@ public class WeatherServiceTests
         Assert.True(await new WeatherPointService(h.NewContext(), h.Fetch(), h.Settings, new TrackedWeatherHistoryPurger(h.NewContext()), h.Time, pointLog)
             .DeleteAsync(point.WeatherPointId, WeatherTestHarness.AdminId, CancellationToken.None));
 
-        var lines = pointLog.Lines.Concat(linkLog.Lines).ToList();
+        var lines = pointLog.Messages.Concat(linkLog.Messages).ToList();
         Assert.Contains(lines, l => l.Contains("created", StringComparison.Ordinal) && l.Contains(point.WeatherPointId.ToString(), StringComparison.Ordinal));
         Assert.Contains(lines, l => l.Contains("moved", StringComparison.Ordinal));
         Assert.Contains(lines, l => l.Contains($"{point.WeatherPointId} deleted", StringComparison.Ordinal) && l.Contains("2 linked location(s) unlinked", StringComparison.Ordinal));
-        Assert.Equal(2, linkLog.Lines.Count(l => l.Contains(" set by ", StringComparison.Ordinal)));
+        Assert.Equal(2, linkLog.Messages.Count(l => l.Contains(" set by ", StringComparison.Ordinal)));
         Assert.All(lines, l =>
         {
             Assert.DoesNotContain("Secret Street", l, StringComparison.Ordinal);
@@ -556,19 +578,6 @@ public class WeatherServiceTests
             Assert.DoesNotContain("10.7", l, StringComparison.Ordinal);
         });
         Assert.Equal(2, await h.NewContext().Locations.CountAsync(l => l.WeatherPointId == null));
-    }
-
-    private sealed class RecordingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 
     private static WeatherScheduleJob Job(WeatherTestHarness h)
@@ -592,8 +601,14 @@ public class WeatherServiceTests
 
         var created = await h.Admin().CreateAsync(new NewWeatherPoint
         {
-            Name = "Oslo", Latitude = 59.91349m, Longitude = 10.73889m, AltitudeMeters = 23, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = true, HistoryEnabled = true, IsTracked = true,
+            Name = "Oslo",
+            Latitude = 59.91349m,
+            Longitude = 10.73889m,
+            AltitudeMeters = 23,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = true,
         }, WeatherTestHarness.AdminId, CancellationToken.None);
 
         Assert.Equal("Oslo", created.Name);
@@ -618,16 +633,22 @@ public class WeatherServiceTests
 
         var stale = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin().CreateAsync(new NewWeatherPoint
         {
-            FromLocationId = location.LocationId, ExpectedLocationFingerprint = "v1:0.000:0.000:-:UTC",
-            ForecastEnabled = true, HistoryEnabled = true, IsTracked = true,
+            FromLocationId = location.LocationId,
+            ExpectedLocationFingerprint = "v1:0.000:0.000:-:UTC",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = true,
         }, WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.LocationChanged, stale.Code);
         Assert.DoesNotContain("59.9", stale.Message, StringComparison.Ordinal);
 
         var created = await h.Admin(h.NewContext()).CreateAsync(new NewWeatherPoint
         {
-            FromLocationId = location.LocationId, ExpectedLocationFingerprint = fingerprint,
-            ForecastEnabled = true, HistoryEnabled = false, IsTracked = false,
+            FromLocationId = location.LocationId,
+            ExpectedLocationFingerprint = fingerprint,
+            ForecastEnabled = true,
+            HistoryEnabled = false,
+            IsTracked = false,
         }, WeatherTestHarness.AdminId, CancellationToken.None);
 
         Assert.Equal("Storgata 1", created.Name);
@@ -648,7 +669,11 @@ public class WeatherServiceTests
         {
             var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() => h.Admin(h.NewContext()).CreateAsync(new NewWeatherPoint
             {
-                FromLocationId = id, ExpectedLocationFingerprint = "v1:none", ForecastEnabled = true, HistoryEnabled = true, IsTracked = true,
+                FromLocationId = id,
+                ExpectedLocationFingerprint = "v1:none",
+                ForecastEnabled = true,
+                HistoryEnabled = true,
+                IsTracked = true,
             }, WeatherTestHarness.AdminId, CancellationToken.None));
             Assert.Contains("fromLocationId", error.Errors!.Keys);
         }
@@ -665,7 +690,13 @@ public class WeatherServiceTests
 
         var onCreate = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin(h.NewContext()).CreateAsync(new NewWeatherPoint
         {
-            Name = "oslo", Latitude = 1, Longitude = 1, TimeZoneId = "UTC", ForecastEnabled = true, HistoryEnabled = true, IsTracked = false,
+            Name = "oslo",
+            Latitude = 1,
+            Longitude = 1,
+            TimeZoneId = "UTC",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
         }, WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.DuplicateName, onCreate.Code);
         Assert.Contains("name", onCreate.Errors!.Keys);
@@ -733,14 +764,26 @@ public class WeatherServiceTests
 
         var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() => h.Admin(h.NewContext()).CreateAsync(new NewWeatherPoint
         {
-            Name = "Cabin", Latitude = 61, Longitude = 9, TimeZoneId = "Europe/Oslo", ForecastEnabled = true, HistoryEnabled = true, IsTracked = true,
+            Name = "Cabin",
+            Latitude = 61,
+            Longitude = 9,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = true,
         }, WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Contains("isTracked", error.Errors!.Keys);
         Assert.Contains("1 of 1", error.Message, StringComparison.Ordinal);
 
         var untracked = await h.Admin(h.NewContext()).CreateAsync(new NewWeatherPoint
         {
-            Name = "Cabin", Latitude = 61, Longitude = 9, TimeZoneId = "Europe/Oslo", ForecastEnabled = true, HistoryEnabled = true, IsTracked = false,
+            Name = "Cabin",
+            Latitude = 61,
+            Longitude = 9,
+            TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = true,
+            HistoryEnabled = true,
+            IsTracked = false,
         }, WeatherTestHarness.AdminId, CancellationToken.None);
         Assert.False(untracked.IsTracked);
     }
@@ -989,12 +1032,23 @@ public class WeatherServiceTests
             var near = i == 0;
             h.Context.WeatherPoints.Add(new Odyssey.Context.WeatherPoint
             {
-                WeatherPointId = id, Name = near ? "zzz Nearest" : $"Point {i:D3}", ForecastEnabled = true,
-                CurrentSiteVersion = 1, SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
+                WeatherPointId = id,
+                Name = near ? "zzz Nearest" : $"Point {i:D3}",
+                ForecastEnabled = true,
+                CurrentSiteVersion = 1,
+                SettingsVersion = Guid.NewGuid(),
+                EnabledAt = now,
+                CreatedAt = now,
+                UpdatedAt = now,
             });
             h.Context.WeatherPointSites.Add(new Odyssey.Context.WeatherPointSite
             {
-                WeatherPointId = id, SiteVersion = 1, Latitude = near ? 59.91m : 40 + i * 0.01m, Longitude = near ? 10.71m : 0, TimeZoneId = "UTC", AppliedAt = now,
+                WeatherPointId = id,
+                SiteVersion = 1,
+                Latitude = near ? 59.91m : 40 + i * 0.01m,
+                Longitude = near ? 10.71m : 0,
+                TimeZoneId = "UTC",
+                AppliedAt = now,
             });
         }
 
@@ -1093,7 +1147,10 @@ public class WeatherServiceTests
         weather.StationResolvedAtUtc = Noon;
         h.Context.WeatherStations.Add(new Odyssey.Context.WeatherStation
         {
-            WeatherPointId = home.Id, Group = WeatherMeasureGroup.Temperature, StationId = "SN18700", ResolvedAtUtc = Noon,
+            WeatherPointId = home.Id,
+            Group = WeatherMeasureGroup.Temperature,
+            StationId = "SN18700",
+            ResolvedAtUtc = Noon,
         });
         // One day measured only, and the forecast's own day measured too.
         var forecastDay = await h.Context.WeatherDays.FirstAsync(d => d.WeatherPointId == home.Id);
@@ -1102,8 +1159,12 @@ public class WeatherServiceTests
         h.Context.WeatherDays.Add(MeasuredDay(home.Id, new DateOnly(2026, 9, 1)));
         h.Context.WeatherObservations.Add(new Odyssey.Context.WeatherObservation
         {
-            WeatherObservationId = Guid.NewGuid(), WeatherPointId = home.Id, SiteVersion = 1, TemperatureStationId = "SN18700",
-            LocalDate = new DateOnly(2026, 9, 1), MeanTempC = 5,
+            WeatherObservationId = Guid.NewGuid(),
+            WeatherPointId = home.Id,
+            SiteVersion = 1,
+            TemperatureStationId = "SN18700",
+            LocalDate = new DateOnly(2026, 9, 1),
+            MeanTempC = 5,
         });
         var schedule = await h.Context.WeatherPointSchedules.SingleAsync(s => s.WeatherPointId == home.Id);
         schedule.ObservationsCheckedThroughDate = new DateOnly(2026, 10, 22);
@@ -1392,8 +1453,15 @@ public class WeatherServiceTests
     {
         using var h = new WeatherTestHarness();
         var home = await h.EnableAsync();
-        if (!contact) h.Settings.Value = h.Settings.Value with { Contact = null };
-        if (clientId) h.Secrets.Frost = SecretResult.Found("frost-client");
+        if (!contact)
+        {
+            h.Settings.Value = h.Settings.Value with { Contact = null };
+        }
+
+        if (clientId)
+        {
+            h.Secrets.Frost = SecretResult.Found("frost-client");
+        }
 
         var daily = await h.Read().DailyAsync(Daily(home.Id, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 22)), "u1", CancellationToken.None);
 

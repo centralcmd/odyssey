@@ -170,7 +170,7 @@ internal sealed class IcsPlaces
 
     /// <summary>
     /// Reads an event's place back (issue #516 §8.3). Without <see cref="DetailProperty"/> (a file from another app)
-    /// the result is <see cref="ImportedPlace.Foreign"/>: <c>LOCATION</c> is resolved by the existing rules. With it,
+    /// the result has <see cref="ImportedPlace.HasDetailProperty"/> false: <c>LOCATION</c> is resolved by the existing rules. With it,
     /// the detail is taken from the property and the place text is <c>LOCATION</c> with a trailing
     /// <c> — detail</c> removed; an empty place text, or one equal to the detail, names no place at all.
     /// </summary>

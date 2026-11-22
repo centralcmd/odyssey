@@ -7,7 +7,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -30,7 +30,7 @@ namespace Odyssey.Api.Tests;
 /// unenforced in CI. Only the real-role-claim criterion genuinely needs that tier.
 /// </para>
 /// </summary>
-public class UserProfileImageApiTests
+public class UserProfileImageApiTests(UserProfileImageApiTests.Host host) : SharedApiHostTests<UserProfileImageApiTests.Host>(host)
 {
     private const string ActorUserId = "profile-image-actor";
     private const string OtherUserId = "profile-image-subject";
@@ -53,7 +53,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_user_with_no_picture_has_a_null_token_and_uploading_sets_it()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -70,7 +70,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_replace_yields_a_new_token_and_leaves_exactly_one_row()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -91,7 +91,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task Deleting_clears_the_token_and_makes_the_read_path_404()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
         await UploadAsync(client, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -111,7 +111,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task The_version_query_parameter_does_not_affect_the_response()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
         var version = await UploadAsync(client, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -146,7 +146,7 @@ public class UserProfileImageApiTests
     [MemberData(nameof(RejectedUploads))]
     public async Task A_rejected_upload_is_a_400_and_writes_no_row(string _, byte[] bytes, string contentType)
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -165,7 +165,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task The_dimension_cap_binds_at_1024_and_the_message_names_the_actual_size()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -188,7 +188,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_lowered_instance_cap_binds_and_a_raised_one_does_not_widen_the_surface()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -212,7 +212,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task The_404_is_byte_identical_for_a_missing_user_a_pictureless_one_and_a_disabled_one()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -251,7 +251,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_transiently_locked_out_user_still_has_their_picture_served_and_their_token_kept()
     {
-        await using var factory = new ApiFactory([.. ImageReader, PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([.. ImageReader, PermissionClaims.UsersRead]);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -281,7 +281,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task An_administratively_disabled_subject_has_a_null_token_on_every_projection()
     {
-        await using var factory = new ApiFactory([.. ImageReader, PermissionClaims.UsersRead, PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([.. ImageReader, PermissionClaims.UsersRead, PermissionClaims.UsersUpdate]);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -312,7 +312,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task Extra_form_fields_reach_nothing()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -346,7 +346,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task No_write_action_binds_a_user_id_and_neither_is_password_change_exempt()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         _ = factory.CreateClient();
 
         var endpoints = factory.Services
@@ -382,7 +382,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_picture_stores_and_reads_back_before_the_user_has_a_profile_row()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
 
         // The identity row alone — no UserProfile. The onboarding gate renders before a profile exists,
@@ -409,7 +409,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task Reading_a_picture_needs_profile_images_read()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
         await UploadAsync(client, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -417,8 +417,8 @@ public class UserProfileImageApiTests
         // The revocation lever, proved here and only here: the role→claim mapping is compiled into
         // RolePermissions and guarded by AuthorizationPolicyTests, so "revoke the claim from a role"
         // cannot be committed as a fixture at all. TestAuthHandler mints an arbitrary set instead.
-        await using var denied = new ApiFactory(WithoutImageRead, sharingStoreWith: factory);
-        using var deniedClient = denied.CreateClient();
+        var denied = Factory;
+        using var deniedClient = denied.ClientFor(WithoutImageRead);
 
         Assert.Equal(
             HttpStatusCode.Forbidden,
@@ -438,7 +438,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task Writing_your_own_picture_needs_no_claim()
     {
-        await using var factory = new ApiFactory(WithoutImageRead);
+        var factory = Factory.ForCaller(WithoutImageRead);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -451,7 +451,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task The_read_response_carries_the_inline_untrusted_bytes_header_set()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
         await UploadAsync(client, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -488,7 +488,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_matching_If_None_Match_is_a_304_with_no_body()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
         await UploadAsync(client, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -512,7 +512,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_row_holding_a_disallowed_content_type_reads_as_absent()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
         await UploadAsync(client, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -541,7 +541,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task A_delete_against_a_bumped_version_is_never_a_500()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
         await UploadAsync(client, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
@@ -567,7 +567,7 @@ public class UserProfileImageApiTests
     [Fact]
     public async Task Deleting_when_there_is_no_picture_is_a_404()
     {
-        await using var factory = new ApiFactory(ImageReader);
+        var factory = Factory.ForCaller(ImageReader);
         using var client = factory.CreateClient();
         await SeedEnabledActorAsync(factory);
 
@@ -701,7 +701,10 @@ public class UserProfileImageApiTests
 
     private sealed record PagedUsers(List<ExistingUser> Items, int TotalCount);
 
-    private sealed class ApiFactory(
+    public class ApiFactory(
         IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
         : OdysseyApiFactory(permissions, ActorUserId, sharingStoreWith: sharingStoreWith);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

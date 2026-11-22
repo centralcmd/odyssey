@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Finance.Instruments.Sync;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
@@ -20,7 +19,7 @@ public sealed class InstrumentPriceSourcesController(InstrumentPriceSourceAdminS
 {
     [HttpGet(Name = "GetInstrumentPriceSources")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(InstrumentPriceSourcesStatus))]
-    [SwaggerOperation(Summary = "The registered price sources, their state and the sync status. Empty while no source is installed.")]
+    [EndpointSummary("The registered price sources, their state and the sync status. Empty while no source is installed.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken = default) =>
         Ok(await admin.GetStatusAsync(cancellationToken));
 
@@ -39,7 +38,7 @@ public sealed class InstrumentPriceSourcesController(InstrumentPriceSourceAdminS
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace an instrument's whole binding list; priority is position.")]
+    [EndpointSummary("Replace an instrument's whole binding list; priority is position.")]
     public async Task<IActionResult> PutBindings(
         Guid instrumentId, [FromBody] InstrumentPriceBindingsUpdate update, CancellationToken cancellationToken = default) =>
         await admin.ReplaceBindingsAsync(instrumentId, update, User.ActingUserId(), cancellationToken) is { } bindings

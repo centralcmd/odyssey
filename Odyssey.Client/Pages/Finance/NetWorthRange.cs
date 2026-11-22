@@ -83,7 +83,9 @@ public sealed record NetWorthRange(NetWorthRangePreset Preset, DateOnly? From = 
 
         // An earliest date after the chosen end (or after today) has nothing before it to show.
         if (from is { } f && f > (to ?? today))
+        {
             from = null;
+        }
 
         return (from, to, IntervalFor(from, to ?? today));
     }
@@ -108,12 +110,16 @@ public sealed record NetWorthRange(NetWorthRangePreset Preset, DateOnly? From = 
     internal static NetWorthInterval IntervalFor(DateOnly? from, DateOnly to)
     {
         if (from is not { } start)
+        {
             return NetWorthHistoryQuery.DefaultInterval;
+        }
 
         foreach (var interval in new[] { NetWorthInterval.Monthly, NetWorthInterval.Quarterly })
         {
             if (NetWorthPeriods.CountPeriods(start, to, interval) <= NetWorthHistoryQuery.PointCapFor(interval))
+            {
                 return interval;
+            }
         }
 
         return NetWorthInterval.Yearly;

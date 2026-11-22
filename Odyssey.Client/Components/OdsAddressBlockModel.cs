@@ -52,12 +52,22 @@ public sealed class AddressFields
 
     public AddressFields Copy() => new()
     {
-        Line1 = Line1, Line2 = Line2, PostalCode = PostalCode, City = City, Region = Region, CountryCode = CountryCode,
+        Line1 = Line1,
+        Line2 = Line2,
+        PostalCode = PostalCode,
+        City = City,
+        Region = Region,
+        CountryCode = CountryCode,
     };
 
     public static AddressFields From(ExistingLocation l) => new()
     {
-        Line1 = l.Line1, Line2 = l.Line2, PostalCode = l.PostalCode, City = l.City, Region = l.Region, CountryCode = l.CountryCode,
+        Line1 = l.Line1,
+        Line2 = l.Line2,
+        PostalCode = l.PostalCode,
+        City = l.City,
+        Region = l.Region,
+        CountryCode = l.CountryCode,
     };
 
     /// <summary>Every field empty after cleaning.</summary>
@@ -95,12 +105,24 @@ public sealed class AddressFields
     {
         switch (key)
         {
-            case AddressBlockModel.Line1Key: Line1 = value; break;
-            case AddressBlockModel.Line2Key: Line2 = value; break;
-            case AddressBlockModel.PostalCodeKey: PostalCode = value; break;
-            case AddressBlockModel.CityKey: City = value; break;
-            case AddressBlockModel.RegionKey: Region = value; break;
-            case AddressBlockModel.CountryCodeKey: CountryCode = value; break;
+            case AddressBlockModel.Line1Key:
+                Line1 = value;
+                break;
+            case AddressBlockModel.Line2Key:
+                Line2 = value;
+                break;
+            case AddressBlockModel.PostalCodeKey:
+                PostalCode = value;
+                break;
+            case AddressBlockModel.CityKey:
+                City = value;
+                break;
+            case AddressBlockModel.RegionKey:
+                Region = value;
+                break;
+            case AddressBlockModel.CountryCodeKey:
+                CountryCode = value;
+                break;
         }
     }
 }
@@ -266,7 +288,9 @@ public sealed class AddressBlockModel
         Staged = null;
         var text = typed?.Trim();
         if (!string.IsNullOrEmpty(text))
+        {
             Fields.Line1 = text;
+        }
     }
 
     /// <summary><i>Search instead</i>: back to the picker, keeping the typed fields until Save or Cancel.</summary>
@@ -276,7 +300,10 @@ public sealed class AddressBlockModel
     public void Edit(string key, string? value)
     {
         if (key == CountryCodeKey && value is not null)
+        {
             value = value.ToUpperInvariant();
+        }
+
         Fields.Set(key, value);
     }
 
@@ -284,9 +311,14 @@ public sealed class AddressBlockModel
     public void PlaceEdited(ExistingLocation place)
     {
         if (Stored is not null && place.LocationId == Stored.LocationId)
+        {
             Stored.Fields = AddressFields.From(place);
+        }
+
         if (PickedPlace?.LocationId == place.LocationId)
+        {
             PickedPlace = place;
+        }
     }
 
     // ── What the field shows ─────────────────────────────────────────────────
@@ -312,10 +344,16 @@ public sealed class AddressBlockModel
         get
         {
             if (!ShowsLinked || !Permissions.CanReadLocations)
+            {
                 return null;
+            }
+
             if (LinkedIsStored)
+            {
                 return LocationVisuals.AddressUsageLine(
                     Stored!.OtherUses, Stored.OthersBreakdown, Permissions.AllKindsReadable, Noun, picked: false);
+            }
+
             return PickedPlace?.Usage is { } usage
                 ? LocationVisuals.AddressUsageLine(LocationVisuals.VisibleUses(usage), usage, Permissions.AllKindsReadable, Noun, picked: true)
                 : null;
@@ -355,15 +393,28 @@ public sealed class AddressBlockModel
         {
             // An emptied property address unlinks it; nothing is required.
             if (Variant == AddressBlockVariant.Property && Fields.InputsEmpty)
+            {
                 return errors;
+            }
+
             if (LocationAddressKey.CleanField(Fields.Line1) is null)
+            {
                 errors[Line1Key] = "Line 1 is required.";
+            }
+
             if (LocationAddressKey.CleanField(Fields.City) is null)
+            {
                 errors[CityKey] = "City is required.";
+            }
+
             if (LocationAddressKey.CleanField(Fields.CountryCode) is not { } country)
+            {
                 errors[CountryCodeKey] = "Country is required.";
+            }
             else if (!System.Text.RegularExpressions.Regex.IsMatch(country, LocationRules.CountryCodePattern))
+            {
                 errors[CountryCodeKey] = "Two letters, e.g. NO.";
+            }
         }
         else if (Variant == AddressBlockVariant.Contact && LinkedId is null && Staged is null)
         {
@@ -385,9 +436,15 @@ public sealed class AddressBlockModel
         {
             var propertyFields = Variant == AddressBlockVariant.Property;
             if (propertyFields && Fields.InputsEmpty)
+            {
                 return AddressWrite.None;
+            }
+
             if (Stored is not null && Fields.SameAs(Stored.Fields, propertyFields))
+            {
                 return new(AddressWriteKind.None, Stored.LocationId, null, null, null);
+            }
+
             return FieldsWrite(Cleaned(Fields), null);
         }
 
@@ -399,9 +456,11 @@ public sealed class AddressBlockModel
         }
 
         if (LinkedId is { } id)
+        {
             return id == Stored?.LocationId
                 ? new(AddressWriteKind.None, id, null, null, null)
                 : new(AddressWriteKind.LinkById, id, null, null, null);
+        }
 
         return AddressWrite.None;
     }
@@ -463,7 +522,10 @@ public sealed class AddressBlockModel
     public void UsesChanged(int otherUses, LocationUsage? breakdown)
     {
         if (Stored is null)
+        {
             return;
+        }
+
         Stored.OtherUses = otherUses;
         Stored.OthersBreakdown = breakdown;
     }

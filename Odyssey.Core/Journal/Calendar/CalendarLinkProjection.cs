@@ -113,14 +113,23 @@ internal static class CalendarLinkProjection
         var rows = await links.AsNoTracking()
             .Join(context.FileMetadata, l => l.TargetId, f => f.Id, (l, f) => new
             {
-                l.TargetId, l.CreatedAt, f.FileName, f.ContentType, f.SizeBytes, f.UploadedAtUtc,
+                l.TargetId,
+                l.CreatedAt,
+                f.FileName,
+                f.ContentType,
+                f.SizeBytes,
+                f.UploadedAtUtc,
             })
             .ToListAsync(cancellationToken);
         return rows.OrderBy(r => r.CreatedAt).ThenBy(r => r.TargetId)
             .Select(r => new CalendarLinkFileDto
             {
-                FileId = r.TargetId, CreatedAt = r.CreatedAt, FileName = r.FileName, ContentType = r.ContentType,
-                SizeBytes = r.SizeBytes, UploadedAtUtc = r.UploadedAtUtc,
+                FileId = r.TargetId,
+                CreatedAt = r.CreatedAt,
+                FileName = r.FileName,
+                ContentType = r.ContentType,
+                SizeBytes = r.SizeBytes,
+                UploadedAtUtc = r.UploadedAtUtc,
             })
             .ToList();
     }
@@ -148,8 +157,11 @@ internal static class CalendarLinkProjection
             .OrderBy(r => r.Position).ThenBy(r => r.CreatedAt)
             .Select(r => new CalendarLinkPhotoDto
             {
-                PhotoId = r.TargetId, Position = r.Position, CreatedAt = r.CreatedAt,
-                Title = titles.GetValueOrDefault(r.TargetId), FileName = names.GetValueOrDefault(r.TargetId),
+                PhotoId = r.TargetId,
+                Position = r.Position,
+                CreatedAt = r.CreatedAt,
+                Title = titles.GetValueOrDefault(r.TargetId),
+                FileName = names.GetValueOrDefault(r.TargetId),
                 ThumbnailsReady = ready.Contains(r.TargetId),
             })
             .ToList();

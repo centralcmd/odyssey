@@ -65,7 +65,9 @@
     private void OnTypeChanged(string value)
     {
         if (!Enum.TryParse<ContactType>(value, out var type) || type == _draft.Type)
+        {
             return;
+        }
 
         // Switching Type discards the previously-visible field set (§3). Display name and notes are
         // the contact's own, not either set's, so they survive the switch.
@@ -82,7 +84,9 @@
     {
         _errors = _draft.Validate();
         if (_errors.Count > 0)
+        {
             return false;
+        }
 
         if (IsEdit)
         {
@@ -114,7 +118,9 @@
             foreach (var (field, messages) in errors)
             {
                 if (messages is { Length: > 0 })
+                {
                     _errors[field] = messages[0];
+                }
             }
         }
 
@@ -126,7 +132,9 @@
     private bool Invalidated(bool saved)
     {
         if (saved)
+        {
             ReferenceData.InvalidateContacts();
+        }
         return saved;
     }
 }

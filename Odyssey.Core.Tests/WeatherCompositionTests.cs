@@ -16,17 +16,17 @@ public class WeatherCompositionTests
     private static WeatherForecastStep Step(
         DateTime time, int site = 1, DateTime? issued = null, DateTime? fetched = null, byte period = 1,
         decimal? temperature = 8, decimal? precipitation = null, string? symbol = "cloudy", long id = 0) => new()
-    {
-        WeatherForecastStepId = id,
-        TimeUtc = time,
-        SiteVersion = site,
-        RunProviderUpdatedAt = issued ?? T,
-        RunFetchedAtUtc = fetched ?? T,
-        PeriodHours = period,
-        AirTemperatureC = temperature,
-        PrecipitationMm = precipitation,
-        SymbolCode = symbol,
-    };
+        {
+            WeatherForecastStepId = id,
+            TimeUtc = time,
+            SiteVersion = site,
+            RunProviderUpdatedAt = issued ?? T,
+            RunFetchedAtUtc = fetched ?? T,
+            PeriodHours = period,
+            AirTemperatureC = temperature,
+            PrecipitationMm = precipitation,
+            SymbolCode = symbol,
+        };
 
     private static WeatherPointSite Site(int version, DateTime appliedAt, string zone) => new()
     {

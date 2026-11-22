@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos;
@@ -26,7 +27,7 @@ namespace Odyssey.Api.Tests;
 /// extension, and the assembled summary body.
 /// </para>
 /// </summary>
-public class ContractSignatureApiTests
+public class ContractSignatureApiTests(ContractSignatureApiTests.Host host) : SharedApiHostTests<ContractSignatureApiTests.Host>(host)
 {
     private const string ActorUserId = "contract-signature-actor";
     private const string Path = "/api/contracts";
@@ -52,7 +53,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task Post_WithNeitherStamp_Returns201_AndADraft()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, New());
@@ -77,7 +78,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task Put_SetsTheStamps_AndEveryReadPathAgrees()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreateAsync(client);
 
@@ -122,7 +123,7 @@ public class ContractSignatureApiTests
     public async Task AnUnsignedContract_OutranksTheDateChain_OnEveryReadPath(
         int startOffset, int endOffset, bool markedReady, ContractStatus expected)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, new NewContract
@@ -166,7 +167,7 @@ public class ContractSignatureApiTests
     public async Task Guards_Return400_WithTheirCodeAndField(
         int? readyOffset, int? signedOffset, string code, string field)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var ready = readyOffset is { } r ? FixedToday.Date.AddDays(r) : (DateTime?)null;
@@ -195,7 +196,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task ASignatureAheadOfTheServerClockButStillToday_IsAccepted()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var ahead = FixedToday.AddHours(6);
@@ -212,7 +213,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task APutOmittingTheStamps_ClearsThemAndDerivesDraft()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreateAsync(client);
         (await client.PutAsJsonAsync($"{Path}/{id}", Update(ReadyOn, SignedOn))).EnsureSuccessStatusCode();
@@ -247,7 +248,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task AnUnsignedContract_CannotBePaused_ButCanBeArchived()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreateAsync(client);
 
@@ -270,7 +271,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task SignAndPause_InOneCall_Returns200()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreateAsync(client);
 
@@ -290,7 +291,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task ArchivingASignedRunningContract_IsStillRefused()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreateAsync(client);
         (await client.PutAsJsonAsync($"{Path}/{id}", Update(ReadyOn, SignedOn))).EnsureSuccessStatusCode();
@@ -313,7 +314,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task ADraftWithAnInForceFee_LeavesTheMoney_ButIsCountedOnFile()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         // The reference currencies are seeded by the model, so the schema has to exist before a term
         // names one — a fee with no supported currency is refused before the roll-up is ever reached.
         await EnsureSchemaAsync(factory);
@@ -386,7 +387,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task StatusFilter_BindsTheNewMembers_AndStillRejectsBadInput()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var draft = await CreateAsync(client, name: "Draft agreement");
@@ -416,7 +417,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task SortByStatus_PutsDraftAndReadyFirst()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var draft = await CreateAsync(client, name: "Draft agreement");
@@ -470,7 +471,7 @@ public class ContractSignatureApiTests
     [Fact]
     public async Task ABodyCarryingNestedCollectionsAlongsideTheStamps_MutatesNone()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
         var id = await CreateAsync(client);
 
@@ -557,20 +558,18 @@ public class ContractSignatureApiTests
             && errors.EnumerateObject().Any(e => string.Equals(e.Name, field, StringComparison.OrdinalIgnoreCase));
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(IReadOnlyCollection<string>? permissions)
             : base(permissions, ActorUserId, configuration: null, configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
             })
         {
         }
     }
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

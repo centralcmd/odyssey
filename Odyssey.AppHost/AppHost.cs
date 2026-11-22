@@ -25,7 +25,8 @@ var mariadbContainerPort = GetRequiredInt("Aspire:MariaDb:ContainerPort");
 var mariadbServer = GetRequiredValue("Aspire:MariaDb:Server");
 
 var apiEnvironment = GetRequiredValue("Aspire:Api:Environment");
-var apiSwaggerEnabled = GetRequiredBool("Aspire:Api:SwaggerEnabled").ToString().ToLowerInvariant();
+var apiDocsEnabled = GetRequiredBool("Aspire:Api:ApiDocsEnabled").ToString().ToLowerInvariant();
+var apiDocsRequireLogin = GetRequiredBool("Aspire:Api:ApiDocsRequireLogin").ToString().ToLowerInvariant();
 // One database for the whole application: identity, finance and journal are a single context with
 // real foreign keys between them, so they cannot be pointed at separate schemas.
 var odysseyDatabase = GetRequiredValue("Aspire:Api:Databases:Odyssey");
@@ -83,8 +84,11 @@ var fileStorageSettings = new Dictionary<string, string>
     ["FileStorage__Bindings__PhotoOriginals"] = "primary",
     ["FileStorage__Bindings__FinanceFiles"] = "primary",
     ["FileStorage__Bindings__JournalFiles"] = "primary",
+    ["FileStorage__Bindings__LibraryFiles"] = "primary",
     ["FileStorage__Bindings__ContactAvatars"] = "primary",
     ["FileStorage__Bindings__NewsArticles"] = "primary",
+    ["FileStorage__Bindings__PodcastAudio"] = "primary",
+    ["FileStorage__Bindings__PodcastArtwork"] = "primary",
 };
 
 var migrations = builder
@@ -112,7 +116,8 @@ var api = builder
     .WithEnvironment("DataProtection__KeysPath", dataProtectionKeysPath)
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", apiEnvironment)
-    .WithEnvironment("Swagger__Enabled", apiSwaggerEnabled)
+    .WithEnvironment("ApiDocs__Enabled", apiDocsEnabled)
+    .WithEnvironment("ApiDocs__RequireLogin", apiDocsRequireLogin)
     // Headroom for the E2E suites, which drive this stack from one loopback address — one rate-limit
     // partition key. The shipped default is 30 requests per minute per IP and stays 30 in production;
     // it is not sized for a browser-driven test stack. The identity policy covers the WHOLE
@@ -137,12 +142,15 @@ var api = builder
 
 // Background jobs (issue #348 first). Same database and environment as the API, and the API's key ring,
 // which it reads but never writes. No endpoint: the worker serves nothing.
-builder
+var worker = builder
     .AddProject<Projects.Odyssey_Worker>("worker")
     .WithEnvironment("DataProtection__KeysPath", dataProtectionKeysPath)
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     // Host.CreateApplicationBuilder reads DOTNET_ENVIRONMENT, not the ASPNETCORE name.
     .WithEnvironment("DOTNET_ENVIRONMENT", apiEnvironment)
+    // The worker seeds the demo files and photos (DemoDataGate: Development/Testing only), under the migrations
+    // job's flag: the half of the demo seed with bytes, which only a host with the file volumes can write.
+    .WithEnvironment("Seed__DemoData", seedDemoData)
     // The same trust bundle as the API: the worker makes the scheduled outbound HTTPS calls (MET, Frost).
     .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
     .WithFileStorage(fileStorageSettings)
@@ -165,12 +173,14 @@ builder
 // the multipart reader; nothing else reads it. The cap a user is validated against is a setting, is
 // bounded by this number, and is edited in the UI.
 ForwardOptionalSetting(api, "FileStorage__MaxFileSizeBytes", "Aspire:FileStorage:MaxFileSizeBytes");
+// The worker caps a podcast episode at the same ceiling (issue #556 §8.2), so it reads the same value.
+ForwardOptionalSetting(worker, "FileStorage__MaxFileSizeBytes", "Aspire:FileStorage:MaxFileSizeBytes");
 
 // Nothing is forwarded to MIGRATIONS. The sender identity (issue #421), the file-analysis tuning
 // values (#434) and the switch, model and destination (#439) are all settings edited in the UI, and
 // the migrations job's only interest in them was SystemSettingsConfigAdoption — the one-time
-// carry-over of a value an older release had configured, removed because no deployment ever ran a
-// release it could upgrade from. FileAnalysis:ApiKey and Legal:PseudonymizationSecret are absent for
+// carry-over of a value an older release had configured, removed before any production database
+// existed (a setting moved out of configuration from now on needs that step again). FileAnalysis:ApiKey and Legal:PseudonymizationSecret are absent for
 // a different reason: both live in the encrypted secret store (issue #445), which configuration never
 // feeds. Outside Production an unset pseudonymization secret still falls back to the fixed
 // development value, so the Aspire stack's delete flow works with nothing configured.

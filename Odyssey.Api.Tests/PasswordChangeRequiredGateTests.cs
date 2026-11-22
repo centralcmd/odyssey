@@ -19,10 +19,17 @@ namespace Odyssey.Api.Tests;
 /// out. Everything here authenticates through the real cookie pipeline, because that is the only way the
 /// gate's central questions ("does the same session still work afterwards?") can be asked at all.
 /// </summary>
-public class PasswordChangeRequiredGateTests
+public class PasswordChangeRequiredGateTests(PasswordChangeRequiredGateTests.SharedGateHost sharedHost)
+    : IClassFixture<PasswordChangeRequiredGateTests.SharedGateHost>
 {
-    private const string GatedEmail = "gated@example.com";
     private const string NewPassword = "Renewed987!Passphrase";
+
+    /// <summary>
+    /// Every test shares one host (<see cref="SharedGateHost"/>) and signs in a user of its own, so no test sees another's
+    /// gate flag, failed-attempt count or lockout: all three are per account. The fixture's identity and password-change
+    /// limits sit far above what the class spends in one window.
+    /// </summary>
+    private static string UniqueGatedEmail() => $"gated-{Guid.NewGuid():N}@example.com";
 
     /// <summary>
     /// A sample across modules. It is a smoke check, not the guarantee — that is
@@ -49,9 +56,10 @@ public class PasswordChangeRequiredGateTests
     [InlineData("POST", "/api/account/email")]
     public async Task WhileGated_EveryModuleIsRefused(string method, string path)
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail, RoleDefinitions.AdminId);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var email = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(email, RoleDefinitions.AdminId);
+        using var client = await factory.LoginAsync(email);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await SendAsync(client, method, path);
@@ -75,9 +83,10 @@ public class PasswordChangeRequiredGateTests
     [InlineData("GET", "/manage/info")]
     public async Task WithTheFlagClear_TheMiddlewareIsInert(string method, string path)
     {
-        await using var factory = new PasswordGateFactory();
-        await factory.CreateUserAsync(GatedEmail, RoleDefinitions.AdminId);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var email = UniqueGatedEmail();
+        await factory.CreateUserAsync(email, RoleDefinitions.AdminId);
+        using var client = await factory.LoginAsync(email);
 
         var response = await SendAsync(client, method, path);
 
@@ -90,9 +99,10 @@ public class PasswordChangeRequiredGateTests
     [InlineData("GET", "/auth/permissions")]
     public async Task TheExemptReads_StillSucceedWhileGated(string method, string path)
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var email = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(email);
+        using var client = await factory.LoginAsync(email);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await SendAsync(client, method, path);
@@ -105,9 +115,10 @@ public class PasswordChangeRequiredGateTests
     {
         // The lockout escape hatch: a user who does not know their current password has to be able to
         // leave and use the emailed link instead.
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await client.PostAsync("/logout", content: null);
@@ -129,9 +140,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task TheEmailChangeEscalation_IsClosed()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await client.PostAsJsonAsync("/manage/info", new { newEmail = "attacker@example.com" });
@@ -140,16 +152,17 @@ public class PasswordChangeRequiredGateTests
 
         using var scope = factory.Services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        Assert.Equal(GatedEmail, (await users.FindByIdAsync(user.Id))!.Email);
+        Assert.Equal(gatedEmail, (await users.FindByIdAsync(user.Id))!.Email);
     }
 
     [Fact]
     public async Task AGatedAdmin_CannotResetAnyoneElse()
     {
-        await using var factory = new PasswordGateFactory();
-        var admin = await factory.CreateUserAsync("admin@example.com", RoleDefinitions.AdminId);
-        var target = await factory.CreateUserAsync("target@example.com");
-        using var client = await factory.LoginAsync("admin@example.com");
+        var factory = sharedHost;
+        var adminEmail = UniqueGatedEmail();
+        var admin = await factory.CreateUserAsync(adminEmail, RoleDefinitions.AdminId);
+        var target = await factory.CreateUserAsync(UniqueGatedEmail());
+        using var client = await factory.LoginAsync(adminEmail);
         await factory.SetMustChangePasswordAsync(admin.Id);
 
         var response = await client.PostAsync($"/api/users/{target.Id}/password-reset", content: null);
@@ -162,8 +175,9 @@ public class PasswordChangeRequiredGateTests
     public async Task AnUnauthenticatedRequest_IsStill401_NotForbidden()
     {
         // The middleware must not change unauthenticated behaviour — and must not query the database for it.
-        await using var factory = new PasswordGateFactory();
-        await factory.CreateUserAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        await factory.CreateUserAsync(gatedEmail);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/accounts");
@@ -178,9 +192,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task CompletingTheEmailedReset_WorksWhileGated_AndClearsTheFlag()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         string code;
@@ -193,7 +208,7 @@ public class PasswordChangeRequiredGateTests
         }
 
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = GatedEmail, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = gatedEmail, resetCode = code, newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
         Assert.False(await factory.MustChangePasswordAsync(user.Id));
@@ -202,9 +217,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task TheChangePasswordEndpoint_ClearsTheFlag_AndKeepsTheSessionAlive()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail, RoleDefinitions.AdminId);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail, RoleDefinitions.AdminId);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/accounts")).StatusCode);
 
@@ -227,9 +243,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task AWrongCurrentPassword_Is400_KeepsTheFlag_AndCountsAsAFailedAttempt()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await client.PostAsJsonAsync("/api/account/password", new
@@ -251,9 +268,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task RepeatingAWrongCurrentPassword_LocksOut_AndStopsAttemptingTheChange()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         // Read the threshold from the options rather than hardcoding it: Program.cs does not configure
@@ -288,9 +306,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task APolicyViolatingNewPassword_Is400_WithIdentitysOwnMessage()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         // Long enough to clear the DTO's MinimumLength, so this is Identity's character-class policy
@@ -319,9 +338,10 @@ public class PasswordChangeRequiredGateTests
         // Identity accepts a no-op change (it simply rehashes), so the endpoint enforces this itself —
         // otherwise a reset user could "change" straight back to the password that was reset in the first
         // place and clear the gate with no real rotation.
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var response = await client.PostAsJsonAsync("/api/account/password", new
@@ -341,9 +361,10 @@ public class PasswordChangeRequiredGateTests
     {
         // The point of the upper bound: IdentityOptions.Password sets only a minimum and the PBKDF2 hasher
         // has no inherent input-size cap, so without it a multi-megabyte string would reach the hasher.
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var oversized = new string('a', 257) + "A1!";
@@ -364,9 +385,10 @@ public class PasswordChangeRequiredGateTests
     public async Task AnOrdinarySelfServiceChange_StillWorks_AndKeepsTheSession()
     {
         // The /account page's existing flow, on the repointed endpoint: no gate involved.
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail, RoleDefinitions.AdminId);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail, RoleDefinitions.AdminId);
+        using var client = await factory.LoginAsync(gatedEmail);
 
         var response = await client.PostAsJsonAsync("/api/account/password", new
         {
@@ -382,9 +404,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task TheProfileEndpoint_ReportsTheFlagToTheGatedUserThemselves()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
 
         var profile = await client.GetFromJsonAsync<ProfileDto>("/api/profile");
@@ -402,9 +425,10 @@ public class PasswordChangeRequiredGateTests
     [Fact]
     public async Task AUserWhoOwesBothGates_CanStillChangeTheirPassword()
     {
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
         await factory.RevokeLegalAcceptanceAsync(user.Id);
 
@@ -423,9 +447,10 @@ public class PasswordChangeRequiredGateTests
     {
         // Both middlewares would refuse this call; the password one runs first, so the client is told
         // which gate to route to — and it is the one that unblocks the other.
-        await using var factory = new PasswordGateFactory();
-        var user = await factory.CreateUserAsync(GatedEmail);
-        using var client = await factory.LoginAsync(GatedEmail);
+        var factory = sharedHost;
+        var gatedEmail = UniqueGatedEmail();
+        var user = await factory.CreateUserAsync(gatedEmail);
+        using var client = await factory.LoginAsync(gatedEmail);
         await factory.SetMustChangePasswordAsync(user.Id);
         await factory.RevokeLegalAcceptanceAsync(user.Id);
 
@@ -446,4 +471,7 @@ public class PasswordChangeRequiredGateTests
             "PUT" => client.PutAsJsonAsync(path, new { }),
             _ => throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported method."),
         };
+
+    /// <summary>One host for the whole class; the identity rate limits are the fixture's raised ones.</summary>
+    public sealed class SharedGateHost() : PasswordGateFactory();
 }

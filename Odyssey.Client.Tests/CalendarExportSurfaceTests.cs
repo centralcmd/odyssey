@@ -10,6 +10,7 @@ using Odyssey.ApiClient;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Calendar;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 using static Odyssey.Client.Tests.CalendarIcsTestContext;
 
@@ -38,7 +39,7 @@ public class CalendarExportSurfaceTests
             .SelectMany(path =>
             {
                 var text = File.ReadAllText(path);
-                return ByteReturningExport.Matches(text).Select(m => $"{ClientSource.Relative(path)}:{ClientSource.LineAt(text, m.Index)} — {m.Value}");
+                return ByteReturningExport.Matches(text).Select(m => $"{ClientSource.Relative(path)}:{SourceLint.LineAt(text, m.Index)} — {m.Value}");
             })
             .ToList();
 
@@ -251,9 +252,13 @@ public class CalendarExportSurfaceTests
         var patternId = Guid.NewGuid();
         context.Calendar.Setup(c => c.GetPatternAsync(patternId, It.IsAny<CancellationToken>())).ReturnsAsync(new ExistingRecurrencePattern
         {
-            RecurrencePatternId = patternId, CalendarId = CalendarId, Title = "Book club",
-            Frequency = RecurrenceFrequency.Monthly, Interval = 1,
-            StartDateTime = new DateTime(2026, 1, 8, 18, 0, 0), EndDateTime = new DateTime(2026, 1, 8, 19, 30, 0),
+            RecurrencePatternId = patternId,
+            CalendarId = CalendarId,
+            Title = "Book club",
+            Frequency = RecurrenceFrequency.Monthly,
+            Interval = 1,
+            StartDateTime = new DateTime(2026, 1, 8, 18, 0, 0),
+            EndDateTime = new DateTime(2026, 1, 8, 19, 30, 0),
         });
         return context.Render<CalendarEventDialog>(new Dictionary<string, object?>
         {

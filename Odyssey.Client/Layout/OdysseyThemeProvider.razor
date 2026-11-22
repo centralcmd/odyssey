@@ -32,7 +32,9 @@
         await ApplyThemeAttributeAsync();
 
         if (!firstRender || !OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         _isDarkMode = await UserPreferences.GetDarkModePreferencesAsync();
         _preferenceResolved = true;
@@ -46,7 +48,9 @@
     private async Task ApplyThemeAttributeAsync()
     {
         if (!_preferenceResolved || _appliedDarkMode == _isDarkMode)
+        {
             return;
+        }
 
         try
         {

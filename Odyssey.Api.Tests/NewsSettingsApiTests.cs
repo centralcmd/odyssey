@@ -16,7 +16,7 @@ namespace Odyssey.Api.Tests;
 /// size cap (AC 56, 61, 63), the claim split that puts the private-host allow-list on the security claim, and the
 /// allow-list's shape rule. The guard tests (registry, bounds, seed) cover the recipe itself.
 /// </summary>
-public class NewsSettingsApiTests
+public class NewsSettingsApiTests(NewsSettingsApiTests.Host host) : SharedApiHostTests<NewsSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string ActorUserId = "47047047-0470-4470-8470-470470470470";
@@ -28,7 +28,7 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task Get_serves_the_shipped_news_defaults()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var dto = (await client.GetFromJsonAsync<SystemSettingsDto>(Path))!;
@@ -44,7 +44,7 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task Get_publishes_the_image_size_ceiling_from_the_file_size_limit()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var dto = (await client.GetFromJsonAsync<SystemSettingsDto>(Path))!;
@@ -98,7 +98,7 @@ public class NewsSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.NewsFeedMaxImageMbPerDay), 10241)]
     public async Task Put_outside_a_static_range_is_a_400(string field, int value)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsync(Path, JsonContent.Create(new Dictionary<string, int> { [field] = value }));
@@ -110,13 +110,18 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task The_ordinary_claim_writes_the_seven_ordinary_news_keys()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
         {
-            NewsDefaultFetchIntervalMinutes = 120, NewsMaxFeeds = 300, NewsImageMaxPerArticle = 0,
-            NewsImageStoreMaxGiB = 10, NewsTextStoreMaxGiB = 5, NewsFeedMaxArticlesPerDay = 50, NewsFeedMaxImageMbPerDay = 20,
+            NewsDefaultFetchIntervalMinutes = 120,
+            NewsMaxFeeds = 300,
+            NewsImageMaxPerArticle = 0,
+            NewsImageStoreMaxGiB = 10,
+            NewsTextStoreMaxGiB = 5,
+            NewsFeedMaxArticlesPerDay = 50,
+            NewsFeedMaxImageMbPerDay = 20,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -150,7 +155,7 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task The_allow_list_needs_the_security_claim_and_writes_nothing_without_it()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { NewsPrivateHostAllowList = "nas.lan" });
@@ -166,7 +171,7 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task The_allow_list_is_stored_canonical_and_can_be_emptied_again()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var saved = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { NewsPrivateHostAllowList = " NAS.lan, 192.168.1.20:8080 " });
@@ -185,7 +190,7 @@ public class NewsSettingsApiTests
     [InlineData("nas.lan:99999")]
     public async Task A_malformed_allow_list_is_a_400_keyed_on_the_field(string value)
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { NewsPrivateHostAllowList = value });
@@ -198,7 +203,7 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task A_fresh_store_holds_the_single_news_totals_row()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         await using var scope = factory.Services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
@@ -207,8 +212,11 @@ public class NewsSettingsApiTests
         Assert.Equal((NewsStorageTotal.SingletonId, 0L, 0L), (row.Id, row.ImageBytes, row.TextAndSourceBytes));
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, long? maxFileSizeBytes = null)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions, long? maxFileSizeBytes = null)
         : OdysseyApiFactory(permissions, ActorUserId, maxFileSizeBytes is { } bytes
             ? new Dictionary<string, string?> { ["FileStorage:MaxFileSizeBytes"] = bytes.ToString(System.Globalization.CultureInfo.InvariantCulture) }
             : null);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

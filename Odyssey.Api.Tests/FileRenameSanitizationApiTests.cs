@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Net.Http.Headers;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -149,20 +150,18 @@ public sealed class FileRenameSanitizationApiTests
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await db.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [(byte)'%', (byte)'P', (byte)'D', (byte)'F'] };
+        byte[] blobContent = [(byte)'%', (byte)'P', (byte)'D', (byte)'F'];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
             UploadedByUserId = ActorUserId,
             FileName = fileName,
             ContentType = "application/pdf",
-            SizeBytes = blob.Content.Length,
+            SizeBytes = blobContent.Length,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         };
-        db.FileBlob.Add(blob);
         db.FileMetadata.Add(metadata);
         await db.SaveChangesAsync();
         return metadata.Id;

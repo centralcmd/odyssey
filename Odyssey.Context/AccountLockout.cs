@@ -2,7 +2,7 @@ namespace Odyssey.Context;
 
 /// <summary>
 /// Shared helpers for the lockout-based "disabled account" convention. A user is treated as
-/// disabled by setting <see cref="ApplicationUser.LockoutEnd"/> to <see cref="DisabledLockoutEnd"/>
+/// disabled by setting <c>ApplicationUser.LockoutEnd</c> to <see cref="DisabledLockoutEnd"/>
 /// (effectively permanent), and enabled by clearing it. The same convention backs both the admin
 /// enable/disable action and the require-admin-approval registration gate.
 /// </summary>

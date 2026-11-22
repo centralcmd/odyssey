@@ -54,6 +54,9 @@ public partial class ContactsCard
     private Guid _blockedKey;
     private ExistingContact? _blockedContact;
     private ContactContractBeneficiaryBlockers _blockedContracts = new();
+    private Odyssey.Dtos.Books.ContactBookCreditBlockers? _blockedBooks;
+    private bool _blockedBooksUnreadable;
+    private bool _detachRefused;
 
     private const string PageStateKey = "contacts-page";
     private bool _overviewOpen = true;
@@ -98,7 +101,9 @@ public partial class ContactsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -194,7 +199,9 @@ public partial class ContactsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "contacts");
         if (load.IsSuccess)
@@ -207,7 +214,9 @@ public partial class ContactsCard
 
             // A card that scrolled out of the filtered set must not stay open behind the filter.
             if (_openId is { } open && _contacts.All(c => c.ContactId != open))
+            {
                 _openId = null;
+            }
         }
         else
         {
@@ -376,7 +385,9 @@ public partial class ContactsCard
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _createKey = Guid.NewGuid();
         _createOpen = true;
@@ -387,7 +398,9 @@ public partial class ContactsCard
     private void EditClicked(ExistingContact contact)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editTarget = contact;
         _editKey = Guid.NewGuid();
@@ -397,7 +410,9 @@ public partial class ContactsCard
     private void ConvertClicked(ExistingContact contact)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _convertTarget = contact;
         _convertKey = Guid.NewGuid();
@@ -414,7 +429,10 @@ public partial class ContactsCard
     private async Task OnEditSaved()
     {
         if (_editTarget is not null)
+        {
             await RefreshContactAsync(_editTarget.ContactId);
+        }
+
         _allContacts = (await Contacts.ListAllAsync()).ItemsOrToast(Snackbar, "contacts");
         StateHasChanged();
     }
@@ -440,7 +458,9 @@ public partial class ContactsCard
     private async Task PutContact(ExistingContact contact, NewContact body)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         if ((await Contacts.UpdateAsync(contact.ContactId, body)).Toast(Snackbar, "Update failed", "Contact updated."))
         {
@@ -462,7 +482,9 @@ public partial class ContactsCard
 
         var fresh = (await Contacts.GetAsync(contactId)).OrToast(Snackbar, "Unable to load contact");
         if (fresh is null)
+        {
             return;
+        }
 
         var index = _contacts.FindIndex(c => c.ContactId == contactId);
         if (index >= 0)
@@ -479,11 +501,15 @@ public partial class ContactsCard
     private async Task HandleDelete(ExistingContact contact)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var confirmed = await _confirm.AskAsync("Delete contact", DeleteMessage(contact.ResolvedDisplayName), "Delete");
         if (!confirmed)
+        {
             return;
+        }
 
         // On success, a full refresh rather than a local Remove: the delete changes the header counts
         // and the overview breakdowns, which read the unfiltered set. A refusal may instead be a
@@ -520,21 +546,55 @@ public partial class ContactsCard
             return false;
         }
 
-        var contracts = result.Problem?.Extension<ContactContractBeneficiaryBlockers>("contractBeneficiaries");
-
-        // The server omits the class entirely when it has no rows, so "present" is what decides —
-        // and a count, not a name list, since the names are claim-gated and may legitimately be empty.
-        if (contracts is not { TotalLinks: > 0 })
+        if (BlockersOf(result) is not { } blockers)
         {
             return false;
         }
 
         _blockedContact = contact;
-        _blockedContracts = contracts;
+        _blockedContracts = blockers.Contracts;
+        _blockedBooks = blockers.Books;
+        _blockedBooksUnreadable = blockers.BooksUnreadable;
+        _detachRefused = false;
         _blockedKey = Guid.NewGuid();
         _blockedOpen = true;
         return true;
     }
+
+    /// <summary>What blocked a contact delete: the beneficiary rows, and the book credits (issue #571 §3.10.1).</summary>
+    internal sealed record DeleteBlockers(
+        ContactContractBeneficiaryBlockers Contracts, Odyssey.Dtos.Books.ContactBookCreditBlockers? Books, bool BooksUnreadable)
+    {
+        /// <summary>A book credit blocks — read, or present but unreadable (the books state, without numbers).</summary>
+        public bool BlockedByBooks => Books is not null || BooksUnreadable;
+    }
+
+    /// <summary>
+    /// The blockers a refused delete carries, or <c>null</c> when it is not a link refusal. Keyed on the payload
+    /// EXTENSIONS, never on the status alone: a 409 from any other cause keeps falling through to the ordinary toast.
+    /// The server omits a class entirely when it has no rows, so "present" is what decides — a count, not a name list,
+    /// since the names are claim-gated. A <c>bookCredits</c> member that is present but unreadable still counts.
+    /// </summary>
+    internal static DeleteBlockers? BlockersOf(ApiClient.ApiResult result)
+    {
+        if (result.Status != System.Net.HttpStatusCode.Conflict || result.Problem is not { } problem)
+        {
+            return null;
+        }
+
+        var contracts = problem.Extension<ContactContractBeneficiaryBlockers>("contractBeneficiaries");
+        var booksPresent = problem.Extensions?.ContainsKey(BookCreditsKey) == true;
+        var books = problem.Extension<Odyssey.Dtos.Books.ContactBookCreditBlockers>(BookCreditsKey);
+        if (contracts is not { TotalLinks: > 0 } && !booksPresent)
+        {
+            return null;
+        }
+
+        return new DeleteBlockers(contracts is { TotalLinks: > 0 } ? contracts : new(), books, booksPresent && books is null);
+    }
+
+    /// <summary>The contact-delete 409's book-credit member (issue #527).</summary>
+    internal const string BookCreditsKey = "bookCredits";
 
     /// <summary>
     /// The detach path: removes every <c>Beneficiary</c> contract party naming the contact and
@@ -546,9 +606,23 @@ public partial class ContactsCard
     private async Task<DetachedContactLinks?> DetachAndDeleteAsync()
     {
         if (_blockedContact is not { } contact)
+        {
             return null;
+        }
 
         var result = await Contacts.DeleteWithDetachAsync(contact.ContactId);
+        if (!result.IsSuccess && result.Problem is { } problem && BlockersOf(ApiClient.ApiResult.Failure(result.Status, problem)) is { BlockedByBooks: true } refused)
+        {
+            // A credit was added in between: the dialog re-renders in its books state, saying nothing was deleted,
+            // with focus on Close (the focused Detach button no longer exists, so focus is placed, never lost).
+            _blockedBooks = refused.Books;
+            _blockedBooksUnreadable = refused.BooksUnreadable;
+            _detachRefused = true;
+            _blockedKey = Guid.NewGuid();
+            StateHasChanged();
+            return null;
+        }
+
         if (!result.IsSuccess)
         {
             Snackbar.Add($"Unable to detach and delete: {result.Error}", Severity.Error);
@@ -653,14 +727,18 @@ public partial class ContactsCard
     private async Task ExportRowAsync(ExistingContact c, bool includeImages)
     {
         if (_exporting)
+        {
             return;
+        }
 
         _exporting = true;
         try
         {
             var result = await VCardApi.ExportOneAsync(c.ContactId, includeImages);
             if (result.OrToast(Snackbar, "Unable to export the contact") is not { } file)
+            {
                 return;
+            }
 
             await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
@@ -678,7 +756,9 @@ public partial class ContactsCard
     private async Task ExportAsync(bool filtered, bool includeImages = false)
     {
         if (_exporting)
+        {
             return;
+        }
 
         _exporting = true;
         try
@@ -687,7 +767,9 @@ public partial class ContactsCard
                 ? await VCardApi.ExportManyAsync(_search, _typeFilter, _statusFilter, includeImages)
                 : await VCardApi.ExportManyAsync(includeImages: includeImages);
             if (result.OrToast(Snackbar, "Unable to export contacts") is not { } file)
+            {
                 return;
+            }
 
             await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
@@ -701,7 +783,9 @@ public partial class ContactsCard
     private void OpenImportDialog()
     {
         if (!_canImport)
+        {
             return;
+        }
 
         _importOpen = true;
     }

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
@@ -24,12 +25,7 @@ public class ContractEventServiceTests
 
     private readonly OdysseyContext context = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
-    private ContractEventService CreateService() => new(context, new FixedTimeProvider(FixedNow));
+    private ContractEventService CreateService() => new(context, new FakeTimeProvider(FixedNow));
 
     private async Task<Guid> SeedContractAsync(string name = "Maple St lease")
     {
@@ -51,13 +47,13 @@ public class ContractEventServiceTests
         string? description = "Asked for the CPI basis in writing.",
         string? notes = "Chase on the 21st if no reply.",
         DateTime? occurredAt = null) => new()
-    {
-        Type = type,
-        Title = title,
-        Description = description,
-        Notes = notes,
-        OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
-    };
+        {
+            Type = type,
+            Title = title,
+            Description = description,
+            Notes = notes,
+            OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+        };
 
     private static UpdateContractEvent Update(
         string title = "Edited title",
@@ -65,13 +61,13 @@ public class ContractEventServiceTests
         string? description = null,
         string? notes = null,
         DateTime? occurredAt = null) => new()
-    {
-        Type = type,
-        Title = title,
-        Description = description,
-        Notes = notes,
-        OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
-    };
+        {
+            Type = type,
+            Title = title,
+            Description = description,
+            Notes = notes,
+            OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+        };
 
     // ── Create ───────────────────────────────────────────────────────────────
 
@@ -271,7 +267,7 @@ public class ContractEventServiceTests
         var created = await service.CreateAsync(contractId, New(), "user-jane");
 
         // A later clock, so a service that DID re-stamp would visibly move the timestamp.
-        var later = new ContractEventService(context, new FixedTimeProvider(FixedNow.AddDays(3)));
+        var later = new ContractEventService(context, new FakeTimeProvider(FixedNow.AddDays(3)));
         var updated = await later.UpdateAsync(contractId, created!.Event.ContractEventId, Update());
 
         Assert.Equal(created.Event.CreatedAtUtc, updated!.Event.CreatedAtUtc);
@@ -569,7 +565,7 @@ public class ContractEventServiceTests
     /// — the point of the arrangement is the two orders differing, not the dates being close.
     /// </summary>
     private Task WriteAtAsync(Guid contractId, string title, int recordedOn, int occurredOn) =>
-        new ContractEventService(context, new FixedTimeProvider(Day(recordedOn).AddHours(6)))
+        new ContractEventService(context, new FakeTimeProvider(Day(recordedOn).AddHours(6)))
             .CreateAsync(
                 contractId,
                 New(title: title, occurredAt: new DateTime(2026, 1, occurredOn, 10, 0, 0, DateTimeKind.Utc)),

@@ -157,7 +157,7 @@ The diff should be empty.
    in the new baseline. Never fix it by regenerating the fingerprint.**
 
 10. **Release notes.** State: "databases below `vX` must upgrade to `vX`, and let its migrations job
-    complete, before this release." An operator who later meets `BaselineMissing` should check the
+    complete, before this release." An operator who later meets the `BelowBaseline` refusal should check the
     printed newest id against `vX`'s chain before following the advice: the guard decides by id order
     alone.
 

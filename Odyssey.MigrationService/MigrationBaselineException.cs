@@ -14,11 +14,9 @@ namespace Odyssey.MigrationService;
 /// runbook has the operator check the newest id against the bridge release's chain before following the advice,
 /// and upgrading through the bridge would then stop on the drift guard rather than corrupt anything.
 /// </remarks>
-public sealed class MigrationBaselineException(string contextName, MigrationBaseline baseline, string newestAppliedId)
-    : Exception(BuildMessage(contextName, baseline, newestAppliedId))
+public sealed class MigrationBaselineException(MigrationBaseline baseline, string newestAppliedId)
+    : Exception(BuildMessage(baseline, newestAppliedId))
 {
-    public string ContextName { get; } = contextName;
-
     public string BaselineMigrationId { get; } = baseline.BaselineMigrationId;
 
     public string? BridgeRelease { get; } = baseline.BridgeRelease;
@@ -32,9 +30,9 @@ public sealed class MigrationBaselineException(string contextName, MigrationBase
             ? MigrationBaselineGap.BelowBaseline
             : MigrationBaselineGap.ForeignSet;
 
-    private static string BuildMessage(string contextName, MigrationBaseline baseline, string newest)
+    private static string BuildMessage(MigrationBaseline baseline, string newest)
     {
-        var start = $"{contextName}: this build's migrations start at '{baseline.BaselineMigrationId}'. ";
+        var start = $"This build's migrations start at '{baseline.BaselineMigrationId}'. ";
 
         if (GapOf(baseline, newest) == MigrationBaselineGap.ForeignSet)
         {

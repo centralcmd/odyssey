@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Dtos;
 using System.Net;
 using System.Text.Json;
 using System.Net.Http.Json;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Finance;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +22,7 @@ using ContractFileType = Odyssey.Dtos.Finance.ContractFileType;
 
 namespace Odyssey.Api.Tests;
 
-public class ContractsApiTests
+public class ContractsApiTests(ContractsApiTests.Host host) : SharedApiHostTests<ContractsApiTests.Host>(host)
 {
     private const string ActorUserId = "contracts-actor-id";
     private const string Path = "/api/contracts";
@@ -47,8 +49,8 @@ public class ContractsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(null);
 
         var response = await client.GetAsync(Path);
 
@@ -58,8 +60,8 @@ public class ContractsApiTests
     [Fact]
     public async Task List_WithoutReadPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([]);
 
         var response = await client.GetAsync(Path);
 
@@ -69,8 +71,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Mutations_WithReadOnlyPermission_ReturnForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var post = await client.PostAsJsonAsync(Path, NewContract());
         Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
@@ -80,9 +82,9 @@ public class ContractsApiTests
     public async Task AttachFile_WithoutFilesReadClaim_ReturnsForbidden()
     {
         // Confused-deputy guard: contracts.update alone is not enough to attach a file.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
 
@@ -95,8 +97,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Create_Then_Get_RoundTrips()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var fetched = await client.GetFromJsonAsync<ExistingContract>($"{Path}/{id}");
@@ -110,8 +112,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Create_MissingName_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // Name omitted entirely → model validation 400.
         var post = await client.PostAsJsonAsync(Path, new
@@ -125,8 +127,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Create_EndBeforeStart_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, new NewContract
         {
@@ -143,8 +145,8 @@ public class ContractsApiTests
     [Fact]
     public async Task DerivedStatus_ReflectsDatesAndArchive()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var upcoming = await CreateAsync(client, start: FixedToday.AddDays(10));
         var expired = await CreateAsync(client, start: FixedToday.AddDays(-100), end: FixedToday.AddDays(-1));
@@ -166,8 +168,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Put_ArchiveThenUnarchive_TogglesListAndSummary()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
 
@@ -211,9 +213,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_RequiresExactlyOneTarget()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
 
@@ -240,8 +242,8 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_MissingTarget_Returns404_DistinctFromContractNotFound()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
 
@@ -259,9 +261,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_Duplicate_Returns409()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var first = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
@@ -278,10 +280,10 @@ public class ContractsApiTests
         // `ContractOptions` and into the settings store (issue #421 Wave 3), so it has to be set as a
         // row: the old `["Contracts:MaxPartiesPerContract"] = "1"` config entry is read by nothing and
         // left this test asserting a 422 that the shipped default of 20 would never produce.
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
         var (accountId, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         Assert.Equal(HttpStatusCode.Created,
@@ -299,9 +301,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_OnArchivedContract_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isArchived: true, endDate: Lapsed)))
@@ -321,9 +323,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_WithRoleAndTerm_EchoesBoth_AndAppearsOnTheContract()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var from = FixedToday.AddDays(-10);
@@ -362,9 +364,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_WithoutRole_Returns400NamingRoleAsRequired()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new { accountId });
@@ -388,9 +390,9 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateParty_ChangingOnlyRole_KeepsTheSamePartyId()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -417,9 +419,9 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateParty_OmittingToDate_ClearsIt()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest
@@ -448,9 +450,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_SameTargetInTwoRoles_Succeeds_SameRoleTwiceConflicts()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (_, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
 
@@ -477,9 +479,9 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateAndDeleteParty_WithForeignPartyId_Return404_AndLeaveThatPartyUntouched()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var owner = await CreateAsync(client);
         var other = await CreateAsync(client);
@@ -502,9 +504,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_TermRules_Return400_WithTheOffendingFieldKey()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var start = FixedToday.AddDays(-30);
         var id = await CreateAsync(client, start);
@@ -536,9 +538,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_OnContractWithNoStartDate_AcceptsAnyFromDate()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var post = await client.PostAsJsonAsync(Path, new NewContract
         {
@@ -564,9 +566,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_UnbindableRole_Returns400FromModelValidation()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new { accountId, role = 99 });
@@ -584,9 +586,9 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateAndDetachParty_OnArchivedContract_BothSucceed()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -612,9 +614,9 @@ public class ContractsApiTests
     [Fact]
     public async Task PartyNotFoundClasses_AreDistinguishableByFieldKey()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
 
@@ -648,9 +650,9 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateParty_NestedTargetObject_IsIgnored_NoMutation()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (_, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer });
@@ -680,8 +682,8 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateParty_WithoutUpdatePermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var put = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}/parties/{Guid.NewGuid()}",
             new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Employer });
@@ -696,10 +698,10 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateParty_OnContractAtItsCap_IsNotRefused()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -718,9 +720,9 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateParty_ChangingOnlyDates_IsNotASelfConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -747,9 +749,9 @@ public class ContractsApiTests
     [Fact]
     public async Task UpdateParty_TwiceInSequence_LastWriteWins_NoConflict()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
@@ -772,9 +774,9 @@ public class ContractsApiTests
     [Fact]
     public async Task AddParty_NestedTargetObject_IsIgnored_NoMutation()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (_, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
 
@@ -800,9 +802,9 @@ public class ContractsApiTests
     [Fact]
     public async Task Get_PartyReferences_OmitCrossClaimFields()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
@@ -824,10 +826,10 @@ public class ContractsApiTests
     [Fact]
     public async Task AttachFile_DownloadDetach_BlobSurvives_ParentChainEnforced()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var pdfId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
         var textId = await SeedFileAsync(factory, "notes.txt", "text/plain");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var contractA = await CreateAsync(client);
         var contractB = await CreateAsync(client);
@@ -869,10 +871,10 @@ public class ContractsApiTests
     [Fact]
     public async Task Delete_CascadesLinks_LeavesTargetsAndFiles()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
         var pdfId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var id = await CreateAsync(client);
         await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
@@ -895,9 +897,9 @@ public class ContractsApiTests
     [Fact]
     public async Task DeleteParty_DetachesOnly()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
@@ -919,8 +921,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Summary_AggregatesByStatus_AndBreaksDownNonArchivedByType()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         await CreateTypedAsync(client, ContractType.Employment, start: FixedToday.AddDays(-30));                          // Active
         await CreateTypedAsync(client, ContractType.Employment, start: FixedToday.AddDays(-10), end: FixedToday.AddDays(10)); // Active
@@ -929,9 +931,13 @@ public class ContractsApiTests
         var archived = await CreateTypedAsync(client, ContractType.Other, start: FixedToday.AddDays(-30));
         (await client.PutAsJsonAsync($"{Path}/{archived}", new UpdateContract
         {
-            Name = "Other contract", Type = ContractType.Other,
-            StartDate = FixedToday.AddDays(-30), EndDate = Lapsed, IsArchived = true,
-            Ready = ReadyOn, Signed = SignedOn,
+            Name = "Other contract",
+            Type = ContractType.Other,
+            StartDate = FixedToday.AddDays(-30),
+            EndDate = Lapsed,
+            IsArchived = true,
+            Ready = ReadyOn,
+            Signed = SignedOn,
         })).EnsureSuccessStatusCode();
 
         var summary = (await client.GetFromJsonAsync<ContractSummary>($"{Path}/summary"))!;
@@ -959,9 +965,9 @@ public class ContractsApiTests
     [Fact]
     public async Task Summary_RunRate_ConvertsWhatItCan_AndNamesWhatItCannot()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         await SeedRateAsync(factory, "EUR", "USD", 1.10m);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var domestic = await CreateTypedAsync(client, ContractType.Rental, start: FixedToday.AddDays(-30));
         var european = await CreateTypedAsync(client, ContractType.Membership, start: FixedToday.AddDays(-30));
@@ -1004,8 +1010,8 @@ public class ContractsApiTests
     {
         Assert.Equal(ordinal, (int)type);
 
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var id = await CreateTypedAsync(client, type);
 
@@ -1023,8 +1029,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Summary_RejectsAnOverlongBaseCurrency()
     {
-        await using var factory = new ApiFactory(ReadOnly);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadOnly);
 
         var response = await client.GetAsync($"{Path}/summary?baseCurrency=USDD");
 
@@ -1069,9 +1075,9 @@ public class ContractsApiTests
     [Fact]
     public async Task List_InstitutionName_IsTheFirstContactPartyOrNull()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
 
         var withInstitution = await CreateAsync(client);
         (await client.PostAsJsonAsync($"{Path}/{withInstitution}/parties",
@@ -1095,8 +1101,8 @@ public class ContractsApiTests
     [Fact]
     public async Task List_FiltersBy_Type_Status_And_Search()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var employment = await CreateTypedAsync(client, ContractType.Employment, start: FixedToday.AddDays(-30), name: "Globex Employment"); // Active
         var service = await CreateTypedAsync(client, ContractType.Service, start: FixedToday.AddDays(10), name: "Fiber Service");             // Upcoming
@@ -1164,8 +1170,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Put_PauseThenResume_RoundTripsTheStampAndTheStatus()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var id = await CreateAsync(client);
 
         var pause = await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false));
@@ -1199,8 +1205,8 @@ public class ContractsApiTests
     [InlineData(ContractStatus.Archived)]
     public async Task Put_Pause_FromANonActiveStatus_ReturnsBadRequest(ContractStatus from)
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var id = await CreateAsync(client);
 
         var (start, end) = from == ContractStatus.Upcoming
@@ -1238,8 +1244,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Put_Resume_OnAnArchivedContract_ClearsTheStamp()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var id = await CreateAsync(client);
 
         (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false)))
@@ -1275,8 +1281,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Put_ArchiveAndPause_Together_IsRefused_AndPersistsNeitherStamp()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         // The contract ends in this same request, so the archive guard is satisfied and the PAUSE
         // guard is the one that refuses — an ended contract does not derive as Active.
@@ -1317,8 +1323,8 @@ public class ContractsApiTests
     [Fact]
     public async Task List_FiltersAndSortsByThePausedStatus()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
 
         var paused = await CreateAsync(client);
         (await client.PutAsJsonAsync($"{Path}/{paused}", UpdateContract(isPaused: true, isArchived: false)))
@@ -1356,10 +1362,10 @@ public class ContractsApiTests
     [Fact]
     public async Task NeitherPauseNorArchive_BlocksPartyTermOrFileWrites()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var factory = Factory;
         var (accountId, _) = await SeedTargetsAsync(factory);
         var fileId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWriteWithFiles);
 
         var id = await CreateAsync(client);
         (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false)))
@@ -1398,9 +1404,9 @@ public class ContractsApiTests
     [Fact]
     public async Task Put_WithNestedCollectionsAlongsideIsPaused_MutatesNone()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory;
         var (accountId, contactId) = await SeedTargetsAsync(factory);
-        using var client = factory.CreateClient();
+        using var client = factory.ClientFor(ReadWrite);
         var id = await CreateAsync(client);
 
         var response = await client.PutAsJsonAsync($"{Path}/{id}", new
@@ -1437,8 +1443,8 @@ public class ContractsApiTests
     [Fact]
     public async Task Put_OmittingIsPaused_ResumesAPausedContract()
     {
-        await using var factory = new ApiFactory(ReadWrite);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWrite);
         var id = await CreateAsync(client);
         (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false)))
             .EnsureSuccessStatusCode();
@@ -1525,20 +1531,20 @@ public class ContractsApiTests
     private static UpdateContract UpdateContract(
         bool isPaused, bool isArchived, DateTime? startDate = null, DateTime? endDate = null,
         DateTime? completionDate = null) => new()
-    {
-        Name = "Employment agreement",
-        Type = ContractType.Employment,
-        Description = "Full-time role",
-        StartDate = completionDate is null ? startDate ?? FixedToday.AddDays(-30) : null,
-        EndDate = completionDate is null ? endDate : null,
-        CompletionDate = completionDate,
-        IsArchived = isArchived,
-        IsPaused = isPaused,
-        // Carried forward for the same reason (issue #145) — and additionally because an unsigned
-        // contract cannot be paused at all, so omitting these would make every pause below a 400.
-        Ready = ReadyOn,
-        Signed = SignedOn,
-    };
+        {
+            Name = "Employment agreement",
+            Type = ContractType.Employment,
+            Description = "Full-time role",
+            StartDate = completionDate is null ? startDate ?? FixedToday.AddDays(-30) : null,
+            EndDate = completionDate is null ? endDate : null,
+            CompletionDate = completionDate,
+            IsArchived = isArchived,
+            IsPaused = isPaused,
+            // Carried forward for the same reason (issue #145) — and additionally because an unsigned
+            // contract cannot be paused at all, so omitting these would make every pause below a 400.
+            Ready = ReadyOn,
+            Signed = SignedOn,
+        };
 
     /// <summary>An end date already lapsed against the fixed clock — the shorthand for "archivable".</summary>
     private static DateTime Lapsed => FixedToday.AddDays(-1);
@@ -1603,9 +1609,8 @@ public class ContractsApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1615,14 +1620,13 @@ public class ContractsApiTests
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(
             IReadOnlyCollection<string>? permissions,
@@ -1630,14 +1634,12 @@ public class ContractsApiTests
             : base(permissions, ActorUserId, configuration, configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
             })
         {
         }
     }
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

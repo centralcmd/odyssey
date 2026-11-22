@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Authorization;
@@ -413,7 +414,8 @@ public class FileAnalysisQueueTests
                 (await context.AccountFiles.SingleAsync(af => af.FileMetadataId == fileId)).FileType = Context.AccountFileType.Other;
                 break;
             case "file-bytes-changed":
-                (await context.FileBlob.SingleAsync()).Content = [9, 9, 9];
+                var stored = await context.StoredObjects.SingleAsync();
+                await File.WriteAllBytesAsync(Path.Combine(TestFileStores.For(context).Root, stored.RelativePath), [9, 9, 9]);
                 break;
             case "settings-read-failed":
                 settingsLookup.Settings = s with { ReadFailed = true };
@@ -485,17 +487,17 @@ public class FileAnalysisQueueTests
 
     private static FileAnalysisJob NewJob(
         Guid accountFileId, ContextJobStatus status, DateTime? queuedAt, DateTime? startedAt = null, DateTime? leaseUntil = null) => new()
-    {
-        AccountFileId = accountFileId,
-        Status = status,
-        QueuedAt = queuedAt,
-        StartedAt = startedAt,
-        LeaseUntilUtc = leaseUntil,
-        RunId = status == ContextJobStatus.Running ? Guid.NewGuid() : null,
-        AnalyzerProvider = AnalyzerProvider.Claude,
-        RequestedByUserId = FileAnalysisTestHarness.RequesterId,
-        ConsentRecorded = true,
-    };
+        {
+            AccountFileId = accountFileId,
+            Status = status,
+            QueuedAt = queuedAt,
+            StartedAt = startedAt,
+            LeaseUntilUtc = leaseUntil,
+            RunId = status == ContextJobStatus.Running ? Guid.NewGuid() : null,
+            AnalyzerProvider = AnalyzerProvider.Claude,
+            RequestedByUserId = FileAnalysisTestHarness.RequesterId,
+            ConsentRecorded = true,
+        };
 
     private static string Sha256Of(byte[] bytes) => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
 
@@ -510,21 +512,10 @@ public class FileAnalysisQueueTests
             CurrencyCode = "USD",
         };
         context.Accounts.Add(account);
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(new FileMetadata
-        {
-            Id = fileId,
-            UploadedByUserId = FileAnalysisTestHarness.RequesterId,
-            FileName = "statement.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = sizeBytes,
-            Sha256Hash = Sha256Of(blob.Content),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-            UploadedAtUtc = DateTime.UtcNow,
-        });
+        var file = await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1, 2, 3], "statement.pdf", uploadedByUserId: FileAnalysisTestHarness.RequesterId);
+        file.SizeBytes = sizeBytes;
+        var fileId = file.Id;
         await context.SaveChangesAsync();
         context.AccountFiles.Add(new AccountFile
         {

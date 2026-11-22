@@ -89,7 +89,9 @@ public partial class BudgetsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         StateHasChanged();
@@ -104,22 +106,22 @@ public partial class BudgetsCard
     private void ApplyPageState(BudgetsPageState state)
     {
         _overviewOpen = state.OverviewOpen;
-        _searchOpen   = state.SearchOpen;
+        _searchOpen = state.SearchOpen;
         _searchString = state.Search ?? string.Empty;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
-        _sort         = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
-        _batch        = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
+        _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
+        _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
 
     private BudgetsPageState BuildPageState() => new()
     {
-        OverviewOpen  = _overviewOpen,
-        SearchOpen    = _searchOpen,
-        Search        = _searchString,
-        StatusFilter  = [.. _statusFilter],
-        SortField     = _sort.Key,
+        OverviewOpen = _overviewOpen,
+        SearchOpen = _searchOpen,
+        Search = _searchString,
+        StatusFilter = [.. _statusFilter],
+        SortField = _sort.Key,
         SortDirection = _sort.Dir,
-        BatchSize     = _batch,
+        BatchSize = _batch,
     };
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
@@ -177,7 +179,9 @@ public partial class BudgetsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "budgets");
         if (load.IsSuccess)
@@ -251,7 +255,9 @@ public partial class BudgetsCard
 
         _expandedId = budgetId;
         if (!_reports.ContainsKey(budgetId))
+        {
             await LoadReport(budgetId);
+        }
     }
 
     /// <summary>
@@ -270,7 +276,9 @@ public partial class BudgetsCard
     {
         var expanding = editing && _expandedId != budgetId;
         if (expanding)
+        {
             await ToggleExpand(budgetId);
+        }
 
         _editingItemsId = editing ? budgetId : null;
 
@@ -287,7 +295,10 @@ public partial class BudgetsCard
         _loadingReports.Add(budgetId);
         var report = (await Budgets.GetReportAsync(budgetId)).OrToast(Snackbar, "Unable to load budget transactions");
         if (report is not null)
+        {
             _reports[budgetId] = report;
+        }
+
         _loadingReports.Remove(budgetId);
         StateHasChanged();
     }
@@ -300,7 +311,9 @@ public partial class BudgetsCard
         {
             var index = _budgets.FindIndex(b => b.BudgetId == budgetId);
             if (index >= 0)
+            {
                 _budgets[index] = budget;
+            }
         }
 
         await LoadReport(budgetId);
@@ -320,7 +333,9 @@ public partial class BudgetsCard
     {
         var result = new Dictionary<Guid, decimal>();
         if (!_reports.TryGetValue(budgetId, out var report))
+        {
             return result;
+        }
 
         foreach (var summary in report.ExistingTransactionReport)
         {
@@ -354,7 +369,9 @@ public partial class BudgetsCard
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _createBudgetKey = Guid.NewGuid();
         _createBudgetOpen = true;
@@ -368,7 +385,9 @@ public partial class BudgetsCard
     private void EditClicked(ExistingBudget budget)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _editBudget = budget;
         _editBudgetKey = Guid.NewGuid();
@@ -381,7 +400,9 @@ public partial class BudgetsCard
 
         // Dates and base currency drive the transaction report — drop the cached one if it's loaded.
         if (_editBudget is not null && _reports.ContainsKey(_editBudget.BudgetId))
+        {
             await LoadReport(_editBudget.BudgetId);
+        }
     }
 
     private ExistingBudget? _itemBudget;
@@ -392,7 +413,9 @@ public partial class BudgetsCard
     private void AddItemClicked(ExistingBudget budget)
     {
         if (!_canCreate)
+        {
             return;
+        }
 
         _itemUsedTagIds = budget.BudgetItems
             .Select(i => i.TransactionTagId)
@@ -407,7 +430,9 @@ public partial class BudgetsCard
     private async Task OnItemSaved()
     {
         if (_itemBudget is null)
+        {
             return;
+        }
 
         // Reveal the budget so the new item is visible, then refresh it.
         _expandedId = _itemBudget.BudgetId;
@@ -417,7 +442,9 @@ public partial class BudgetsCard
     private async Task ToggleArchive(ExistingBudget budget)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         var targetArchived = budget.Archived is null;
         var update = new NewBudget
@@ -442,11 +469,15 @@ public partial class BudgetsCard
     private async Task ConfirmDelete(ExistingBudget budget)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         var confirmed = await _confirm.AskAsync("Delete budget", $"Delete '{budget.Name}'? This cannot be undone.", "Delete");
         if (confirmed)
+        {
             await DeleteBudget(budget);
+        }
     }
 
     private async Task DeleteBudget(ExistingBudget budget)
@@ -457,7 +488,9 @@ public partial class BudgetsCard
             _reports.Remove(budget.BudgetId);
             await LoadSummary();
             if (_expandedId == budget.BudgetId)
+            {
                 _expandedId = null;
+            }
         }
     }
 
@@ -561,7 +594,9 @@ public partial class BudgetsCard
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
         if (_minorUnitsCache.TryGetValue(key, out var cached))
+        {
             return cached;
+        }
 
         _currenciesByCode.TryGetValue(key, out var currency);
         var units = OdsMoney.MinorUnitsOf(currency);

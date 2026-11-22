@@ -287,14 +287,12 @@ public sealed record SystemSettingsUpdate
     public int? FileAnalysisMatchTimeoutSeconds { get; set; }
 
     /// <summary>
-    /// Blob prefix read for photo metadata extraction, in megabytes. The 16 MB maximum is a compiled
-    /// assumption about MariaDB's default <c>max_allowed_packet</c>, which this repository pins
-    /// nowhere — see <c>docs/deployment.md</c>.
+    /// Prefix of the upload stream read for photo metadata extraction, in megabytes. The 16 MB maximum
+    /// bounds the per-upload memory extraction materialises — see <c>docs/deployment.md</c>.
     /// </summary>
     [Range(1, 16, ErrorMessage =
-        "Metadata read size must be between 1 and 16 MB. Extraction materialises a full byte array of "
-        + "this size per photo, and 16 MB is MariaDB's default max_allowed_packet — the real wall on "
-        + "the prefix read, whatever a larger value here claimed.")]
+        "Metadata read size must be between 1 and 16 MB. Extraction holds a full byte array of this "
+        + "size in memory for every photo uploaded, so the maximum bounds per-upload memory.")]
     public int? PhotoMetadataReadMegabytes { get; set; }
 
     [Range(1, 120, ErrorMessage =
@@ -566,6 +564,23 @@ public sealed record SystemSettingsUpdate
 
     [Range(SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, SystemSettingsBounds.NewsOpmlMaxImportEntriesMax)]
     public int? NewsOpmlMaxImportEntries { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // Podcasts (issue #556 §8.2). The ordinary claim for all four. PodcastAudioMaxEpisodeMb is also
+    // bounded by a derived ceiling (RequestCapCeilings), from startup configuration.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.PodcastAudioStoreMaxGiBMin, SystemSettingsBounds.PodcastAudioStoreMaxGiBMax)]
+    public int? PodcastAudioStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.PodcastAudioMaxEpisodeMbMin, SystemSettingsBounds.PodcastAudioMaxEpisodeMbMax)]
+    public int? PodcastAudioMaxEpisodeMb { get; set; }
+
+    [Range(SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMin, SystemSettingsBounds.PodcastAutoDownloadsPerFeedPerDayMax)]
+    public int? PodcastAutoDownloadsPerFeedPerDay { get; set; }
+
+    [Range(SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMin, SystemSettingsBounds.PodcastAutoDownloadMaxUnfetchedPerFeedMax)]
+    public int? PodcastAutoDownloadMaxUnfetchedPerFeed { get; set; }
 
     // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period

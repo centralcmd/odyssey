@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// a party count above <see cref="ListDefaults.MaxFilterArrayLength"/>. The EF InMemory provider
 /// evaluates LINQ in memory, so none of the translation is observable on the fast tiers.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_smart_tag_transactions";
@@ -67,11 +67,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
 
             context.ContractSmartTags.AddRange(tags.Select(t => new ContractSmartTag
             {
-                ContractId = contractId, TransactionTagId = t.TransactionTagId, AddedAt = TermStart,
+                ContractId = contractId,
+                TransactionTagId = t.TransactionTagId,
+                AddedAt = TermStart,
             }));
             context.ContractParties.AddRange(parties.Select(p => new ContractParty
             {
-                ContractId = contractId, ContactId = p.ContactId, Role = ContractPartyRole.Other,
+                ContractId = contractId,
+                ContactId = p.ContactId,
+                Role = ContractPartyRole.Other,
             }));
             await context.SaveChangesAsync();
 
@@ -136,11 +140,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
             await context.SaveChangesAsync();
             context.ContractSmartTags.Add(new ContractSmartTag
             {
-                ContractId = contractId, TransactionTagId = tag.TransactionTagId, AddedAt = TermStart,
+                ContractId = contractId,
+                TransactionTagId = tag.TransactionTagId,
+                AddedAt = TermStart,
             });
             context.ContractParties.Add(new ContractParty
             {
-                ContractId = contractId, ContactId = supplier.ContactId, Role = ContractPartyRole.Other,
+                ContractId = contractId,
+                ContactId = supplier.ContactId,
+                Role = ContractPartyRole.Other,
             });
 
             context.Transactions.AddRange(
@@ -209,11 +217,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
             await context.SaveChangesAsync();
             context.ContractSmartTags.Add(new ContractSmartTag
             {
-                ContractId = contractId, TransactionTagId = tag.TransactionTagId, AddedAt = TermStart,
+                ContractId = contractId,
+                TransactionTagId = tag.TransactionTagId,
+                AddedAt = TermStart,
             });
             context.ContractParties.Add(new ContractParty
             {
-                ContractId = contractId, ContactId = supplier.ContactId, Role = ContractPartyRole.Other,
+                ContractId = contractId,
+                ContactId = supplier.ContactId,
+                Role = ContractPartyRole.Other,
             });
             context.Transactions.AddRange(
                 NewTransaction(account, "before start", -1m, TermStart.AddSeconds(-1), supplier.ContactId, tag),
@@ -255,7 +267,9 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
         await using (var reader = await command.ExecuteReaderAsync())
         {
             while (await reader.ReadAsync())
+            {
                 rows.Add((reader.GetString(0), reader.GetString(1)));
+            }
         }
 
         Assert.Equal(
@@ -279,15 +293,15 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
     private static Transaction NewTransaction(
         Account account, string description, decimal amount, DateTime timeStamp, Guid contactId,
         params TransactionTag[] tags) => new()
-    {
-        Description = description,
-        Amount = amount,
-        TimeStamp = timeStamp,
-        AccountId = account.AccountId,
-        ContactId = contactId,
-        CurrencyCode = account.CurrencyCode,
-        TransactionTags = [.. tags],
-    };
+        {
+            Description = description,
+            Amount = amount,
+            TimeStamp = timeStamp,
+            AccountId = account.AccountId,
+            ContactId = contactId,
+            CurrencyCode = account.CurrencyCode,
+            TransactionTags = [.. tags],
+        };
 
     private static async Task<Account> SeedAccountAsync(
         OdysseyContext context, string name = "Household", string currency = "NOK")
@@ -350,13 +364,10 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
         var builder = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
         if (interceptor is not null)
+        {
             builder = builder.AddInterceptors(interceptor);
+        }
 
         return new OdysseyContext(builder.Options);
     }
-
-    private OdysseyContext ServerContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
 }

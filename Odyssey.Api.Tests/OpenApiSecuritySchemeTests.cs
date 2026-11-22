@@ -12,12 +12,12 @@ namespace Odyssey.Api.Tests;
 /// </summary>
 public class OpenApiSecuritySchemeTests
 {
-    private static async Task<JsonElement> GetSwaggerDocumentAsync()
+    private static async Task<JsonElement> GetOpenApiDocumentAsync()
     {
         using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -27,7 +27,7 @@ public class OpenApiSecuritySchemeTests
     [Fact]
     public async Task TheDocument_DescribesTheAntiforgeryHeaderAlongsideTheCookie()
     {
-        var root = await GetSwaggerDocumentAsync();
+        var root = await GetOpenApiDocumentAsync();
 
         var schemes = root.GetProperty("components").GetProperty("securitySchemes");
 
@@ -46,10 +46,31 @@ public class OpenApiSecuritySchemeTests
         Assert.Contains("/api/antiforgery/token", antiforgery.GetProperty("description").GetString());
     }
 
+    /// <summary>
+    /// The controllers carry <c>[EndpointSummary]</c> summaries and <c>[EndpointDescription]</c> descriptions
+    /// (Swashbuckle's <c>[SwaggerOperation]</c> before issue #569); this is the spot check that they reach the
+    /// document. <c>OpenApiParityTests</c> checks every one.
+    /// </summary>
+    [Fact]
+    public async Task EndpointSummaryAttributes_ReachTheDocument()
+    {
+        var root = await GetOpenApiDocumentAsync();
+
+        var summaries = root.GetProperty("paths")
+            .EnumerateObject()
+            .SelectMany(path => path.Value.EnumerateObject())
+            .Where(operation => operation.Value.ValueKind == JsonValueKind.Object
+                && operation.Value.TryGetProperty("summary", out _))
+            .Select(operation => operation.Value.GetProperty("summary").GetString())
+            .ToList();
+
+        Assert.Contains("Get the estimated-value history for an account.", summaries);
+    }
+
     [Fact]
     public async Task BothSchemes_AreListedAsDocumentLevelRequirements()
     {
-        var root = await GetSwaggerDocumentAsync();
+        var root = await GetOpenApiDocumentAsync();
 
         var required = root.GetProperty("security")
             .EnumerateArray()

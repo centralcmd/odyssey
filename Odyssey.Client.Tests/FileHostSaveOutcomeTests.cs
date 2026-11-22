@@ -94,7 +94,6 @@ internal static class FileHostSaveHarness
 
 // ── /files ───────────────────────────────────────────────────────────────────
 
-[Collection(FilesPageCollection.Name)]
 public sealed class FilesPageSaveOutcomeTests : IAsyncDisposable
 {
     static FilesPageSaveOutcomeTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
@@ -108,7 +107,7 @@ public sealed class FilesPageSaveOutcomeTests : IAsyncDisposable
 
     public FilesPageSaveOutcomeTests()
     {
-        Files.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         files.Setup(f => f.ListAllAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<List<FileListItem>>.Success([Stored], HttpStatusCode.OK));
         files.Setup(f => f.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
@@ -123,7 +122,6 @@ public sealed class FilesPageSaveOutcomeTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        Files.InteractiveCheck = static () => OperatingSystem.IsBrowser();
         await ctx.DisposeAsync();
     }
 
@@ -188,15 +186,8 @@ public sealed class FilesPageSaveOutcomeTests : IAsyncDisposable
     }
 }
 
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class FilesPageCollection
-{
-    public const string Name = "files-page";
-}
-
 // ── Account files ────────────────────────────────────────────────────────────
 
-[Collection(FilesPageCollection.Name)]
 public sealed class AccountFilesSaveOutcomeTests : IAsyncDisposable
 {
     static AccountFilesSaveOutcomeTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
@@ -227,7 +218,7 @@ public sealed class AccountFilesSaveOutcomeTests : IAsyncDisposable
 
     public AccountFilesSaveOutcomeTests()
     {
-        FilesSectionBase<ExistingAccountFile>.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         accounts.Setup(a => a.ListFilesAsync(AccountId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => ApiResult<List<ExistingAccountFile>>.Success([listed], HttpStatusCode.OK));
         ctx.Services.AddSingleton(files.Object);
@@ -241,7 +232,6 @@ public sealed class AccountFilesSaveOutcomeTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        FilesSectionBase<ExistingAccountFile>.InteractiveCheck = static () => OperatingSystem.IsBrowser();
         await ctx.DisposeAsync();
     }
 

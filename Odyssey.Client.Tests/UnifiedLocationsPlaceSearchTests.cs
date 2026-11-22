@@ -330,8 +330,17 @@ public class UnifiedLocationsPlaceSearchTests
     {
         // PR #385 round 4: the server's find-or-create forwards a merged-away place to its survivor; so does this.
         var survivor = Guid.Parse("aaaaaaaa-0000-0000-0000-0000000000f1");
-        var merged = new ExistingLocation { LocationId = ExistingAddressId, Name = "Storgata 3", Line1 = "Storgata 3", PostalCode = "0155",
-            City = "Oslo", CountryCode = "NO", Archived = DateTime.UtcNow, MergedIntoLocationId = survivor };
+        var merged = new ExistingLocation
+        {
+            LocationId = ExistingAddressId,
+            Name = "Storgata 3",
+            Line1 = "Storgata 3",
+            PostalCode = "0155",
+            City = "Oslo",
+            CountryCode = "NO",
+            Archived = DateTime.UtcNow,
+            MergedIntoLocationId = survivor
+        };
         var h = RenderEventDialog([ConflictOn("line1")], null, merged);
         await using var _ = h.Ctx;
 
@@ -346,8 +355,16 @@ public class UnifiedLocationsPlaceSearchTests
     public async Task A_409_on_line1_whose_only_match_is_archived_names_it_and_does_not_write_the_record()
     {
         // A new link to an archived place is refused by the server, so linking it would only move the dead end.
-        var archived = new ExistingLocation { LocationId = ExistingAddressId, Name = "Storgata 3", Line1 = "Storgata 3", PostalCode = "0155",
-            City = "Oslo", CountryCode = "NO", Archived = DateTime.UtcNow };
+        var archived = new ExistingLocation
+        {
+            LocationId = ExistingAddressId,
+            Name = "Storgata 3",
+            Line1 = "Storgata 3",
+            PostalCode = "0155",
+            City = "Oslo",
+            CountryCode = "NO",
+            Archived = DateTime.UtcNow
+        };
         var h = RenderEventDialog([ConflictOn("line1")], null, archived);
         await using var _ = h.Ctx;
 
@@ -467,9 +484,14 @@ public class UnifiedLocationsPlaceSearchTests
         ctx.Services.AddSingleton(Mock.Of<ITagQuickCreate<ExistingJournalTag>>());
         var entry = new ExistingJournalEntry
         {
-            JournalEntryId = Guid.NewGuid(), Title = "Hike", Content = "Summit.", EntryDate = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-            LocationId = HyttaId, LocationRef = new LocationRef { LocationId = HyttaId, Name = "Hytta" },
-            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            JournalEntryId = Guid.NewGuid(),
+            Title = "Hike",
+            Content = "Summit.",
+            EntryDate = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            LocationId = HyttaId,
+            LocationRef = new LocationRef { LocationId = HyttaId, Name = "Hytta" },
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         };
         var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<CreateJournalEntryDialog>(d => d.Add(x => x.Open, true).Add(x => x.Entry, entry)));
 

@@ -10,6 +10,8 @@ using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -28,7 +30,7 @@ namespace Odyssey.Api.Tests;
 /// today would fail the second.
 /// </para>
 /// </summary>
-public class TuningSystemSettingsApiTests
+public class TuningSystemSettingsApiTests(TuningSystemSettingsApiTests.Host host) : SharedApiHostTests<TuningSystemSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string AccountLimitsPath = "/api/account-limits";
@@ -52,7 +54,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Get_ServesAllFifteenCompiledDefaults()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -91,7 +93,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Get_PublishesTheSixBoundProjections()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -116,7 +118,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_AllTwelveCountClaimFields_WithOnlyTheOrdinaryClaim_Succeeds()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -150,7 +152,7 @@ public class TuningSystemSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.EmailMaxTrackedRecipients))]
     public async Task Put_ASecurityClaimField_WithOnlyTheOrdinaryClaim_IsForbidden_AndWritesNothing(string field)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var request = new SystemSettingsUpdate { CalendarMaxWindowDays = 31 };
@@ -180,7 +182,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_WithNeitherWriteClaim_IsForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -295,7 +297,7 @@ public class TuningSystemSettingsApiTests
     public async Task Put_OutsideTheRange_IsRejected_WithTheFieldKeyedMessage(
         string field, int value, string expectedFragment)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var request = new SystemSettingsUpdate();
@@ -405,7 +407,7 @@ public class TuningSystemSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.PhotoMetadataReadMegabytes), 16)]
     public async Task Put_AtADerivedCeiling_IsAllowed_AndOneAboveIsNot(string field, int ceiling)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
         var property = typeof(SystemSettingsUpdate).GetProperty(field)!;
 
@@ -426,7 +428,7 @@ public class TuningSystemSettingsApiTests
     public async Task Put_ATightenOnlyKey_AcceptsTheDefaultAndBelow_RejectsAbove(
         string field, int shippedDefault, int lower)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
         var property = typeof(SystemSettingsUpdate).GetProperty(field)!;
 
@@ -445,7 +447,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_TheRaiseOnlyKey_AcceptsTheFloorAndAbove_RejectsBelow()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         foreach (var accepted in new[] { SystemSettingsDefaults.EmailMaxTrackedRecipients, 200_000 })
@@ -502,7 +504,7 @@ public class TuningSystemSettingsApiTests
     [InlineData("SystemSettingsDefaults.EmailMaxTrackedRecipients")]
     public void ASingleDirectionKeys_RangeAttribute_NamesTheSharedConstant(string expression)
     {
-        var source = File.ReadAllText(SolutionFile("Odyssey.Dtos", "Application", "SystemSettingsUpdate.cs"));
+        var source = File.ReadAllText(SourceTree.File("Odyssey.Dtos", "Application", "SystemSettingsUpdate.cs"));
 
         // Matched inside the BOUNDS — the first two arguments of [Range(...)] — and nowhere else.
         //
@@ -537,7 +539,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public void SharedDtos_HasNoProjectReferences()
     {
-        var project = File.ReadAllText(SolutionFile("Odyssey.Dtos", "Odyssey.Dtos.csproj"));
+        var project = File.ReadAllText(SourceTree.File("Odyssey.Dtos", "Odyssey.Dtos.csproj"));
         Assert.DoesNotContain("ProjectReference", project, StringComparison.Ordinal);
     }
 
@@ -564,7 +566,7 @@ public class TuningSystemSettingsApiTests
             .ToList();
 
         Assert.Equal(
-            ["ValidateNewsImageMaxSizeKb", "ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidateUploadMegabytes"],
+            ["ValidateNewsImageMaxSizeKb", "ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidatePodcastAudioMaxEpisodeMb", "ValidateUploadMegabytes"],
             validators);
     }
 
@@ -596,7 +598,7 @@ public class TuningSystemSettingsApiTests
     {
         Assert.Null(typeof(SystemSettingsUpdate).GetProperty("Warnings"));
 
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsync(Path, JsonContent.Create(new Dictionary<string, object>
@@ -620,7 +622,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Warnings_SerializeWithPascalCaseKeys_UnderAWarningsProperty()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -641,7 +643,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task Put_AboveTheShippedDefault_Persists_AndCarriesAnAdvisory()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var raised = await client.PutAsJsonAsync(Path,
@@ -671,7 +673,7 @@ public class TuningSystemSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.ImportMaxSamplesPerSkipReason), 101)]
     public async Task Put_EachCostAdvisory_FiresAboveItsDefault_AndStillSucceeds(string field, int value)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var request = new SystemSettingsUpdate();
@@ -688,7 +690,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task TightenOnlyKeys_CarryNoAdvisory_AtTheirMaximum()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -714,7 +716,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_ForACallerWithNoClaims_ReturnsTheEffectiveCap()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<AccountLimitsDto>(AccountLimitsPath);
@@ -725,7 +727,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(AccountLimitsPath);
@@ -741,7 +743,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_WithNoRowPresent_Returns200WithTheCompiledDefault()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(AccountLimitsPath);
@@ -759,7 +761,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_WithAnUnusableStoredValue_Returns503()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "not-a-number");
         using var client = factory.CreateClient();
@@ -773,7 +775,7 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public async Task AccountLimits_AfterASave_ServesTheNewCap()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync(Path,
@@ -882,19 +884,11 @@ public class TuningSystemSettingsApiTests
     [Fact]
     public void NoLinkCapConstant_SurvivesInTheJournalProject()
     {
-        var root = System.IO.Path.GetDirectoryName(SolutionFile("Odyssey.sln"))!;
-        var journal = System.IO.Path.Combine(root, "Odyssey.Core", "Journal");
-
-        var offenders = Directory
-            .EnumerateFiles(journal, "*.cs", SearchOption.AllDirectories)
-            .Where(file => !file.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}",
-                StringComparison.Ordinal))
-            .Where(file => !file.Contains($"{System.IO.Path.DirectorySeparatorChar}bin{System.IO.Path.DirectorySeparatorChar}",
-                StringComparison.Ordinal))
+        var offenders = SourceTree.Files(System.IO.Path.Combine("Odyssey.Core", "Journal"))
             .Select(file => (File: file, Text: File.ReadAllText(file)))
             .Where(pair => System.Text.RegularExpressions.Regex.IsMatch(
                 pair.Text, @"const\s+int\s+MaxLinksPerKind\s*="))
-            .Select(pair => System.IO.Path.GetRelativePath(root, pair.File))
+            .Select(pair => SourceTree.Relative(pair.File))
             .ToList();
 
         Assert.True(offenders.Count == 0,
@@ -921,39 +915,21 @@ public class TuningSystemSettingsApiTests
     [InlineData("AdminActionRateLimiting.cs")]
     public void BothRateLimitPartitioners_RecordWhyTheyAreNotAdminEditable(string file)
     {
-        var source = File.ReadAllText(SolutionFile("Odyssey.Api", file));
+        var source = File.ReadAllText(SourceTree.File("Odyssey.Api", file));
 
         Assert.Contains("NOT admin-editable", source, StringComparison.Ordinal);
         Assert.Contains("only the first time", source, StringComparison.Ordinal);
         Assert.Contains("never reach a live one", source, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Resolves a solution-relative file, for the two lints above whose subject is a cross-project
-    /// contract (a <c>[Range]</c> naming a constant in another assembly, and the project references that
-    /// make naming it possible) — reading only the compiled side would let those drift apart with the
-    /// test still green.
-    /// </summary>
-    private static string SolutionFile(params string[] parts)
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(System.IO.Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = System.IO.Path.GetDirectoryName(dir.TrimEnd(System.IO.Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return System.IO.Path.Combine([dir!, .. parts]);
-    }
-
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     /// <summary>Captures the API's log output, for the three audit assertions.</summary>
     private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
@@ -962,4 +938,7 @@ public class TuningSystemSettingsApiTests
                 services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(Logs));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

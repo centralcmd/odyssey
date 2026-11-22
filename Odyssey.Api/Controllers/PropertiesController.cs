@@ -6,7 +6,6 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Core.Finance;
 
@@ -58,9 +57,8 @@ public sealed class PropertiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingProperty>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List properties.",
-        Description = @"List properties with search, subtype and status filters, sorting and pagination.
+    [EndpointSummary("List properties.")]
+    [EndpointDescription(@"List properties with search, subtype and status filters, sorting and pagination.
                         sortBy=value orders by the estimate in force now, in each property's own
                         currency WITHOUT conversion (a mixed-currency list sorts by raw magnitude),
                         with properties that have no estimate last in both directions.")]
@@ -69,7 +67,9 @@ public sealed class PropertiesController : ControllerBase
     {
         // Ordering by value discloses how the properties rank by worth, which is estimate data.
         if (query.SortBy == PropertySortBy.Value && !CanReadEstimates())
+        {
             return Forbid();
+        }
 
         var result = await propertyService.ListAsync(
             query, includeEstimates: CanReadEstimates(), cancellationToken,
@@ -82,9 +82,8 @@ public sealed class PropertiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PropertySummary))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Summarise the properties.",
-        Description = @"Counts by type (unarchived only) and by derived status. For a caller holding
+    [EndpointSummary("Summarise the properties.")]
+    [EndpointDescription(@"Counts by type (unarchived only) and by derived status. For a caller holding
                         properties.estimates.read, also the in-force estimates of the owned properties
                         summed per currency, and a total converted to baseCurrency at the latest rate;
                         a currency with no rate is named in unconvertedCurrencies and left out of the
@@ -101,7 +100,7 @@ public sealed class PropertiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingProperty))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a property, with its detail sub-object.")]
+    [EndpointSummary("Get a property, with its detail sub-object.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -109,7 +108,9 @@ public sealed class PropertiesController : ControllerBase
             id, includeEstimates: CanReadEstimates(), cancellationToken,
             includeContractCount: CanReadContracts(), claims: User.LocationClaims());
         if (property is null)
+        {
             return this.NotFoundProblem($"Property ID {id} not found.");
+        }
 
         return Ok(property);
     }
@@ -120,9 +121,8 @@ public sealed class PropertiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<PropertyContractLink>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the contracts that name a property as a party.",
-        Description = @"One row per contract, with every role the property holds on it. Requires both
+    [EndpointSummary("Get the contracts that name a property as a party.")]
+    [EndpointDescription(@"One row per contract, with every role the property holds on it. Requires both
                         properties.read and contracts.read: the rows name contracts, which
                         properties.read alone does not license.")]
     public async Task<IActionResult> GetPropertyContracts(
@@ -130,7 +130,9 @@ public sealed class PropertiesController : ControllerBase
     {
         var contracts = await contractService.ListForPropertyAsync(propertyId, cancellationToken);
         if (contracts is null)
+        {
             return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
 
         return Ok(contracts);
     }
@@ -140,9 +142,8 @@ public sealed class PropertiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingProperty))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Create a property.",
-        Description = @"Creates a property with exactly one detail sub-object matching its type.")]
+    [EndpointSummary("Create a property.")]
+    [EndpointDescription(@"Creates a property with exactly one detail sub-object matching its type.")]
     public async Task<IActionResult> Post(
         [FromBody] NewProperty newProperty, CancellationToken cancellationToken = default)
     {
@@ -163,9 +164,8 @@ public sealed class PropertiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Replace a property.",
-        Description = @"Full replace; not an upsert. The type is fixed at creation: a body whose type
+    [EndpointSummary("Replace a property.")]
+    [EndpointDescription(@"Full replace; not an upsert. The type is fixed at creation: a body whose type
                         differs from the stored one is refused with 422.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
@@ -179,7 +179,9 @@ public sealed class PropertiesController : ControllerBase
         var property = await propertyService.Update(
             id, putProperty, userId, cancellationToken, User.LocationClaims());
         if (property is null)
+        {
             return this.NotFoundProblem($"Property ID {id} not found.");
+        }
 
         return NoContent();
     }
@@ -189,9 +191,8 @@ public sealed class PropertiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete a property.",
-        Description = @"Hard delete. Cascades the detail row, the estimate history, the smart-tag
+    [EndpointSummary("Delete a property.")]
+    [EndpointDescription(@"Hard delete. Cascades the detail row, the estimate history, the smart-tag
                         links and every contract party naming the property (each removal recorded as
                         a PartyRemoved event on its contract); the tags and contracts are untouched.")]
     public async Task<IActionResult> Delete(
@@ -203,7 +204,9 @@ public sealed class PropertiesController : ControllerBase
         }
         var deleted = await propertyService.Delete(id, userId, cancellationToken);
         if (!deleted)
+        {
             return this.NotFoundProblem($"Property ID {id} not found.");
+        }
 
         return NoContent();
     }

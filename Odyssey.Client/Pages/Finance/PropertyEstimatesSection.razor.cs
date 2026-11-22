@@ -17,7 +17,8 @@ public partial class PropertyEstimatesSection
     /// <summary>Gates the row edit/delete buttons (<c>properties.estimates.write</c>).</summary>
     [Parameter] public bool CanWrite { get; set; }
 
-    [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } =
+    [Parameter, EditorRequired]
+    public Func<decimal, string?, string> FormatMoney { get; set; } =
         (v, _) => v.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Raised after a create, edit or delete, so the host can refresh the row's figure and counts.</summary>
@@ -55,7 +56,9 @@ public partial class PropertyEstimatesSection
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await LoadAsync();
     }
@@ -63,7 +66,9 @@ public partial class PropertyEstimatesSection
     protected override void OnParametersSet()
     {
         if (NewEstimateRequestToken is not { } token || token == Guid.Empty || token == _handledNewEstimateToken)
+        {
             return;
+        }
 
         _handledNewEstimateToken = token;
         OpenNew();
@@ -102,12 +107,16 @@ public partial class PropertyEstimatesSection
     {
         var confirmed = await _confirm.AskAsync("Delete estimate?", $"Delete the {Money(estimate.Value)} estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? The history keeps every other entry.", "Delete");
         if (!confirmed)
+        {
             return;
+        }
 
         var ok = (await Properties.DeleteEstimateAsync(Property.PropertyId, estimate.PropertyEstimateId))
             .Toast(Snackbar, "Unable to delete estimate", "Estimate deleted.");
         if (ok)
+        {
             await OnEstimateChanged();
+        }
     }
 
     private async Task OnEstimateChanged()

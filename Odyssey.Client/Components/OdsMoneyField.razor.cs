@@ -154,7 +154,10 @@ public partial class OdsMoneyField
             var options = Directions;
             for (var i = 0; i < options.Count; i++)
             {
-                if (string.Equals(options[i].Value, Direction, StringComparison.Ordinal)) return i;
+                if (string.Equals(options[i].Value, Direction, StringComparison.Ordinal))
+                {
+                    return i;
+                }
             }
             return 0;
         }
@@ -191,9 +194,16 @@ public partial class OdsMoneyField
     {
         get
         {
-            if (!string.IsNullOrEmpty(Sign)) return Sign;
+            if (!string.IsNullOrEmpty(Sign))
+            {
+                return Sign;
+            }
+
             if (!string.IsNullOrEmpty(Direction))
+            {
                 return CurrentDirection.Sign ?? (IndexOfDirection == 0 ? "−" : "+");
+            }
+
             return SignMode ? (Negative ? "−" : "+") : null;
         }
     }
@@ -219,7 +229,11 @@ public partial class OdsMoneyField
         get
         {
             var q = _query.Trim();
-            if (q.Length == 0) return CurrencyOptions;
+            if (q.Length == 0)
+            {
+                return CurrencyOptions;
+            }
+
             return [.. CurrencyOptions.Where(o =>
                 o.Value.Contains(q, StringComparison.OrdinalIgnoreCase)
                 || o.Label.Contains(q, StringComparison.OrdinalIgnoreCase))];
@@ -250,7 +264,10 @@ public partial class OdsMoneyField
         {
             var hasHelp = HelpContent is not null || !string.IsNullOrEmpty(Help);
             var hasError = !string.IsNullOrEmpty(Error);
-            if (!hasHelp && !hasError) return null;
+            if (!hasHelp && !hasError)
+            {
+                return null;
+            }
             // OdsFieldShell gives the error its own id only when a help node renders alongside it.
             return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
         }
@@ -285,14 +302,20 @@ public partial class OdsMoneyField
         Value = committed;
         await ValueChanged.InvokeAsync(committed);
 
-        if (display != raw) await RestoreInputAsync(display);
+        if (display != raw)
+        {
+            await RestoreInputAsync(display);
+        }
     }
 
     private async Task OnAmountKeyDownAsync(KeyboardEventArgs e)
     {
         var minus = e.Key is "-" or "−";
         var plus = e.Key == "+";
-        if (!minus && !plus) return;
+        if (!minus && !plus)
+        {
+            return;
+        }
 
         if (DirectionMode)
         {
@@ -308,10 +331,17 @@ public partial class OdsMoneyField
             return;
         }
 
-        if (!SignMode) return;
+        if (!SignMode)
+        {
+            return;
+        }
 
         var signed = (minus ? "-" : string.Empty) + Magnitude;
-        if (signed == Value) return;
+        if (signed == Value)
+        {
+            return;
+        }
+
         Value = signed;
         await ValueChanged.InvokeAsync(signed);
     }
@@ -346,7 +376,10 @@ public partial class OdsMoneyField
     {
         Currency = code;
         await CurrencyChanged.InvokeAsync(code);
-        if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
+        if (_popup is not null)
+        {
+            await _popup.CloseAsync(restoreFocus: true);
+        }
     }
 
     // The popover opens on the search box when there is one, otherwise on the selected code — so a
@@ -356,7 +389,11 @@ public partial class OdsMoneyField
     {
         get
         {
-            if (Searchable) return SearchId;
+            if (Searchable)
+            {
+                return SearchId;
+            }
+
             var index = OdsPopupMenuText.IndexOf(Shown, o => string.Equals(o.Value, Currency, StringComparison.OrdinalIgnoreCase));
             return OptionId(Math.Max(index, 0));
         }
@@ -371,12 +408,20 @@ public partial class OdsMoneyField
                 break;
             case "Enter":
                 var first = Shown.FirstOrDefault();
-                if (first is not null) await PickAsync(first.Value);
+                if (first is not null)
+                {
+                    await PickAsync(first.Value);
+                }
+
                 break;
             case "Tab":
                 // The options are out of the tab order, so Tab leaves the portaled popover: close it
                 // and continue from the trigger rather than wherever the DOM puts focus next.
-                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
+                if (_popup is not null)
+                {
+                    await _popup.CloseAsync(restoreFocus: true);
+                }
+
                 break;
         }
     }
@@ -392,8 +437,15 @@ public partial class OdsMoneyField
                 await FocusAsync(OptionId(Math.Min(index + 1, Shown.Count - 1)));
                 break;
             case "ArrowUp":
-                if (index <= 0 && Searchable) await FocusAsync(SearchId);
-                else await FocusAsync(OptionId(Math.Max(index - 1, 0)));
+                if (index <= 0 && Searchable)
+                {
+                    await FocusAsync(SearchId);
+                }
+                else
+                {
+                    await FocusAsync(OptionId(Math.Max(index - 1, 0)));
+                }
+
                 break;
             case "Home":
                 await FocusAsync(OptionId(0));
@@ -404,7 +456,11 @@ public partial class OdsMoneyField
             case "Tab":
                 // The options are out of the tab order, so Tab is leaving the portaled list — close it
                 // and continue from the trigger rather than wherever the DOM puts focus next.
-                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
+                if (_popup is not null)
+                {
+                    await _popup.CloseAsync(restoreFocus: true);
+                }
+
                 break;
         }
     }
@@ -414,7 +470,11 @@ public partial class OdsMoneyField
         try
         {
             var id = await Js.InvokeAsync<string?>("odsActiveElementId");
-            if (string.IsNullOrEmpty(id)) return -1;
+            if (string.IsNullOrEmpty(id))
+            {
+                return -1;
+            }
+
             var prefix = $"{FieldId}-currency-opt-";
             return id.StartsWith(prefix, StringComparison.Ordinal)
                    && int.TryParse(id[prefix.Length..], out var index)
@@ -430,13 +490,15 @@ public partial class OdsMoneyField
 
     private async Task FocusAsync(string id)
     {
-        try { await Js.InvokeVoidAsync("odsFocusById", id); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", id); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 
     private async Task RestoreInputAsync(string value)
     {
-        try { await Js.InvokeVoidAsync("odsSetInputValue", FieldId, value); }
+        try
+        { await Js.InvokeVoidAsync("odsSetInputValue", FieldId, value); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 }

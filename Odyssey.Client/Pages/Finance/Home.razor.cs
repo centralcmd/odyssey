@@ -60,7 +60,9 @@ public partial class Home
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await LoadPermissionsAsync();
 
@@ -80,13 +82,22 @@ public partial class Home
 
         var work = new List<Task>();
         if (_canReadAccounts)
+        {
             work.Add(LoadAccountsAsync());
+        }
         else
+        {
             _isLoadingAccounts = false;
+        }
+
         if (_canReadTransactions)
+        {
             work.Add(LoadTransactionsAsync());
+        }
         else
+        {
             _isLoadingTransactions = false;
+        }
 
         await Task.WhenAll(work);
     }
@@ -94,7 +105,9 @@ public partial class Home
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
+        {
             StateHasChanged();
+        }
     }
 
     private async Task LoadPermissionsAsync()
@@ -147,7 +160,9 @@ public partial class Home
         var (from, to, interval) = _range.ResolveRequest(TodayUtc, EarliestOpened);
         var result = await Accounts.GetNetWorthHistoryAsync(_mainCurrencyCode, interval, from, to);
         if (version != _historyRequest)
+        {
             return;
+        }
 
         // A failed call leaves _history null. There is no fallback series: when the data is not
         // there, the chart is not there.
@@ -244,7 +259,9 @@ public partial class Home
         get
         {
             if (!_canReadAccounts)
+            {
                 return "Welcome back to Odyssey.";
+            }
 
             var count = ActiveAccounts.Count;
             var accounts = $"{count} account{(count == 1 ? "" : "s")}";
@@ -385,7 +402,9 @@ public partial class Home
         get
         {
             if (!_canReadAccounts || _isLoadingAccounts)
+            {
                 return [];
+            }
 
             if (_totals is null)
             {
@@ -493,7 +512,7 @@ public partial class Home
     // It is presented as signed: the direction is the point of the row, and a bare positive would
     // read as an ordinary total.
     // The rule itself lives in DashboardFigures, where it is testable without a renderer: this page
-    // early-returns off the browser and exposes no InteractiveCheck seam, so anything left inline here
+    // early-returns off the browser without reading IRenderInteractivity, so anything left inline here
     // is reachable only by reading it.
     private string FormatSignedMoney(decimal value, string? currencyCode) =>
         DashboardFigures.TransactionAmount(value, currencyCode, _minorUnitsByCode);
@@ -509,11 +528,17 @@ public partial class Home
     private static string FirstNameFrom(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
+        {
             return string.Empty;
+        }
+
         var local = raw.Split('@')[0];
         var first = local.Split('.', '_', '-', ' ').FirstOrDefault(p => p.Length > 0);
         if (string.IsNullOrEmpty(first))
+        {
             return string.Empty;
+        }
+
         return char.ToUpperInvariant(first[0]) + first[1..];
     }
 }

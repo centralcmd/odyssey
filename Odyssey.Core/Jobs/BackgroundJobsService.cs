@@ -60,8 +60,6 @@ public sealed class BackgroundJobsService(
     IWeatherSettingsLookup weatherSettings,
     FileStorageVolumeRegistry volumes,
     PhotoThumbnailService thumbnails,
-    PhotoBackfillStatusService photoBackfill,
-    FileBackfillStatusService fileBackfill,
     JobRunSweeper sweeper,
     Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncService instrumentPriceSync,
     Odyssey.Core.Finance.Instruments.IInstrumentPriceSettingsLookup instrumentPriceSettings,
@@ -113,8 +111,6 @@ public sealed class BackgroundJobsService(
         {
             FileStorage = access.CanRead(JobType.FileStorageMaintenance) ? await FileStorageHealthAsync(now, cancellationToken) : null,
             Thumbnails = access.CanRead(JobType.PhotoThumbnails) ? await ThumbnailHealthAsync(now, cancellationToken) : null,
-            PhotoOriginalBackfill = access.CanRead(JobType.PhotoOriginalBackfill) ? await photoBackfill.GetAsync(cancellationToken) : null,
-            FileBlobBackfill = access.CanRead(JobType.FileBlobBackfill) ? await fileBackfill.GetAsync(cancellationToken) : null,
         };
         return overview;
     }
@@ -162,20 +158,6 @@ public sealed class BackgroundJobsService(
         if (canRead && liveHeld?.HeldReason == JobHeldReason.BreakerTripped)
         {
             heldUntil = await PhotoThumbnailBreaker.ResumesAtAsync(context, now, cancellationToken);
-        }
-        else if (canRead && liveHeld?.HeldReason == JobHeldReason.BackingOff && jobType == JobType.FileBlobBackfill)
-        {
-            heldUntil = await context.FileBlobBackfillLeases.AsNoTracking()
-                .Where(l => l.Id == FileBlobBackfillLease.SingletonId)
-                .Select(l => l.NextAttemptAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-        else if (canRead && liveHeld?.HeldReason == JobHeldReason.BackingOff)
-        {
-            heldUntil = await context.PhotoOriginalBackfillLeases.AsNoTracking()
-                .Where(l => l.Id == PhotoOriginalBackfillLease.SingletonId)
-                .Select(l => l.NextAttemptAtUtc)
-                .FirstOrDefaultAsync(cancellationToken);
         }
 
         // NotConfigured is derived from the job's own data (weather points, volumes), so it is shown only to a caller
@@ -521,14 +503,6 @@ public sealed class BackgroundJobsService(
                 Hangs = photos.Hangs,
             },
             PhotoThumbnailJobRun => new PhotoThumbnailJobRunDetail(),
-            PhotoOriginalBackfillJobRun move when canRead => new PhotoOriginalBackfillJobRunDetail
-            {
-                PhotosMoved = move.PhotosMoved,
-                PhotosCopiedShared = move.PhotosCopiedShared,
-                PhotosParked = move.PhotosParked,
-                Interruptions = move.Interruptions,
-            },
-            PhotoOriginalBackfillJobRun => new PhotoOriginalBackfillJobRunDetail(),
             FileAnalysisJobRun analysis when canRead => new FileAnalysisJobRunDetail
             {
                 AnalysesCompleted = analysis.AnalysesCompleted,
@@ -536,20 +510,12 @@ public sealed class BackgroundJobsService(
                 AnalysesRefused = analysis.AnalysesRefused,
             },
             FileAnalysisJobRun => new FileAnalysisJobRunDetail(),
-            FileBlobBackfillJobRun files when canRead => new FileBlobBackfillJobRunDetail
-            {
-                FinanceFilesMoved = files.FinanceFilesMoved,
-                JournalFilesMoved = files.JournalFilesMoved,
-                ContactAvatarsMoved = files.ContactAvatarsMoved,
-                FilesParked = files.FilesParked,
-                Interruptions = files.Interruptions,
-            },
-            FileBlobBackfillJobRun => new FileBlobBackfillJobRunDetail(),
             InstrumentPriceSyncJobRun prices when canRead => new InstrumentPriceSyncJobRunDetail
             {
                 InstrumentsAttempted = prices.InstrumentsAttempted,
                 InstrumentsSucceeded = prices.InstrumentsSucceeded,
                 InstrumentsFailed = prices.InstrumentsFailed,
+                InstrumentsDeferred = prices.InstrumentsDeferred,
                 PricesInserted = prices.PricesInserted,
                 FallbacksUsed = prices.FallbacksUsed,
                 RequestsMade = prices.RequestsMade,
@@ -564,8 +530,27 @@ public sealed class BackgroundJobsService(
                 ImagesStored = news.ImagesStored,
                 FeedsQuarantined = news.FeedsQuarantined,
                 FeedsMarked = news.FeedsMarked,
+                ArtworkStored = news.ArtworkStored,
+                ArtworkFailed = news.ArtworkFailed,
+                ChaptersFetched = news.ChaptersFetched,
             },
             NewsFeedJobRun => new NewsFeedJobRunDetail(),
+            PodcastAudioDownloadJobRun downloads when canRead => new PodcastAudioDownloadJobRunDetail
+            {
+                DownloadsStored = downloads.DownloadsStored,
+                DownloadsFailed = downloads.DownloadsFailed,
+                DownloadsDeferred = downloads.DownloadsDeferred,
+                DownloadsRecovered = downloads.DownloadsRecovered,
+                ReservationsRefused = downloads.ReservationsRefused,
+                AudioBytesStored = downloads.AudioBytesStored,
+            },
+            PodcastAudioDownloadJobRun => new PodcastAudioDownloadJobRunDetail(),
+            PodcastAudioRetentionJobRun retention when canRead => new PodcastAudioRetentionJobRunDetail
+            {
+                AudioReleased = retention.AudioReleased,
+                AudioBytesReleased = retention.AudioBytesReleased,
+            },
+            PodcastAudioRetentionJobRun => new PodcastAudioRetentionJobRunDetail(),
             RecurrenceKeyBackfillJobRun keys when canRead => new RecurrenceKeyBackfillJobRunDetail
             {
                 SeriesKeyed = keys.SeriesKeyed,
@@ -637,15 +622,6 @@ public sealed class BackgroundJobsService(
             // A held file-storage worker never claims the request, so a 202 would only end as an Abandoned row that
             // blames a missing worker (architect review on PR #418). Refuse it the way a held thumbnail run is.
             return new ManualRunOutcome.Held(storageHeld, null);
-        }
-
-        // Held for storage in every live worker, the move cannot run; held only for its back-off it can, because a
-        // manual run is what ends a back-off early.
-        if (jobType is JobType.PhotoOriginalBackfill or JobType.FileBlobBackfill
-            && await EveryLiveWorkerHeldAsync(entry, now, cancellationToken) is { } moveHeld
-            && moveHeld != JobHeldReason.BackingOff)
-        {
-            return new ManualRunOutcome.Held(moveHeld, null);
         }
 
         // A dead run must never block a manual run for longer than its stale window (§3.4).
@@ -753,11 +729,6 @@ public sealed class BackgroundJobsService(
                     || await context.Photos.AnyAsync(p => !context.PhotoThumbnailJobs.Any(j => j.PhotoId == p.PhotoId), cancellationToken);
             case JobType.InstrumentPriceSync:
                 return await instrumentPriceSync.HasWorkAsync(cancellationToken);
-            case JobType.PhotoOriginalBackfill:
-                return await context.Photos.AnyAsync(p => p.StoredObjectId == null && p.FileId != null
-                    && !context.PhotoOriginalBackfillFailures.Any(f => f.PhotoId == p.PhotoId), cancellationToken);
-            case JobType.FileBlobBackfill:
-                return await FileBlobBackfillJob.Movable(context).AnyAsync(cancellationToken);
             case JobType.NewsFeedFetch:
                 return await Odyssey.Core.Internet.News.Jobs.NewsFeedJob.HasWorkAsync(context, Now, cancellationToken);
             case JobType.RecurrenceKeyBackfill:
@@ -774,8 +745,6 @@ public sealed class BackgroundJobsService(
             JobType.Weather => new WeatherJobRun(),
             JobType.FileStorageMaintenance => new FileStorageMaintenanceJobRun(),
             JobType.PhotoThumbnails => new PhotoThumbnailJobRun(),
-            JobType.PhotoOriginalBackfill => new PhotoOriginalBackfillJobRun(),
-            JobType.FileBlobBackfill => new FileBlobBackfillJobRun(),
             JobType.InstrumentPriceSync => new InstrumentPriceSyncJobRun(),
             JobType.NewsFeedFetch => new NewsFeedJobRun(),
             JobType.RecurrenceKeyBackfill => new RecurrenceKeyBackfillJobRun(),

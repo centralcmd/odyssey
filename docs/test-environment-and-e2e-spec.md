@@ -37,7 +37,8 @@ relational-constraint, cascade, transaction, and migration bugs).
 ### 3.1 Decision
 
 Use a **runtime EF Core seeder powered by [Bogus](https://github.com/bchavez/Bogus)**,
-invoked from the existing `SeedDataAsync()` hook, **gated behind a flag** and
+invoked from the migrations host (originally planned as the `SeedDataAsync()` hook;
+built as `DemoDataSeeder`, see §3.5 item 1), **gated behind a flag** and
 **deterministic by a fixed seed**.
 
 ### 3.2 Options considered
@@ -51,11 +52,13 @@ invoked from the existing `SeedDataAsync()` hook, **gated behind a flag** and
 
 ### 3.3 Reference data vs. demo data
 
-- **Reference data** (currencies, roles, permission claims): remains seeded via
-  migrations / `HasData`. Always present, including production. In particular:
+- **Reference data** (currencies, roles, permission claims): currencies and roles are
+  seeded via migrations / `HasData`; permission claims are reconciled at runtime by
+  `RoleClaimSeeder` (`Odyssey.MigrationService`), not by `HasData`. Always present,
+  including production. In particular:
   - The full **ISO 4217 currency set is already seeded** via `HasData` in
     `OdysseyContext` — the demo seeder **must not** create or re-seed `Currency` rows.
-  - **Roles and permission claims are already seeded** (the four canonical roles in
+  - **Roles and permission claims are already present** (the four canonical roles in
     `RoleDefinitions` — Admin / Owner / User / Guest — and their `PermissionClaims`).
     The demo seeder **must not** invent new roles, permission claims, or
     role-claim mappings; it only **assigns existing roles** to the seeded users.
@@ -73,8 +76,12 @@ and a few months of transactions per account.
 
 ### 3.5 Seeder requirements
 
-1. Lives in a dedicated `Odyssey.Seeder` project (or a `DataSeeder` class wired into
-   `MigrationService`), filling `SeedDataAsync()`.
+1. ~~Lives in a dedicated `Odyssey.Seeder` project (or a `DataSeeder` class wired into
+   `MigrationService`), filling `SeedDataAsync()`.~~ *Historical — superseded:* neither
+   `Odyssey.Seeder` nor `SeedDataAsync()` exists. The seed is `DemoDataSeeder`
+   (`Odyssey.MigrationService`, everything without bytes) plus `DemoFileSeeder`
+   (`Odyssey.Worker/DemoData/`, every file, photo and contact image), both behind
+   `DemoDataGate` (`Odyssey.TestData`).
 2. **Deterministic** — fixed `Randomizer.Seed` so every run produces identical data
    (required for stable E2E assertions and screenshots).
 3. **Idempotent** — detect a sentinel (the demo user) and no-op if already seeded.
@@ -123,24 +130,26 @@ and a few months of transactions per account.
 ### 3.5a Demo/test environment configuration
 
 To keep login deterministic and friction-free for the seeded stack and E2E runs, the
-demo/test environment overrides Identity options so neither gate blocks automated
-login:
+seeded users are created so that neither gate blocks automated login:
 
-- **No email confirmation** — `RequireConfirmedAccount = false` (and
-  `RequireConfirmedEmail = false`). Seeded users are still created with
-  `EmailConfirmed = true` as a belt-and-braces measure.
-- **No two-factor requirement** — 2FA is left disabled on seeded users and is not
-  enforced at login.
+- **Created confirmed and approved** — `RequireConfirmedAccount` is pinned `true`
+  unconditionally in every environment (`Odyssey.Api/Program.cs`, issue #349); the
+  demo configuration does **not** relax it. Seeded users pass it because they are
+  created with `EmailConfirmed = true`, unlocked and approved.
+- **No two-factor requirement** — 2FA is left disabled on seeded users.
 
-These overrides apply **only** to the demo/test configuration (the Development and Testing
-environments); production retains its stricter defaults
-(`RequireConfirmedAccount=true`).
+> *Historical:* an earlier draft of this section had the demo/test configuration set
+> `RequireConfirmedAccount`/`RequireConfirmedEmail` to `false`. That was never kept —
+> the option is not config-bound at all.
 
 ### 3.5b Orchestration parity (Aspire & Docker Compose)
 
 Seeding behaves **identically** under both local orchestrators because both run the
-same `Odyssey.MigrationService` (where the seeder lives) and both back MariaDB with a
-**named persistent volume**. In both: first boot on an empty volume runs the full
+same `Odyssey.MigrationService` (`DemoDataSeeder`) and `Odyssey.Worker`
+(`DemoFileSeeder`), and both back MariaDB with a **named persistent volume**. The demo
+files, photos and contact images are written by the worker once the API has initialised
+the file volumes, so they appear shortly **after** the stack reports healthy — a test
+that needs one polls for it (`TestShared/DemoFileWait`). In both: first boot on an empty volume runs the full
 deterministic seed; every later boot/rebuild sees the sentinel and skips; data
 persists. The differences are operational only:
 
@@ -174,8 +183,8 @@ users; there is no per-user split. Design rules:
 
 - **Coverage** — every real `AccountType` appears at least once. `Unknown (0)` is a
   sentinel and is deliberately never seeded.
-- **Time window** — the reference "today" is the seed run date; this spec uses
-  **2026-06-19** as the anchor. Accounts span from **~10 years back (2016)** to brand
+- **Time window** — the reference "today" is a fixed anchor, not the seed run date:
+  `DemoDataDefaults.AnchorDate` = **2026-06-19** (and `LastYear` = 2026). Accounts span from **~10 years back (2016)** to brand
   new. *Long-lived* accounts (≈10 years of history) are concentrated on **checking,
   savings, investing, and loan** types — these drive the most interesting charts and
   balances.
@@ -309,33 +318,35 @@ Realism notes for the seeder:
 ### 3.10 Demo contacts
 
 Transactions reference contacts, so a small **deterministic** roster is seeded
-(fixed `Name` + `NormalizedName`, one of each `ContactType`). Each is the natural
-source/destination for one or more tags, which keeps generated transactions coherent.
+(fixed `Name` + `NormalizedName`). Each is the natural source/destination for one or more tags,
+which keeps generated transactions coherent. The table below is the transaction-facing core; the full
+roster — which also holds the Rivera household (Alex, Sam, Chris and Morgan Rivera), Allstate and the
+dissolved Northgate Mutual — is `Odyssey.TestData/Catalog/Contacts.cs`, the source of truth.
 
 | Contact | Type | Used for (tag) |
 |---|---|---|
-| Whole Foods Market | Merchant | Groceries |
-| Trader Joe's | Merchant | Groceries |
-| Starbucks | Merchant | Dining Out |
-| The Corner Bistro | Merchant | Dining Out |
-| Shell | Merchant | Fuel |
-| Uber | Merchant | Transportation |
-| H&M | Merchant | Clothing |
-| Netflix | Company | Subscriptions |
-| Spotify | Company | Subscriptions |
-| Delta Air Lines | Company | Travel |
-| State Farm | Company | Insurance |
-| Globex Corporation | Company | Salary, Bonus (employer) |
-| City Power & Water | Institution | Utilities |
-| First National Bank | Institution | Housing (mortgage), Loan Repayment, Interest Income |
-| Vanguard | Institution | Investments, Dividends |
+| Whole Foods Market | Organization | Groceries |
+| Trader Joe's | Organization | Groceries |
+| Starbucks | Organization | Dining Out |
+| The Corner Bistro | Organization | Dining Out |
+| Shell | Organization | Fuel |
+| Uber | Organization | Transportation |
+| H&M | Organization | Clothing |
+| Netflix | Organization | Subscriptions |
+| Spotify | Organization | Subscriptions |
+| Delta Air Lines | Organization | Travel |
+| State Farm | Organization | Insurance |
+| Globex Corporation | Organization | Salary, Bonus (employer) |
+| City Power & Water | Organization | Utilities |
+| First National Bank | Organization | Housing (mortgage), Loan Repayment, Interest Income |
+| Vanguard | Organization | Investments, Dividends |
 | BlueCross Health | Organization | Healthcare |
 | Internal Revenue Service | Organization | Taxes |
 | Jane Smith (Landlord) | Person | Housing (rent, pre-2017) |
-| Cash Withdrawal | Other | uncategorized cash |
+| Cash Withdrawal | Organization | uncategorized cash |
 
-This covers all six `ContactType` values (Merchant, Person, Organization,
-Company, Institution, Other).
+`ContactType` has two values, `Person` and `Organization` (issue #325 folded the earlier six into
+them), and the roster covers both.
 
 **Two of them carry an image** (issue #86): **Jane Smith (Landlord)** a profile picture and
 **First National Bank** a logo. They are picked to sit high in the default name-ordered list, so a test
@@ -349,9 +360,9 @@ rather than seeded data. The logo is deliberately **not square** (320 × 136); a
 make the contained framing indistinguishable from the cover one, which is the whole thing the pair is
 there to show.
 
-The two `FileMetadata`/`FileBlob` rows are carried separately on `DemoDataSet` and written by
-`SeedContactsAsync` rather than with the rest of the Files store: `Contact.AvatarFileId` is a real
-foreign key, and contacts are seeded before finance.
+The two images are carried on `DemoDataSet.ContactAvatars` and written, like every demo file and photo, by the
+worker's `DemoFileSeeder` onto the object store, which then points the contact's `AvatarFileId` at its image: only a
+host with the file volumes can write a file, so the migrations job seeds the contacts without one.
 
 ### 3.11 Demo transactions
 
@@ -510,6 +521,9 @@ Three classification details:
    screenshots and predictable assertions; not a high-volume stress dataset. See §3.4.
 
 ## 7. Rollout order
+
+> *Historical — the rollout below is complete.* Step 2 landed as `DemoDataSeeder` (and
+> later `DemoFileSeeder` in the worker) behind `DemoDataGate`; there is no `SeedDataAsync()`.
 
 1. `Odyssey.TestData` shared Bogus generators; reference-vs-demo split.
 2. Fill `SeedDataAsync()` with the gated, idempotent demo seeder + fixed demo user.

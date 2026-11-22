@@ -14,7 +14,7 @@ namespace Odyssey.IntegrationTests;
 /// pre-migration check, and the summary's query shape. None of it can run on EF InMemory: it
 /// enforces no CHECK, has no migrations and never invokes a command interceptor.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_exchange_rate_inversion";

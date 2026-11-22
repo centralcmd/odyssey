@@ -76,7 +76,7 @@ public sealed class DomainValidationException : DomainException
     /// control rather than only in a toast (issue #421 Wave 0b).
     ///
     /// <para>
-    /// <see cref="Code"/> stays the machine-readable discriminator; <see cref="Errors"/> is the
+    /// <see cref="Code"/> stays the machine-readable discriminator; <see cref="DomainException.Errors"/> is the
     /// human-readable, per-field one. A single throw names a single field — the multi-field case is
     /// served by <c>[ApiController]</c> model validation, which aggregates every annotation failure
     /// into the same <c>errors</c> shape before any of this code runs.

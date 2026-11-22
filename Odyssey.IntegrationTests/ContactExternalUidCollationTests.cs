@@ -14,7 +14,7 @@ namespace Odyssey.IntegrationTests;
 /// None of this is observable on EF InMemory, which has no collations, no column metadata and no
 /// indexes — a regression in any of it would pass every fast tier silently.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactExternalUidCollationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contact_uid_collation";

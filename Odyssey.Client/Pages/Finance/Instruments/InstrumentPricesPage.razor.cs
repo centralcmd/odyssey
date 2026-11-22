@@ -118,10 +118,16 @@ public partial class InstrumentPricesPage
         get
         {
             if (_allCount is not { } all)
+            {
                 return string.Empty;
+            }
+
             var text = $"{all.ToString("N0", CultureInfo.CurrentCulture)} price{(all == 1 ? "" : "s")}";
             if (FetchedCount > 0 && _attributions.Count > 0)
+            {
                 text += $" · Prices from {string.Join(", ", _attributions)}";
+            }
+
             return text;
         }
     }
@@ -146,7 +152,9 @@ public partial class InstrumentPricesPage
         await RefreshAsync();
 
         if (linked is { Archived: null } instrument && _canCreate && AddQuery == "1")
+        {
             OpenDialog(price: null, lockedId: instrument.InstrumentId, focusClose: false, returnFocusId: null);
+        }
     }
 
     private async Task LoadPermissionsAsync()
@@ -178,7 +186,9 @@ public partial class InstrumentPricesPage
     private async Task<ExistingInstrument?> ApplyDeepLinkAsync()
     {
         if (string.IsNullOrWhiteSpace(InstrumentQuery))
+        {
             return null;
+        }
 
         if (Guid.TryParse(InstrumentQuery, out var id)
             && await Instruments.GetAsync(id) is { IsSuccess: true, Value: { } instrument })
@@ -263,7 +273,10 @@ public partial class InstrumentPricesPage
     {
         _instrumentFilter = string.IsNullOrEmpty(value) ? null : value;
         if (_instrumentFilter is null)
+        {
             _instrumentFilterOption = null;
+        }
+
         await ReloadAsync();
     }
 
@@ -340,7 +353,9 @@ public partial class InstrumentPricesPage
         var filter = CurrentFilter();
         var response = await _listLoader.RunAsync(ct => Prices.ListAsync(_page, _pageSize, filter, ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var load = response.Value.PagedOrToast(Snackbar, "instrument prices");
         if (load.IsSuccess)
@@ -349,8 +364,10 @@ public partial class InstrumentPricesPage
             _totalCount = load.TotalCount;
             _loadError = false;
             if (!_suppressListAnnouncement)
+            {
                 Announce(_totalCount == 0 ? "No prices match your filters."
                 : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} price{(_totalCount == 1 ? "" : "s")}.");
+            }
         }
         else
         {
@@ -418,14 +435,17 @@ public partial class InstrumentPricesPage
     internal IReadOnlyList<OdsMenuItem> BuildActions(ExistingInstrumentPrice price, OdsRecordActionContext ctx)
     {
         if (price.Source == InstrumentPriceSource.Fetched)
+        {
             return [];
+        }
 
         var items = new List<OdsMenuItem>();
         if (_canUpdate)
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "edit", Label = "Edit",
+                Icon = "edit",
+                Label = "Edit",
                 OnClick = EventCallback.Factory.Create(this, () => OpenDialog(price, null, false, ctx.MenuTriggerId)),
             });
         }
@@ -433,7 +453,10 @@ public partial class InstrumentPricesPage
         if (_canDelete)
         {
             if (items.Count > 0)
+            {
                 items.Add(new OdsMenuItem { Divider = true });
+            }
+
             items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
         }
 
@@ -443,7 +466,9 @@ public partial class InstrumentPricesPage
     private async Task HandleDelete(object key)
     {
         if (!_canDelete || key is not Guid id || _prices.FirstOrDefault(p => p.InstrumentPriceId == id) is not { } price)
+        {
             return;
+        }
 
         // Where focus lands if the row goes: the next row's header, else the previous one's, else the h1.
         var index = _prices.IndexOf(price);
@@ -459,7 +484,9 @@ public partial class InstrumentPricesPage
         await RefreshAsync(announceList: false);
         ReportDelete(result, price);
         if (result.IsSuccess || result.Status == HttpStatusCode.NotFound)
+        {
             await FocusAfterRemovalAsync(candidates);
+        }
     }
 
     private OdsRecordTable<ExistingInstrumentPrice>? _table;
@@ -470,7 +497,10 @@ public partial class InstrumentPricesPage
         var present = _prices.Select(p => p.InstrumentPriceId).ToHashSet();
         if (_table is not null && candidates.FirstOrDefault(present.Contains) is var next && next != Guid.Empty
             && await _table.FocusRowHeaderAsync(next))
+        {
             return;
+        }
+
         try
         { await Js.InvokeVoidAsync("odsFocusChainOrHeading", Array.Empty<string>()); }
         catch (JSException) { }
@@ -506,7 +536,10 @@ public partial class InstrumentPricesPage
     private void AddClicked()
     {
         if (!_canCreate)
+        {
             return;
+        }
+
         OpenDialog(null, null, false, null);
     }
 
@@ -523,14 +556,20 @@ public partial class InstrumentPricesPage
     private void OnDialogBusyChanged(bool busy)
     {
         if (_dialogPrice is not { } price)
+        {
             return;
+        }
+
         if (busy)
         {
             _busy.Add(price.InstrumentPriceId);
             Announce($"Saving price {RowLabelFor(price)}");
         }
         else
+        {
             _busy.Remove(price.InstrumentPriceId);
+        }
+
         StateHasChanged();
     }
 
@@ -544,7 +583,9 @@ public partial class InstrumentPricesPage
     private async Task EditExistingAsync(Guid priceId)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         _dialogOpen = false;
         var result = await Prices.GetAsync(priceId);

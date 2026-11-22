@@ -2,13 +2,13 @@
 #  DEVELOPMENT STACK — NOT SAFE TO EXPOSE TO A NETWORK
 #
 #  This file is tuned for a laptop, and its defaults say so: weak fallback database
-#  passwords, ASPNETCORE_ENVIRONMENT=Development, Swagger on, demo data seeded, and
+#  passwords, ASPNETCORE_ENVIRONMENT=Development, API docs on, demo data seeded, and
 #  MariaDB published on port 3307. Every published port binds 127.0.0.1 only, so none of
 #  that is reachable from the network — do not remove those prefixes to "test from another
 #  machine". The demo accounts share a password published in this repository's README.
 #
 #  To deploy for real, layer the production overlay on top — it resets the published
-#  ports, pins Production, turns Swagger off and disables demo seeding:
+#  ports, pins Production, turns the API docs off and disables demo seeding:
 #
 #    docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 #      --env-file .env.prod up -d
@@ -81,10 +81,10 @@ services:
       Seed__DemoData: ${SEED_DEMO_DATA:-true}
       # No Email__*, FileAnalysis__* or FileStorage__* here. Those settings are database-backed and
       # edited at /settings; the migrations job used to read them for SystemSettingsConfigAdoption,
-      # which carried a pre-existing configured value into the store on upgrade. That step is gone —
-      # no deployment ever ran the releases it existed to upgrade from — so the job needs none of
-      # them. The API still reads the ones with a startup role (the mail transport, the upload
-      # transport ceiling); see the api service below.
+      # which carried a pre-existing configured value into the store on upgrade. That step was removed
+      # before any production database existed; a setting moved out of configuration from now on needs
+      # a carry-over step again (CLAUDE.md). The API still reads the one value with a startup role (the
+      # upload transport ceiling); see the api service below.
 
       # The initial administrator (issue #290). Applied ONLY when the user table is completely empty;
       # ignored on every later deploy. Required on a fresh database unless demo seeding provides an
@@ -112,7 +112,11 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:8080
       UseInMemoryDatabase: ${USE_IN_MEMORY_DATABASE:-false}
-      Swagger__Enabled: ${SWAGGER_ENABLED:-true}
+      # API docs (/openapi/v1.json, /scalar/v1; issue #569). Development serves them whatever this says, so the
+      # default is OFF: a stack run as Staging or similar shows docs only when API_DOCS_ENABLED=true says so.
+      # Production never serves them. RequireLogin defaults to true: sign in to the client, then open the docs.
+      ApiDocs__Enabled: ${API_DOCS_ENABLED:-false}
+      ApiDocs__RequireLogin: ${API_DOCS_REQUIRE_LOGIN:-true}
       ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
       # There is NO Email__* here any more (issue #8). The relay credential moved to the encrypted
       # secret store in #445; the transport around it — host, port, STARTTLS — and the public link
@@ -181,8 +185,11 @@ services:
       FileStorage__Bindings__PhotoOriginals: primary
       FileStorage__Bindings__FinanceFiles: primary
       FileStorage__Bindings__JournalFiles: primary
+      FileStorage__Bindings__LibraryFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
+      FileStorage__Bindings__PodcastAudio: primary
+      FileStorage__Bindings__PodcastArtwork: primary
       # The location map's basemap (issue #370) — deploy-time, because the client's CSP below is rendered
       # from the same MAP_ALLOWED_ORIGINS at container start. SINGLE-dash ${VAR-default}: the default
       # applies only when the variable is UNSET, so an explicit MAP_ALLOWED_ORIGINS= (the off-switch)
@@ -224,6 +231,9 @@ services:
       # environment filter decides which stored secrets exist at all.
       DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
+      # The demo files and photos (Development/Testing only, whatever this says): the half of the demo seed with
+      # bytes, which only a host with the file volumes can write. The same flag as the migrations job's.
+      Seed__DemoData: ${SEED_DEMO_DATA:-true}
       # The API's key ring, READ-ONLY (`:ro` below), so a job can read the encrypted secret store — the
       # Frost client id today. This makes the worker the second container that can decrypt every stored
       # credential, a deliberate trade-off (docs/deployment.md). It never writes a key: automatic key
@@ -233,13 +243,19 @@ services:
       # sweeps the disk, and the thumbnail job writes photo thumbnails. Identical to the api service's FileStorage__*
       # block. The worker only verifies a volume — it waits for the API to initialise a new one — and a failing
       # verdict holds the jobs that use the store; weather and exchange-rate sync keep running.
+      # The same transport ceiling as the api: the worker's podcast download caps an episode at it (issue #556 §8.2),
+      # and the store refuses any write above it.
+      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-10737418240}
       FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
       FileStorage__Bindings__PhotoThumbnails: primary
       FileStorage__Bindings__PhotoOriginals: primary
       FileStorage__Bindings__FinanceFiles: primary
       FileStorage__Bindings__JournalFiles: primary
+      FileStorage__Bindings__LibraryFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
       FileStorage__Bindings__NewsArticles: primary
+      FileStorage__Bindings__PodcastAudio: primary
+      FileStorage__Bindings__PodcastArtwork: primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
       - files_primary:/var/odyssey/files/primary

@@ -19,7 +19,7 @@ namespace Odyssey.Api.Tests;
 /// transparent here and each test is about the endpoint itself. The gate's own behaviour lives in
 /// <see cref="LegalComplianceGateTests"/>.
 /// </summary>
-public class LegalApiTests
+public class LegalApiTests(LegalApiTests.Host host) : SharedApiHostTests<LegalApiTests.Host>(host)
 {
     private const string ActorUserId = TestAuthHandler.DefaultActorUserId;
 
@@ -27,7 +27,7 @@ public class LegalApiTests
     [Fact]
     public async Task TheDocumentReads_AreAnonymous()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/legal/license")).StatusCode);
@@ -38,7 +38,7 @@ public class LegalApiTests
     [Fact]
     public async Task TheLicense_ServesContentThatHashesToTheServedDigest()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var license = await client.GetFromJsonAsync<LicenseDocument>("/api/legal/license");
@@ -54,7 +54,7 @@ public class LegalApiTests
     [Fact]
     public async Task WithNoVersionPublished_CurrentReturns200WithANullBody()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/legal/terms-of-service/current");
@@ -66,7 +66,7 @@ public class LegalApiTests
     [Fact]
     public async Task Status_ReportsTheCallersOwnComplianceAndTheCurrentVersionId()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         var version = await PublishAsync(factory, "Terms v1");
         using var client = factory.CreateClient();
 
@@ -82,7 +82,7 @@ public class LegalApiTests
     [Fact]
     public async Task Respond_WithoutAccepted_Returns400AndWritesNoRow()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(
@@ -96,7 +96,7 @@ public class LegalApiTests
     [Fact]
     public async Task Respond_ToTheLicense_RecordsAgainstTheServerResolvedDigest()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(
@@ -119,7 +119,7 @@ public class LegalApiTests
     [Fact]
     public async Task Respond_WithAStaleTosVersionId_Returns409()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         var superseded = await PublishAsync(factory, "Terms v1");
         await PublishAsync(factory, "Terms v2");
         using var client = factory.CreateClient();
@@ -134,7 +134,7 @@ public class LegalApiTests
     [Fact]
     public async Task Respond_ToTheTermsOfServiceWithoutAVersionId_Returns400()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         await PublishAsync(factory, "Terms v1");
         using var client = factory.CreateClient();
 
@@ -148,7 +148,7 @@ public class LegalApiTests
     [Fact]
     public async Task TwoVersionsSharingAPublishedAt_ResolveCurrentToTheHigherId()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         var publishedAt = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc);
 
         var ids = new List<int>();
@@ -172,7 +172,7 @@ public class LegalApiTests
     [Fact]
     public async Task TheVersionEndpoints_RequireUsersManage()
     {
-        await using var factory = new OdysseyApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/legal/terms-of-service/versions")).StatusCode);
@@ -186,7 +186,7 @@ public class LegalApiTests
     [Fact]
     public async Task TheVersionList_CarriesMetadataAndNeverContent()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersManage]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersManage]);
         await factory.SeedActorUserAsync(displayName: "Ada L.");
         using var client = factory.CreateClient();
 
@@ -213,7 +213,7 @@ public class LegalApiTests
     [Fact]
     public async Task Publishing_LeavesPriorVersionsAndAcceptancesIntact()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersManage]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersManage]);
         var first = await PublishAsync(factory, "Terms v1");
         await WithContextAsync(factory, context => LegalTestData.AcceptAllAsync(context, ActorUserId));
         using var client = factory.CreateClient();
@@ -239,7 +239,7 @@ public class LegalApiTests
     [Fact]
     public async Task PublishingBlankContent_Returns400AndCreatesNoVersion()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersManage]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersManage]);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(
@@ -254,7 +254,7 @@ public class LegalApiTests
     [Fact]
     public async Task Content_AcceptsTheFullCapAndRejectsOneCharacterMore()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersManage]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersManage]);
         using var client = factory.CreateClient();
 
         var atCap = await client.PostAsJsonAsync(
@@ -271,7 +271,7 @@ public class LegalApiTests
     [Fact]
     public async Task AMissingVersion_Returns404()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersManage]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersManage]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/legal/terms-of-service/versions/4242");
@@ -297,4 +297,7 @@ public class LegalApiTests
         using var scope = factory.Services.CreateScope();
         await work(scope.ServiceProvider.GetRequiredService<OdysseyContext>());
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

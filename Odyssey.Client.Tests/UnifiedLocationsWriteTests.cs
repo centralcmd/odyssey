@@ -49,7 +49,9 @@ public class UnifiedLocationsWriteTests
 
     private static JournalEntryAttachmentDto Attachment() => new()
     {
-        JournalEntryAttachmentId = Guid.NewGuid(), FileId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow,
+        JournalEntryAttachmentId = Guid.NewGuid(),
+        FileId = Guid.NewGuid(),
+        CreatedAt = DateTime.UtcNow,
     };
 
     // ── LocationLink ────────────────────────────────────────────────────────────
@@ -171,9 +173,15 @@ public class UnifiedLocationsWriteTests
 
         var pattern = new ExistingRecurrencePattern
         {
-            RecurrencePatternId = Guid.NewGuid(), CalendarId = Guid.NewGuid(), Title = "Practice",
-            StartDateTime = new DateTime(2026, 11, 2, 18, 0, 0, DateTimeKind.Utc), EndDateTime = new DateTime(2026, 11, 2, 19, 0, 0, DateTimeKind.Utc),
-            Frequency = RecurrenceFrequency.Weekly, Interval = 1, DaysOfWeek = DaysOfWeekFlags.Monday, LocationId = Stored,
+            RecurrencePatternId = Guid.NewGuid(),
+            CalendarId = Guid.NewGuid(),
+            Title = "Practice",
+            StartDateTime = new DateTime(2026, 11, 2, 18, 0, 0, DateTimeKind.Utc),
+            EndDateTime = new DateTime(2026, 11, 2, 19, 0, 0, DateTimeKind.Utc),
+            Frequency = RecurrenceFrequency.Weekly,
+            Interval = 1,
+            DaysOfWeek = DaysOfWeekFlags.Monday,
+            LocationId = Stored,
         };
         var series = CalendarEventDraft.FromPattern(pattern);
         Assert.Equal(Stored, series.ToNewRecurrencePattern(series.Place.Link(pickerShown: false)).LocationId);

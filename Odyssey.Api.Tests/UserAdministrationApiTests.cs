@@ -29,14 +29,14 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class UserAdministrationApiTests
+public class UserAdministrationApiTests(UserAdministrationApiTests.Host host) : SharedApiHostTests<UserAdministrationApiTests.Host>(host)
 {
     private const string ActorUserId = "admin-actor-id";
 
     [Fact]
     public async Task GetUsers_WithoutUsersReadPermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([]);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/users");
@@ -47,7 +47,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task GetUsers_WithUsersReadPermission_ReturnsUsers()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "list-user-id", "list@example.com");
         using var client = factory.CreateClient();
@@ -63,7 +63,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task GetUsers_IncludesProfileFields_AndSortsByFullName()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         await CreateUserAsync(factory, "profile-user-zed", "zed@example.com");
         await CreateUserAsync(factory, "profile-user-amy", "amy@example.com");
         await CreateProfileAsync(factory, "profile-user-zed", "Zed", "Zephyr", new DateOnly(1990, 1, 1), Sex.Male);
@@ -90,7 +90,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task GetUsers_NegativeOffset_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "clamp-user-id", "clamp@example.com");
         using var client = factory.CreateClient();
@@ -104,7 +104,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task GetUsers_OversizedLimit_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -117,7 +117,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task GetUser_MissingUser_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/users/missing-user-id");
@@ -128,7 +128,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PatchUser_RequiresUsersUpdatePermission()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         await CreateUserAsync(factory, "patch-auth-user-id", "patch-auth@example.com");
         using var client = factory.CreateClient();
 
@@ -140,7 +140,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PutUserRole_RequiresUsersUpdatePermission()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         await CreateUserAsync(factory, "role-auth-user-id", "role-auth@example.com");
         using var client = factory.CreateClient();
 
@@ -152,7 +152,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task GetRoles_WithUsersReadPermission_ReturnsSeededRolesAndPermissions()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -171,7 +171,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task GetPermissions_WithUsersReadPermission_ReturnsAllKnownPermissionClaims()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/users/permissions");
@@ -189,7 +189,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PatchUser_EmailConfirmedTrue_ConfirmsEmail()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await CreateUserAsync(factory, "confirm-user-id", "confirm@example.com", RoleDefinitions.User, emailConfirmed: false);
         using var client = factory.CreateClient();
 
@@ -204,7 +204,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PatchUser_EmailConfirmedFalse_UnconfirmsEmail()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await CreateUserAsync(factory, "unconfirm-user-id", "unconfirm@example.com", RoleDefinitions.User, emailConfirmed: true);
         using var client = factory.CreateClient();
 
@@ -219,7 +219,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PatchUser_DisableUser_SetsLockoutAndReturnsDisabledUser()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await CreateUserAsync(factory, "disable-user-id", "disable@example.com", RoleDefinitions.User);
         using var client = factory.CreateClient();
 
@@ -236,7 +236,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PutUserRole_UnknownRole_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "unknown-role-user-id", "unknown-role@example.com");
         using var client = factory.CreateClient();
@@ -249,7 +249,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PutUserRole_ReplacesExistingRolesAndLeavesExactlyOneRole()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "replace-role-user-id", "replace-role@example.com", RoleDefinitions.User);
         await AddRoleAsync(factory, "replace-role-user-id", RoleDefinitions.Guest);
@@ -274,7 +274,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PatchUser_CannotDisableLastEnabledAdmin()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "last-admin-id", "last-admin@example.com", RoleDefinitions.Admin);
         using var client = factory.CreateClient();
@@ -287,7 +287,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task PutUserRole_CannotDemoteLastEnabledAdmin()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "last-demote-admin-id", "last-demote-admin@example.com", RoleDefinitions.Admin);
         using var client = factory.CreateClient();
@@ -300,7 +300,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task DeleteUser_WithoutUsersDeletePermission_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "no-delete-perm-id", "no-delete-perm@example.com", RoleDefinitions.User);
         using var client = factory.CreateClient();
@@ -313,7 +313,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task DeleteUser_WithUsersDeletePermission_RemovesTheUser()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersDelete]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersDelete]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "delete-target-id", "delete-target@example.com", RoleDefinitions.User);
         using var client = factory.CreateClient();
@@ -330,7 +330,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task DeleteUser_UnknownId_ReturnsNotFound()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersDelete]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersDelete]);
         await EnsureCreatedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -342,7 +342,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task DeleteUser_OwnAccount_ReturnsConflict()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersDelete]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersDelete]);
         await EnsureCreatedAsync(factory);
         // The test principal's NameIdentifier is ActorUserId; deleting that same account is refused.
         await CreateUserAsync(factory, ActorUserId, "self@example.com", RoleDefinitions.User);
@@ -356,7 +356,7 @@ public class UserAdministrationApiTests
     [Fact]
     public async Task DeleteUser_CannotDeleteLastEnabledAdmin()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersDelete]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersDelete]);
         await EnsureCreatedAsync(factory);
         await CreateUserAsync(factory, "last-admin-delete-id", "last-admin-delete@example.com", RoleDefinitions.Admin);
         using var client = factory.CreateClient();
@@ -463,7 +463,7 @@ public class UserAdministrationApiTests
     // Users in this suite are looked up via UserManager, whose default upper-invariant
     // normalizer cannot match the seeded roles' lower-cased NormalizedName — so swap in a
     // lower-invariant normalizer for these tests.
-    private sealed class ApiFactory(IReadOnlyCollection<string> permissions)
+    public class ApiFactory(IReadOnlyCollection<string> permissions)
         : OdysseyApiFactory(
             permissions,
             ActorUserId,
@@ -479,4 +479,7 @@ public class UserAdministrationApiTests
 
         public string? NormalizeEmail(string? email) => email?.ToLowerInvariant();
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

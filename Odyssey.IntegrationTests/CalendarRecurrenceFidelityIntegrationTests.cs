@@ -25,7 +25,7 @@ namespace Odyssey.IntegrationTests;
 /// a 500 (AC 7, AC 19) — the per-statement lock wait, a forced deadlock retried by the shared strategy (AC 27b),
 /// two imports over the same series (AC 27), and the backfill leaving every calendar's events unchanged (AC 12).
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_recurrence_fidelity";
@@ -94,8 +94,13 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
                 var start = zoned ? CalendarTimeZones.ToUtc(wall, oslo) : wall;
                 seeding.CalendarEvents.Add(new ContextCalendarEvent
                 {
-                    CalendarId = calendarId, Title = $"Row {i}", StartDateTime = start, EndDateTime = start.AddMinutes(10),
-                    TimeZoneId = zoned ? "Europe/Oslo" : null, CreatedAt = Now, UpdatedAt = Now,
+                    CalendarId = calendarId,
+                    Title = $"Row {i}",
+                    StartDateTime = start,
+                    EndDateTime = start.AddMinutes(10),
+                    TimeZoneId = zoned ? "Europe/Oslo" : null,
+                    CreatedAt = Now,
+                    UpdatedAt = Now,
                 });
             }
 
@@ -118,7 +123,12 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
             {
                 page = await service.ListAsync(new CalendarEventsQueryParams
                 {
-                    From = from, To = to, CalendarIds = [calendarId], ViewTimeZoneId = zone, Offset = offset, Limit = 200,
+                    From = from,
+                    To = to,
+                    CalendarIds = [calendarId],
+                    ViewTimeZoneId = zone,
+                    Offset = offset,
+                    Limit = 200,
                 });
                 paged.AddRange(page.Items);
                 offset += 200;
@@ -170,7 +180,9 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
                 await using var context = new OdysseyContext(options);
                 await Events(context).Update(rowIds[6 + round], new NewCalendarEvent
                 {
-                    CalendarId = calendarId, Title = "Edited", StartDateTime = Wall(2026, 2, 2, 11).AddDays(7 * (6 + round)),
+                    CalendarId = calendarId,
+                    Title = "Edited",
+                    StartDateTime = Wall(2026, 2, 2, 11).AddDays(7 * (6 + round)),
                     EndDateTime = Wall(2026, 2, 2, 12).AddDays(7 * (6 + round)),
                 }, User, claims: LocationClaims.Trusted);
             }));
@@ -204,7 +216,10 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
                 .Select(e => e.CalendarEventId).Skip(1).FirstAsync();
             await Events(context).Update(editedRow, new NewCalendarEvent
             {
-                CalendarId = calendarId, Title = "Override", StartDateTime = Wall(2026, 2, 9, 9), EndDateTime = Wall(2026, 2, 9, 10),
+                CalendarId = calendarId,
+                Title = "Override",
+                StartDateTime = Wall(2026, 2, 9, 9),
+                EndDateTime = Wall(2026, 2, 9, 10),
             }, User, claims: LocationClaims.Trusted);
         }
 
@@ -393,9 +408,18 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
             var start = Wall(2025, 12, 1, 9); // past and future rows around Now
             var pattern = new RecurrencePattern
             {
-                RecurrencePatternId = Guid.NewGuid(), CalendarId = calendarId, Title = "Legacy", StartDateTime = start,
-                EndDateTime = start.AddHours(1), Frequency = ContextFrequency.Weekly, Interval = 1, DaysOfWeek = ContextDays.Monday,
-                OccurrenceCount = 10, CreatedAt = Now, UpdatedAt = Now, Version = Guid.NewGuid(),
+                RecurrencePatternId = Guid.NewGuid(),
+                CalendarId = calendarId,
+                Title = "Legacy",
+                StartDateTime = start,
+                EndDateTime = start.AddHours(1),
+                Frequency = ContextFrequency.Weekly,
+                Interval = 1,
+                DaysOfWeek = ContextDays.Monday,
+                OccurrenceCount = 10,
+                CreatedAt = Now,
+                UpdatedAt = Now,
+                Version = Guid.NewGuid(),
             };
             seeding.RecurrencePatterns.Add(pattern);
             patternId = pattern.RecurrencePatternId;
@@ -413,14 +437,21 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
                     Title = i == 9 ? "Edited" : "Legacy",                                 // edited occurrence (future)
                     StartDateTime = i == 8 ? at.AddHours(2) : at,                         // rescheduled occurrence
                     EndDateTime = (i == 8 ? at.AddHours(2) : at).AddHours(1),
-                    RecurrencePatternId = pattern.RecurrencePatternId, CreatedAt = Now.AddMinutes(i), UpdatedAt = Now,
+                    RecurrencePatternId = pattern.RecurrencePatternId,
+                    CreatedAt = Now.AddMinutes(i),
+                    UpdatedAt = Now,
                 });
                 if (i == 9)
                 {
                     seeding.CalendarEvents.Add(new ContextCalendarEvent                   // duplicate start
                     {
-                        CalendarId = calendarId, Title = "Legacy", StartDateTime = at, EndDateTime = at.AddHours(1),
-                        RecurrencePatternId = pattern.RecurrencePatternId, CreatedAt = Now.AddHours(1), UpdatedAt = Now,
+                        CalendarId = calendarId,
+                        Title = "Legacy",
+                        StartDateTime = at,
+                        EndDateTime = at.AddHours(1),
+                        RecurrencePatternId = pattern.RecurrencePatternId,
+                        CreatedAt = Now.AddHours(1),
+                        UpdatedAt = Now,
                     });
                 }
             }
@@ -464,8 +495,12 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
 
     private static NewRecurrencePattern Rule(Guid calendarId) => new()
     {
-        CalendarId = calendarId, Title = "Standup", StartDateTime = Wall(2026, 2, 2, 9), EndDateTime = Wall(2026, 2, 2, 10),
-        Frequency = Odyssey.Dtos.Journal.RecurrenceFrequency.Weekly, DaysOfWeek = Odyssey.Dtos.Journal.DaysOfWeekFlags.Monday,
+        CalendarId = calendarId,
+        Title = "Standup",
+        StartDateTime = Wall(2026, 2, 2, 9),
+        EndDateTime = Wall(2026, 2, 2, 10),
+        Frequency = Odyssey.Dtos.Journal.RecurrenceFrequency.Weekly,
+        DaysOfWeek = Odyssey.Dtos.Journal.DaysOfWeekFlags.Monday,
         OccurrenceCount = 12,
     };
 
@@ -528,13 +563,17 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
         await using var context = new OdysseyContext(options);
         var page = await new CalendarEventService(context, new StubJournalLimitsLookup()).ListAsync(new CalendarEventsQueryParams
         {
-            From = new DateTime(2025, 11, 1, 0, 0, 0, DateTimeKind.Utc), To = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc),
-            CalendarIds = calendarIds, Limit = 200,
+            From = new DateTime(2025, 11, 1, 0, 0, 0, DateTimeKind.Utc),
+            To = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+            CalendarIds = calendarIds,
+            Limit = 200,
         });
         var second = await new CalendarEventService(context, new StubJournalLimitsLookup()).ListAsync(new CalendarEventsQueryParams
         {
-            From = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc), To = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc),
-            CalendarIds = calendarIds, Limit = 200,
+            From = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc),
+            To = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc),
+            CalendarIds = calendarIds,
+            Limit = 200,
         });
         return page.Items.Concat(second.Items)
             .Select(e => $"{e.CalendarEventId}|{e.CalendarId}|{e.Title}|{e.StartDateTime:O}|{e.EndDateTime:O}|{e.IsAllDay}|{e.TimeZoneId}")

@@ -1114,13 +1114,9 @@ Id	Name	NormalizedName	ConcurrencyStamp
 c9a82815-d9f8-4f3f-8b34-9f7272b71c7c	Guest	guest	27f1b3e3-82ff-4e4a-9e14-0c6a3c0f1f9e
 e444d6c0-1a33-4b2c-9f20-ef7a4ad2770b	Owner	owner	5e6b9878-3b89-474f-a2db-0e3d1e38859d
 [seed-keys]
-table `FileBlobBackfillLeases`
-absent
 table `FileStorageMaintenanceLeases`
 absent
 table `NewsStorageTotals`
-absent
-table `PhotoOriginalBackfillLeases`
 absent
 table `PhotoThumbnailBuckets`
 absent

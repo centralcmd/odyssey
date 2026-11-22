@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -16,23 +17,7 @@ public class WeatherApiClientTests
     private static readonly Guid Point = Guid.Parse("4f5a1c2e-0000-4000-8000-000000000001");
     private static readonly Guid Place = Guid.Parse("4f5a1c2e-0000-4000-8000-000000000002");
 
-    private sealed class RecordingHandler(string body = "{}") : HttpMessageHandler
-    {
-        public List<HttpRequestMessage> Requests { get; } = [];
-
-        public HttpRequestMessage Last => Requests[^1];
-
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            Requests.Add(request);
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
-        }
-    }
-
-    private static OdysseyApi Api(RecordingHandler handler) =>
+    private static OdysseyApi Api(RecordingHttpHandler handler) =>
         new(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
 
     public static TheoryData<string, string, string> Calls => new()
@@ -56,7 +41,7 @@ public class WeatherApiClientTests
     [MemberData(nameof(Calls))]
     public async Task Each_method_hits_its_route_with_its_verb(string call, string method, string pathAndQuery)
     {
-        var handler = new RecordingHandler(call == "points" ? """{"items":[],"offset":25,"limit":25,"totalCount":0}""" : call == "linked" ? "[]" : "{}");
+        var handler = new RecordingHttpHandler(call == "points" ? """{"items":[],"offset":25,"limit":25,"totalCount":0}""" : call == "linked" ? "[]" : "{}");
         var weather = new WeatherApiClient(Api(handler));
         var locations = new LocationsApiClient(Api(handler));
 
@@ -78,23 +63,23 @@ public class WeatherApiClientTests
             _ => throw new ArgumentOutOfRangeException(nameof(call)),
         });
 
-        Assert.Equal(new HttpMethod(method), handler.Last.Method);
+        Assert.Equal(new HttpMethod(method), handler.LastRequest!.Method);
         var expected = new Uri("http://localhost" + pathAndQuery);
-        Assert.Equal(expected.AbsolutePath, handler.Last.RequestUri!.AbsolutePath);
+        Assert.Equal(expected.AbsolutePath, handler.LastRequest!.RequestUri!.AbsolutePath);
         // The reads go through the shared query builder, which may add its window; every expected pair is there.
-        var sent = handler.Last.RequestUri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
+        var sent = handler.LastRequest!.RequestUri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
         Assert.All(expected.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries), pair => Assert.Contains(pair, sent));
         if (call is "options" or "points")
         {
-            Assert.Equal(expected.Query, handler.Last.RequestUri.Query);
+            Assert.Equal(expected.Query, handler.LastRequest!.RequestUri.Query);
         }
-        Assert.DoesNotContain("/api/weather/locations", handler.Last.RequestUri.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("/api/weather/locations", handler.LastRequest!.RequestUri.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task Clearing_a_link_sends_an_explicit_null()
     {
-        var handler = new RecordingHandler("""{"locationId":"4f5a1c2e-0000-4000-8000-000000000002","weatherPoint":null,"distanceKm":null,"warnings":[]}""");
+        var handler = new RecordingHttpHandler("""{"locationId":"4f5a1c2e-0000-4000-8000-000000000002","weatherPoint":null,"distanceKm":null,"warnings":[]}""");
 
         var result = await new LocationsApiClient(Api(handler)).SetWeatherPointAsync(Place, null);
 
@@ -107,11 +92,11 @@ public class WeatherApiClientTests
     [Fact]
     public async Task The_preference_is_sent_as_defaultPointId()
     {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("{}");
 
         await new WeatherApiClient(Api(handler)).SetPreferenceAsync(Point);
 
-        Assert.Equal("/api/weather/preferences", handler.Last.RequestUri!.PathAndQuery);
+        Assert.Equal("/api/weather/preferences", handler.LastRequest!.RequestUri!.PathAndQuery);
         using var body = JsonDocument.Parse(handler.LastBody!);
         Assert.Equal(Point, body.RootElement.GetProperty("defaultPointId").GetGuid());
     }

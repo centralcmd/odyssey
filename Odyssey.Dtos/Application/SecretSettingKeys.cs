@@ -102,6 +102,13 @@ public static class SecretSettingKeys
     /// </summary>
     public const string WeatherFrostClientId = "WeatherFrostClientId";
 
+    /// <summary>
+    /// The Tiingo API token (issue #447), sent only to <c>api.tiingo.com</c> as <c>Authorization: Token …</c> — the
+    /// <c>Token </c> scheme is a compiled prefix, so the bare token is what is stored. Rotatable: re-issued at
+    /// tiingo.com and re-pasted. Unset means the source is unconfigured and sends nothing; unreadable fails closed.
+    /// </summary>
+    public const string TiingoApiToken = "TiingoApiToken";
+
     /// <summary>Every declared secret key. The client catalogue is asserted against this.</summary>
     public static readonly IReadOnlyList<string> AllKeys =
     [
@@ -112,6 +119,7 @@ public static class SecretSettingKeys
         EmailRecipientHashKey,
         LegalPseudonymizationSecret,
         WeatherFrostClientId,
+        TiingoApiToken,
     ];
 
     /// <summary>

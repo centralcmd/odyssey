@@ -69,7 +69,10 @@ public static class JournalOverviews
     {
         var counts = new Dictionary<Guid, int>();
         foreach (var id in tagIdsPerRecord.SelectMany(ids => ids.Distinct()))
+        {
             counts[id] = counts.GetValueOrDefault(id) + 1;
+        }
+
         return counts;
     }
 

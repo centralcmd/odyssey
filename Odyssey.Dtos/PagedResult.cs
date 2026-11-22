@@ -12,13 +12,13 @@ namespace Odyssey.Dtos;
 /// </remarks>
 public sealed record PagedResult<T>
 {
-    public IReadOnlyList<T> Items { get; init; } = [];
+    public IReadOnlyList<T> Items { get; set; } = [];
 
     /// <summary>0-based index of the first returned item within the full matching set.</summary>
-    public int Offset { get; init; }
+    public int Offset { get; set; }
 
     /// <summary>Maximum number of items requested for this window.</summary>
-    public int Limit { get; init; }
+    public int Limit { get; set; }
 
-    public int TotalCount { get; init; }
+    public int TotalCount { get; set; }
 }

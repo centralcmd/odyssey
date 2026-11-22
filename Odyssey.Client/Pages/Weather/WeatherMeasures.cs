@@ -68,7 +68,10 @@ internal static class WeatherMeasures
     public static string WindowFigure(WeatherMeasure m, IReadOnlyList<decimal> values)
     {
         if (values.Count == 0)
+        {
             return "—";
+        }
+
         var sum = values.Sum();
         return m.Key switch
         {
@@ -87,7 +90,10 @@ internal static class WeatherMeasures
     {
         var added = next.Where(k => !current.Contains(k)).ToList();
         if (added.Count == 0)
+        {
             return next.Count > 0 ? [.. current.Where(next.Contains)] : [current[0]];
+        }
+
         var key = added[^1];
         return Of(key).Group == Of(current[0]).Group ? [.. current, key] : [key];
     }

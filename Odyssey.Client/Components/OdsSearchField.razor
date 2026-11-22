@@ -93,12 +93,16 @@
     {
         // With a debounce interval set, settle-driven OnSearch owns the fetch; don't double-fire on Enter.
         if (args.Key == "Enter" && DebounceInterval <= 0)
+        {
             await OnSearch.InvokeAsync();
+        }
     }
 
     private async Task OnDebounceElapsedAsync(string value)
     {
         if (DebounceInterval > 0)
+        {
             await OnSearch.InvokeAsync();
+        }
     }
 }

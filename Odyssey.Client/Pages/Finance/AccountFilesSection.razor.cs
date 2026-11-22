@@ -115,7 +115,9 @@ public partial class AccountFilesSection
     {
         _analysisOpen = open;
         if (!open)
+        {
             await LoadResumableMapAsync();
+        }
     }
 
     // One account-scoped read for the whole Files section. Fail-closed: any error leaves the map empty,
@@ -217,7 +219,10 @@ public partial class AccountFilesSection
     {
         var option = ContactCreator.Begin(text, kind);
         if (option is not null)
+        {
             _issuerOptions = [.. _issuerOptions, option];
+        }
+
         return option;
     }
 
@@ -231,7 +236,9 @@ public partial class AccountFilesSection
     {
         await base.OnInitializedAsync();
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         _contacts = [.. await ReferenceData.ContactsAsync()];
         _issuerOptions = OdsContactOptions.Active(_contacts);
@@ -265,7 +272,9 @@ public partial class AccountFilesSection
     private async Task LoadAnalysisAvailabilityAsync()
     {
         if (!CanAnalyze)
+        {
             return;
+        }
 
         // Stale-while-revalidate, and invalidated by a settings save in this browser — so an admin who
         // toggles the switch sees the menu change without a reload.
@@ -289,10 +298,14 @@ public partial class AccountFilesSection
         var menu = new List<OdsMenuItem>();
 
         if (CanDownload && IsPreviewable(file.FileMetadata.ContentType))
+        {
             menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", OnClick = EventCallback.Factory.Create(this, () => PreviewFileAsync(file)) });
+        }
 
         if (CanDownload)
+        {
             menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadFileAsync(file)) });
+        }
 
         if (CanAnalyze && file.FileType == AccountFileType.Statement)
         {
@@ -302,19 +315,25 @@ public partial class AccountFilesSection
             var resumable = state.PendingReview;
 
             if (state.OpenJobId is { } openId)
+            {
                 menu.Add(new OdsMenuItem { Icon = "hourglass_top", Label = "View progress", OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, FileAnalysisDialog.StartMode.Progress, null, openId)) });
+            }
 
             // Resume review — only when this file has an open, resumable job.
             if (resumable is not null)
+            {
                 menu.Add(new OdsMenuItem { Icon = "history", Label = "Resume review", OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, FileAnalysisDialog.StartMode.Resume, resumable)) });
+            }
 
             if (state.Failure is { } failure)
+            {
                 menu.Add(new OdsMenuItem
                 {
                     Icon = "report",
                     Label = state.FailureIsLastAttempt ? "View last attempt" : "View result",
                     OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, FileAnalysisDialog.StartMode.Result, null, failure.JobId)),
                 });
+            }
 
             // Analyze distinguishes resume-vs-reanalyze instead of silently creating a duplicate: a
             // resumable job present → the confirm fork; an open job → its progress (nothing new is sent while one
@@ -335,9 +354,13 @@ public partial class AccountFilesSection
                 OnClick = EventCallback.Factory.Create(this, () =>
                 {
                     if (state.OpenJobId is { } running)
+                    {
                         OpenAnalysis(file, FileAnalysisDialog.StartMode.Progress, null, running, alreadyRunning: true);
+                    }
                     else
+                    {
                         OpenAnalysis(file, resumable is not null ? FileAnalysisDialog.StartMode.ReanalyzeConfirm : FileAnalysisDialog.StartMode.Consent, resumable);
+                    }
                 }),
             });
         }
@@ -392,7 +415,9 @@ public partial class AccountFilesSection
             || patch.IssuedAt != file.IssuedAt || issuedBy != file.IssuedBy;
 
         if (!nameChanged && !typeChanged && !validityChanged)
+        {
             return;
+        }
 
         // Rename via the file-metadata endpoint — the existing description is sent
         // back unchanged so a rename doesn't wipe it (the service overwrites it).
@@ -424,7 +449,10 @@ public partial class AccountFilesSection
             // A rename in the same save has already landed; re-read so the row shows it rather than
             // the stale name while the dialog stays open for the part that did not.
             if (nameChanged)
+            {
                 await LoadFilesAsync();
+            }
+
             return;
         }
 

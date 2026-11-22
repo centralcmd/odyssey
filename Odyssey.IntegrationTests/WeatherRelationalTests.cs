@@ -3,6 +3,7 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
@@ -17,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// resumption, the link races, and write fencing on the real concurrency token. None of it is observable on the
 /// EF InMemory provider, which enforces no key and cannot run <c>ExecuteDelete</c>.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class WeatherRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_weather";
@@ -207,7 +208,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            var attempt = await new WeatherFetchService(context, source, new NoObservations(), new Settings(), new NoSecrets(), new FixedTime())
+            var attempt = await new WeatherFetchService(context, source, new NoObservations(), new Settings(), new NoSecrets(), new FakeTimeProvider(Noon))
                 .FetchForecastAsync(pointId, WeatherFetchMode.Scheduled, CancellationToken.None);
             Assert.Equal(WeatherAttemptStatus.Discarded, attempt.Status);
         }
@@ -226,7 +227,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            var attempt = await new WeatherFetchService(context, new Forecasts(null), new NoObservations(), new Settings(), new NoSecrets(), new FixedTime())
+            var attempt = await new WeatherFetchService(context, new Forecasts(null), new NoObservations(), new Settings(), new NoSecrets(), new FakeTimeProvider(Noon))
                 .FetchForecastAsync(pointId, WeatherFetchMode.Scheduled, CancellationToken.None);
             Assert.Equal(WeatherAttemptStatus.Completed, attempt.Status);
         }
@@ -328,7 +329,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
             .Options);
 
         var error = await Assert.ThrowsAsync<Odyssey.Core.DomainUnprocessableException>(() =>
-            new WeatherLinkService(racing, new FixedTime()).SetAsync(place, pointId, AdminId, CancellationToken.None));
+            new WeatherLinkService(racing, new FakeTimeProvider(Noon)).SetAsync(place, pointId, AdminId, CancellationToken.None));
 
         Assert.True(interceptor.Fired);
         Assert.Equal(["weatherPointId"], error.Errors!.Keys);
@@ -352,7 +353,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
             {
                 try
                 {
-                    await new WeatherLinkService(linkContext, new FixedTime()).SetAsync(source, pointId, AdminId, CancellationToken.None);
+                    await new WeatherLinkService(linkContext, new FakeTimeProvider(Noon)).SetAsync(source, pointId, AdminId, CancellationToken.None);
                     return "linked";
                 }
                 catch (Odyssey.Core.DomainUnprocessableException ex) when (ex.Errors!.ContainsKey("id"))
@@ -360,7 +361,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
                     return "forwarder";
                 }
             });
-            var merge = Task.Run(() => new Odyssey.Core.Journal.LocationService(mergeContext, new FixedTime())
+            var merge = Task.Run(() => new Odyssey.Core.Journal.LocationService(mergeContext, new FakeTimeProvider(Noon))
                 .MergeAsync(source, target, Odyssey.Core.Locations.LocationClaims.Trusted, AdminId, CancellationToken.None));
             var outcome = await link;
             await merge;
@@ -498,8 +499,8 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     }
 
     private static WeatherPointService Admin(OdysseyContext context) =>
-        new(context, new WeatherFetchService(context, new Forecasts(null), new NoObservations(), new Settings(), new NoSecrets(), new FixedTime()),
-            new Settings(), new RelationalWeatherHistoryPurger(context), new FixedTime());
+        new(context, new WeatherFetchService(context, new Forecasts(null), new NoObservations(), new Settings(), new NoSecrets(), new FakeTimeProvider(Noon)),
+            new Settings(), new RelationalWeatherHistoryPurger(context), new FakeTimeProvider(Noon));
 
     private async Task MigratedAsync()
     {
@@ -511,11 +512,6 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
         .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
         .Options);
-
-    private sealed class FixedTime : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(Noon);
-    }
 
     private sealed class Settings : IWeatherSettingsLookup
     {

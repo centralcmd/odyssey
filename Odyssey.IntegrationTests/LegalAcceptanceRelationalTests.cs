@@ -17,7 +17,7 @@ namespace Odyssey.IntegrationTests;
 /// (<c>Odyssey.Api.Tests.LegalAcceptancePseudonymizationTests</c>) cover the application behaviour on
 /// top of these guarantees.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class LegalAcceptanceRelationalTests(MariaDbFixture fixture)
 {
     private const string LegalDatabase = "odyssey_legal_acceptance";

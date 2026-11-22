@@ -115,7 +115,9 @@
         _shownOptionCount = count;
 
         if (arrived && _open && _autocomplete is not null)
+        {
             await _autocomplete.OpenMenuAsync();
+        }
     }
 
     private string WrapClass => string.IsNullOrEmpty(Class) ? "odc-cursel" : $"odc-cursel {Class}";
@@ -142,7 +144,9 @@
         // the untouched caption as "no query" is what makes the picker open on the full list, the way
         // every other Select does.
         if (query.Length == 0 || query == TriggerText(Selected))
+        {
             return Task.FromResult<IEnumerable<OdsOption>>(Options);
+        }
 
         return Task.FromResult<IEnumerable<OdsOption>>(
             [.. Options.Where(o => o.Value.Contains(query, StringComparison.OrdinalIgnoreCase)
@@ -153,7 +157,10 @@
     // label-less picker's accessible name has to be written onto the input itself.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || string.IsNullOrEmpty(AriaLabel)) return;
+        if (!firstRender || string.IsNullOrEmpty(AriaLabel))
+        {
+            return;
+        }
         try { await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-label", AriaLabel); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
@@ -162,7 +169,10 @@
     {
         // CoerceValue is off, so a cleared or unmatched query leaves the selection alone rather than
         // silently emptying a required currency.
-        if (option is null) return;
+        if (option is null)
+        {
+            return;
+        }
         Value = option.Value;
         await ValueChanged.InvokeAsync(option.Value);
     }

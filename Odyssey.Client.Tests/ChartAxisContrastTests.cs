@@ -167,8 +167,16 @@ public class ChartAxisContrastTests
         var previous = css.LastIndexOfAny(['}', ';'], open);
         var selector = css[(previous + 1)..open];
 
-        if (NamesTheme(selector, "dark")) return Theme.Dark;
-        if (NamesTheme(selector, "light")) return Theme.Light;
+        if (NamesTheme(selector, "dark"))
+        {
+            return Theme.Dark;
+        }
+
+        if (NamesTheme(selector, "light"))
+        {
+            return Theme.Light;
+        }
+
         return null;
     }
 

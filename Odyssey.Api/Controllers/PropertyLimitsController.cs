@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odyssey.Dtos.Application;
 using Odyssey.Core.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -40,7 +39,7 @@ public sealed class PropertyLimitsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PropertyLimitsDto))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The effective per-property limits for the Properties page.")]
+    [EndpointSummary("The effective per-property limits for the Properties page.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var limits = await lookup.GetAsync(cancellationToken);

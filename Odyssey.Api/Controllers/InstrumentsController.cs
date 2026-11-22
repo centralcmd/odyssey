@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Finance.Instruments;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -28,14 +27,15 @@ public sealed class InstrumentsController(
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingInstrument>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List instruments.", Description = "Price fields are null, and sorting by the latest price date is refused, without instrument-prices.read.")]
+    [EndpointSummary("List instruments.")]
+    [EndpointDescription("Price fields are null, and sorting by the latest price date is refused, without instrument-prices.read.")]
     public async Task<IActionResult> Get([FromQuery] InstrumentsQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await instruments.ListAsync(query, CanReadPrices, cancellationToken));
 
     [HttpGet("summary", Name = "GetInstrumentSummary")]
     [Authorize(Policy = PermissionClaims.InstrumentsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(InstrumentSummary))]
-    [SwaggerOperation(Summary = "Counts by type, followed and archived; the newest price date and attributions for price readers.")]
+    [EndpointSummary("Counts by type, followed and archived; the newest price date and attributions for price readers.")]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken = default) =>
         Ok(await instruments.GetSummaryAsync(CanReadPrices, cancellationToken));
 
@@ -44,10 +44,10 @@ public sealed class InstrumentsController(
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(InstrumentWatchlist))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The dashboard watchlist: followed instruments' latest prices and change in the display currency.")]
+    [EndpointSummary("The dashboard watchlist: followed instruments' latest prices and change in the display currency.")]
     public async Task<IActionResult> GetWatchlist(
-        [FromQuery(Name = "mainCurrency")] [StringLength(3)] [RegularExpression("^[A-Za-z]{3}$")] string? mainCurrency,
-        [FromQuery(Name = "sparklineDays")] [Range(0, InstrumentWatchlistService.MaxSparklineDays)] int sparklineDays = 0,
+        [FromQuery(Name = "mainCurrency")][StringLength(3)][RegularExpression("^[A-Za-z]{3}$")] string? mainCurrency,
+        [FromQuery(Name = "sparklineDays")][Range(0, InstrumentWatchlistService.MaxSparklineDays)] int sparklineDays = 0,
         CancellationToken cancellationToken = default) =>
         Ok(await watchlist.GetAsync(string.IsNullOrWhiteSpace(mainCurrency) ? "NOK" : mainCurrency, sparklineDays, cancellationToken));
 
@@ -84,7 +84,7 @@ public sealed class InstrumentsController(
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update an instrument. Not an upsert; identity fields are immutable once prices or sources exist.")]
+    [EndpointSummary("Update an instrument. Not an upsert; identity fields are immutable once prices or sources exist.")]
     public async Task<IActionResult> Put(Guid id, [FromBody] NewInstrument request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -124,7 +124,7 @@ public sealed class InstrumentsController(
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(InstrumentPriceSeries))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One closing price per date for a chart; at most 3 660 days.")]
+    [EndpointSummary("One closing price per date for a chart; at most 3 660 days.")]
     public async Task<IActionResult> GetSeries(
         Guid id, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken cancellationToken = default) =>
         await prices.GetSeriesAsync(id, from, to, cancellationToken) is { } series
@@ -138,13 +138,12 @@ public sealed class InstrumentsController(
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete an instrument's prices in one scope.",
-        Description = "source and expectedCount are required; a stale count is a 409 that deletes nothing. Fetched rows also need system-settings.update.")]
+    [EndpointSummary("Delete an instrument's prices in one scope.")]
+    [EndpointDescription("source and expectedCount are required; a stale count is a 409 that deletes nothing. Fetched rows also need system-settings.update.")]
     public async Task<IActionResult> Purge(
         Guid id,
-        [FromQuery(Name = "source")] [Required] InstrumentPricePurgeScope? source,
-        [FromQuery(Name = "expectedCount")] [Required] [Range(0, int.MaxValue)] int? expectedCount,
+        [FromQuery(Name = "source")][Required] InstrumentPricePurgeScope? source,
+        [FromQuery(Name = "expectedCount")][Required][Range(0, int.MaxValue)] int? expectedCount,
         CancellationToken cancellationToken = default)
     {
         if (source is InstrumentPricePurgeScope.Fetched or InstrumentPricePurgeScope.All

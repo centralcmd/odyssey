@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// (finding F2), the delete/no-content path, that the child DTOs can't reparent via over-posting, and
 /// that the base GET returns the contact collections inline.
 /// </summary>
-public class ContactApiTests
+public class ContactApiTests(ContactApiTests.Host host) : SharedApiHostTests<ContactApiTests.Host>(host)
 {
     private const string ActorUserId = "contact-actor-id";
 
@@ -39,7 +39,11 @@ public class ContactApiTests
 
     private static NewAddress Address(bool primary = false) => new()
     {
-        Label = AddressLabel.Visiting, IsPrimary = primary, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+        Label = AddressLabel.Visiting,
+        IsPrimary = primary,
+        Line1 = "Storgata 55",
+        City = "Oslo",
+        CountryCode = "NO",
     };
 
     // ── Claim matrix on the sub-resource routes ───────────────────────────────
@@ -47,7 +51,7 @@ public class ContactApiTests
     [Fact]
     public async Task ListAddresses_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/contacts/{Guid.NewGuid()}/addresses");
@@ -58,7 +62,7 @@ public class ContactApiTests
     [Fact]
     public async Task ListAddresses_WithoutReadClaim_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/contacts/{Guid.NewGuid()}/addresses");
@@ -69,7 +73,7 @@ public class ContactApiTests
     [Fact]
     public async Task ChildWrites_WithReadOnlyClaim_AreForbidden()
     {
-        await using var factory = new ApiFactory(ReadOnly);
+        var factory = Factory.ForCaller(ReadOnly);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -88,7 +92,7 @@ public class ContactApiTests
     [Fact]
     public async Task PostAddress_Returns201WithLocation_AndListReturnsIt()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -108,7 +112,7 @@ public class ContactApiTests
     [Fact]
     public async Task PostAddress_ToUnknownContact_Returns404()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -119,7 +123,7 @@ public class ContactApiTests
     [Fact]
     public async Task DeleteAddress_Returns204()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -137,7 +141,7 @@ public class ContactApiTests
     [Fact]
     public async Task PutAddress_UnderWrongParent_Returns404_AndDoesNotMutate()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var owner = await SeedContactAsync(factory, "Owner");
         var other = await SeedContactAsync(factory, "Other");
         using var client = factory.CreateClient();
@@ -156,7 +160,7 @@ public class ContactApiTests
     [Fact]
     public async Task DeleteAddress_UnderWrongParent_Returns404()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var owner = await SeedContactAsync(factory, "Owner");
         var other = await SeedContactAsync(factory, "Other");
         using var client = factory.CreateClient();
@@ -173,7 +177,7 @@ public class ContactApiTests
     [Fact]
     public async Task PostAddress_WithForeignContactIdInBody_BindsToRouteParent()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var owner = await SeedContactAsync(factory, "Owner");
         var other = await SeedContactAsync(factory, "Other");
         using var client = factory.CreateClient();
@@ -203,7 +207,7 @@ public class ContactApiTests
     [Fact]
     public async Task GetContact_ReturnsContactCollectionsInline()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
 
@@ -243,6 +247,9 @@ public class ContactApiTests
         return id;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

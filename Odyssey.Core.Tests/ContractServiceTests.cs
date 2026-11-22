@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -5,6 +6,7 @@ using Odyssey.Dtos;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 // Both halves of the aligned pair are in scope (Odyssey.Context for the seed, Odyssey.Dtos.Finance for
@@ -28,52 +30,28 @@ public class ContractServiceTests
     // IContactLookup the service resolves through (xUnit creates a fresh test-class instance per test).
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     /// <summary>
     /// The contract caps moved into the settings store (issue #421 Wave 3), so the service takes a
     /// lookup rather than <c>IOptions&lt;ContractOptions&gt;</c> — that class is gone.
     /// </summary>
     private ContractService CreateService(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             logger ?? NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new StubFinanceCaps(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
 
     private ContractFileService Files(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             caps ?? new StubFinanceCaps());
 
     private ContractSummaryService Summaries(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
-        new(context, new FixedTimeProvider(FixedToday), caps ?? new StubFinanceCaps());
-
-    /// <summary>
-    /// Captures the formatted message of every line the service logs. Issue #121 §7.7's line is the
-    /// Contracts module's only audit trail for a party write — a party row carries no attribution
-    /// column (only the contract itself records who added it) — so its content is behaviour, not
-    /// diagnostics.
-    /// </summary>
-    private sealed class RecordingLogger : ILogger<ContractService>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
-    }
+        new(context, new FakeTimeProvider(FixedToday), caps ?? new StubFinanceCaps());
 
     /// <summary>The acting user every party write is attributed to in its log line (issue #121 §7.7).</summary>
     private const string TestUserId = "test-user";
@@ -378,19 +356,26 @@ public class ContractServiceTests
         var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
         await service.Update(created.ContractId, new UpdateContract
         {
-            Name = created.Name, Type = created.Type,
-            StartDate = created.StartDate, EndDate = created.EndDate, IsArchived = true,
-            Ready = created.Ready, Signed = created.Signed,
+            Name = created.Name,
+            Type = created.Type,
+            StartDate = created.StartDate,
+            EndDate = created.EndDate,
+            IsArchived = true,
+            Ready = created.Ready,
+            Signed = created.Signed,
         }, userId: null);
 
         // Only the TRANSITION into archived is gated. Re-saving an already-archived row must not
         // re-validate, or a row archived before this rule existed could never be edited or restored.
         UpdateContract Running(bool isArchived) => new()
         {
-            Name = created.Name, Type = created.Type,
-            StartDate = FixedToday.AddDays(-10), EndDate = FixedToday.AddDays(10),
+            Name = created.Name,
+            Type = created.Type,
+            StartDate = FixedToday.AddDays(-10),
+            EndDate = FixedToday.AddDays(10),
             IsArchived = isArchived,
-            Ready = created.Ready, Signed = created.Signed,
+            Ready = created.Ready,
+            Signed = created.Signed,
         };
 
         Assert.NotNull((await service.Update(created.ContractId, Running(isArchived: true), userId: null))!.Archived);
@@ -413,7 +398,8 @@ public class ContractServiceTests
             Name = created.Name,
             Type = created.Type,
             CompletionDate = FixedToday.AddDays(-2),
-            Ready = created.Ready, Signed = created.Signed,
+            Ready = created.Ready,
+            Signed = created.Signed,
         }, userId: null);
 
         Assert.NotNull(updated);
@@ -438,7 +424,8 @@ public class ContractServiceTests
             Type = created.Type,
             StartDate = FixedToday.AddDays(-5),
             EndDate = FixedToday.AddDays(5),
-            Ready = created.Ready, Signed = created.Signed,
+            Ready = created.Ready,
+            Signed = created.Signed,
         }, userId: null);
 
         Assert.NotNull(updated);
@@ -612,7 +599,8 @@ public class ContractServiceTests
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             IsArchived = true,
-            Ready = contract.Ready, Signed = contract.Signed,
+            Ready = contract.Ready,
+            Signed = contract.Signed,
         }, userId: null);
 
         var party = await Parties(context).AddParty(
@@ -661,18 +649,18 @@ public class ContractServiceTests
     public async Task PartyWrites_EachEmitExactlyOneLine_NamingTheRoleBeforeAndAfter()
     {
         await using var context = TestContextFactory.Create();
-        var log = new RecordingLogger();
+        var log = new RecordingLogger<ContractService>();
         var service = CreateService(context, logger: log);
         var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
         // Creating a SIGNED contract emits the two signature-transition lines (issue #145 §7.7);
         // clear them so what follows measures the PARTY lines alone.
-        log.Lines.Clear();
+        log.Clear();
 
         var party = await Parties(context, logger: log).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId);
 
-        var added = Assert.Single(log.Lines);
+        var added = Assert.Single(log.Messages);
         Assert.Contains(contract.ContractId.ToString(), added);
         Assert.Contains(party!.ContractPartyId.ToString(), added);
         Assert.Contains(accountId.ToString(), added);
@@ -683,21 +671,21 @@ public class ContractServiceTests
         Assert.Contains("(none) -> Buyer", added);
         Assert.DoesNotContain("Unspecified", added);
 
-        log.Lines.Clear();
+        log.Clear();
 
         // A full replacement changing the role: Buyer -> Seller, visible in the line.
         await Parties(context, logger: log).UpdateParty(contract.ContractId, party.ContractPartyId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
-        var updated = Assert.Single(log.Lines);
+        var updated = Assert.Single(log.Messages);
         Assert.Contains("Buyer -> Seller", updated);
         Assert.Contains(party.ContractPartyId.ToString(), updated);
 
-        log.Lines.Clear();
+        log.Clear();
 
         await Parties(context, logger: log).DeleteParty(contract.ContractId, party.ContractPartyId, TestUserId);
 
-        var detached = Assert.Single(log.Lines);
+        var detached = Assert.Single(log.Messages);
         Assert.Contains("detached", detached);
         Assert.Contains(party.ContractPartyId.ToString(), detached);
         Assert.Contains(TestUserId, detached);
@@ -718,20 +706,20 @@ public class ContractServiceTests
     public async Task RefusedPartyWrite_LogsNothing()
     {
         await using var context = TestContextFactory.Create();
-        var log = new RecordingLogger();
+        var log = new RecordingLogger<ContractService>();
         var service = CreateService(context, logger: log);
         var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Parties(context, logger: log).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
-        log.Lines.Clear();
+        log.Clear();
 
         await Assert.ThrowsAsync<DomainConflictException>(() =>
             Parties(context, logger: log).AddParty(contract.ContractId,
                 new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId));
 
-        Assert.Empty(log.Lines);
+        Assert.Empty(log.Messages);
     }
 
     // ── Roles and terms (issue #121 §8) ─────────────────────────────────────────
@@ -804,7 +792,8 @@ public class ContractServiceTests
             Name = contract.Name,
             Type = contract.Type,
             StartDate = FixedToday.AddDays(-10),
-            Ready = contract.Ready, Signed = contract.Signed,
+            Ready = contract.Ready,
+            Signed = contract.Signed,
         }, userId: null);
 
         var reloaded = await service.Get(contract.ContractId);
@@ -861,7 +850,7 @@ public class ContractServiceTests
     {
         const string Probe = "LOGPROBE-5508217";
         await using var context = TestContextFactory.Create();
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger<ContractService>();
         var service = CreateService(context, logger: logger);
 
         var created = await service.Create(new NewContract
@@ -881,7 +870,7 @@ public class ContractServiceTests
 
         // The signature transitions above guarantee the service DID log, so an empty capture cannot
         // pass this vacuously.
-        Assert.NotEmpty(logger.Lines);
-        Assert.DoesNotContain(logger.Lines, line => line.Contains("LOGPROBE", StringComparison.Ordinal));
+        Assert.NotEmpty(logger.Messages);
+        Assert.DoesNotContain(logger.Messages, line => line.Contains("LOGPROBE", StringComparison.Ordinal));
     }
 }

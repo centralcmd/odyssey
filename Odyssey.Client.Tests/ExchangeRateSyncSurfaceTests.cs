@@ -23,15 +23,8 @@ namespace Odyssey.Client.Tests;
 /// The exchange-rate sync frontend (issue #351): the eight vocabularies, the status panel's polling,
 /// the currency rows' save behaviour, and the source rules the spec's acceptance criteria name.
 /// </summary>
-[Collection(ExchangeRateSyncCollection.Name)]
-public partial class ExchangeRateSyncSurfaceTests : IDisposable
+public partial class ExchangeRateSyncSurfaceTests
 {
-    public void Dispose()
-    {
-        CurrenciesCard.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-        ExchangeRatesCard.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-    }
-
     private static readonly DateTimeOffset Now = new(2026, 10, 23, 8, 40, 0, TimeSpan.Zero);
 
     // ── Vocabularies (AC 9, 15) ──────────────────────────────────────────────────────────────────
@@ -66,8 +59,14 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         Assert.Equal("Sync error", OdsTypeRegistries.ExchangeRateSyncErrorOf(ExchangeRateSyncErrorKind.Internal));
         Assert.Equal("Unknown", OdsTypeRegistries.ExchangeRateSourceOf(new ExistingExchangeRate
         {
-            ExchangeRateId = Guid.NewGuid(), FromCurrencyCode = "USD", ToCurrencyCode = "EUR", Rate = 1m,
-            AsOf = Now.UtcDateTime, CreatedAt = Now.UtcDateTime, Source = ExchangeRateSource.Fetched, Provider = (ExchangeRateProvider)99,
+            ExchangeRateId = Guid.NewGuid(),
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "EUR",
+            Rate = 1m,
+            AsOf = Now.UtcDateTime,
+            CreatedAt = Now.UtcDateTime,
+            Source = ExchangeRateSource.Fetched,
+            Provider = (ExchangeRateProvider)99,
         }).Label);
     }
 
@@ -142,8 +141,12 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         NextRunAtUtc = Now.UtcDateTime.AddHours(8),
         LastRun = new ExistingExchangeRateSyncRun
         {
-            Id = Guid.NewGuid(), Status = ExchangeRateSyncRunStatus.Succeeded, Trigger = ExchangeRateSyncTrigger.Manual,
-            StartedAtUtc = Now.UtcDateTime, FinishedAtUtc = Now.UtcDateTime, RowsInserted = rowsInserted,
+            Id = Guid.NewGuid(),
+            Status = ExchangeRateSyncRunStatus.Succeeded,
+            Trigger = ExchangeRateSyncTrigger.Manual,
+            StartedAtUtc = Now.UtcDateTime,
+            FinishedAtUtc = Now.UtcDateTime,
+            RowsInserted = rowsInserted,
         },
     };
 
@@ -228,7 +231,10 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
             .ReturnsAsync(() =>
             {
                 if (!first)
+                {
                     return ApiResult<ExchangeRateSyncStatus>.Failure(HttpStatusCode.ServiceUnavailable, new ApiProblem { Title = "down" });
+                }
+
                 first = false;
                 return ApiResult<ExchangeRateSyncStatus>.Success(Running(Now.UtcDateTime), HttpStatusCode.OK);
             });
@@ -280,8 +286,11 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         {
             LastRun = new ExistingExchangeRateSyncRun
             {
-                Id = Guid.NewGuid(), Status = ExchangeRateSyncRunStatus.Failed, ErrorKind = ExchangeRateSyncErrorKind.ProviderUnavailable,
-                StartedAtUtc = Now.UtcDateTime.AddHours(-2), FinishedAtUtc = Now.UtcDateTime.AddHours(-2),
+                Id = Guid.NewGuid(),
+                Status = ExchangeRateSyncRunStatus.Failed,
+                ErrorKind = ExchangeRateSyncErrorKind.ProviderUnavailable,
+                StartedAtUtc = Now.UtcDateTime.AddHours(-2),
+                FinishedAtUtc = Now.UtcDateTime.AddHours(-2),
             },
         };
         var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client(status).Object);
@@ -311,10 +320,15 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
 
     private static ExistingExchangeRateSyncCurrency Currency(string code, bool enabled = false, bool locked = false, bool? supported = true) => new()
     {
-        CurrencyCode = code, Name = code + " name", Enabled = enabled, Locked = locked, Supported = supported,
+        CurrencyCode = code,
+        Name = code + " name",
+        Enabled = enabled,
+        Locked = locked,
+        Supported = supported,
         // A synced fixture is caught up unless a test says otherwise, so it reads Synced.
         BackfillComplete = enabled || locked,
-        EffectiveHistoryStartDate = new DateOnly(2026, 1, 1), FirstAvailableDate = new DateOnly(1999, 1, 4),
+        EffectiveHistoryStartDate = new DateOnly(2026, 1, 1),
+        FirstAvailableDate = new DateOnly(1999, 1, 4),
     };
 
     private IRenderedComponent<MudPopoverProvider>? _popover;
@@ -327,8 +341,13 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
 
     private static ExistingExchangeRate Rate(ExchangeRateSource source) => new()
     {
-        ExchangeRateId = Guid.NewGuid(), FromCurrencyCode = "USD", ToCurrencyCode = "BASE", Rate = 10m,
-        AsOf = Now.UtcDateTime.AddDays(-1), CreatedAt = Now.UtcDateTime.AddDays(-1), Source = source,
+        ExchangeRateId = Guid.NewGuid(),
+        FromCurrencyCode = "USD",
+        ToCurrencyCode = "BASE",
+        Rate = 10m,
+        AsOf = Now.UtcDateTime.AddDays(-1),
+        CreatedAt = Now.UtcDateTime.AddDays(-1),
+        Source = source,
         Status = ExchangeRateStatus.Current,
         Provider = source == ExchangeRateSource.Fetched ? ExchangeRateProvider.NorgesBank : null,
     };
@@ -339,9 +358,12 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         rates.Setup(c => c.GetSummaryAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExchangeRateSummary>.Success(new ExchangeRateSummary
             {
-                TotalCount = 1234, LatestAsOfUtc = Now.UtcDateTime, Attribution = "Provider (licence)",
+                TotalCount = 1234,
+                LatestAsOfUtc = Now.UtcDateTime,
+                Attribution = "Provider (licence)",
                 ByStatus = new ExchangeRateStatusCounts { Current = 4, Upcoming = 1, Historical = 1229 },
-                ToCurrencyCodes = ["BASE"], ProviderDisplayName = "Provider",
+                ToCurrencyCodes = ["BASE"],
+                ProviderDisplayName = "Provider",
             }, HttpStatusCode.OK));
         rates.Setup(c => c.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
                 It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
@@ -351,7 +373,7 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IClipboardService>().Object);
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims));
-        ExchangeRatesCard.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         ctx.Render<MudPopoverProvider>();
         _dialogs = ctx.Render<MudDialogProvider>();
         var cut = ctx.Render<ExchangeRatesCard>();

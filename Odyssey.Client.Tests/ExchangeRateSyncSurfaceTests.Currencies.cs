@@ -35,7 +35,10 @@ public partial class ExchangeRateSyncSurfaceTests
     /// </summary>
     private static ExistingCurrency Row(ExistingExchangeRateSyncCurrency? sync, string? code = null, bool archived = false) => new()
     {
-        CurrencyCode = code ?? sync!.CurrencyCode, Name = (code ?? sync!.CurrencyCode) + " name", Symbol = "¤", MinorUnits = 2,
+        CurrencyCode = code ?? sync!.CurrencyCode,
+        Name = (code ?? sync!.CurrencyCode) + " name",
+        Symbol = "¤",
+        MinorUnits = 2,
         Archived = archived ? Now.UtcDateTime : null,
         Sync = archived ? null : sync,
         Status = CurrencyStatuses.Of(archived, archived ? null : sync),
@@ -68,10 +71,10 @@ public partial class ExchangeRateSyncSurfaceTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims));
+        ctx.UseInteractivity();
         _popover = ctx.Render<MudPopoverProvider>();
         _dialogs = ctx.Render<MudDialogProvider>();
         ctx.Render<MudSnackbarProvider>();
-        CurrenciesCard.InteractiveCheck = static () => true;
         return (ctx, sync, currencies);
     }
 
@@ -487,7 +490,8 @@ public partial class ExchangeRateSyncSurfaceTests
         sync.Setup(c => c.UpdateCurrencyAsync("USD", It.IsAny<ExchangeRateSyncCurrencyUpdate>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingExchangeRateSyncCurrency>.Failure(HttpStatusCode.UnprocessableEntity, new ApiProblem
             {
-                Title = "Unprocessable", Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { ["enabled"] = ["The provider doesn't publish USD."] },
+                Title = "Unprocessable",
+                Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { ["enabled"] = ["The provider doesn't publish USD."] },
             }));
 
         var cut = RenderCurrencies(ctx, "USD");
@@ -826,7 +830,9 @@ public partial class ExchangeRateSyncSurfaceTests
         currencies.Verify(c => c.UpdateAsync("USD", It.Is<NewCurrency>(n => n.Archived), It.IsAny<CancellationToken>()), Times.Once);
         // The synced count in the header follows a stopped sync.
         if (synced)
+        {
             cut.WaitForAssertion(() => Assert.True(sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync)) > reads));
+        }
     }
 
     // ── Purge ────────────────────────────────────────────────────────────────────────────────────

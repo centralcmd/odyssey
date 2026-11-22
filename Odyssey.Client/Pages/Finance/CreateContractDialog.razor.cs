@@ -105,18 +105,20 @@ public partial class CreateContractDialog
     protected override void OnInitialized()
     {
         if (Contract is not { } contract)
+        {
             return;
+        }
 
-        _name           = contract.Name;
-        _type           = contract.Type.ToString();
-        _description    = contract.Description;
+        _name = contract.Name;
+        _type = contract.Type.ToString();
+        _description = contract.Description;
         _referenceNumber = contract.ReferenceNumber;
-        _mode           = contract.CompletionDate is not null ? OneOffMode : TermMode;
-        _startDate      = contract.StartDate;
-        _endDate        = contract.EndDate;
+        _mode = contract.CompletionDate is not null ? OneOffMode : TermMode;
+        _startDate = contract.StartDate;
+        _endDate = contract.EndDate;
         _completionDate = contract.CompletionDate;
-        _ready          = contract.Ready;
-        _signed         = contract.Signed;
+        _ready = contract.Ready;
+        _signed = contract.Signed;
     }
 
     /// <summary>
@@ -230,7 +232,9 @@ public partial class CreateContractDialog
 
         if (referenceInvalid || _nameError is not null || _typeError is not null || _endError is not null
             || _completionError is not null || _readyError is not null || _signedError is not null)
+        {
             return false;
+        }
 
         var oneOff = _mode == OneOffMode;
         var type = Enum.TryParse<ContractType>(_type, out var t) ? t : ContractType.Other;

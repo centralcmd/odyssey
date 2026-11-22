@@ -51,18 +51,20 @@ public partial class CreateAccountDialog
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         if (Account is { } account)
         {
-            _name          = account.Name;
-            _description   = account.Description;
+            _name = account.Name;
+            _description = account.Description;
             _accountNumber = account.AccountNumber;
-            _accountType   = account.AccountType;
-            _opened        = account.Opened;
-            _closed        = account.Closed;
-            _currencyCode  = account.CurrencyCode;
-            _custodianId   = account.CustodianId?.ToString();
+            _accountType = account.AccountType;
+            _opened = account.Opened;
+            _closed = account.Closed;
+            _currencyCode = account.CurrencyCode;
+            _custodianId = account.CustodianId?.ToString();
         }
         else
         {
@@ -99,7 +101,10 @@ public partial class CreateAccountDialog
     {
         _contacts = _contacts.Where(c => c.ContactId.ToString() != tempId).ToList();
         if (_custodianId == tempId)
+        {
             _custodianId = null;
+        }
+
         StateHasChanged();
     }
 
@@ -152,7 +157,9 @@ public partial class CreateAccountDialog
         _typeError = _accountType == AccountType.Unknown;
         _custodianError = null;
         if (_nameError || _typeError)
+        {
             return false;
+        }
 
         if (string.IsNullOrWhiteSpace(_currencyCode))
         {
@@ -165,18 +172,18 @@ public partial class CreateAccountDialog
 
         var newAccount = new NewAccount
         {
-            Description   = (_description ?? string.Empty).Trim(),
-            Name          = _name!.Trim(),
+            Description = (_description ?? string.Empty).Trim(),
+            Name = _name!.Trim(),
             AccountNumber = string.IsNullOrWhiteSpace(_accountNumber) ? null : _accountNumber.Trim(),
-            AccountType   = _accountType,
-            Opened        = _opened,
-            Closed        = IsEdit ? _closed : null,
-            CurrencyCode  = _currencyCode.Trim().ToUpperInvariant(),
+            AccountType = _accountType,
+            Opened = _opened,
+            Closed = IsEdit ? _closed : null,
+            CurrencyCode = _currencyCode.Trim().ToUpperInvariant(),
             // Archive/restore is a separate row action — preserve whatever the record already has.
-            Archived      = IsEdit && Account!.Archived is not null,
+            Archived = IsEdit && Account!.Archived is not null,
             // A temp id from an inline create maps to the id the server issued; a create that failed
             // maps to null, so a bogus id is never posted.
-            CustodianId   = Guid.TryParse(ContactCreator.Resolve(_custodianId), out var custodian) ? custodian : null,
+            CustodianId = Guid.TryParse(ContactCreator.Resolve(_custodianId), out var custodian) ? custodian : null,
         };
 
         var result = IsEdit

@@ -66,7 +66,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(59, NumericRows.Count);
+        Assert.Equal(63, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));
@@ -130,7 +130,8 @@ public class SettingsBoundsCatalogueTests
     public void An_exempted_rows_load_phase_fallback_stays_inside_its_pair()
     {
         var exempt = NumericRows.Where(item => item.MaxFrom is not null || item.MinFrom is not null).ToList();
-        Assert.Equal(10, exempt.Count);
+        // 11 since issue #556's podcast episode size cap, bounded by its own derived ceiling.
+        Assert.Equal(11, exempt.Count);
 
         foreach (var item in exempt)
         {

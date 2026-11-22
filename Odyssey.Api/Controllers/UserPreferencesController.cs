@@ -3,7 +3,7 @@ using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 using System.Security.Claims;
 using Odyssey.Core.Preferences;
 
@@ -30,12 +30,10 @@ public sealed class UserPreferencesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UserPreferenceResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get user preference for page key.",
-        Description = @"Get user preference for page key.")]
+    [EndpointSummary("Get user preference for page key.")]
+    [EndpointDescription(@"Get user preference for page key.")]
     public async Task<IActionResult> GetPreference(
-        [FromRoute(Name = "pageKey")] [SwaggerParameter("ID", Required = true,
-            Description = @"The page key for the preference to get.")]string pageKey,
+        [FromRoute(Name = "pageKey")][Description(@"The page key for the preference to get.")] string pageKey,
         CancellationToken cancellationToken)
     {
         if (!TryValidatePageKey(pageKey, out var problem))
@@ -58,12 +56,10 @@ public sealed class UserPreferencesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UserPreferenceResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update user preference for page key.",
-        Description = @"Update user preference for page key.")]
+    [EndpointSummary("Update user preference for page key.")]
+    [EndpointDescription(@"Update user preference for page key.")]
     public async Task<IActionResult> UpsertPreference(
-        [FromRoute(Name = "pageKey")] [SwaggerParameter("ID", Required = true,
-            Description = @"The page key for the user preference to update.")] string pageKey,
+        [FromRoute(Name = "pageKey")][Description(@"The page key for the user preference to update.")] string pageKey,
         [FromBody] UserPreferenceRequest request,
         CancellationToken cancellationToken)
     {

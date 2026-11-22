@@ -6,7 +6,6 @@ using Microsoft.Net.Http.Headers;
 using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Internet;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -26,7 +25,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One page of articles: feeds OR'd, tags OR'd (own or inherited), the lists AND'd; continue with nextCursor.")]
+    [EndpointSummary("One page of articles: feeds OR'd, tags OR'd (own or inherited), the lists AND'd; continue with nextCursor.")]
     public async Task<IActionResult> List([FromQuery] NewsArticlesQueryParams query, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query.Search))
@@ -63,7 +62,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(NewsArticleDetail))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One article with its body, read from its plain-text file, and its stored images.")]
+    [EndpointSummary("One article with its body, read from its plain-text file, and its stored images.")]
     public async Task<IActionResult> Get([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         await articles.GetAsync(id, cancellationToken) is { } article ? Ok(article) : NotFound(id);
 
@@ -72,7 +71,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<NewsArticleRevisionSummary>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "An article's earlier versions, newest first, metadata only.")]
+    [EndpointSummary("An article's earlier versions, newest first, metadata only.")]
     public async Task<IActionResult> Revisions([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         await articles.RevisionsAsync(id, cancellationToken) is { } revisions ? Ok(revisions) : NotFound(id);
 
@@ -81,7 +80,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(NewsArticleRevisionDetail))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One earlier version with its body.")]
+    [EndpointSummary("One earlier version with its body.")]
     public async Task<IActionResult> Revision([FromRoute] Guid id, [FromRoute] int number, CancellationToken cancellationToken = default) =>
         await articles.RevisionAsync(id, number, cancellationToken) is { } revision
             ? Ok(revision)
@@ -99,7 +98,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "A stored image of an article, with nosniff, CORP same-site, a strong ETag and range processing.")]
+    [EndpointSummary("A stored image of an article, with nosniff, CORP same-site, a strong ETag and range processing.")]
     public async Task<IActionResult> ImageContent([FromRoute] Guid id, [FromRoute] Guid imageId, CancellationToken cancellationToken = default)
     {
         if (await articles.ImageAsync(id, imageId, cancellationToken) is not { } descriptor)
@@ -133,7 +132,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Mark one article read or unread. Idempotent.")]
+    [EndpointSummary("Mark one article read or unread. Idempotent.")]
     public async Task<IActionResult> SetReadState([FromRoute] Guid id, [FromBody] NewsArticleReadState request, CancellationToken cancellationToken = default) =>
         await articles.SetReadAsync(id, request.IsRead!.Value, cancellationToken) ? NoContent() : NotFound(id);
 
@@ -141,7 +140,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [Authorize(Policy = PermissionClaims.NewsUpdate)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(MarkNewsReadResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Set one read state on 1–500 articles; unknown ids change nothing.")]
+    [EndpointSummary("Set one read state on 1–500 articles; unknown ids change nothing.")]
     public async Task<IActionResult> SetReadStateBulk([FromBody] NewsArticlesReadStateBulk request, CancellationToken cancellationToken = default) =>
         Ok(await articles.SetReadAsync(request, cancellationToken));
 
@@ -151,7 +150,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Mark read what the list's filters match, up to the first page's asOfUtc; repeat while hasMore.")]
+    [EndpointSummary("Mark read what the list's filters match, up to the first page's asOfUtc; repeat while hasMore.")]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> MarkRead([FromBody] MarkNewsRead request, CancellationToken cancellationToken = default)
     {
@@ -181,7 +180,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace an article's own tags.")]
+    [EndpointSummary("Replace an article's own tags.")]
     public async Task<IActionResult> SetTags([FromRoute] Guid id, [FromBody] NewsArticleTagsUpdate request, CancellationToken cancellationToken = default) =>
         await articles.SetTagsAsync(id, request, cancellationToken) ? NoContent() : NotFound(id);
 
@@ -190,7 +189,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Add one tag to an article. Idempotent; an archived tag is a 422.")]
+    [EndpointSummary("Add one tag to an article. Idempotent; an archived tag is a 422.")]
     public async Task<IActionResult> AddTag([FromRoute] Guid id, [FromRoute] Guid tagId, CancellationToken cancellationToken = default) =>
         await articles.AddTagAsync(id, tagId, cancellationToken) ? NoContent() : TagNotFound(id, tagId);
 
@@ -198,7 +197,7 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [Authorize(Policy = PermissionClaims.NewsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove one tag from an article. Idempotent.")]
+    [EndpointSummary("Remove one tag from an article. Idempotent.")]
     public async Task<IActionResult> RemoveTag([FromRoute] Guid id, [FromRoute] Guid tagId, CancellationToken cancellationToken = default) =>
         await articles.RemoveTagAsync(id, tagId, cancellationToken) ? NoContent() : TagNotFound(id, tagId);
 

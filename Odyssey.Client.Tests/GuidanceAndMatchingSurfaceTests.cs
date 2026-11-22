@@ -19,11 +19,8 @@ namespace Odyssey.Client.Tests;
 /// <c>/settings</c>, the consent bullet built from the disclosure, the match summary and wait copy, and
 /// the analysis log's guidance facts.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class GuidanceAndMatchingSurfaceTests : IDisposable
+public class GuidanceAndMatchingSurfaceTests
 {
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static readonly string[] AllFields = ["contactName", "contactAlias", "tagName", "tagDescription"];
 
     // ── OdsNoteField ─────────────────────────────────────────────────────────────────────────────
@@ -393,7 +390,10 @@ public class GuidanceAndMatchingSurfaceTests : IDisposable
         var entry = Entry() with
         {
             MatchVocabularyScope = FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions,
-            ContactCount = 19, AliasCount = 7, TagCount = 12, TagDescriptionCount = 9,
+            ContactCount = 19,
+            AliasCount = 7,
+            TagCount = 12,
+            TagDescriptionCount = 9,
             VocabularyReduction = FileAnalysisVocabularyReduction.None,
         };
 
@@ -406,16 +406,16 @@ public class GuidanceAndMatchingSurfaceTests : IDisposable
 
     private static FileAnalysisDisclosureDto Disclosure(
         IEnumerable<string> fields, string coverage = "allActive", bool matchGuidance = false) => new()
-    {
-        Processor = "Anthropic",
-        ProcessorRegion = "United States",
-        LawfulBasis = "Consent",
-        PrivacyNoticeUrl = "https://example.test/privacy",
-        Model = "m",
-        MatchVocabularyFields = fields.ToList(),
-        MatchVocabularyCoverage = coverage,
-        MatchGuidanceInForce = matchGuidance,
-    };
+        {
+            Processor = "Anthropic",
+            ProcessorRegion = "United States",
+            LawfulBasis = "Consent",
+            PrivacyNoticeUrl = "https://example.test/privacy",
+            Model = "m",
+            MatchVocabularyFields = fields.ToList(),
+            MatchVocabularyCoverage = coverage,
+            MatchGuidanceInForce = matchGuidance,
+        };
 
     private static ExistingFileAnalysisJob Job(
         int contacts, int? aliases, int tags, int? described, FileAnalysisVocabularyReduction? reduction) =>

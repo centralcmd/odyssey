@@ -226,7 +226,10 @@ public static class OdsDonutPalette
     public static string ColorFor(OdsDonutSlice slice, int index, IReadOnlyList<string>? colors)
     {
         if (!string.IsNullOrEmpty(slice.Color))
+        {
             return slice.Color;
+        }
+
         var palette = colors is { Count: > 0 } ? colors : Default;
         return palette[index % palette.Count];
     }
@@ -481,6 +484,12 @@ public sealed record OdsRowAction
     public string? Key { get; init; }
 }
 
+/// <summary>
+/// A stored file's kind derived from its content type (<see cref="OdsTypeRegistries.FileKindOf"/>): the label, the
+/// glyph and its colours.
+/// </summary>
+public sealed record OdsFileKindInfo(string Label, string Icon, string Color, string Soft);
+
 /// <summary>A file-kind descriptor for <see cref="OdsFileUpload"/> (Statement / Document / Receipt / Tax).</summary>
 public sealed record OdsFileKind
 {
@@ -514,9 +523,17 @@ public static class OdsFileUploadDefaults
     /// <summary>Format a byte count as "B / KB / MB". Null shows "—".</summary>
     public static string FmtSize(long? bytes)
     {
-        if (bytes is null) return "—";
+        if (bytes is null)
+        {
+            return "—";
+        }
+
         var b = bytes.Value;
-        if (b < 1024) return $"{b} B";
+        if (b < 1024)
+        {
+            return $"{b} B";
+        }
+
         if (b < 1024 * 1024)
         {
             var kb = b / 1024.0;
@@ -529,8 +546,16 @@ public static class OdsFileUploadDefaults
     public static string GuessKind(string name)
     {
         var ext = (name.Contains('.') ? name[(name.LastIndexOf('.') + 1)..] : string.Empty).ToLowerInvariant();
-        if (ext is "jpg" or "jpeg" or "png" or "heic" or "webp" or "gif" or "tiff") return "Receipt";
-        if (ext == "pdf") return "Statement";
+        if (ext is "jpg" or "jpeg" or "png" or "heic" or "webp" or "gif" or "tiff")
+        {
+            return "Receipt";
+        }
+
+        if (ext == "pdf")
+        {
+            return "Statement";
+        }
+
         return "Document";
     }
 }

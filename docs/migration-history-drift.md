@@ -4,8 +4,8 @@ The migrations job refuses to start and says something like:
 
 ```text
 crit: Odyssey.MigrationService.Worker[0]
-      Migrations job failed: OdysseyContext: migration '20260829095318_InitialCreate' is recorded as
-      pending, but the table 'Accounts' it creates already exists. The database is out of step with
+      Migrations job failed: Migration '20260829095318_InitialCreate' is recorded as pending, but the
+      table 'Accounts' it creates already exists. The database is out of step with
       __EFMigrationsHistory ...
 ```
 
@@ -97,8 +97,8 @@ check constraints joined. Adding another kind means one case in `MigrationRunner
 A create is **discounted** when an earlier operation of the same pending run dropped that name first:
 the replayed drop removes whatever an interruption left, so the create cannot collide. EF scaffolds
 every change to a check's expression that way — `DropCheckConstraint` then `AddCheckConstraint` of the
-same name — and two shipped migrations do it in `Up()` (both for `CK_ContractParties_ExactlyOneTarget`), so without the discount an ordinary upgrade across
-them would be refused.
+same name — and many shipped migrations do it in `Up()`, so without the discount an ordinary upgrade
+across any of them would be refused.
 
 ### The renamed-table half-state
 
@@ -113,8 +113,9 @@ to rename anything, and it renames a table, two columns and an index in one run.
 leaves a database where, for example, `Terms` exists and `AccountTerms` does not, while
 `__EFMigrationsHistory` still says the migration is pending. The guard reports:
 
-```
-Table 'Terms' already exists, but the migration that creates it is still pending.
+```text
+Migrations job failed: Migration '20260918225310_RenameAccountTermsToTermsAndReworkInterval' is
+recorded as pending, but the table 'Terms' it creates already exists. ...
 ```
 
 Diagnosing it is the same exercise as any other half-state — read the message, decide which of the
@@ -180,7 +181,7 @@ hand, then record it:
 
 ```sql
 INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
-VALUES ('20260829095318_InitialCreate', '9.0.19');
+VALUES ('<the migration id named in the error>', '<ProductVersion>');
 ```
 
 Take `ProductVersion` from the other rows in the table. Getting this wrong reintroduces exactly the

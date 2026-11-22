@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -30,7 +31,7 @@ namespace Odyssey.Client.Tests;
 /// A lint rather than a behavioural test because the failure mode is <b>reintroduction</b>: nothing
 /// consumed the value, so a branch that brings the property back compiles and renders identically.
 /// It lives in this project because this is where the repository's source-lints live; the subject is
-/// the whole solution, so it reads through <see cref="ClientSource.Sibling"/>.
+/// the whole solution, so it reads through <see cref="SourceTree"/>.
 /// </para>
 /// </remarks>
 public class RelationshipTypeResidueTests
@@ -90,11 +91,8 @@ public class RelationshipTypeResidueTests
     /// </summary>
     private static IEnumerable<string> ApplicationSourceFiles() =>
         ApplicationProjects
-            .Select(ClientSource.Sibling)
-            .Where(Directory.Exists)
-            .SelectMany(project => Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories)
-                .Concat(Directory.EnumerateFiles(project, "*.razor", SearchOption.AllDirectories)))
-            .Where(file => !IsBuildOutput(file));
+            .Where(project => Directory.Exists(SourceTree.File(project)))
+            .SelectMany(project => SourceTree.Files(project, "*.cs", "*.razor"));
 
     private static bool IsHistoricalMigration(string path)
     {
@@ -103,12 +101,8 @@ public class RelationshipTypeResidueTests
             && Path.GetFileName(normalized).Contains('_', StringComparison.Ordinal);
     }
 
-    private static bool IsBuildOutput(string file) =>
-        file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-        || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
-
     private static string RelativeToRepo(string file) =>
-        Path.GetRelativePath(Path.GetDirectoryName(ClientSource.Root)!, file);
+        Path.GetRelativePath(SourceTree.Root, file);
 
     private static string Normalize(string path) => path.Replace(Path.DirectorySeparatorChar, '/');
 }

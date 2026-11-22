@@ -377,4 +377,27 @@ public static class SystemSettingsBounds
 
     /// <summary>Pinned at the shipped default, so the entry cap can only be lowered.</summary>
     public const int NewsOpmlMaxImportEntriesMax = SystemSettingsDefaults.NewsOpmlMaxImportEntries;
+
+    // ── Podcasts (issue #556 §8.2) ────────────────────────────────────────────────────────────────
+
+    public const int PodcastAudioStoreMaxGiBMin = 1;
+
+    public const int PodcastAudioStoreMaxGiBMax = 10000;
+
+    /// <summary>
+    /// The static pair. The effective maximum is also bounded by the derived ceiling (<c>PodcastAudioSizeCeiling.Mb</c>,
+    /// from <c>FileStorage:MaxFileSizeBytes</c>), validated on write and published as
+    /// <c>SystemSettingsDto.PodcastAudioMaxEpisodeMbCeiling</c>; this floor is that ceiling's floor too.
+    /// </summary>
+    public const int PodcastAudioMaxEpisodeMbMin = 16;
+
+    public const int PodcastAudioMaxEpisodeMbMax = 4096;
+
+    public const int PodcastAutoDownloadsPerFeedPerDayMin = 1;
+
+    public const int PodcastAutoDownloadsPerFeedPerDayMax = 100;
+
+    public const int PodcastAutoDownloadMaxUnfetchedPerFeedMin = 1;
+
+    public const int PodcastAutoDownloadMaxUnfetchedPerFeedMax = 100;
 }

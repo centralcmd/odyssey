@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Avatar;
@@ -51,7 +50,7 @@ public sealed class ContactAliasesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContactsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingContactAlias>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List a contact's alternative names.")]
+    [EndpointSummary("List a contact's alternative names.")]
     public async Task<IActionResult> GetAliases([FromRoute] Guid contactId, CancellationToken cancellationToken = default)
     {
         var aliases = await contactService.GetAliases(contactId, cancellationToken);
@@ -65,8 +64,8 @@ public sealed class ContactAliasesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Add one alternative name to a contact.",
-        Description = @"409 when the contact already carries that value (compared case- AND
+    [EndpointSummary("Add one alternative name to a contact.")]
+    [EndpointDescription(@"409 when the contact already carries that value (compared case- AND
 accent-insensitively, on the value alone — two labels cannot smuggle in a second ""Hansen""); 422 when
 the contact is already at its 32-alias cap. Both name the field `value` in the problem-details
 `errors` dictionary, and neither echoes the submitted value or label.")]
@@ -90,8 +89,8 @@ the contact is already at its 32-alias cap. Both name the field `value` in the p
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace one of a contact's alternative names.",
-        Description = @"A replace, not a patch: an omitted or blank `label` CLEARS a previously-set
+    [EndpointSummary("Replace one of a contact's alternative names.")]
+    [EndpointDescription(@"A replace, not a patch: an omitted or blank `label` CLEARS a previously-set
 one, matching the sibling sub-resources. There is deliberately no 422 here — a replace cannot grow the
 collection, so the cap is unreachable on this verb.")]
     public async Task<IActionResult> PutAlias(

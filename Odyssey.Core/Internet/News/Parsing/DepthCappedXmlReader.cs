@@ -4,7 +4,7 @@ namespace Odyssey.Core.Internet.News.Parsing;
 
 /// <summary>
 /// The wrapping reader every XML consumer reads through (issue #470 §7.10), the raw capture
-/// (<see cref="System.Xml.Linq.XElement.ReadFrom"/>) included: it throws an <see cref="XmlException"/> the moment an
+/// (<see cref="System.Xml.Linq.XNode.ReadFrom"/>) included: it throws an <see cref="XmlException"/> the moment an
 /// element nests deeper than <see cref="MaxDepth"/>, so a 100,000-deep document fails here, linearly, before anything
 /// recursive sees it.
 /// </summary>

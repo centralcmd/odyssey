@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Odyssey.Client.Components;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -92,7 +93,9 @@ public sealed class RegistryGlyphInkSourceTests
             {
                 var expr = m.Groups["expr"].Value.Trim();
                 if (!NamesAColour.IsMatch(expr))
+                {
                     continue;
+                }
 
                 if (expr.StartsWith(nameof(OdsGlyphInk) + ".", StringComparison.Ordinal))
                 {
@@ -102,9 +105,13 @@ public sealed class RegistryGlyphInkSourceTests
 
                 var exempt = InlineExempt.FirstOrDefault(e => e.File == relative && Normalise(e.Expr) == Normalise(expr));
                 if (exempt.File is not null)
+                {
                     usedExemptions.Add((exempt.File, exempt.Expr));
+                }
                 else
-                    offenders.Add($"{relative}:{ClientSource.LineAt(text, m.Index)}  color:{expr}");
+                {
+                    offenders.Add($"{relative}:{SourceLint.LineAt(text, m.Index)}  color:{expr}");
+                }
             }
         }
 
@@ -129,7 +136,7 @@ public sealed class RegistryGlyphInkSourceTests
             Assert.True(matches.Count > 0, $"Text site pattern no longer matches in {file}: {pattern}");
             Assert.All(matches, m => Assert.True(
                 m.Groups["m"].Value == nameof(OdsGlyphInk.Text),
-                $"{file}:{ClientSource.LineAt(text, m.Index)} paints a registry colour as TEXT through "
+                $"{file}:{SourceLint.LineAt(text, m.Index)} paints a registry colour as TEXT through "
                 + $"OdsGlyphInk.{m.Groups["m"].Value} — text owes 4.5:1 (WCAG 1.4.3), which only OdsGlyphInk.Text (L 0.50) reaches."));
         }
     }
@@ -151,7 +158,7 @@ public sealed class RegistryGlyphInkSourceTests
                 found++;
                 Assert.True(
                     m.Groups["v"].Value.StartsWith("@(" + nameof(OdsGlyphInk) + "." + nameof(OdsGlyphInk.Text) + "(", StringComparison.Ordinal),
-                    $"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, m.Index)} passes OdsChip Fg=\"{m.Groups["v"].Value}\" — "
+                    $"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, m.Index)} passes OdsChip Fg=\"{m.Groups["v"].Value}\" — "
                     + "the chip paints it as text verbatim, so it must be OdsGlyphInk.Text(…).");
             }
         }
@@ -178,7 +185,7 @@ public sealed class RegistryGlyphInkSourceTests
         foreach (var (file, text) in CssSources())
         {
             wrapped += wrappedRule.Matches(text).Count;
-            offenders.AddRange(raw.Matches(text).Select(m => $"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, m.Index)}"));
+            offenders.AddRange(raw.Matches(text).Select(m => $"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, m.Index)}"));
         }
 
         // infotile, record mark, alias, prop-type glyph, rail node, card-select, warning glyph, 2× scheduled.
@@ -233,9 +240,11 @@ public sealed class RegistryGlyphInkSourceTests
             foreach (Match m in raw.Matches(text))
             {
                 var relative = ClientSource.Relative(file);
-                var line = text.Split('\n')[ClientSource.LineAt(text, m.Index) - 1];
+                var line = text.Split('\n')[SourceLint.LineAt(text, m.Index) - 1];
                 if (!PaleLiteralExempt.Any(e => e.File == relative && line.Contains(e.Rule, StringComparison.Ordinal)))
-                    offenders.Add($"{relative}:{ClientSource.LineAt(text, m.Index)}  {line.Trim()}");
+                {
+                    offenders.Add($"{relative}:{SourceLint.LineAt(text, m.Index)}  {line.Trim()}");
+                }
             }
         }
 

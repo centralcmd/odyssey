@@ -24,7 +24,7 @@ public partial class AccountsCard
     private OdsConfirm _confirm = default!;
 
     // ── Data ───────────────────────────────────────────────────────────────
-    private List<ExistingAccount> _accounts  = [];
+    private List<ExistingAccount> _accounts = [];
     // Server-computed rollup backing the overview donuts + header count/balance (issue #372). It
     // spans every account — unlike the display list, which the server filters — and replaces the
     // full-table fetch the page used to do just to count and sum rows in the browser.
@@ -60,11 +60,11 @@ public partial class AccountsCard
     private const string PageStateKey = "accounts-page";
     private bool _problemsOpen = true;
     private bool _overviewOpen = true;
-    private bool _searchOpen   = true;
+    private bool _searchOpen = true;
 
     // ── Filter state ─────────────────────────────────────────────────────────
     private string _searchString = string.Empty;
-    private IReadOnlyCollection<string> _typeFilter   = [];
+    private IReadOnlyCollection<string> _typeFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
 
     // The list is server-filtered, so an empty result only means "first run" when nothing is filtering it.
@@ -115,7 +115,9 @@ public partial class AccountsCard
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -133,34 +135,34 @@ public partial class AccountsCard
 
     private void ApplyPageState(AccountsPageState state)
     {
-        _problemsOpen  = state.ProblemsOpen;
-        _overviewOpen  = state.OverviewOpen;
-        _searchOpen    = state.SearchOpen;
-        _searchString  = state.Search ?? string.Empty;
-        _typeFilter    = _typeOptions.KnownValues(state.TypeFilter);
-        _statusFilter  = _statusOptions.KnownValues(state.StatusFilter);
-        _sort          = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
-        _batch         = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
+        _problemsOpen = state.ProblemsOpen;
+        _overviewOpen = state.OverviewOpen;
+        _searchOpen = state.SearchOpen;
+        _searchString = state.Search ?? string.Empty;
+        _typeFilter = _typeOptions.KnownValues(state.TypeFilter);
+        _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
+        _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
+        _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
 
     private AccountsPageState BuildPageState() => new()
     {
-        ProblemsOpen  = _problemsOpen,
-        OverviewOpen  = _overviewOpen,
-        SearchOpen    = _searchOpen,
-        Search        = _searchString,
-        TypeFilter    = [.. _typeFilter],
-        StatusFilter  = [.. _statusFilter],
-        SortField     = _sort.Key,
+        ProblemsOpen = _problemsOpen,
+        OverviewOpen = _overviewOpen,
+        SearchOpen = _searchOpen,
+        Search = _searchString,
+        TypeFilter = [.. _typeFilter],
+        StatusFilter = [.. _statusFilter],
+        SortField = _sort.Key,
         SortDirection = _sort.Dir,
-        BatchSize     = _batch,
+        BatchSize = _batch,
     };
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
 
     private void OnProblemsToggled(bool open) { _problemsOpen = open; PersistPageState(); }
     private void OnOverviewToggled(bool open) { _overviewOpen = open; PersistPageState(); }
-    private void OnSearchToggled(bool open)   { _searchOpen = open;   PersistPageState(); }
+    private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
 
     // Value change persists + keeps the box current; the server refetch is debounced via the field's
     // DebounceInterval → OnSearch (ReloadAsync). Filter/sort changes refetch immediately.
@@ -217,7 +219,9 @@ public partial class AccountsCard
             }
 
             if (!result.IsSuccess)
+            {
                 return;
+            }
 
             _totals = result.Value;
             BuildProblems();
@@ -239,7 +243,9 @@ public partial class AccountsCard
     {
         _problems = new();
         if (_totals is null)
+        {
             return;
+        }
 
         var main = _totals.MainCurrencyCode;
         foreach (var unconverted in _totals.UnconvertedAccounts)
@@ -278,22 +284,22 @@ public partial class AccountsCard
     private async Task LoadPermissionsAsync()
     {
         var user = await AuthenticationStateProvider.GetUserAsync();
-        _canCreateAccounts    = user.HasPermission(PermissionClaims.AccountsCreate);
-        _canUpdateAccounts    = user.HasPermission(PermissionClaims.AccountsUpdate);
-        _canDeleteAccounts    = user.HasPermission(PermissionClaims.AccountsDelete);
-        _canDownloadFiles     = user.HasPermission(PermissionClaims.FilesRead);
-        _canUploadFiles       = user.HasPermission(PermissionClaims.FilesCreate);
-        _canDeleteFiles       = user.HasPermission(PermissionClaims.AccountsUpdate);
-        _canEditFiles         = user.HasPermission(PermissionClaims.AccountsUpdate)
+        _canCreateAccounts = user.HasPermission(PermissionClaims.AccountsCreate);
+        _canUpdateAccounts = user.HasPermission(PermissionClaims.AccountsUpdate);
+        _canDeleteAccounts = user.HasPermission(PermissionClaims.AccountsDelete);
+        _canDownloadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate);
+        _canDeleteFiles = user.HasPermission(PermissionClaims.AccountsUpdate);
+        _canEditFiles = user.HasPermission(PermissionClaims.AccountsUpdate)
                              && user.HasPermission(PermissionClaims.FilesUpdate);
-        _canAnalyzeFiles      = user.HasPermission(PermissionClaims.FileAnalysisCreate)
+        _canAnalyzeFiles = user.HasPermission(PermissionClaims.FileAnalysisCreate)
                              && user.HasPermission(PermissionClaims.FileAnalysisRead)
                              && user.HasPermission(PermissionClaims.FileAnalysisImport);
         _canCreateTransactions = user.HasPermission(PermissionClaims.TransactionsCreate);
-        _canReadTransactions   = user.HasPermission(PermissionClaims.TransactionsRead);
-        _canReadEstimates      = user.HasPermission(PermissionClaims.AccountsEstimatesRead);
-        _canWriteEstimates     = user.HasPermission(PermissionClaims.AccountsEstimatesWrite);
-        _canReadContracts      = user.HasPermission(PermissionClaims.ContractsRead);
+        _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
+        _canReadEstimates = user.HasPermission(PermissionClaims.AccountsEstimatesRead);
+        _canWriteEstimates = user.HasPermission(PermissionClaims.AccountsEstimatesWrite);
+        _canReadContracts = user.HasPermission(PermissionClaims.ContractsRead);
     }
 
     // Server-side fetch (issue #277): search/filters/sort are applied by the API, not in the browser.
@@ -316,7 +322,9 @@ public partial class AccountsCard
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
         if (response.IsSuperseded)
+        {
             return;
+        }
 
         var result = response.Value;
 
@@ -387,7 +395,10 @@ public partial class AccountsCard
     private async Task<IReadOnlyCollection<Guid>> LoadAccountFileIds()
     {
         if (_uploadAccount is null)
+        {
             return [];
+        }
+
         var result = await Accounts.ListFilesAsync(_uploadAccount.AccountId);
         return [.. result.ValueOr([]).Select(f => f.FileMetadata.Id)];
     }
@@ -395,7 +406,10 @@ public partial class AccountsCard
     private async Task<bool> AttachAccountFileAsync(AttachDocumentItem item)
     {
         if (_uploadAccount is null)
+        {
             return false;
+        }
+
         return (await Accounts.AttachFileAsync(_uploadAccount.AccountId, AttachDocumentRequests.Account(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
@@ -403,7 +417,9 @@ public partial class AccountsCard
     private void AddFile(ExistingAccount account)
     {
         if (!CanAttachFiles)
+        {
             return;
+        }
 
         _uploadAccount = account;
         _uploadKey = Guid.NewGuid();
@@ -413,7 +429,9 @@ public partial class AccountsCard
     private async Task OnFilesUploaded(IReadOnlyList<AttachDocumentItem> _)
     {
         if (_uploadAccount is null)
+        {
             return;
+        }
 
         // Expand the account and force its files section to reload by changing its @key.
         _expandedId = _uploadAccount.AccountId;
@@ -429,7 +447,9 @@ public partial class AccountsCard
     private void EditClicked(ExistingAccount account)
     {
         if (!_canUpdateAccounts)
+        {
             return;
+        }
 
         _editAccount = account;
         _editAccountKey = Guid.NewGuid();
@@ -450,7 +470,11 @@ public partial class AccountsCard
 
     private void AddClicked()
     {
-        if (!_canCreateAccounts) return;
+        if (!_canCreateAccounts)
+        {
+            return;
+        }
+
         _createAccountKey = Guid.NewGuid();
         _createAccountOpen = true;
     }
@@ -481,7 +505,11 @@ public partial class AccountsCard
 
     private void AddEstimate(ExistingAccount account)
     {
-        if (!_canWriteEstimates) return;
+        if (!_canWriteEstimates)
+        {
+            return;
+        }
+
         _estimateAccount = account;
         _estimateKey = Guid.NewGuid();
         _estimateOpen = true;
@@ -503,21 +531,25 @@ public partial class AccountsCard
     // only the lifecycle fields the row-menu toggles touch (close/reopen, archive).
     private static NewAccount ToNewAccount(ExistingAccount a, DateTime? closed, bool archived) => new()
     {
-        Name          = a.Name,
-        Description   = a.Description,
+        Name = a.Name,
+        Description = a.Description,
         AccountNumber = a.AccountNumber,
-        AccountType   = a.AccountType,
-        Opened        = a.Opened,
-        Closed        = closed,
-        CurrencyCode  = a.CurrencyCode,
-        Archived      = archived,
+        AccountType = a.AccountType,
+        Opened = a.Opened,
+        Closed = closed,
+        CurrencyCode = a.CurrencyCode,
+        Archived = archived,
         // Preserve the custodian link on a lifecycle-only toggle (omitting it would clear the link).
-        CustodianId   = a.CustodianId,
+        CustodianId = a.CustodianId,
     };
 
     private async Task ToggleCloseAccount(ExistingAccount account)
     {
-        if (!_canUpdateAccounts) return;
+        if (!_canUpdateAccounts)
+        {
+            return;
+        }
+
         var targetClosed = account.Closed is null ? (DateTime?)DateTime.UtcNow : null;
         var update = ToNewAccount(account, targetClosed, account.Archived is not null);
         if ((await Accounts.UpdateAsync(account.AccountId, update)).Toast(Snackbar, "Update failed",
@@ -531,7 +563,11 @@ public partial class AccountsCard
 
     private async Task ToggleArchive(ExistingAccount account)
     {
-        if (!_canUpdateAccounts) return;
+        if (!_canUpdateAccounts)
+        {
+            return;
+        }
+
         var targetArchived = account.Archived is null;
         var update = ToNewAccount(account, account.Closed, targetArchived);
         if ((await Accounts.UpdateAsync(account.AccountId, update)).Toast(Snackbar, "Update failed",
@@ -547,10 +583,16 @@ public partial class AccountsCard
 
     private async Task ConfirmDeleteAccount(ExistingAccount account)
     {
-        if (!_canDeleteAccounts) return;
+        if (!_canDeleteAccounts)
+        {
+            return;
+        }
+
         var confirmed = await _confirm.AskAsync("Delete account", $"Delete '{account.Name}'? This cannot be undone.", "Delete");
         if (confirmed)
+        {
             await DeleteAccount(account);
+        }
     }
 
     private async Task DeleteAccount(ExistingAccount account)
@@ -674,8 +716,16 @@ public partial class AccountsCard
 
     private static string GetStatusLabel(ExistingAccount a)
     {
-        if (a.Archived != null) return "Archived";
-        if (a.Closed   != null) return "Closed";
+        if (a.Archived != null)
+        {
+            return "Archived";
+        }
+
+        if (a.Closed != null)
+        {
+            return "Closed";
+        }
+
         return "Open";
     }
 
@@ -683,8 +733,16 @@ public partial class AccountsCard
     // AccountStatusChip: Open (income) · Closed (pending) · Archived (outline).
     private static OdsChipTone GetStatusChipTone(ExistingAccount a)
     {
-        if (a.Archived != null) return OdsChipTone.Outline;
-        if (a.Closed   != null) return OdsChipTone.Pending;
+        if (a.Archived != null)
+        {
+            return OdsChipTone.Outline;
+        }
+
+        if (a.Closed != null)
+        {
+            return OdsChipTone.Pending;
+        }
+
         return OdsChipTone.Income;
     }
 
@@ -693,8 +751,16 @@ public partial class AccountsCard
     private static string GetLifecycle(ExistingAccount a)
     {
         var parts = new List<string> { $"Opened {OdsDates.Long(a.Opened)}" };
-        if (a.Closed   is { } closed)   parts.Add($"Closed {OdsDates.Long(closed)}");
-        if (a.Archived is { } archived) parts.Add($"Archived {OdsDates.Long(archived)}");
+        if (a.Closed is { } closed)
+        {
+            parts.Add($"Closed {OdsDates.Long(closed)}");
+        }
+
+        if (a.Archived is { } archived)
+        {
+            parts.Add($"Archived {OdsDates.Long(archived)}");
+        }
+
         return string.Join(" · ", parts);
     }
 
@@ -703,7 +769,7 @@ public partial class AccountsCard
     {
         > 0 => "var(--finance-income)",
         < 0 => "var(--finance-expense)",
-        _   => "var(--mud-palette-text-secondary)",
+        _ => "var(--mud-palette-text-secondary)",
     };
 
     // Formats an amount in the given currency's code and minor units. A null currencyCode means a
@@ -718,7 +784,9 @@ public partial class AccountsCard
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
         if (_minorUnitsCache.TryGetValue(key, out var cached))
+        {
             return cached;
+        }
 
         _currenciesByCode.TryGetValue(key, out var currency);
         var units = OdsMoney.MinorUnitsOf(currency);

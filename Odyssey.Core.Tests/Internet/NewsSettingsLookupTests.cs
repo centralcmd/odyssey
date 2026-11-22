@@ -6,6 +6,7 @@ using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Internet.News;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests.Internet;
@@ -28,7 +29,9 @@ public sealed class NewsSettingsLookupTests : IDisposable
         cache.Dispose();
     }
 
-    private NewsSettingsLookup Lookup(long maxFileSizeBytes = 64L * 1024 * 1024) =>
+    // The shipped transport ceiling (10 GiB), so neither derived ceiling — the image size's or, since issue #556, the
+    // podcast episode size's — clamps a shipped default. Ceiling tests pass their own value.
+    private NewsSettingsLookup Lookup(long maxFileSizeBytes = 10L * 1024 * 1024 * 1024) =>
         new(context, cache, Options.Create(new FileStorageOptions { MaxFileSizeBytes = maxFileSizeBytes }), NullLogger<NewsSettingsLookup>.Instance);
 
     private async Task SetAsync(string key, string value)
@@ -123,25 +126,17 @@ public sealed class NewsTextQuotaSourceLintTests
     [Fact]
     public void AC62_no_source_compares_the_text_total_itself()
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Odyssey.sln")))
-        {
-            root = root.Parent;
-        }
-
-        Assert.NotNull(root);
         var pattern = new System.Text.RegularExpressions.Regex(@"TextAndSourceBytes\s*(>=|<=|>|<)|(?<![=-])(>=|<=|>|<)\s*\w*\.?TextAndSourceBytes\b");
         var scanned = 0;
         var offenders = new List<string>();
         foreach (var project in new[] { "Odyssey.Core", "Odyssey.Api", "Odyssey.Worker" })
         {
-            foreach (var file in Directory.EnumerateFiles(Path.Combine(root!.FullName, project), "*.cs", SearchOption.AllDirectories)
-                         .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))
+            foreach (var file in SourceTree.Files(project))
             {
                 scanned++;
                 if (pattern.IsMatch(File.ReadAllText(file)))
                 {
-                    offenders.Add(Path.GetRelativePath(root.FullName, file));
+                    offenders.Add(SourceTree.Relative(file));
                 }
             }
         }

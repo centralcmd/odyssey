@@ -6,7 +6,9 @@
 
 - **Backend API:** Odyssey.Api — ASP.NET Core Web API (NET 10.0) providing financial data, file storage, and user preferences.
 - **Frontend client:** Odyssey.Client — Blazor WebAssembly app served via NGINX.
-- **Domain libraries:** Odyssey.Core (Finance + Journal modules), Odyssey.Dtos (all DTOs), Odyssey.ApiClient (the typed HTTP client).
+- **Background jobs:** Odyssey.Worker — a .NET Worker Service (its own container, no HTTP surface) that runs every periodic job.
+- **Migrations:** Odyssey.MigrationService — a one-shot job that applies EF Core migrations (and, in Development/Testing, seeds demo data) before the API starts.
+- **Domain libraries:** Odyssey.Core (all business logic, split by folder), Odyssey.Dtos (all DTOs), Odyssey.ApiClient (the typed HTTP client), Odyssey.TestData (deterministic demo-data generators).
 - **Persistence:** MariaDB. **One** EF context, `OdysseyContext` in Odyssey.Context, owns the whole
   schema — identity and auth alongside finance, journal, tasks, photos, calendars and contacts —
   against a single `odyssey` database.
@@ -59,7 +61,11 @@ From repo root:
 dotnet test Odyssey.sln --no-build
 ```
 
-- Tests are designed to run using **EF InMemory**, so they should not require Docker or a database.
+- The fast tiers run on **EF InMemory** and need no Docker or database. The Docker-backed
+  (`Odyssey.IntegrationTests`) and running-stack (`Odyssey.E2ETests*`) tiers **self-skip** when their
+  prerequisite is absent, so a green run may not have run them; set `ODYSSEY_REQUIRE_TIER`
+  (`integration`, `e2e`, `e2e-api`, `design-system`, `perf` or `all`) to make an absent prerequisite fail.
+  The `perf` tier skips unless named.
 - If you change DB schema or EF behavior, rerun tests to ensure no regressions.
 
 ---
@@ -78,7 +84,7 @@ Then:
 
 - Frontend: `http://localhost:5199`
 - API: `http://localhost:5188`
-- Swagger: `http://localhost:5188/swagger`
+- API reference (Scalar): `http://localhost:5188/scalar/v1` — sign in to the client first
 
 To stop/clean:
 
@@ -99,7 +105,9 @@ Run the Aspire stack from the Odyssey.AppHost project:
 dotnet run --project Odyssey.AppHost
 ```
 
-- Launches client + API + MariaDB, with the Aspire dev dashboard.
+- Launches client + API + migrations + worker + MariaDB, with the Aspire dev dashboard.
+- Run it in **Debug** (the default). Never pass `-c Release`: a Release client looks for the API at
+  same-origin `/api/`, which only the Compose stack's nginx serves.
 - ⚠️ Ports are **fixed, and the same ones Docker Compose uses**: MariaDB on host `3307`, client
   `5199`, API `5188`. Running Aspire and Compose at the same time collides — the second MariaDB
   comes up unreachable and host tools silently hit the wrong server. See
@@ -120,6 +128,8 @@ dotnet run --project Odyssey.AppHost
 ### Main projects
 - Odyssey.Api → ASP.NET Core Web API (entry point Program.cs, config under appsettings.json)
 - Odyssey.Client → Blazor WebAssembly frontend
+- Odyssey.Worker → background-job host (jobs registered in `WorkerHost.cs`)
+- Odyssey.MigrationService → migration runner + demo-data seeder
 - Odyssey.AppHost → Aspire orchestrator + dashboard
 
 ### Domain / shared libraries
@@ -129,14 +139,18 @@ dotnet run --project Odyssey.AppHost
   `Authorization/`, `Legal/` and `Secrets/` sub-namespaces) and the one `Migrations/` folder
 - Odyssey.Dtos → all DTOs, split by folder/namespace (`Application/`, `Journal/`, `Finance/`,
   `Authorization/`). Keeps **zero** project references so the WASM client can reference it.
+- Odyssey.TestData → deterministic (fixed-seed) demo-data generators, shared by the seeders and the tests
 
 ### Tests
 - Odyssey.Core.Tests → unit / service (EF InMemory)
 - Odyssey.Api.Tests → API integration via WebApplicationFactory (EF InMemory)
 - Odyssey.MigrationService.Tests → the demo seeder (EF InMemory)
 - Odyssey.ApiClient.Tests → the shared typed HTTP client
+- Odyssey.Client.Tests → Blazor components and client-side source lints
+- Odyssey.Worker.Tests → the worker host and its production service graph
 - Odyssey.IntegrationTests → real MariaDB via Testcontainers (needs Docker, else self-skips)
 - Odyssey.E2ETests / Odyssey.E2ETests.Api → browser + API smoke against a running, seeded stack
+- *perf* tier → `[Trait("Category", "Perf")]` tests in Core.Tests and IntegrationTests, skipped unless `ODYSSEY_REQUIRE_TIER` names `perf`
 
 ---
 
@@ -193,14 +207,38 @@ otherwise the context binds to InMemory and no usable migration comes out.
 
 ---
 
+## 📏 Key rules
+
+[`CLAUDE.md`](../CLAUDE.md) is the source of truth for conventions, and
+[`docs/architecture/`](../docs/architecture/) holds the per-area rules (file storage, settings,
+background jobs, contracts, …). The ones most often broken:
+
+- **Gate features with permission claims, never a config kill-switch.** A new claim goes in
+  `PermissionClaims` (`Odyssey.Dtos`) **and** `RolePermissions.AllClaims` (`Odyssey.Context`).
+- **Admin-editable policy lives in the `SystemSettings` store**, not a new `appsettings.json` key;
+  secrets go in the encrypted secret store. Never copy a server cap into the client as a constant.
+- **Schema changes are additive migrations** made with `dotnet ef`; history is never squashed again.
+- **Background jobs run in `Odyssey.Worker`**, written as an `IPeriodicJob` in `Odyssey.Core`; never in the API.
+- **File bytes go through the object store** (`Odyssey.Core/FileStorage/`), never the database.
+- **`ExecuteDeleteAsync`/`ExecuteUpdateAsync` throw on EF InMemory** — use tracked `RemoveRange`
+  for anything the fast tiers must exercise.
+- **Nothing makes Finance depend on Journal.**
+- **DTOs are `sealed record`** with data annotations matching the entity's limits; routes are plural.
+- **Field naming:** private fields camelCase with no `_` (Blazor components use `_camelCase`);
+  statics and constants PascalCase.
+- **Commits are Conventional Commits** with the scopes listed in `CLAUDE.md` → *Git & Versioning*.
+
+---
+
 ## 🔎 Where to look first for changes
 
 When implementing a feature/bugfix, start by identifying the correct layer:
 
 1. **API changes**: Controllers, Program.cs
-2. **Business logic**: Odyssey.Core/Finance or Odyssey.Core/Journal
-3. **Database models**: `Odyssey.Context/` (entities + `OdysseyContext.cs`)
-4. **Client UI**: Pages, `Odyssey.Client/Components`
+2. **Business logic**: Odyssey.Core/Finance or Odyssey.Core/Journal (or the area's own folder in Odyssey.Core)
+3. **Background job**: an `IPeriodicJob` in Odyssey.Core, then one `AddPeriodicJob<T>()` line in `Odyssey.Worker/WorkerHost.cs`
+4. **Database models**: `Odyssey.Context/` (entities + `OdysseyContext.cs`)
+5. **Client UI**: Pages, `Odyssey.Client/Components`
 
 ---
 

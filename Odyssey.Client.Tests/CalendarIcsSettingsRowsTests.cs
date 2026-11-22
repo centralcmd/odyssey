@@ -13,13 +13,10 @@ namespace Odyssey.Client.Tests;
 /// <see cref="SystemSettingsBounds"/> pair, which stops at 10240 MB, the spec's descriptions, and the server's advisory
 /// above 1024 MB in the row's Advisory slot.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class CalendarIcsSettingsRowsTests : IDisposable
+public class CalendarIcsSettingsRowsTests
 {
     private const string ExportKey = "calendarIcsMaxExportMegabytes";
     private const string ImportKey = "calendarIcsMaxImportMegabytes";
-
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
 
     private static Settings.SettingItem Row(string key) => Settings.AllItems.Single(i => i.Key == key);
 
@@ -85,21 +82,34 @@ public class CalendarIcsSettingsRowsTests : IDisposable
         foreach (var property in properties.Values.Where(p => p.PropertyType == typeof(int)))
         {
             if (property.Name.EndsWith("Ceiling", StringComparison.Ordinal))
+            {
                 property.SetValue(dto, 1_000_000);
+            }
             else if (property.Name.EndsWith("Floor", StringComparison.Ordinal))
+            {
                 property.SetValue(dto, 1);
+            }
         }
 
         foreach (var item in Settings.AllItems)
         {
             if (item.Field is not { } field || !properties.TryGetValue(field, out var property))
+            {
                 continue;
+            }
+
             if (property.PropertyType == typeof(int))
+            {
                 property.SetValue(dto, Math.Max(item.Min, 1));
+            }
             else if (property.PropertyType == typeof(decimal))
+            {
                 property.SetValue(dto, item.DecimalMin);
+            }
             else if (property.PropertyType == typeof(string) && !item.AllowEmpty)
+            {
                 property.SetValue(dto, "x");
+            }
         }
 
         dto.EmailSmtpHost = "smtp.old.test";

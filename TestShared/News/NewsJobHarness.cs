@@ -43,26 +43,36 @@ public sealed class NewsJobHarness : IAsyncDisposable
         FakeNewsServer? server = null,
         int? bucketCapacity = null,
         Action<IServiceCollection>? configureServices = null,
-        TimeSpan? throttleSpacing = null)
+        TimeSpan? throttleSpacing = null,
+        long maxFileSizeBytes = 64L * 1024 * 1024)
     {
         server ??= new FakeNewsServer();
         var host = FileStorageTestHost.Create(
             useDatabase,
             new Dictionary<string, string> { ["primary"] = volumeRoot },
-            new Dictionary<string, string> { [NewsArticleStorage.FeatureKey] = "primary" },
+            new Dictionary<string, string>
+            {
+                [NewsArticleStorage.FeatureKey] = "primary",
+                [Odyssey.Core.Internet.News.Podcasts.Files.PodcastAudioStorage.FeatureKey] = "primary",
+                [Odyssey.Core.Internet.News.Podcasts.Files.PodcastArtworkStorage.FeatureKey] = "primary",
+            },
             features: [],
             clock: clock,
+            maxFileSizeBytes: maxFileSizeBytes,
             configureServices: services =>
             {
                 services.AddNewsReader();
                 services.AddNewsFeedFetching();
                 services.AddHttpClient(NewsEgress.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => server);
+                services.AddHttpClient(NewsEgress.AudioHttpClientName).ConfigurePrimaryHttpMessageHandler(() => server);
                 services.Replace(ServiceDescriptor.Singleton(sp => new NewsHostThrottleGate(
-                    sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<TimeProvider>()) { Spacing = throttleSpacing ?? TimeSpan.Zero }));
+                    sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<TimeProvider>())
+                { Spacing = throttleSpacing ?? TimeSpan.Zero }));
                 if (bucketCapacity is { } capacity)
                 {
                     services.Replace(ServiceDescriptor.Scoped(sp => new NewsBucketAllocator(
-                        sp.GetRequiredService<IDbContextFactory<OdysseyContext>>(), sp.GetRequiredService<TimeProvider>()) { Capacity = capacity }));
+                        sp.GetRequiredService<IDbContextFactory<OdysseyContext>>(), sp.GetRequiredService<TimeProvider>())
+                    { Capacity = capacity }));
                 }
 
                 services.AddSingleton<NewsFeedJob>();

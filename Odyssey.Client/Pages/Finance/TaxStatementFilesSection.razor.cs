@@ -75,7 +75,9 @@ public partial class TaxStatementFilesSection
         _uploadLimits = await UploadLimits.GetAsync();
 
         if (files is null || files.Count == 0)
+        {
             return;
+        }
 
         var valid = new List<IBrowserFile>();
         foreach (var file in files)
@@ -95,7 +97,9 @@ public partial class TaxStatementFilesSection
         }
 
         if (valid.Count == 0)
+        {
             return;
+        }
 
         _isUploading = true;
         var uploaded = 0;
@@ -133,7 +137,9 @@ public partial class TaxStatementFilesSection
             }
 
             if (perFile.Count > 0)
+            {
                 Snackbar.Add(UploadFailureText.Several(perFile, itemised: perFile.Count <= 3), Severity.Error, o => o.RequireInteraction = true);
+            }
 
             if (uploaded > 0)
             {
@@ -152,7 +158,9 @@ public partial class TaxStatementFilesSection
         var attach = await TaxStatements.AttachFileAsync(
             StatementId, new AttachTaxStatementFileRequest { FileId = fileId, FileType = SelectedFileTypeEnum });
         if (!attach.IsSuccess)
+        {
             throw new InvalidOperationException($"Failed to attach document: {attach.Error}");
+        }
     }
 
     private IReadOnlyList<OdsMenuItem> BuildMenu(OdsFilesRow row)
@@ -161,10 +169,14 @@ public partial class TaxStatementFilesSection
         var menu = new List<OdsMenuItem>();
 
         if (CanDownload && PreviewableContentTypes.Contains(file.FileMetadata.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
             menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", OnClick = EventCallback.Factory.Create(this, () => PreviewAsync(file)) });
+        }
 
         if (CanDownload)
+        {
             menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)) });
+        }
 
         menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileMetadata.Id.ToString(), OdsCopied.Id("File")))));
 

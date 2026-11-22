@@ -127,7 +127,9 @@ public class MapEntrypointScriptTests
         try
         {
             if (config is not null)
+            {
                 File.WriteAllText(Path.Combine(directory.FullName, "default.conf"), config);
+            }
 
             return Run(AssertScript, new() { ["NGINX_ENVSUBST_OUTPUT_DIR"] = directory.FullName });
         }
@@ -150,9 +152,13 @@ public class MapEntrypointScriptTests
         foreach (var (key, value) in environment)
         {
             if (value is null)
+            {
                 start.Environment.Remove(key);
+            }
             else
+            {
                 start.Environment[key] = value;
+            }
         }
 
         using var process = Process.Start(start)!;

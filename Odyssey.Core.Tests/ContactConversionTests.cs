@@ -367,7 +367,7 @@ public class ContactConversionTests
         context.Photos.Add(new Photo
         {
             PhotoId = photoId,
-            FileId = Guid.NewGuid(),
+            StoredObjectId = Guid.NewGuid(),
             Archived = DateTime.UtcNow,
             People = [new PhotoPerson { PhotoId = photoId, ContactId = created.ContactId }],
         });
@@ -535,27 +535,37 @@ public class ContactConversionTests
     private static Contact PersonEntity(
         string first, string last, string? middle = null, DateOnly? birth = null, Sex? sex = null,
         string? title = null, string? company = null) => new()
-    {
-        ExternalUid = "urn:uuid:test",
-        NormalizedName = "",
-        Type = ContactType.Person,
-        PersonDetails = new PersonDetails
         {
-            FirstName = first, LastName = last, MiddleName = middle, DateOfBirth = birth, Sex = sex, Title = title, Company = company,
-        },
-    };
+            ExternalUid = "urn:uuid:test",
+            NormalizedName = "",
+            Type = ContactType.Person,
+            PersonDetails = new PersonDetails
+            {
+                FirstName = first,
+                LastName = last,
+                MiddleName = middle,
+                DateOfBirth = birth,
+                Sex = sex,
+                Title = title,
+                Company = company,
+            },
+        };
 
     private static Contact OrgEntity(
         string legalName, DateOnly? established = null, DateOnly? dissolved = null, string? orgNumber = null, string? website = null) => new()
-    {
-        ExternalUid = "urn:uuid:test",
-        NormalizedName = "",
-        Type = ContactType.Organization,
-        OrganizationDetails = new OrganizationDetails
         {
-            LegalName = legalName, EstablishedDate = established, DissolvedDate = dissolved, OrganizationNumber = orgNumber, Website = website,
-        },
-    };
+            ExternalUid = "urn:uuid:test",
+            NormalizedName = "",
+            Type = ContactType.Organization,
+            OrganizationDetails = new OrganizationDetails
+            {
+                LegalName = legalName,
+                EstablishedDate = established,
+                DissolvedDate = dissolved,
+                OrganizationNumber = orgNumber,
+                Website = website,
+            },
+        };
 
     private static void SeedAssociatedProperty(OdysseyContext context, Guid associationId, string name, bool archived)
     {

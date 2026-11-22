@@ -25,7 +25,7 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
     private static IBrowserContext? browserContext;
     private static IPage? signedInPage;
 
-    /// <summary>The worker renders the seed in the background; this is how long the first visit waits for it.</summary>
+    /// <summary>The worker writes the demo photos and renders them in the background; this is how long the first visit waits.</summary>
     private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(180);
 
     private const string ThumbnailTile = "img.pl-tile-img[src*='/thumbnail?size=Medium']";
@@ -69,8 +69,17 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
         while (true)
         {
             await page.GotoAsync("/photos", new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
-            // Network idle comes before the WASM app has rendered the grid, so wait for a tile itself.
-            await page.Locator(".pl-tile").First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
+            // Network idle comes before the WASM app has rendered the grid, so wait for a tile itself. The photos are
+            // themselves written by the worker after the stack comes up (DemoFileSeeder), so an empty library is a
+            // reason to keep polling, not a failure.
+            try
+            {
+                await page.Locator(".pl-tile").First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
+            }
+            catch (TimeoutException)
+            {
+            }
+
             if (await page.Locator(ThumbnailTile).CountAsync() > 0)
             {
                 return;

@@ -12,6 +12,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -31,7 +32,7 @@ namespace Odyssey.Api.Tests;
 /// value being replaced in an audit line was never subject to it.
 /// </para>
 /// </summary>
-public class FileAnalysisRuntimeSettingsApiTests
+public class FileAnalysisRuntimeSettingsApiTests(FileAnalysisRuntimeSettingsApiTests.Host host) : SharedApiHostTests<FileAnalysisRuntimeSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string ActorUserId = "77777777-7777-7777-7777-777777777777";
@@ -48,7 +49,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task Get_ServesTheThreeSeededDefaults()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -67,7 +68,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task MigrationSeed_MatchesTheSharedDefaultConstants()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
@@ -97,7 +98,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     public async Task Put_WithoutTheSecurityClaim_IsForbidden_AndChangesNothing(
         string fieldName, SystemSettingsUpdate request)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, request);
@@ -125,7 +126,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task Put_OmittingAllThree_Succeeds_ForAnOrdinaryWriter()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -220,7 +221,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [InlineData("https://host/proxy")]
     public async Task Put_WithAnUnusableBaseUrl_Returns400KeyedByTheField(string baseUrl)
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { FileAnalysisBaseUrl = baseUrl });
@@ -261,7 +262,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [InlineData("https://localhost")]
     public async Task Put_WithAPrivateOrLoopbackHost_IsAccepted(string baseUrl)
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { FileAnalysisBaseUrl = baseUrl });
@@ -306,7 +307,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task Put_WithAnOverlongModel_Returns400()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -373,7 +374,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task TurningAnalysisOn_CarriesAnAdvisoryNamingTheProcessorAndRegion_AndStillCommits()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { FileAnalysisEnabled = true });
@@ -391,7 +392,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task LeavingAnalysisOff_CarriesNoEnabledAdvisory()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -403,7 +404,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task RepointingTheBaseUrl_CarriesAHostOnlyAdvisory_AndStillCommits()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -423,7 +424,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task APlantedCredentialBearingBaseUrl_StillAdvisesTheHostOnly()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         await factory.SetSystemSettingAsync(
             SystemSettingsKeys.FileAnalysisBaseUrl, "https://apikey:s3cr3t@gateway.internal/v1?token=leaky");
         using var client = factory.CreateClient();
@@ -440,7 +441,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task TheShippedBaseUrl_CarriesNoAdvisory()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -451,7 +452,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task ChangingTheModel_CarriesANonRetroactivityAdvisory()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -491,7 +492,7 @@ public class FileAnalysisRuntimeSettingsApiTests
             Advise = (_, _) => throw boom,
         };
 
-        var logger = new CapturingLogger();
+        var logger = new RecordingLogger();
 
         var message = SystemSettingsService.TryAdvise(
             thrower, new SystemSettingsDto(), AdvisoryContext.Empty, logger);
@@ -519,22 +520,7 @@ public class FileAnalysisRuntimeSettingsApiTests
         };
 
         Assert.Equal("still here", SystemSettingsService.TryAdvise(
-            healthy, new SystemSettingsDto(), AdvisoryContext.Empty, new CapturingLogger()));
-    }
-
-    /// <summary>Minimal <see cref="ILogger"/> that keeps the exception each entry carried.</summary>
-    private sealed class CapturingLogger : ILogger
-    {
-        public List<(string Message, Exception? Exception)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) =>
-            Entries.Add((formatter(state, exception), exception));
+            healthy, new SystemSettingsDto(), AdvisoryContext.Empty, new RecordingLogger()));
     }
 
     /// <summary>
@@ -552,7 +538,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     [Fact]
     public async Task PathologicalStoredValues_NeverFailASave()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisBaseUrl, "://not-a-url");
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisProcessor, "");
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisProcessorRegion, "");
@@ -594,14 +580,14 @@ public class FileAnalysisRuntimeSettingsApiTests
             name => name.Contains("IOptions", StringComparison.Ordinal));
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     /// <summary>Captures the API's log output, for the audit and no-leak assertions.</summary>
     private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -609,4 +595,7 @@ public class FileAnalysisRuntimeSettingsApiTests
             builder.ConfigureServices(services => services.AddSingleton<ILoggerProvider>(Logs));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

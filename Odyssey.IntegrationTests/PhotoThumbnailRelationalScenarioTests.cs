@@ -13,7 +13,7 @@ namespace Odyssey.IntegrationTests;
 /// claim, the renewal, the reclaim, the stale worker's give-back and the rename all race on <c>Generation</c> and the
 /// rename's one save, which EF InMemory neither enforces nor makes atomic.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public sealed class PhotoThumbnailJobRelationalTests(MariaDbFixture fixture) : PhotoThumbnailJobScenarios
 {
     private readonly RelationalScenarioDatabase database = new(fixture);
@@ -26,7 +26,7 @@ public sealed class PhotoThumbnailJobRelationalTests(MariaDbFixture fixture) : P
 }
 
 /// <summary>The rename and delete scenarios, rerun on real MariaDB.</summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public sealed class PhotoThumbnailRenameRelationalTests(MariaDbFixture fixture) : PhotoThumbnailRenameScenarios
 {
     private readonly RelationalScenarioDatabase database = new(fixture);

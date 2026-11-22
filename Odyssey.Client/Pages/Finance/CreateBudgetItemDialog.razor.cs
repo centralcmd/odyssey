@@ -117,7 +117,9 @@ public partial class CreateBudgetItemDialog
         TagCreator.OnCreateFailed = OnTagCreateFailed;
 
         if (ExistingItem is null)
+        {
             return;
+        }
 
         // Preselect by ID, never by comparing ExistingTransactionTag instances: it is a record, so
         // value equality over four members would silently mis-match a tag whose description changed
@@ -149,7 +151,10 @@ public partial class CreateBudgetItemDialog
         {
             _tagError = "That tag could not be created.";
             if (_tagPicker is not null)
+            {
                 await _tagPicker.DropStagedAsync(temporaryId);
+            }
+
             StateHasChanged();
         });
     }
@@ -162,7 +167,9 @@ public partial class CreateBudgetItemDialog
         _plannedError = planned is null;
         _tagError = _tagId is null || _tagId == Guid.Empty ? "Choose a transaction tag." : null;
         if (_tagError is not null || _plannedError)
+        {
             return false;
+        }
 
         // Let any in-flight inline create land, so the item is written with the RESOLVED tag id.
         // Sending a temporary id is the failure this staging exists to prevent.

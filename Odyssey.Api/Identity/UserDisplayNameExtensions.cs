@@ -1,7 +1,7 @@
 namespace Odyssey.Api.Identity;
 
 /// <summary>
-/// Label lookups over the map <see cref="IUserDisplayNameResolver.ResolveAsync(System.Security.Claims.ClaimsPrincipal, IEnumerable{string?}, CancellationToken)"/>
+/// Label lookups over the map <c>IUserDisplayNameResolver.ResolveAsync</c>
 /// returns, for attribution columns that can be null.
 /// </summary>
 public static class UserDisplayNameExtensions

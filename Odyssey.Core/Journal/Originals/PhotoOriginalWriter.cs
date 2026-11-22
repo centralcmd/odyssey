@@ -32,20 +32,6 @@ public sealed class PhotoOriginalWriter(
         }
     }
 
-    /// <summary>Whether the reserve holds, for a caller that must not throw (the backfill's health gate).</summary>
-    public bool HasReserve()
-    {
-        try
-        {
-            EnsureReserve();
-            return true;
-        }
-        catch (DomainException)
-        {
-            return false;
-        }
-    }
-
     public async Task<StoredObject> PutAsync(
         Stream content, string fileName, string contentType, DateTime createdAtUtc, long maxBytes, CancellationToken cancellationToken)
     {

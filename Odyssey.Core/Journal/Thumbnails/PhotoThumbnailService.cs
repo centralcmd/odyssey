@@ -90,27 +90,9 @@ public sealed class PhotoThumbnailService(OdysseyContext context, IObjectStore s
     }
 
     /// <summary>
-    /// The rename rule (§3.4), staged on the rename's context: the old-name files are released at once, whatever
-    /// happens to the regeneration, and the job is re-queued, flagged or left alone by its state. Idempotent, so the
-    /// rename's concurrency retry can run it again.
+    /// The rename rule (§3.4) for a photo renamed through the photo API (issue #428 §5.4), staged in the update's own
+    /// save: the old-name files are released at once, and the job is re-queued, flagged or left alone by its state.
     /// </summary>
-    public async Task StageRenameAsync(Guid fileId, CancellationToken cancellationToken)
-    {
-        // A legacy photo renamed through the photo API carries its own name (issue #428 §5.4), which then wins over
-        // its file's: renaming the file on the Files page no longer changes what the photo is called.
-        var photoId = await context.Photos
-            .Where(p => p.FileId == fileId && p.FileName == null)
-            .Select(p => (Guid?)p.PhotoId)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (photoId is not { } id)
-        {
-            return;
-        }
-
-        await StageRenameForPhotoAsync(id, cancellationToken);
-    }
-
-    /// <summary>The rename rule for a photo renamed through the photo API (issue #428 §5.4), in the update's own save.</summary>
     public async Task StageRenameForPhotoAsync(Guid id, CancellationToken cancellationToken)
     {
         var thumbnails = await context.PhotoThumbnails.Where(t => t.PhotoId == id).ToListAsync(cancellationToken);
@@ -241,15 +223,4 @@ public sealed class PhotoThumbnailService(OdysseyContext context, IObjectStore s
             }
         }
     }
-}
-
-/// <summary>The Journal side of a file rename (§3.1 item 5): the photo's thumbnails follow its file's name.</summary>
-public sealed class PhotoThumbnailRenameObserver(PhotoThumbnailService thumbnails) : Finance.IFileRenameObserver
-{
-    public Task OnFileRenamingAsync(Guid fileId, CancellationToken cancellationToken) =>
-        thumbnails.StageRenameAsync(fileId, cancellationToken);
-
-    /// <summary>The job, the thumbnail rows and their stored objects: everything <see cref="PhotoThumbnailService.StageRenameAsync"/> stages.</summary>
-    public bool Owns(Type entityType) =>
-        entityType == typeof(PhotoThumbnailJobEntry) || entityType == typeof(PhotoThumbnail) || entityType == typeof(StoredObject);
 }

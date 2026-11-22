@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -35,10 +36,7 @@ public class ContractsCardRowActionTests
     /// </summary>
     private static string CardSource()
     {
-        var source = File.ReadAllText(
-            Path.Combine(ClientSource.Root, "Pages", "Finance", "ContractsCard.razor.cs"));
-        source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-        return Regex.Replace(source, @"^\s*(///?).*$", string.Empty, RegexOptions.Multiline);
+        return SourceLint.StripComments(ClientSource.CodeBehind("Pages/Finance/ContractsCard.razor.cs"));
     }
 
     /// <summary>
@@ -149,8 +147,7 @@ public class ContractsCardRowActionTests
     /// <summary>A Razor file under <c>Pages/Finance</c> with its <c>@* … *@</c> comments stripped.</summary>
     private static string RazorSource(string file)
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", file));
-        return Regex.Replace(source, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+        return SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", file)));
     }
 
     /// <summary>

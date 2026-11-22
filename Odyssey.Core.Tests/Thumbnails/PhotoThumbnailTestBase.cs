@@ -61,7 +61,7 @@ public abstract class PhotoThumbnailTestBase : FileStorageTestBase
 
     protected static PhotoThumbnailJob Job(FileStorageTestHost host) => host.Services.GetRequiredService<PhotoThumbnailJob>();
 
-    /// <summary>A photo wrapping a file with these bytes, plus its <c>Pending</c> job as <c>PhotoService.Create</c> stages it.</summary>
+    /// <summary>A photo owning an original with these bytes, plus its <c>Pending</c> job as <c>PhotoService.Create</c> stages it.</summary>
     protected async Task<Guid> AddPhotoAsync(
         FileStorageTestHost host, byte[] bytes, string contentType = "image/jpeg", string fileName = "IMG_2041.jpg",
         string uploader = "u1", bool archived = false, bool withJob = true)
@@ -69,20 +69,25 @@ public abstract class PhotoThumbnailTestBase : FileStorageTestBase
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await EnsureUserAsync(context, uploader);
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = bytes };
-        var file = new FileMetadata
-        {
-            Id = Guid.NewGuid(), FileName = fileName, ContentType = contentType, SizeBytes = bytes.LongLength,
-            Sha256Hash = "h", FileBlobId = blob.Id, UploadedAtUtc = Clock.GetUtcNow().UtcDateTime,
-        };
+        var now = Clock.GetUtcNow().UtcDateTime;
+        // Reserve-then-attach rather than PutAsync: a scenario that replaces the store with one whose PutAsync hangs or
+        // refuses (the thumbnail write it is about) still gets its original written by the real store underneath.
+        var reservation = await scope.ServiceProvider.GetRequiredService<PhotoOriginalWriter>()
+            .ReserveAsync(new MemoryStream(bytes), fileName, contentType, now, bytes.LongLength, default);
+        var stored = scope.ServiceProvider.GetRequiredService<IObjectStore>().AttachReserved(context, reservation);
         var photo = new Photo
         {
-            PhotoId = Guid.NewGuid(), FileId = file.Id, CreatedByUserId = uploader,
-            CreatedAt = Clock.GetUtcNow().UtcDateTime, UpdatedAt = Clock.GetUtcNow().UtcDateTime,
-            Archived = archived ? Clock.GetUtcNow().UtcDateTime : null,
+            PhotoId = Guid.NewGuid(),
+            StoredObjectId = stored.Id,
+            FileName = fileName,
+            ContentType = contentType,
+            SizeBytes = stored.SizeBytes,
+            Sha256Hash = stored.Sha256Hash!,
+            CreatedByUserId = uploader,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Archived = archived ? now : null,
         };
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(file);
         context.Photos.Add(photo);
         if (withJob)
         {

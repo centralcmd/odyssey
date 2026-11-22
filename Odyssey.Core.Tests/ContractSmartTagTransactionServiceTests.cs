@@ -78,7 +78,11 @@ public class ContractSmartTagTransactionServiceTests
         {
             Context.ContractParties.Add(new ContractParty
             {
-                ContractId = ContractId, ContactId = contactId, Role = role, FromDate = fromDate, ToDate = toDate,
+                ContractId = ContractId,
+                ContactId = contactId,
+                Role = role,
+                FromDate = fromDate,
+                ToDate = toDate,
             });
             await Context.SaveChangesAsync();
         }
@@ -148,12 +152,16 @@ public class ContractSmartTagTransactionServiceTests
         {
             context.ContractSmartTags.Add(new ContractSmartTag
             {
-                ContractId = contract.ContractId, TransactionTagId = smartTag.TransactionTagId, AddedAt = DateTime.UtcNow,
+                ContractId = contract.ContractId,
+                TransactionTagId = smartTag.TransactionTagId,
+                AddedAt = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
         if (withParty)
+        {
             await fixture.AddParty(fixture.SupplierId);
+        }
 
         return fixture;
     }
@@ -245,7 +253,9 @@ public class ContractSmartTagTransactionServiceTests
         var f = await Seed(withParty: false);
         f.Context.ContractParties.Add(new ContractParty
         {
-            ContractId = f.ContractId, AccountId = f.AccountId, Role = ContractPartyRole.Borrower,
+            ContractId = f.ContractId,
+            AccountId = f.AccountId,
+            Role = ContractPartyRole.Borrower,
         });
         await f.Context.SaveChangesAsync();
         await f.AddTransaction(InTerm);
@@ -443,7 +453,9 @@ public class ContractSmartTagTransactionServiceTests
         var f = await Seed();
         f.Context.ContractSmartTags.Add(new ContractSmartTag
         {
-            ContractId = f.ContractId, TransactionTagId = f.OtherTagId, AddedAt = DateTime.UtcNow,
+            ContractId = f.ContractId,
+            TransactionTagId = f.OtherTagId,
+            AddedAt = DateTime.UtcNow,
         });
         await f.Context.SaveChangesAsync();
         var id = await f.AddTransaction(InTerm, amount: -40m, tagIds: [f.SmartTagId, f.OtherTagId]);
@@ -531,8 +543,11 @@ public class ContractSmartTagTransactionServiceTests
         var all = await f.List();
         var narrowed = await f.List(new ContractSmartTagTransactionsQueryParams
         {
-            Search = "grid", SortBy = TransactionSortBy.Amount, SortDir = Odyssey.Dtos.SortDirection.Asc,
-            Offset = 0, Limit = 1,
+            Search = "grid",
+            SortBy = TransactionSortBy.Amount,
+            SortDir = Odyssey.Dtos.SortDirection.Asc,
+            Offset = 0,
+            Limit = 1,
         });
 
         Assert.Single(narrowed.Page.Items);

@@ -725,6 +725,7 @@ public sealed class SystemSettingsService(
             // The news image size cap's ceiling (issue #470 §11.1): derived from the same startup limit, through
             // NewsImageSizeCeiling, which the worker's read-side clamp also calls.
             NewsImageMaxSizeKbCeiling = ceilings.NewsImageMaxSizeKb,
+            PodcastAudioMaxEpisodeMbCeiling = ceilings.PodcastAudioMaxEpisodeMb,
 
             // The six issue #434 bound projections. Unlike the three above, these are NOT backed by a
             // RequestCapCeilings validator — their bound is the [Range] on SystemSettingsUpdate, which

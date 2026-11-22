@@ -32,6 +32,11 @@ the same way.
 > Aspire's `.aspire/files/primary/` folder belong to that stack's database. Wiping one without the
 > other makes its API refuse to start (`VolumeLost` or `UnknownMarker`). A Compose stack started under
 > a different project name (`-p`) gets its own `files_primary` volume and needs nothing extra.
+>
+> A different project name does **not** let a *second Compose stack* run beside a first one, though:
+> `docker-compose.yml` gives every service a fixed `container_name` (`odyssey-mariadb`,
+> `odyssey-migrations`, `odyssey-api`, `odyssey-worker`, `odyssey-client`), and container names are
+> host-global, so `-p` alone still collides. The recipe below is for Compose beside **Aspire**.
 
 ## Recommended: run Compose with a remapped MariaDB port
 
@@ -46,7 +51,7 @@ Create an override file:
 # /tmp/ods-override.yml
 services:
   mariadb:
-    ports: !override ["3308:3306"]
+    ports: !override ["127.0.0.1:3308:3306"]
 ```
 
 Bring the stack up with it:
@@ -56,7 +61,9 @@ docker compose -f docker-compose.yml -f /tmp/ods-override.yml up --build -d
 ```
 
 Both stacks now coexist: Aspire keeps `3307`, your Compose MariaDB is on `3308`, and the app
-still works because it never uses the host port internally.
+still works because it never uses the host port internally. Keep the `127.0.0.1:` prefix:
+`docker-compose.yml` binds every published port to loopback only (issue #451), and an override
+without it would publish the database on every interface.
 
 `docker compose down` (note: **no `-v`**) is project-scoped
 (`com.docker.compose.project=odyssey`) and will **not** touch an Aspire-launched MariaDB
@@ -64,8 +71,8 @@ container (which carries different labels). Add `-v` only when you deliberately 
 discard the Compose database.
 
 > If you also need the client/API on different host ports (because Aspire is on 5199/5188),
-> remap those in the same override file, e.g. `client: { ports: !override ["5299:8080"] }`
-> and `api: { ports: !override ["5288:8080"] }`.
+> remap those in the same override file, e.g. `client: { ports: !override ["127.0.0.1:5299:8080"] }`
+> and `api: { ports: !override ["127.0.0.1:5288:8080"] }`.
 
 ## Prefer Compose over the Blazor dev-server for a loadable frontend
 
@@ -116,7 +123,7 @@ unauthenticated.
 
 - Frontend: `http://localhost:5199`
 - API: `http://localhost:5188`
-- Swagger: `http://localhost:5188/swagger`
+- API reference (Scalar): `http://localhost:5188/scalar/v1` — sign in to the client first
 - MariaDB (with the override above): `localhost:3308`, database `odyssey`, user/password
   `odyssey` / `odyssey_password` (defaults in `docker-compose.yml`; override via the
   `MARIADB_*` env vars).

@@ -52,7 +52,9 @@ public class PropertySmartTagService
         var propertyExists = await context.Properties
             .AnyAsync(c => c.PropertyId == propertyId, cancellationToken);
         if (!propertyExists)
+        {
             return null;
+        }
 
         var tags = await context.PropertySmartTags
             .Where(smartTag => smartTag.PropertyId == propertyId)
@@ -78,7 +80,9 @@ public class PropertySmartTagService
         var propertyExists = await context.Properties
             .AnyAsync(c => c.PropertyId == propertyId, cancellationToken);
         if (!propertyExists)
+        {
             throw new DomainNotFoundException($"Property ID {propertyId} not found.");
+        }
 
         var tag = await context.TransactionTags
                 .FirstOrDefaultAsync(t => t.TransactionTagId == tagId, cancellationToken)
@@ -88,23 +92,29 @@ public class PropertySmartTagService
         // manage from the tags page. A tag archived AFTER being linked keeps its row — retroactively
         // dropping links would silently discard configuration.
         if (tag.Archived is not null)
+        {
             throw new DomainUnprocessableException(
                 $"Tag '{tag.Name}' is archived and cannot be added as a smart tag.");
+        }
 
         var alreadyAssociated = await context.PropertySmartTags
             .AnyAsync(
                 smartTag => smartTag.PropertyId == propertyId && smartTag.TransactionTagId == tagId,
                 cancellationToken);
         if (alreadyAssociated)
+        {
             throw new DomainConflictException(
                 $"Tag '{tag.Name}' is already a smart tag for this property.");
+        }
 
         var maxSmartTags = (await limits.GetAsync(cancellationToken)).MaxSmartTagsPerProperty;
         var smartTagCount = await context.PropertySmartTags
             .CountAsync(smartTag => smartTag.PropertyId == propertyId, cancellationToken);
         if (smartTagCount >= maxSmartTags)
+        {
             throw new DomainUnprocessableException(
                 $"A property may have at most {maxSmartTags} smart tags.");
+        }
 
         context.PropertySmartTags.Add(new PropertySmartTag
         {
@@ -128,7 +138,9 @@ public class PropertySmartTagService
             .FirstOrDefaultAsync(
                 s => s.PropertyId == propertyId && s.TransactionTagId == tagId, cancellationToken);
         if (smartTag is null)
+        {
             return false;
+        }
 
         context.PropertySmartTags.Remove(smartTag);
         await context.SaveChangesAsync(cancellationToken);

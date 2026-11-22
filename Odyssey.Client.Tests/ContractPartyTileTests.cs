@@ -3,6 +3,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using MudBlazor.Services;
 using Odyssey.Client.Pages.Finance;
@@ -27,14 +28,14 @@ namespace Odyssey.Client.Tests;
 /// The rule most worth pinning is the UNRECOGNISED-role tile. Ordinals append server-side, so a client
 /// older than the deployment is handed a member it has never heard of — and the <c>PUT</c> is a full
 /// replacement, so a dialog that cannot name the role would silently rewrite it. Edit is therefore
-/// withheld while Detach stays, the same reasoning the insurance tiles apply to an unresolvable
-/// TARGET, extended to an unresolvable ROLE.
+/// withheld while Detach stays — the reasoning an unresolvable TARGET already gets, extended to an
+/// unresolvable ROLE.
 /// </para>
 /// </remarks>
 public class ContractPartyTileTests
 {
-    // See InsurancePolicyPartyTileTests for why this ceiling is raised: it is about scheduling
-    // starvation on a contended runner, not about how long an assertion takes to settle.
+    // The ceiling is raised for scheduling starvation on a contended runner, not for how long an
+    // assertion takes to settle.
     static ContractPartyTileTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 
     private static readonly Guid ContractId = Guid.Parse("33333333-3333-3333-3333-333333333333");
@@ -78,7 +79,7 @@ public class ContractPartyTileTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
         ctx.Services.AddInertSmartTagSection();
-        ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
+        ctx.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Today));
         // The Documents section renders in the same detail view, and its files table resolves the
         // issuer options and the contacts.create claim for its Edit dialog (issue #146).
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
@@ -102,7 +103,7 @@ public class ContractPartyTileTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
         ctx.Services.AddInertSmartTagSection();
-        ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
+        ctx.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Today));
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedOut());
@@ -573,11 +574,6 @@ public class ContractPartyTileTests
         return [.. cut.FindAll(".mud-menu-item .odc-menu-item-body > span:first-child")
             .Select(node => node.TextContent.Trim())
             .Where(text => text.Length > 0)];
-    }
-
-    private sealed class FixedTime(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
     /// <summary>

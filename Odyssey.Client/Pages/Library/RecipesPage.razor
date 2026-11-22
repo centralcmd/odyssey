@@ -1,0 +1,212 @@
+@page "/recipes"
+@attribute [Authorize(Policy = PermissionClaims.RecipesRead)]
+@implements IAsyncDisposable
+
+@*
+    /recipes (issue #526; design system components-recipes.md · ui_kits/web/Recipes.jsx) — the household's shared
+    cookbook, the Library module's Recipes page. The Journal page pattern: PageHeader + filter bar + server-paged
+    OdsInfiniteList of OdsRecordCards, one open at a time, closed by an AddRow. The open card IS the recipe
+    (RecipeBody). Every action is in the card's ⋯ menu: the cooking aids first (Change servings…, Keep screen awake,
+    Clear checks), then the record's own by claim. A missing claim removes its surface. Creates, saves, archives and
+    deletes are announced on the polite region, never toasted.
+*@
+
+<PageTitle>Recipes</PageTitle>
+
+<OdsLiveAnnouncer @ref="_announcer" />
+
+<MudStack Spacing="4" Class="rc-page">
+    <PageHeader Title="Recipes"
+                Icon="@Icons.Material.Filled.RestaurantMenu"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New recipe"
+                OnPrimaryAction="NewClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@SubLineText</SubLine>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="OnSearchCommitted"
+                                Placeholder="Search title or ingredient…"
+                                Class="ph-search" />
+                @if (_canTags)
+                {
+                    <div class="rc-filter-open">
+                        <OdsMultiSelect Label="Has every tag" Fit="false" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
+                                        Options="TagFilterOptions" />
+                    </div>
+                }
+                <OdsSelect Prefix="Total time" AriaLabel="Total time" Value="@_timeFilter" ValueChanged="OnTimeFilterChanged"
+                           Options="RecipeFilters.TimeOptions" Class="ph-select" />
+                @if (_canPhotos)
+                {
+                    <OdsMultiSelect Label="Photos" Values="_photoFilter" ValuesChanged="OnPhotoFilterChanged"
+                                    Options="RecipeFilters.PhotoOptions" Class="ph-select" />
+                }
+                @if (_canFiles)
+                {
+                    <OdsMultiSelect Label="Files" Values="_fileFilter" ValuesChanged="OnFileFilterChanged"
+                                    Options="RecipeFilters.FileOptions" Class="ph-select" />
+                }
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="ArchivalStatusOptions.Options" Class="ph-select" />
+                <OdsSortSelect TRow="RecipeSummary" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Recipes per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="RecipeSummary" Items="_rows" Noun="recipes" Remote="true"
+                         ItemKey="@(r => (object)r.RecipeId)" BatchSize="_batch"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="ResetAsync"
+                         ErrorDescription="Something went wrong reaching Odyssey. Your other data is unaffected."
+                         RemoteTotal="_totalCount" HasMoreRemote="HasMore" LoadMore="LoadMoreAsync"
+                         LoadingMore="_loadingMore" LoadMoreFailed="_loadMoreFailed" ResetKey="_resetKey"
+                         HasFilters="HasFilters" OnClearFilters="ClearFilters"
+                         FilteredEmptyTitle="No recipes match"
+                         EmptyIcon="restaurant_menu" EmptyTitle="No recipes yet"
+                         EmptyDescription="Keep the household’s recipes in one place — ingredients, steps, notes and photos — and scale them to any number of servings.">
+            <RenderItem Context="r">
+                @Row(r)
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="NewClicked">New recipe</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New recipe" Sub="Ingredients, steps, notes and photos — scaled to any number of servings."
+                               OnClick="NewClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <RecipeDialog @key="_dialogKey" Open="_dialogOpen" OpenChanged="OnDialogOpenChanged" Recipe="_dialogRecipe"
+                  CanReadTags="_canTags" CanCreateTags="_canCreateTags" Tags="_tags"
+                  ReturnFocusToId="@(_dialogRecipe is { } d ? MenuId(d.RecipeId) : null)"
+                  OnSaved="OnRecipeSaved" />
+}
+
+@if (_servingsFor is { } servingsRecipe && Cook(servingsRecipe.RecipeId).Detail is { } servingsDetail)
+{
+    <RecipeServingsDialog @key="_servingsKey" @bind-Open="_servingsOpen" Recipe="servingsDetail"
+                          Current="servingsDetail.DisplayedServings" ReturnFocusToId="@MenuId(servingsRecipe.RecipeId)"
+                          OnApply="n => ScaleAsync(servingsRecipe.RecipeId, n)" />
+}
+
+@if (_deleteRecipe is { } deleting)
+{
+    <OdsFormDialog @key="_deleteKey" @bind-Open="_deleteOpen"
+                   Icon="delete" IconTone="OdsModalTone.Error" Title="@($"Delete {deleting.Title}?")"
+                   RequiredLegend="false" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+                   DescribedById="rc-delete-body" ReturnFocusToId="@MenuId(deleting.RecipeId)"
+                   SubmitLabel="Delete recipe" SubmitIcon="delete" SubmitVariant="OdsButtonVariant.Danger"
+                   OnSubmit="ConfirmDeleteAsync">
+        <div id="rc-delete-body">
+            <p class="rc-confirm-p">This removes the recipe, its ingredients and its steps. Photos stay in your library, files stay in Files, and tags stay on the Recipe tags page.</p>
+            <p class="rc-confirm-p muted">To keep it out of the list without losing it, archive it instead.</p>
+        </div>
+        @if (_deleteError is { } deleteError)
+        {
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@deleteError</OdsAlert>
+        }
+    </OdsFormDialog>
+}
+
+@if (_attachPhotosFor is { } photosRecipe)
+{
+    <AttachPhotosDialog @key="_attachKey" @bind-Open="_attachPhotosOpen"
+                        Subtitle="Add photos of this recipe — the finished dish, a tricky step. Photos stay in your library; adding links them here. The first photo is the cover."
+                        AttachedIds="@AttachedPhotoIds(photosRecipe.RecipeId)"
+                        OnSubmit="items => OnPhotosPickedAsync(photosRecipe.RecipeId, items)" />
+}
+
+@if (_attachFilesFor is { } filesRecipe)
+{
+    <AttachDocumentsDialog @key="_attachKey" @bind-Open="_attachFilesOpen" Area="FileUploadArea.Library" Announce="false"
+                           Subtitle="Attach the original recipe — a PDF, a scan, a text document. Files stay in Files; attaching links them here."
+                           AttachedIds="@AttachedFileIds(filesRecipe.RecipeId)"
+                           Attach="item => AttachOneAsync(filesRecipe.RecipeId, item)"
+                           OnAttached="items => OnFilesAttached(filesRecipe.RecipeId, items)" />
+}
+
+@code {
+    private RenderFragment Row(RecipeSummary r) =>
+        @<OdsRecordCard @key="r.RecipeId" Id="@CardId(r.RecipeId)"
+                        Icon="restaurant_menu"
+                        Image="@CoverOf(r)"
+                        Name="@r.Title"
+                        Meta="MetaFor(r)"
+                        Counts="CountsFor(r)"
+                        Dimmed="@(r.Archived is not null)"
+                        Open="@(_expandedId == r.RecipeId)"
+                        OnToggle="@(open => ToggleAsync(r, open))">
+            <Chips>
+                @if (_canTags)
+                {
+                    <OdsTagChips Tags="TagsOf(r)" Max="3" Noun="tags" />
+                }
+                @if (r.Archived is not null)
+                {
+                    <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
+                }
+                @if (_awakeId == r.RecipeId)
+                {
+                    <OdsChip Tone="OdsChipTone.Info" Icon="light_mode" Class="sm">Screen stays awake</OdsChip>
+                }
+            </Chips>
+
+            <Actions>
+                <span id="@MenuId(r.RecipeId)">
+                    <OdsMenu Items="RowActions(r)" AriaLabel="@($"Actions for {r.Title}")" />
+                </span>
+            </Actions>
+
+            <Details>
+                @CardBody(r)
+            </Details>
+        </OdsRecordCard>;
+
+    private RenderFragment CardBody(RecipeSummary r)
+    {
+        var cook = Cook(r.RecipeId);
+        return cook.Phase switch
+        {
+            RecipeCardPhase.Loading when cook.Detail is null =>
+                @<div class="rc-skel" aria-busy="true">
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="var(--space-10)" />
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="var(--space-10)" />
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="var(--space-10)" />
+                </div>,
+            RecipeCardPhase.Error =>
+                @<OdsProblemAlert Severity="OdsSeverity.Error" Title="This recipe couldn’t be loaded"
+                                  Detail="The list is fine; only this recipe failed. Your other data is unaffected."
+                                  ActionLabel="Try again" ActionIcon="refresh" OnAction="@(() => LoadDetailAsync(r.RecipeId))" />,
+            RecipeCardPhase.Gone =>
+                @<OdsEmptyState Icon="search_off" Variant="OdsEmptyStateVariant.Line">
+                    <Title>This recipe no longer exists</Title>
+                    <Description>Someone in your household deleted it. It leaves the list when you close it.</Description>
+                </OdsEmptyState>,
+            _ =>
+                @<RecipeBody Recipe="cook.Detail!" Cook="cook" IdPrefix="@($"rc-{r.RecipeId:N}")"
+                             CanPhotos="_canPhotos" CanFiles="_canFiles" CanUpdate="_canUpdate" PhotoAccess="_photoAccess"
+                             OnToggleIngredient="@(c => Toggle(cook.CheckedIngredients, c))"
+                             OnToggleStep="@(c => Toggle(cook.CheckedSteps, c))"
+                             OnRetryScale="@(() => RetryScaleAsync(r.RecipeId))"
+                             OnPhotoChange="@(change => SavePhotosAsync(r.RecipeId, change.PhotoIds, change.Message))"
+                             OnDetachFile="@(f => DetachFileAsync(r.RecipeId, f))"
+                             OnDownloadFile="DownloadAsync"
+                             OnCopyFileId="@(f => CopyAsync(f.FileId.ToString(), OdsCopied.Id("File")))" />,
+        };
+    }
+}

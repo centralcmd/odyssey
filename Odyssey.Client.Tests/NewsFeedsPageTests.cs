@@ -27,10 +27,20 @@ public class NewsFeedsPageTests
     {
         var feed = new ExistingNewsFeed
         {
-            Id = Guid.NewGuid(), Version = Guid.NewGuid(), DisplayTitle = title, Title = title, SiteUrl = "https://site.example/",
-            EffectiveIntervalMinutes = 60, DownloadImages = true, IsActive = true, CreatedAtUtc = Now.UtcDateTime,
-            LastCheckedAtUtc = Now.UtcDateTime.AddMinutes(-12), LastSuccessAtUtc = Now.UtcDateTime.AddMinutes(-12),
-            Health = NewsFeedHealth.Healthy, UnreadCount = 4, ArticleCount = 311,
+            Id = Guid.NewGuid(),
+            Version = Guid.NewGuid(),
+            DisplayTitle = title,
+            Title = title,
+            SiteUrl = "https://site.example/",
+            EffectiveIntervalMinutes = 60,
+            DownloadImages = true,
+            IsActive = true,
+            CreatedAtUtc = Now.UtcDateTime,
+            LastCheckedAtUtc = Now.UtcDateTime.AddMinutes(-12),
+            LastSuccessAtUtc = Now.UtcDateTime.AddMinutes(-12),
+            Health = NewsFeedHealth.Healthy,
+            UnreadCount = 4,
+            ArticleCount = 311,
             Management = managed ? new NewsFeedManagement { Url = "https://fetch.example/feed.xml?token=s3cret" } : null,
         };
         edit?.Invoke(feed);

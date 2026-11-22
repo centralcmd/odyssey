@@ -244,14 +244,22 @@ public partial class CalendarEventDialog
         {
             var key = (_draft.StartDate?.Date, _storedZone, AllowFloating);
             if (_zoneOptions is not null && key == _zoneOptionsKey)
+            {
                 return _zoneOptions;
+            }
 
             var date = _draft.StartDate ?? DateTime.UtcNow.Date;
             var options = new List<OdsOption>();
             if (AllowFloating)
+            {
                 options.Add(new OdsOption(CalendarZoneClock.FloatingValue, CalendarZoneClock.FloatingLabel) { SearchKey = "floating none" });
+            }
+
             if (_storedZone is { } stored && !LocationVisuals.TimeZoneIds.Contains(stored))
+            {
                 options.Add(new OdsOption(stored, $"{stored} (not recognised here)"));
+            }
+
             options.AddRange(LocationVisuals.TimeZoneIds.Select(id =>
                 new OdsOption(id, id) { Note = CalendarZoneClock.OffsetOn(id, date), SearchKey = CalendarZoneClock.SearchKey(id) }));
             _zoneOptionsKey = key;
@@ -273,7 +281,10 @@ public partial class CalendarEventDialog
         get
         {
             if (!ShowTwoZone || ViewerTimes is not { } viewer || _draft.StartWall is not { } start || _draft.EndWall is not { } end)
+            {
                 return null;
+            }
+
             var text = $"{_draft.TimeZoneId} · {CalendarZoneClock.Hm(start)}–{CalendarZoneClock.Hm(end)} · your time "
                 + $"{CalendarZoneClock.Hm(viewer.Start)}–{CalendarZoneClock.Hm(viewer.End)}";
             return viewer.Start.Date != start.Date ? $"{text} ({CalendarZoneClock.DayLabel(viewer.Start)})" : text;
@@ -283,7 +294,10 @@ public partial class CalendarEventDialog
     private string? DstHint(DateTime? wall)
     {
         if (EventZone is not { } zone || wall is not { } value)
+        {
             return null;
+        }
+
         CalendarZoneClock.ToUtc(value, zone, out var adjustment);
         return adjustment switch
         {
@@ -307,21 +321,32 @@ public partial class CalendarEventDialog
         get
         {
             if (_draft.TimeZoneId is not { } zone)
+            {
                 return CalendarEventCopy.FloatingHelp;
+            }
 
             var lines = new List<string>();
             if (_zoneChanged && _draft.StartWall is { } start && ViewerTimes is { } viewer)
+            {
                 lines.Add(CalendarEventCopy.ZoneChanged(CalendarZoneClock.Hm(start), zone, CalendarZoneClock.Hm(viewer.Start), CalendarZoneClock.DayLabel(viewer.Start)));
+            }
             else if (Mode == CalendarEventDialogMode.Create && zone == DefaultZone)
+            {
                 lines.Add(CalendarEventCopy.DefaultZoneHelp(DefaultZone));
+            }
 
             if (Mode == CalendarEventDialogMode.Series && OriginallyFloating)
+            {
                 lines.Add(CalendarEventCopy.SeriesReadAs(zone));
+            }
 
             if (OccurrenceOfSeries)
             {
                 if (!string.Equals(zone, _storedZone, StringComparison.Ordinal))
+                {
                     lines.Add(CalendarEventCopy.OccurrenceBecomesOverride);
+                }
+
                 lines.Add(CalendarEventCopy.OccurrenceOtherViewers);
             }
 
@@ -338,7 +363,10 @@ public partial class CalendarEventDialog
         get
         {
             if (_draft.StartDate is not { } startDate)
+            {
                 return string.Empty;
+            }
+
             if (_draft.IsAllDay)
             {
                 return _draft.EndDate is { } endDate && endDate.Date != startDate.Date
@@ -347,7 +375,9 @@ public partial class CalendarEventDialog
             }
 
             if (ViewerTimes is { } viewer)
+            {
                 return $"{CalendarZoneClock.DayLabel(viewer.Start)}, {CalendarZoneClock.Hm(viewer.Start)}–{CalendarZoneClock.Hm(viewer.End)} your time";
+            }
 
             return _draft.StartWall is { } start && _draft.EndWall is { } end
                 ? $"{CalendarZoneClock.DayLabel(start)}, {CalendarZoneClock.Hm(start)}–{CalendarZoneClock.Hm(end)}"
@@ -366,7 +396,9 @@ public partial class CalendarEventDialog
     private void CheckZoneText()
     {
         if (_zoneCombo?.UnmatchedText is not null)
+        {
             _draft.TimeZoneError = CalendarEventCopy.ZoneError;
+        }
     }
 
     /// <summary>
@@ -376,7 +408,9 @@ public partial class CalendarEventDialog
     private void OnZoneUnmatched(string _)
     {
         if (_draft.TimeZoneError is not null)
+        {
             return;
+        }
 
         _draft.TimeZoneError = CalendarEventCopy.ZoneError;
         Announce(CalendarEventCopy.ZoneError);
@@ -385,18 +419,24 @@ public partial class CalendarEventDialog
     private void OnZoneChanged(string? value)
     {
         if (value is null)
+        {
             return; // the field is not clearable; a clear would otherwise read as "floating" (v2 N5)
+        }
 
         var next = value == CalendarZoneClock.FloatingValue ? null : value;
         _draft.TimeZoneError = null;
         if (string.Equals(next, _draft.TimeZoneId, StringComparison.Ordinal))
+        {
             return;
+        }
 
         _draft.TimeZoneId = next;
         _zoneChanged = next is not null;
         // Changing the zone keeps the entered clock time; the instant moves, so say where it lands, once (FR13).
         if (next is not null && _draft.StartWall is { } start && ViewerTimes is { } viewer)
+        {
             Announce(CalendarEventCopy.ZoneChanged(CalendarZoneClock.Hm(start), next, CalendarZoneClock.Hm(viewer.Start), CalendarZoneClock.DayLabel(viewer.Start)));
+        }
     }
 
     // The DST hints are announced once, when each first appears (AX2).
@@ -410,12 +450,16 @@ public partial class CalendarEventDialog
         // The announcer lives in the dialog's portaled content, which can mount a render after this component's: wait
         // for it rather than spend the hint on nothing.
         if (key == _lastHintKey || _announcer is null)
+        {
             return;
+        }
 
         var fresh = hints.FirstOrDefault(h => h is not null && !_lastHintKey.Contains(h, StringComparison.Ordinal));
         _lastHintKey = key;
         if (fresh is not null)
+        {
             Announce(fresh);
+        }
     }
 
     // ── Exceptions (issue #520 §3 "Cues") ────────────────────────────────────
@@ -508,7 +552,10 @@ public partial class CalendarEventDialog
 
         _linkCap = (await limits).CalendarEventMaxLinksPerKind;
         if (_linksLoading && Time.GetElapsedTime(started) > SlowLinksThreshold)
+        {
             Announce(CalendarEventCopy.LinksLoaded);
+        }
+
         _linksLoading = false;
         StateHasChanged();
     }
@@ -570,7 +617,9 @@ public partial class CalendarEventDialog
         _draft.Place.Error = null;
         // A Kartverket address is staged like a new name (issue #383 v6 §3.2a); the create row announces through OnStage.
         if (pick is { IsStagedAddress: true })
+        {
             Announce($"{_draft.Place.StagedName} will be added when you save");
+        }
     }
 
     private void OnPlaceStaged(string name) => Announce($"{name} will be added when you save");
@@ -672,9 +721,15 @@ public partial class CalendarEventDialog
         place.Error = null;
         var parts = new List<string>();
         if (result.Value is { Detached: true })
+        {
             parts.Add(CalendarEventCopy.DetachedEdit);
+        }
+
         if (result.Value is { DetachedCount: > 0 } detached)
+        {
             parts.Add(CalendarEventCopy.DetachedNow(detached.DetachedCount));
+        }
+
         ToastSaved(successMessage, parts, result.Value?.StartDateTime, repeats: false);
         return true;
     }
@@ -701,14 +756,19 @@ public partial class CalendarEventDialog
         var text = string.Join(' ', parts);
         Snackbar.Add(text, reportSeverity, config => config.RequireInteraction = persistent, Guid.NewGuid().ToString("N"));
         if (SnackbarAnnouncement.Spoken(text) is { } spoken)
+        {
             Announce(spoken);
+        }
     }
 
     /// <summary>"Saved as 03:30. 02:30 doesn't exist on 29 Mar in Europe/Oslo." — from the server's stored value (v3 §F).</summary>
     private string? AdjustedText(DateTime? stored, bool repeats)
     {
         if (stored is not { } saved || _draft.WriteZone is not { } zone || _draft.StartWall is not { } entered || saved == entered)
+        {
             return null;
+        }
+
         return CalendarEventCopy.Adjusted(CalendarZoneClock.Hm(saved), CalendarZoneClock.Hm(entered), CalendarZoneClock.ShortDate(entered), zone, repeats);
     }
 
@@ -894,14 +954,25 @@ public partial class CalendarEventDialog
         var parts = new List<string>();
         var drops = result.DroppedOverrideCount + result.DroppedExclusionCount > 0;
         if (drops)
+        {
             parts.Add(CalendarEventCopy.DropToast(result.DroppedOverrideCount, result.DroppedExclusionCount));
+        }
+
         if (result.DetachedCount > 0)
+        {
             parts.Add(CalendarEventCopy.DetachedNow(result.DetachedCount));
+        }
+
         var adjusted = AdjustedText(result.Pattern.StartDateTime, repeats: true);
         if (adjusted is not null)
+        {
             parts.Add(adjusted);
+        }
+
         if (result.AdjustedCount > 0 && adjusted is null)
+        {
             parts.Add(CalendarEventCopy.AdjustedCount(result.AdjustedCount));
+        }
 
         ToastSaved("Series updated.", parts, stored: null, repeats: true,
             drops ? Severity.Warning : Severity.Info, persistent: drops || adjusted is not null);
@@ -1076,13 +1147,23 @@ public partial class CalendarEventDialog
 
         var parts = new List<string>();
         if (result.Value is { Detached: true })
+        {
             parts.Add(CalendarEventCopy.DetachedDelete);
+        }
+
         if (result.Value is { DetachedCount: > 0 } report)
+        {
             parts.Add(CalendarEventCopy.DetachedNow(report.DetachedCount));
+        }
+
         if (parts.Count == 0)
+        {
             Snackbar.Add("Event deleted.", Severity.Success);
+        }
         else
+        {
             Snackbar.Add(string.Join(' ', parts), Severity.Info, _ => { }, Guid.NewGuid().ToString("N"));
+        }
 
         await OnSaved.InvokeAsync();
         await OpenChanged.InvokeAsync(false);

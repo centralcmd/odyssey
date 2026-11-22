@@ -74,21 +74,15 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected static bool IsPreviewable(string contentType) =>
         PreviewableContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Whether the section is running interactively; the file load is skipped off-browser (prerender).
-    /// </summary>
-    /// <remarks>
-    /// A swappable seam, as <c>TransactionListView.InteractiveCheck</c> is: a bUnit host is not a
-    /// browser either, so a hard <c>OperatingSystem.IsBrowser()</c> would leave every host that stages
-    /// changes to these files untestable. It is static on the CLOSED generic type, so a test moves
-    /// <c>FilesSectionBase&lt;ExistingTransactionFile&gt;.InteractiveCheck</c>, must restore it, and
-    /// must not run in parallel with another class that moves it.
-    /// </remarks>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] protected IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck()) return;
+        if (!Interactivity.IsInteractive)
+        {
+            return;
+        }
+
         uploadLimits = await UploadLimits.GetAsync();
         await LoadFilesAsync();
     }
@@ -102,7 +96,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
 
     protected async Task UploadFilesAsync(IReadOnlyList<IBrowserFile>? files)
     {
-        if (files is null || files.Count == 0) return;
+        if (files is null || files.Count == 0)
+        {
+            return;
+        }
 
         // Re-read on each upload, not just at init: a long-lived page could otherwise enforce a cap
         // an administrator changed minutes ago.
@@ -131,7 +128,10 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             valid = valid.Take(MaxFileCount - items.Count).ToList();
         }
 
-        if (valid.Count == 0) return;
+        if (valid.Count == 0)
+        {
+            return;
+        }
 
         isUploading = true;
         var uploaded = 0;
@@ -159,12 +159,15 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
                     continue;
                 }
 
-                try { await AttachAsync(result.Value!.Id); uploaded++; }
+                try
+                { await AttachAsync(result.Value!.Id); uploaded++; }
                 catch (Exception ex) { perFile.Add(UploadFailureText.Clean(ex.Message)); }
             }
 
             if (perFile.Count > 0)
+            {
                 Snackbar.Add(UploadFailureText.Several(perFile, itemised: perFile.Count <= 3), Severity.Error, o => o.RequireInteraction = true);
+            }
 
             if (uploaded > 0)
             {
@@ -178,13 +181,17 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task PreviewFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!previewingFiles.Add(meta.Id)) return;
+        if (!previewingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try
         {
             var content = await Files.GetContentAsync(meta.Id);
-            if (content is null) { Snackbar.Add("Preview failed.", Severity.Error); return; }
+            if (content is null)
+            { Snackbar.Add("Preview failed.", Severity.Error); return; }
 
             var contentType = content.ContentType ?? meta.ContentType;
             var blobUrl = await JsRuntime.InvokeAsync<string>("createBlobUrl", content.Bytes, contentType);
@@ -197,13 +204,17 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task DownloadFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!downloadingFiles.Add(meta.Id)) return;
+        if (!downloadingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try
         {
             var content = await Files.GetContentAsync(meta.Id);
-            if (content is null) { Snackbar.Add("Download failed.", Severity.Error); return; }
+            if (content is null)
+            { Snackbar.Add("Download failed.", Severity.Error); return; }
 
             await JsRuntime.SaveFileAsync(content, meta.FileName);
         }
@@ -216,13 +227,19 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
         var meta = MetadataOf(file);
         var confirmed = await confirm.AskAsync("Detach file", $"Detach '{meta.FileName}' from this {EntityNoun}?", "Detach", "link_off");
 
-        if (confirmed) await DeleteFileAsync(file);
+        if (confirmed)
+        {
+            await DeleteFileAsync(file);
+        }
     }
 
     private async Task DeleteFileAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        if (!deletingFiles.Add(meta.Id)) return;
+        if (!deletingFiles.Add(meta.Id))
+        {
+            return;
+        }
 
         StateHasChanged();
         try

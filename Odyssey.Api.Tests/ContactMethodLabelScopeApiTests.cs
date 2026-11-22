@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// HTTP-tier coverage for the contact-method label scope (issue #47 §7, §16.1–5, §16.9, §16.18,
 /// §16.23): the <c>422</c> and what distinguishes it from the <c>400</c> above it.
 /// </summary>
-public class ContactMethodLabelScopeApiTests
+public class ContactMethodLabelScopeApiTests(ContactMethodLabelScopeApiTests.Host host) : SharedApiHostTests<ContactMethodLabelScopeApiTests.Host>(host)
 {
     private const string ActorUserId = "label-scope-actor";
 
@@ -32,7 +32,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Posting_an_organization_label_to_an_organization_creates_it_and_persists_the_ordinal()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         using var client = factory.CreateClient();
 
@@ -53,7 +53,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Posting_a_person_label_to_an_organization_is_refused_with_422_on_the_label_field()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         using var client = factory.CreateClient();
 
@@ -71,7 +71,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Posting_an_organization_label_to_a_person_is_refused_with_the_mirror_422()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Person);
         using var client = factory.CreateClient();
 
@@ -88,7 +88,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task The_scope_rejection_covers_all_three_contact_method_kinds()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         using var client = factory.CreateClient();
 
@@ -113,7 +113,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Posting_an_undefined_ordinal_is_a_400_not_a_422()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         using var client = factory.CreateClient();
 
@@ -134,7 +134,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Putting_an_invalid_label_is_refused_even_when_the_row_already_stores_it()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         var phoneId = await SeedPhoneAsync(factory, id, PhoneLabel.Home);
         using var client = factory.CreateClient();
@@ -154,7 +154,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Resubmitting_a_stored_invalid_label_as_primary_is_refused_with_an_explicable_message()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         var phoneId = await SeedPhoneAsync(factory, id, PhoneLabel.Home);
         using var client = factory.CreateClient();
@@ -176,7 +176,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task A_missing_row_still_404s_even_with_an_invalid_label()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         using var client = factory.CreateClient();
 
@@ -191,7 +191,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Authorization_is_reached_before_the_scope_check()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ContactsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ContactsRead]);
         var id = await SeedContactAsync(factory, ContactType.Organization);
         using var client = factory.CreateClient();
 
@@ -212,7 +212,7 @@ public class ContactMethodLabelScopeApiTests
     [Fact]
     public async Task Importing_a_vcard_whose_labels_are_out_of_scope_stays_a_2xx_and_keeps_every_row()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         await EnsureDatabaseAsync(factory);
         using var client = factory.CreateClient();
 
@@ -304,9 +304,13 @@ public class ContactMethodLabelScopeApiTests
         };
 
         if (type == ContactType.Person)
+        {
             contact.PersonDetails = new() { FirstName = "Ada", LastName = "Lovelace" };
+        }
         else
+        {
             contact.OrganizationDetails = new() { LegalName = "Acme" };
+        }
 
         context.Contacts.Add(contact);
         await context.SaveChangesAsync();
@@ -326,6 +330,9 @@ public class ContactMethodLabelScopeApiTests
         return phone.Id;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

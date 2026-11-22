@@ -1,0 +1,12 @@
+/* /recipes (design system recipes.css; tokens only). The list reuses .acct-list and the filter bar .ph-filter-bar. */
+
+/* An open-ended MultiSelect (tags) sizes by min(240px, 100%): its cell needs a definite width, or the % resolves
+   against a shrink-to-fit cell and the trigger ends up narrower than its popover. */
+.rc-filter-open { flex: 0 0 calc(var(--space-16) * 4 - var(--space-4)); min-width: 0; }
+
+/* The open card while its read runs: three skeleton rows. */
+.rc-skel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) 0; }
+
+.rc-confirm-p { margin: 0 0 var(--space-3); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.rc-confirm-p.muted { color: var(--mud-palette-text-secondary); margin-bottom: 0; }

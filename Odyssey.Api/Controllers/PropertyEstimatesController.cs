@@ -3,7 +3,6 @@ using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Core.Finance;
 
@@ -30,9 +29,8 @@ public sealed class PropertyEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingPropertyEstimate>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the estimated-value history for a property.",
-        Description = @"Lists the full estimate history for the property, newest effective date first.
+    [EndpointSummary("Get the estimated-value history for a property.")]
+    [EndpointDescription(@"Lists the full estimate history for the property, newest effective date first.
                         Optionally cut off at an as-of date.")]
     public async Task<IActionResult> GetPropertyEstimates(
         [FromRoute(Name = "propertyId")] Guid propertyId,
@@ -40,7 +38,9 @@ public sealed class PropertyEstimatesController : ControllerBase
     {
         var estimates = await propertyEstimateService.GetHistory(propertyId, asOf, cancellationToken);
         if (estimates is null)
+        {
             return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
 
         return Ok(estimates);
     }
@@ -50,16 +50,17 @@ public sealed class PropertyEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CurrentPropertyEstimate))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the currently-effective estimated value for a property.",
-        Description = @"Returns the in-force estimate as of now or the supplied as-of date, or a null
+    [EndpointSummary("Get the currently-effective estimated value for a property.")]
+    [EndpointDescription(@"Returns the in-force estimate as of now or the supplied as-of date, or a null
                         body when the property has no estimate in force.")]
     public async Task<IActionResult> GetCurrentPropertyEstimate(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         if (!await propertyEstimateService.PropertyExists(propertyId, cancellationToken))
+        {
             return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
 
         var estimate = await propertyEstimateService.GetCurrent(propertyId, asOf, cancellationToken);
 
@@ -75,7 +76,7 @@ public sealed class PropertyEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Record a new estimated-value entry on a property.")]
+    [EndpointSummary("Record a new estimated-value entry on a property.")]
     public async Task<IActionResult> PostPropertyEstimate(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromBody] NewPropertyEstimate newEstimate, CancellationToken cancellationToken = default)
@@ -91,7 +92,7 @@ public sealed class PropertyEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update an estimated-value entry on a property.")]
+    [EndpointSummary("Update an estimated-value entry on a property.")]
     public async Task<IActionResult> PutPropertyEstimate(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromRoute(Name = "estimateId")] Guid estimateId,
@@ -99,7 +100,9 @@ public sealed class PropertyEstimatesController : ControllerBase
     {
         var updated = await propertyEstimateService.Update(propertyId, estimateId, putEstimate, cancellationToken);
         if (!updated)
+        {
             return this.NotFoundProblem($"Estimate ID {estimateId} is not attached to property ID {propertyId}.");
+        }
 
         return NoContent();
     }
@@ -109,14 +112,16 @@ public sealed class PropertyEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an estimated-value entry from a property.")]
+    [EndpointSummary("Delete an estimated-value entry from a property.")]
     public async Task<IActionResult> DeletePropertyEstimate(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromRoute(Name = "estimateId")] Guid estimateId, CancellationToken cancellationToken = default)
     {
         var deleted = await propertyEstimateService.Delete(propertyId, estimateId, cancellationToken);
         if (!deleted)
+        {
             return this.NotFoundProblem($"Estimate ID {estimateId} is not attached to property ID {propertyId}.");
+        }
 
         return NoContent();
     }

@@ -15,7 +15,7 @@ namespace Odyssey.Api.Tests;
 /// replace and its validation, and the claim gates. The test-only fake source is registered so the catalogue is
 /// not empty, as it will be once Phase 2 ships a real source.
 /// </summary>
-public class InstrumentPriceSourcesApiTests
+public class InstrumentPriceSourcesApiTests(InstrumentPriceSourcesApiTests.Host host) : SharedApiHostTests<InstrumentPriceSourcesApiTests.Host>(host)
 {
     private const string Route = "/api/system-settings/instrument-price-sources";
 
@@ -25,7 +25,7 @@ public class InstrumentPriceSourcesApiTests
         PermissionClaims.InstrumentPricesRead, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate,
     ];
 
-    private sealed class ApiFactory(IReadOnlyCollection<string> permissions, bool withSource = true, OdysseyApiFactory? sharing = null)
+    public class ApiFactory(IReadOnlyCollection<string> permissions, bool withSource = true, OdysseyApiFactory? sharing = null)
         : OdysseyApiFactory(
             permissions,
             "price-sources-actor",
@@ -55,13 +55,14 @@ public class InstrumentPriceSourcesApiTests
     [Fact]
     public async Task Status_lists_the_registered_source_and_says_only_whether_it_is_configured()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
 
         var status = await client.GetFromJsonAsync<InstrumentPriceSourcesStatus>(Route);
 
-        var source = Assert.Single(status!.Sources);
-        Assert.Equal(FakePrimarySource.DeclaredKey, source.Key);
+        // The production host registers Tiingo (issue #447); the test adds the fake beside it.
+        Assert.Equal(["fake-primary", "tiingo"], status!.Sources.Select(s => s.Key).Order(StringComparer.Ordinal));
+        var source = status.Sources.Single(s => s.Key == FakePrimarySource.DeclaredKey);
         Assert.False(source.Configured);
         Assert.Equal(new FakePrimarySource().Limits.MaxRequestsPerDay, source.MaxRequestsPerDay);
         Assert.Equal(InstrumentPriceBindingLimits.MaxBindingsPerInstrument, status.MaxBindingsPerInstrument);
@@ -69,21 +70,29 @@ public class InstrumentPriceSourcesApiTests
     }
 
     [Fact]
-    public async Task With_no_source_registered_the_status_is_empty_and_a_binding_is_refused()
+    public async Task The_production_catalogue_is_exactly_tiingo_and_an_unregistered_key_is_refused()
     {
         await using var factory = new ApiFactory(Admin, withSource: false);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client);
 
-        Assert.Empty((await client.GetFromJsonAsync<InstrumentPriceSourcesStatus>(Route))!.Sources);
+        var tiingo = Assert.Single((await client.GetFromJsonAsync<InstrumentPriceSourcesStatus>(Route))!.Sources);
+        Assert.Equal("tiingo", tiingo.Key);
+        Assert.False(tiingo.Configured);
+        Assert.Equal(600, tiingo.MaxRequestsPerDay);
+
         var response = await client.PutAsJsonAsync($"{Route}/bindings/{instrument.InstrumentId}", Bindings(("fake-primary", "EQNR.OL")));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        // The real source is bindable through the same list replace.
+        var bound = await client.PutAsJsonAsync($"{Route}/bindings/{instrument.InstrumentId}", Bindings(("tiingo", "BRK-B")));
+        Assert.Equal(HttpStatusCode.OK, bound.StatusCode);
     }
 
     [Fact]
     public async Task Replace_stores_the_list_in_priority_order_and_an_empty_list_clears_it()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client);
 
@@ -108,7 +117,7 @@ public class InstrumentPriceSourcesApiTests
     [InlineData("fake-primary", "EQ..NR", "bindings[0].sourceSymbol")]
     public async Task Replace_refuses_an_unknown_duplicate_or_malformed_binding(string keys, string symbol, string field)
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client);
         var rows = keys.Split('|').Select(k => (k == "dup" ? FakePrimarySource.DeclaredKey : k, symbol)).ToArray();
@@ -123,7 +132,7 @@ public class InstrumentPriceSourcesApiTests
     [Fact]
     public async Task Replace_refuses_a_source_that_does_not_price_the_instruments_type()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client, InstrumentType.Other);
 
@@ -135,7 +144,7 @@ public class InstrumentPriceSourcesApiTests
     [Fact]
     public async Task Replace_beyond_the_binding_cap_is_a_400()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client);
         var rows = Enumerable.Range(0, InstrumentPriceBindingLimits.MaxBindingsPerInstrument + 1)
@@ -149,7 +158,7 @@ public class InstrumentPriceSourcesApiTests
     [Fact]
     public async Task An_archived_instrument_may_have_its_bindings_cleared_but_not_added()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client);
         await client.PutAsJsonAsync($"{Route}/bindings/{instrument.InstrumentId}", Bindings((FakePrimarySource.DeclaredKey, "EQNR.OL")));
@@ -163,7 +172,7 @@ public class InstrumentPriceSourcesApiTests
     [Fact]
     public async Task An_unknown_instrument_is_a_404()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Route}/bindings/{Guid.NewGuid()}")).StatusCode);
@@ -197,4 +206,7 @@ public class InstrumentPriceSourcesApiTests
         using var noInstrumentsClient = noInstruments.CreateClient();
         Assert.Equal(HttpStatusCode.Forbidden, (await noInstrumentsClient.GetAsync($"{Route}/bindings/{instrument.InstrumentId}")).StatusCode);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

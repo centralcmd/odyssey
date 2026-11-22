@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Core.Finance.ExchangeRateSync;
@@ -23,7 +24,7 @@ namespace Odyssey.Api.Tests;
 /// under <c>Testing</c>, and the rate endpoints' new fetched-row rules. Norges Bank is an in-process stub;
 /// the parsing and planning are covered in <c>Odyssey.Core.Tests</c>.
 /// </summary>
-public class ExchangeRateSyncApiTests
+public class ExchangeRateSyncApiTests(ExchangeRateSyncApiTests.Host host) : SharedApiHostTests<ExchangeRateSyncApiTests.Host>(host)
 {
     private const string Sync = "/api/system-settings/exchange-rate-sync";
 
@@ -59,7 +60,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task Sync_endpoints_are_Admin_only()
     {
-        await using var factory = new ApiFactory(RateOwner);
+        var factory = Factory.ForCaller(RateOwner);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Sync}/status")).StatusCode);
@@ -74,7 +75,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task A_settings_reader_reads_the_sync_but_cannot_change_or_run_it()
     {
-        await using var factory = new ApiFactory([PermissionClaims.SystemSettingsRead, PermissionClaims.ExchangeRatesDelete]);
+        var factory = Factory.ForCaller([PermissionClaims.SystemSettingsRead, PermissionClaims.ExchangeRatesDelete]);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -91,7 +92,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task Refresh_status_stores_the_providers_list_that_status_then_reports()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -110,7 +111,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task Enable_then_run_now_fetches_inline_and_logs_the_run()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -175,7 +176,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task Archiving_a_currency_stops_its_sync_and_the_base_cannot_be_archived_while_synced()
     {
-        await using var factory = new ApiFactory([.. Admin, PermissionClaims.CurrenciesRead, PermissionClaims.CurrenciesUpdate]);
+        var factory = Factory.ForCaller([.. Admin, PermissionClaims.CurrenciesRead, PermissionClaims.CurrenciesUpdate]);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{Sync}/currencies/USD", new { enabled = true })).StatusCode);
@@ -198,7 +199,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task The_per_currency_put_validates_its_route_and_body()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -211,7 +212,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task A_fetched_rate_is_read_by_everyone_but_written_only_by_an_administrator()
     {
-        await using var admin = new ApiFactory(Admin);
+        var admin = Factory.ForCaller(Admin);
         await SeedAsync(admin);
         using (var client = admin.CreateClient())
         {
@@ -226,8 +227,8 @@ public class ExchangeRateSyncApiTests
             fetchedId = (await context.ExchangeRates.FirstAsync(rate => rate.Provider != null)).ExchangeRateId;
         }
 
-        await using var owner = new ApiFactory(RateOwner, sharingStoreWith: admin);
-        using var ownerClient = owner.CreateClient();
+        var owner = Factory;
+        using var ownerClient = owner.ClientFor(RateOwner);
 
         var summary = await ownerClient.GetFromJsonAsync<ExchangeRateSummary>("/api/exchange-rates/summary");
         Assert.True(summary!.BySource.Fetched > 0);
@@ -253,14 +254,14 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task A_purge_needs_both_claims_and_a_disabled_currency()
     {
-        await using var admin = new ApiFactory(Admin);
+        var admin = Factory.ForCaller(Admin);
         await SeedAsync(admin);
         using var client = admin.CreateClient();
         await client.PutAsJsonAsync($"{Sync}/currencies/USD", new ExchangeRateSyncCurrencyUpdate { Enabled = true });
         await client.PostAsync($"{Sync}/runs", null);
 
-        await using var settingsOnly = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
-        using (var settingsClient = settingsOnly.CreateClient())
+        var settingsOnly = Factory;
+        using (var settingsClient = settingsOnly.ClientFor(SettingsOnly))
         {
             Assert.Equal(HttpStatusCode.Forbidden, (await settingsClient.DeleteAsync($"{Sync}/currencies/USD/rates")).StatusCode);
         }
@@ -279,7 +280,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task The_global_start_date_is_bounded_by_its_floor_and_by_today()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
         var tomorrow = FixedNow.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -316,7 +317,7 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task The_worker_job_claims_and_finishes_a_manual_run_once()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
         await SeedAsync(factory);
         using (var client = factory.CreateClient())
         {
@@ -349,14 +350,14 @@ public class ExchangeRateSyncApiTests
     [Fact]
     public async Task The_api_host_does_not_run_the_sync_job()
     {
-        await using var factory = new ApiFactory(Admin);
+        var factory = Factory.ForCaller(Admin);
 
         Assert.Null(factory.Services.GetService<ExchangeRateSyncJob>());
         Assert.DoesNotContain(factory.Services.GetServices<Microsoft.Extensions.Hosting.IHostedService>(),
             service => service.GetType().FullName!.Contains("ExchangeRateSync", StringComparison.Ordinal));
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
         : OdysseyApiFactory(
             permissions,
             "exchange-rate-sync-actor",
@@ -364,14 +365,9 @@ public class ExchangeRateSyncApiTests
             {
                 services.AddHttpClient(nameof(NorgesBankClient)).ConfigurePrimaryHttpMessageHandler(() => new StubProvider());
                 services.AddSingleton(ExchangeRateSyncPacing.None);
-                services.AddSingleton<TimeProvider>(new FixedClock());
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(new DateTimeOffset(FixedNow, TimeSpan.Zero)));
             },
             sharingStoreWith: sharingStoreWith);
-
-    private sealed class FixedClock : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(FixedNow, TimeSpan.Zero);
-    }
 
     /// <summary>
     /// Norges Bank in-process: USD and EUR published as of today, from 1999; a data request gets one
@@ -451,4 +447,7 @@ public class ExchangeRateSyncApiTests
                 },
             });
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

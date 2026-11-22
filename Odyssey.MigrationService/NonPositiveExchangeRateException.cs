@@ -13,8 +13,6 @@ namespace Odyssey.MigrationService;
 public sealed class NonPositiveExchangeRateException(IReadOnlyList<string> exchangeRateIds, long totalCount)
     : Exception(BuildMessage(exchangeRateIds, totalCount))
 {
-    public IReadOnlyList<string> ExchangeRateIds { get; } = exchangeRateIds;
-
     public long TotalCount { get; } = totalCount;
 
     private static string BuildMessage(IReadOnlyList<string> ids, long total) =>

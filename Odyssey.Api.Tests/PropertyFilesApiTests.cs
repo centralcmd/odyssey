@@ -7,10 +7,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using static Odyssey.Api.Tests.PropertyApiTestSupport;
 using PropertyFileType = Odyssey.Dtos.Finance.PropertyFileType;
@@ -21,7 +24,7 @@ namespace Odyssey.Api.Tests;
 /// Endpoint contract for property documents (issue #210 §5): attach, list, update, download and detach,
 /// their claim gating, validation, the shared content-type allow-list and the absence of a cap.
 /// </summary>
-public sealed class PropertyFilesApiTests
+public class PropertyFilesApiTests(PropertyFilesApiTests.Host host) : SharedApiHostTests<PropertyFilesApiTests.Host>(host)
 {
     private const string ActorUserId = "property-doc-actor";
     private const string ActorEmail = "property-doc-actor@example.com";
@@ -36,7 +39,7 @@ public sealed class PropertyFilesApiTests
     private static readonly DateTime ValidTo = new(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime IssuedAt = new(2021, 5, 20, 0, 0, 0, DateTimeKind.Utc);
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
         : OdysseyApiFactory(permissions, ActorUserId, sharingStoreWith: sharingStoreWith);
 
     private static string FilesPath(Guid propertyId) => $"{PropertyPath(propertyId)}/files";
@@ -48,8 +51,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_ReturnsCreatedWithDownloadLocation_AndTheListCarriesEveryField()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         await SeedActorProfileAsync(factory);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await SeedFileAsync(factory);
@@ -84,8 +87,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_OmittingFileType_DefaultsToOther()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await SeedFileAsync(factory);
 
@@ -101,8 +104,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task List_IsOrderedByAttachmentTime_AndScopedToTheProperty()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var otherId = await SeedPropertyAsync(factory, name: "Cabin");
         var first = await AttachAsync(factory, client, propertyId);
@@ -119,8 +122,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Download_ReturnsTheBytes_WithSafeDownloadHeaders()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         byte[] bytes = [0x25, 0x50, 0x44, 0x46, 0x2d];
         var fileId = await AttachAsync(factory, client, propertyId, content: bytes);
@@ -141,14 +144,18 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Put_ReplacesTheMetadata_AndOmissionClears()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var contactId = await SeedContactAsync(factory);
         var fileId = await AttachAsync(factory, client, propertyId, build: id => new AttachPropertyFileRequest
         {
-            FileMetadataId = id, FileType = PropertyFileType.Deed,
-            ValidFrom = ValidFrom, ValidTo = ValidTo, IssuedAt = IssuedAt, IssuedBy = contactId,
+            FileMetadataId = id,
+            FileType = PropertyFileType.Deed,
+            ValidFrom = ValidFrom,
+            ValidTo = ValidTo,
+            IssuedAt = IssuedAt,
+            IssuedBy = contactId,
         });
 
         var put = await client.PutAsync(FilePath(propertyId, fileId), Json("""{"fileType":3}"""));
@@ -165,8 +172,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Put_OmittingFileType_IsBadRequest_AndChangesNothing()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await AttachAsync(factory, client, propertyId, fileType: PropertyFileType.Deed);
 
@@ -181,8 +188,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Put_WithAnUndefinedFileType_IsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await AttachAsync(factory, client, propertyId);
 
@@ -196,8 +203,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Detach_RemovesTheLinkOnly_AndTheFileSurvives()
     {
-        await using var factory = new ApiFactory([.. ReadWriteWithFiles]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([.. ReadWriteWithFiles]);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await AttachAsync(factory, client, propertyId);
 
@@ -210,7 +217,7 @@ public sealed class PropertyFilesApiTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var metadata = await db.FileMetadata.SingleAsync(m => m.Id == fileId);
-        Assert.True(await db.FileBlob.AnyAsync(b => b.Id == metadata.FileBlobId));
+        Assert.True(await db.StoredObjects.AnyAsync(o => o.Id == metadata.FinanceStoredObjectId && o.State == StoredObjectState.Committed));
     }
 
     // ── AC 5: claims ───────────────────────────────────────────────────────────
@@ -226,8 +233,8 @@ public sealed class PropertyFilesApiTests
     [MemberData(nameof(AttachClaimCases))]
     public async Task Attach_RequiresPropertiesUpdateAndFilesRead(string[] claims, HttpStatusCode expected)
     {
-        await using var factory = new ApiFactory(claims);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(claims);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await SeedFileAsync(factory);
 
@@ -283,8 +290,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_WithADisallowedStoredContentType_IsBadRequest_AndWritesNothing()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await SeedFileAsync(factory, contentType: "text/html");
 
@@ -304,8 +311,8 @@ public sealed class PropertyFilesApiTests
     [InlineData("image/webp")]
     public async Task Attach_AcceptsEveryAllowListedType(string contentType)
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await SeedFileAsync(factory, contentType: contentType);
 
@@ -318,8 +325,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_AnUnknownFile_IsNotFound()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
 
         var attach = await client.PostAsJsonAsync(
@@ -333,8 +340,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_TheSameFileTwiceToOneProperty_IsConflict_ButTwoPropertiesMayShareIt()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var first = await SeedPropertyAsync(factory);
         var second = await SeedPropertyAsync(factory, name: "Cabin");
         var fileId = await SeedFileAsync(factory);
@@ -349,8 +356,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_SixtyFiles_AllSucceed_BecauseThereIsNoCap()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
 
         for (var i = 0; i < 60; i++)
@@ -366,14 +373,16 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_WithValidToBeforeValidFrom_IsBadRequestKeyedValidTo()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await SeedFileAsync(factory);
 
         var attach = await client.PostAsJsonAsync(FilesPath(propertyId), new AttachPropertyFileRequest
         {
-            FileMetadataId = fileId, ValidFrom = ValidTo, ValidTo = ValidFrom,
+            FileMetadataId = fileId,
+            ValidFrom = ValidTo,
+            ValidTo = ValidFrom,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, attach.StatusCode);
@@ -387,8 +396,8 @@ public sealed class PropertyFilesApiTests
     [InlineData("issuedAt", "IssuedAt")]
     public async Task Put_WithADateBeforeYear1000_IsBadRequestKeyedOnThatField(string json, string key)
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await AttachAsync(factory, client, propertyId);
 
@@ -402,19 +411,21 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task AttachAndPut_WithAnUnknownIssuer_AreBadRequestKeyedIssuedBy()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
         var unattached = await SeedFileAsync(factory);
         var attached = await AttachAsync(factory, client, propertyId);
 
         var attach = await client.PostAsJsonAsync(FilesPath(propertyId), new AttachPropertyFileRequest
         {
-            FileMetadataId = unattached, IssuedBy = Guid.NewGuid(),
+            FileMetadataId = unattached,
+            IssuedBy = Guid.NewGuid(),
         });
         var put = await client.PutAsJsonAsync(FilePath(propertyId, attached), new UpdatePropertyFileRequest
         {
-            FileType = PropertyFileType.Deed, IssuedBy = Guid.NewGuid(),
+            FileType = PropertyFileType.Deed,
+            IssuedBy = Guid.NewGuid(),
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, attach.StatusCode);
@@ -428,8 +439,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task AnUnknownProperty_IsNotFound_OnAllFiveEndpoints()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         await EnsureCreatedAsync(factory);
         var fileId = await SeedFileAsync(factory);
         var missing = Guid.NewGuid();
@@ -446,8 +457,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task APropertyWithNoDocuments_ListsAnEmptyArray()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory);
 
         var response = await client.GetAsync(FilesPath(propertyId));
@@ -459,8 +470,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task AFileAttachedToA_IsNotFoundThroughB()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var a = await SeedPropertyAsync(factory);
         var b = await SeedPropertyAsync(factory, name: "Cabin");
         var fileId = await AttachAsync(factory, client, a, fileType: PropertyFileType.Deed);
@@ -479,8 +490,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task PropertyLimits_AreUnchanged()
     {
-        await using var factory = new ApiFactory([PermissionClaims.PropertiesRead]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.PropertiesRead]);
         await EnsureCreatedAsync(factory);
 
         using var document = JsonDocument.Parse(await client.GetStringAsync(LimitsPath));
@@ -491,13 +502,14 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task TheList_CarriesNoIssuerNameAndNoPropertyPersonalData()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var propertyId = await SeedPropertyAsync(factory, city: "Trondheim-Unique-City");
         var contactId = await SeedContactAsync(factory);
         await AttachAsync(factory, client, propertyId, build: id => new AttachPropertyFileRequest
         {
-            FileMetadataId = id, IssuedBy = contactId,
+            FileMetadataId = id,
+            IssuedBy = contactId,
         });
 
         var body = await client.GetStringAsync(FilesPath(propertyId));
@@ -511,8 +523,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task Attach_IgnoresNestedObjectsAndABodyPropertyId()
     {
-        await using var factory = new ApiFactory(ReadWriteWithFiles);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor(ReadWriteWithFiles);
         var target = await SeedPropertyAsync(factory);
         var decoy = await SeedPropertyAsync(factory, name: "Decoy");
         var contactId = await SeedContactAsync(factory);
@@ -549,8 +561,8 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public async Task DeletingTheProperty_RemovesItsLinks_AndKeepsTheFile()
     {
-        await using var factory = new ApiFactory([.. ReadWriteWithFiles, PermissionClaims.PropertiesDelete]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([.. ReadWriteWithFiles, PermissionClaims.PropertiesDelete]);
         var propertyId = await SeedPropertyAsync(factory);
         var fileId = await AttachAsync(factory, client, propertyId);
 
@@ -572,7 +584,7 @@ public sealed class PropertyFilesApiTests
     [Fact]
     public void TheDocumentAllowList_IsDeclaredExactlyOnce()
     {
-        var root = RepositoryRoot();
+        var root = SourceTree.Root;
         var declaration = File.ReadAllText(Path.Combine(root, "Odyssey.Dtos", "Finance", "DocumentContentTypes.cs"));
         Assert.Contains("\"application/pdf\"", declaration, StringComparison.Ordinal);
 
@@ -650,7 +662,7 @@ public sealed class PropertyFilesApiTests
         await db.Database.EnsureCreatedAsync();
 
         var bytes = content ?? [1, 2, 3];
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = bytes };
+        var blobContent = bytes;
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -660,10 +672,8 @@ public sealed class PropertyFilesApiTests
             SizeBytes = bytes.Length,
             Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(bytes)),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         };
-        db.FileBlob.Add(blob);
         db.FileMetadata.Add(metadata);
         await db.SaveChangesAsync();
         return metadata.Id;
@@ -705,14 +715,6 @@ public sealed class PropertyFilesApiTests
         return await db.PropertyFiles.CountAsync(f => f.PropertyId == propertyId);
     }
 
-    private static string RepositoryRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Odyssey.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName ?? throw new InvalidOperationException("Odyssey.sln not found above the test binaries.");
-    }
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory(permissions: null);
 }

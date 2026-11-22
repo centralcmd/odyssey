@@ -94,9 +94,13 @@ internal static class PropertyApiTestSupport
         };
 
         if (type == PropertyType.RealEstate)
+        {
             property.RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House, Location = AddressLocation(city) };
+        }
         else
+        {
             property.VehicleDetails = new VehicleDetails { Kind = VehicleKind.Car, Make = "Volvo" };
+        }
 
         context.Properties.Add(property);
         await context.SaveChangesAsync();
@@ -172,7 +176,9 @@ internal static class PropertyApiTestSupport
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         if (!document.RootElement.TryGetProperty("errors", out var errors) || errors.ValueKind != JsonValueKind.Object)
+        {
             return [];
+        }
 
         return [.. errors.EnumerateObject().Select(member => member.Name)];
     }

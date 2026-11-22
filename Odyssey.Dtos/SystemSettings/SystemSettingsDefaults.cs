@@ -204,10 +204,10 @@ public static class SystemSettingsDefaults
     public const int FileAnalysisMatchTimeoutSeconds = 60;
 
     /// <summary>
-    /// Blob prefix read for photo metadata extraction, in megabytes. <strong>16 is the ceiling</strong>
-    /// and it is a compiled assumption about MariaDB's default <c>max_allowed_packet</c> (16 MiB),
-    /// which this repository pins nowhere — see <c>docs/deployment.md</c>. Extraction reads a full
-    /// <c>byte[]</c> of this size per photo, so it is also a per-upload memory multiplier.
+    /// Prefix of the upload stream read for photo metadata extraction, in megabytes (issue #428 moved the
+    /// read from the database to the upload before it is stored). <strong>16 is the ceiling</strong>:
+    /// extraction reads a full <c>byte[]</c> of this size per photo, so it is a per-upload memory
+    /// multiplier — see <c>docs/deployment.md</c>.
     /// </summary>
     public const int PhotoMetadataReadMegabytes = 8;
 
@@ -397,4 +397,18 @@ public static class SystemSettingsDefaults
 
     /// <summary>The most distinct feeds one OPML file may name. Its range's ceiling is this value: it can only be lowered.</summary>
     public const int NewsOpmlMaxImportEntries = 100_000;
+
+    // ── Podcasts (issue #556 §8.2) ────────────────────────────────────────────────────────────────
+
+    /// <summary>The audio quota, counting audio awaiting deletion; at it, downloads are deferred, never purged.</summary>
+    public const int PodcastAudioStoreMaxGiB = 50;
+
+    /// <summary>The largest episode downloaded, in MB; also bounded by <c>FileStorage:MaxFileSizeBytes</c>.</summary>
+    public const int PodcastAudioMaxEpisodeMb = 1024;
+
+    /// <summary>Episodes auto-download may queue per podcast per UTC day.</summary>
+    public const int PodcastAutoDownloadsPerFeedPerDay = 5;
+
+    /// <summary>Auto-downloaded episodes a podcast may hold that no device has fetched yet.</summary>
+    public const int PodcastAutoDownloadMaxUnfetchedPerFeed = 5;
 }

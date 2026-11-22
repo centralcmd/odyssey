@@ -174,7 +174,9 @@ public class PropertyService
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
 
         if (property is null)
+        {
             return null;
+        }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var dto = ToDto(property, now);
@@ -194,7 +196,9 @@ public class PropertyService
         CancellationToken cancellationToken)
     {
         if (dtos.Count == 0)
+        {
             return;
+        }
 
         var ids = dtos.Select(d => d.PropertyId).ToList();
 
@@ -232,11 +236,15 @@ public class PropertyService
         {
             var contractCounts = await CountContractsAsync(ids, cancellationToken);
             foreach (var dto in dtos)
+            {
                 dto.ContractCount = contractCounts.GetValueOrDefault(dto.PropertyId);
+            }
         }
 
         if (!includeEstimates)
+        {
             return;
+        }
 
         var estimates = await context.PropertyEstimates
             .AsNoTracking()
@@ -274,7 +282,9 @@ public class PropertyService
             .Distinct()
             .ToList();
         if (ids.Count == 0)
+        {
             return;
+        }
 
         var refs = await contactLookup.ResolveRefsAsync(ids, cancellationToken);
         foreach (var dto in dtos)
@@ -367,7 +377,9 @@ public class PropertyService
 
         // Nothing is stored yet, so any submitted association is a new one and always validated.
         if (type == PropertyType.RealEstate && newProperty.RealEstateDetails!.HomeownerAssociationId is { } associationId)
+        {
             await ValidateHomeownerAssociation(associationId, cancellationToken);
+        }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var property = new Property
@@ -429,7 +441,9 @@ public class PropertyService
                 .Include(p => p.VehicleDetails)
                 .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
             if (property is null)
+            {
                 return;
+            }
 
             var type = ValidateShape(putProperty);
 
@@ -487,7 +501,9 @@ public class PropertyService
         }, System.Data.IsolationLevel.ReadCommitted, cancellationToken);
 
         if (result is null)
+        {
             return null;
+        }
 
         if (addressChange is not null)
         {
@@ -534,7 +550,9 @@ public class PropertyService
             .Include(p => p.Events)
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
         if (property is null)
+        {
             return false;
+        }
 
         var parties = await context.ContractParties
             .Where(p => p.PropertyId == id)
@@ -684,7 +702,9 @@ public class PropertyService
         bool isUpdate, CancellationToken cancellationToken)
     {
         if (property.Type != PropertyType.RealEstate || source.RealEstateDetails is not { } details)
+        {
             return null;
+        }
 
         var target = property.RealEstateDetails!;
         var current = target.LocationId is null ? null : target.Location;
@@ -717,7 +737,9 @@ public class PropertyService
         if (fields.IsEmpty)
         {
             if (current is null)
+            {
                 return null;
+            }
 
             target.LocationId = null;
             target.Location = null;
@@ -730,7 +752,9 @@ public class PropertyService
             details.Latitude, details.Longitude, details.TimeZoneId, details.Source, details.SourceReference);
 
         if (current is not null && fields == FourOf(current))
+        {
             return null;
+        }
 
         if (current is not null && isUpdate)
         {
@@ -772,7 +796,9 @@ public class PropertyService
     {
         var linked = dtos.Select(d => d.RealEstateDetails).Where(d => d?.LocationId is not null).ToList();
         if (linked.Count == 0)
+        {
             return;
+        }
 
         var counts = await new LocationReferenceGuard(context).CountAsync(linked.Select(d => d!.LocationId!.Value).ToList(), cancellationToken);
         foreach (var details in linked)
@@ -786,16 +812,22 @@ public class PropertyService
     private static void ApplyArchiveTransition(Property property, bool requestedArchived, DateTime now)
     {
         if (property.Archived is null && requestedArchived)
+        {
             property.Archived = now;
+        }
         else if (property.Archived is not null && !requestedArchived)
+        {
             property.Archived = null;
+        }
     }
 
     // Uppercased and whitespace-stripped; an all-whitespace value is stored as null rather than "".
     private static string? NormalizeIdentifier(string? value)
     {
         if (value is null)
+        {
             return null;
+        }
 
         var stripped = string.Concat(value.Where(c => !char.IsWhiteSpace(c))).ToUpperInvariant();
         return stripped.Length == 0 ? null : stripped;

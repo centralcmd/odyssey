@@ -99,6 +99,12 @@ public static class NewsEgress
     /// <summary>The named <c>HttpClient</c> registered by <c>AddNewsReader</c>.</summary>
     public const string HttpClientName = "news-egress";
 
+    /// <summary>
+    /// The podcast audio client (issue #556 §3.5): its own handler instance from <see cref="CreateHandler"/> (the same
+    /// connect-time check and policy), no client timeout — <see cref="NewsStreamFetch"/> owns the deadlines.
+    /// </summary>
+    public const string AudioHttpClientName = "news-egress-audio";
+
     /// <summary>Fixed and anonymous (§7.5): no host, version, contact or deployment detail.</summary>
     public const string UserAgent = "OdysseyNewsReader/1.0";
 
@@ -139,7 +145,12 @@ public static class NewsEgress
     /// it with <see cref="HttpCompletionOption.ResponseHeadersRead"/> and reads the body through
     /// <see cref="NewsBodyReader"/>.
     /// </summary>
-    public static HttpRequestMessage CreateRequest(Uri url, NewsEgressContext context, string? etag = null, string? lastModified = null)
+    /// <param name="identityEncoding">
+    /// Podcast audio (issue #556 §3.5): <c>Accept-Encoding: identity</c> instead of the compressed set, so the byte count
+    /// equals the stored size and no decompression cap is needed.
+    /// </param>
+    public static HttpRequestMessage CreateRequest(
+        Uri url, NewsEgressContext context, string? etag = null, string? lastModified = null, bool identityEncoding = false)
     {
         var refusal = NewsEgressPolicy.CheckUrl(url, context);
         if (refusal != NewsEgressRefusal.None)
@@ -151,9 +162,16 @@ public static class NewsEgress
         request.Options.Set(ContextKey, context);
         request.Headers.TryAddWithoutValidation("User-Agent", UserAgent);
         request.Headers.ConnectionClose = true;
-        request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
-        request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
-        request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("br"));
+        if (identityEncoding)
+        {
+            request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
+        }
+        else
+        {
+            request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+            request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
+            request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("br"));
+        }
         if (NewsValidators.SanitizeETag(etag) is { } validEtag)
         {
             request.Headers.TryAddWithoutValidation("If-None-Match", validEtag);

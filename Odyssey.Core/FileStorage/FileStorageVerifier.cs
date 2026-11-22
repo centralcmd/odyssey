@@ -333,7 +333,10 @@ public sealed class FileStorageVerifier(
 
         context.FileStorageVolumes.Add(new FileStorageVolume
         {
-            Id = marker.VolumeId, Name = name, InitializedAtUtc = marker.InitializedAtUtc, LastSeenAtUtc = now,
+            Id = marker.VolumeId,
+            Name = name,
+            InitializedAtUtc = marker.InitializedAtUtc,
+            LastSeenAtUtc = now,
         });
         await context.SaveChangesAsync(cancellationToken);
         logger.LogWarning("Adopted file volume {Volume} from its marker after a database reset.", name);

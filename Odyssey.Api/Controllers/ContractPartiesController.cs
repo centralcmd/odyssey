@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Identity;
@@ -39,7 +38,7 @@ public sealed class ContractPartiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Add a party in a role, optionally for a term (exactly one of accountId/contactId).")]
+    [EndpointSummary("Add a party in a role, optionally for a term (exactly one of accountId/contactId).")]
     public async Task<IActionResult> AddParty(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] ContractPartyRequest request, CancellationToken cancellationToken = default)
@@ -65,11 +64,11 @@ public sealed class ContractPartiesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     // The edit enforces the same type x role matrix the add does, so it can answer 422 too — declared
-    // here so the generated client and Swagger match reality (issue #169 §5 item 2). The party CAP is
+    // here so the generated client and the OpenAPI document match reality (issue #169 §5 item 2). The party CAP is
     // deliberately not among the reasons: an in-place update is row-count-neutral and never re-checks
     // it, which is what keeps every party on an over-cap contract editable.
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Re-write one party: its role, its target, its dates, or any combination (full replacement).")]
+    [EndpointSummary("Re-write one party: its role, its target, its dates, or any combination (full replacement).")]
     public async Task<IActionResult> UpdateParty(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "partyId")] Guid partyId,
@@ -94,7 +93,7 @@ public sealed class ContractPartiesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Detach a party from a contract.")]
+    [EndpointSummary("Detach a party from a contract.")]
     public async Task<IActionResult> DeleteParty(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "partyId")] Guid partyId, CancellationToken cancellationToken = default)

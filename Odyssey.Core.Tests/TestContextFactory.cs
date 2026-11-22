@@ -8,44 +8,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace Odyssey.Core.Tests;
 
 /// <summary>
-/// A settable, non-degraded <see cref="IImportExportLimitsLookup"/> for the four import/export
-/// services' unit tests (issue #343 arch 15 — their tests live in <c>Odyssey.Core.Tests</c>, not
-/// alongside the services in <c>Odyssey.Core.Journal</c>). Defaults mirror the shipped System Settings
-/// defaults (issue #343 §6), so a test that never touches these properties sees exactly today's
-/// out-of-the-box behavior. The real fail-safe/degrade logic is <c>ImportExportLimitsLookup</c>'s own
-/// concern and is tested against that type directly, not this fake.
-/// </summary>
-public sealed class FakeImportExportLimitsLookup : IImportExportLimitsLookup
-{
-    public int? ContactVCardMaxExportRows { get; set; }
-    public int? ContactVCardMaxImportEntries { get; set; }
-    public long ContactVCardMaxImportBytes { get; set; } = 64L * 1024 * 1024;
-    public long ContactVCardMaxExportBytes { get; set; } = 64L * 1024 * 1024;
-    public int? CalendarIcsMaxExportEvents { get; set; } = 2000;
-    public int? CalendarIcsMaxImportEvents { get; set; } = 2000;
-    public long CalendarIcsMaxImportBytes { get; set; } = 64L * 1024 * 1024;
-    public long CalendarIcsMaxExportBytes { get; set; } = 64L * 1024 * 1024;
-    public int? TaskIcsMaxExportTasks { get; set; } = 2000;
-    public int? TaskIcsMaxImportTasks { get; set; } = 2000;
-    public long TaskIcsMaxImportBytes { get; set; } = 64L * 1024 * 1024;
-    public long TaskIcsMaxExportBytes { get; set; } = 64L * 1024 * 1024;
-    public int? JournalIcsMaxExportRows { get; set; } = 2000;
-    public int? JournalIcsMaxImportEntries { get; set; } = 2000;
-    public long JournalIcsMaxImportBytes { get; set; } = 64L * 1024 * 1024;
-    public long JournalIcsMaxExportBytes { get; set; } = 64L * 1024 * 1024;
-    public int CalendarIcsMaxAggregateOccurrences { get; set; } = 5_000;
-
-    public Task<ImportExportLimits> GetAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(new ImportExportLimits(
-            ContactVCardMaxExportRows, ContactVCardMaxImportEntries, ContactVCardMaxImportBytes, ContactVCardMaxExportBytes,
-            CalendarIcsMaxExportEvents, CalendarIcsMaxImportEvents, CalendarIcsMaxImportBytes, CalendarIcsMaxExportBytes,
-            TaskIcsMaxExportTasks, TaskIcsMaxImportTasks, TaskIcsMaxImportBytes, TaskIcsMaxExportBytes,
-            JournalIcsMaxExportRows, JournalIcsMaxImportEntries, JournalIcsMaxImportBytes, JournalIcsMaxExportBytes,
-            20_000, CalendarIcsMaxAggregateOccurrences, 92, 200, 100, 64L * 1024 * 1024,
-            IsDegraded: false));
-}
-
-/// <summary>
 /// No-op <see cref="IContactReferenceGuard"/> for ContactService unit tests: the finance-side cleanup on
 /// contact delete — and the foreign keys that now enforce the same behaviours in the database — is
 /// covered by Odyssey.IntegrationTests against real MariaDB. The InMemory provider enforces neither, so

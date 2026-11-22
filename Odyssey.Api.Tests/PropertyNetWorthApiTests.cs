@@ -2,10 +2,12 @@ using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using AccountType = Odyssey.Context.AccountType;
 
@@ -24,11 +26,6 @@ public class PropertyNetWorthApiTests
 
     private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(
             permissions,
@@ -36,7 +33,7 @@ public class PropertyNetWorthApiTests
             configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedNow));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedNow));
             });
 
     private static readonly string[] Entitled =
@@ -113,7 +110,7 @@ public class PropertyNetWorthApiTests
     [Fact]
     public void BothNetWorthActions_ReadTheOneHelper_AndNeitherInlinesTheClaim()
     {
-        var source = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.Api", "Controllers", "AccountsController.cs"));
+        var source = SourceTree.ReadAllText(System.IO.Path.Combine("Odyssey.Api", "Controllers", "AccountsController.cs"));
 
         foreach (var action in new[] { "GetTotals", "GetNetWorthHistory" })
         {
@@ -157,13 +154,21 @@ public class PropertyNetWorthApiTests
         context.Accounts.AddRange(
             new Account
             {
-                AccountId = CheckingId, Name = "Checking", Description = "Checking", Opened = opened,
-                AccountType = AccountType.CheckingAccount, CurrencyCode = "USD",
+                AccountId = CheckingId,
+                Name = "Checking",
+                Description = "Checking",
+                Opened = opened,
+                AccountType = AccountType.CheckingAccount,
+                CurrencyCode = "USD",
             },
             new Account
             {
-                AccountId = HouseAccountId, Name = "House (account)", Description = "House", Opened = opened,
-                AccountType = AccountType.OtherAsset, CurrencyCode = "USD",
+                AccountId = HouseAccountId,
+                Name = "House (account)",
+                Description = "House",
+                Opened = opened,
+                AccountType = AccountType.OtherAsset,
+                CurrencyCode = "USD",
             });
         context.Transactions.Add(new Transaction
         {

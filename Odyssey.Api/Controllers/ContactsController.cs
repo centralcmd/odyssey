@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -27,24 +27,28 @@ public sealed class ContactsController : ControllerBase
     private readonly ContactService contactService;
     private readonly IContactReferenceGuard referenceGuard;
     private readonly ContactAuditLog audit;
+    private readonly IContactBookCredits bookCredits;
 
     public ContactsController(
         ILogger<ContactsController> logger,
         ContactService contactService,
         IContactReferenceGuard referenceGuard,
-        ContactAuditLog audit)
+        ContactAuditLog audit,
+        IContactBookCredits bookCredits)
     {
         this.logger = logger;
         this.contactService = contactService;
         this.referenceGuard = referenceGuard;
         this.audit = audit;
+        this.bookCredits = bookCredits;
     }
 
     [HttpGet(Name = "GetContacts")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingContact>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List contacts.", Description = @"List contacts with search, filtering, sorting and pagination.")]
+    [EndpointSummary("List contacts.")]
+    [EndpointDescription(@"List contacts with search, filtering, sorting and pagination.")]
     public async Task<IActionResult> Get(
         [FromQuery] ContactsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -59,8 +63,7 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the contact to get.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the contact to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var contact = await contactService.Get(id, cancellationToken, User.LocationClaims());
         if (contact is null)
@@ -77,8 +80,7 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewContact", Required = true,
-            Description = @"The new contact to create.")] NewContact newContact, CancellationToken cancellationToken = default)
+        [FromBody][Description(@"The new contact to create.")] NewContact newContact, CancellationToken cancellationToken = default)
     {
         var contact = await contactService.Create(newContact, cancellationToken);
         if (contact.PersonDetails?.DateOfDeath is not null)
@@ -97,19 +99,16 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update the details for a contact.",
-        Description = @"Update the details for a contact. Not an upsert: an unknown ID is a 404 and
+    [EndpointSummary("Update the details for a contact.")]
+    [EndpointDescription(@"Update the details for a contact. Not an upsert: an unknown ID is a 404 and
                         nothing is created. Use POST to create. A changed Type converts the contact
                         with the supplied details; 409 (code contact-type-change-blocked) while the
                         contact is tagged as a person on a photo (to Organization) or is a property's
                         homeowner association (to Person). 422 when a contact-method label is out of
                         scope for the type.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the contact to update.")] Guid id,
-        [FromBody] [SwaggerParameter("NewContact", Required = true,
-            Description = @"The contact with the updated values.")] NewContact newContact, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the contact to update.")] Guid id,
+        [FromBody][Description(@"The contact with the updated values.")] NewContact newContact, CancellationToken cancellationToken = default)
     {
         // Read BEFORE the write: the audit event distinguishes recording a death from clearing one,
         // and only the prior value can say which happened (§10.9). Value-free either way — the event
@@ -153,8 +152,8 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Preview converting a contact between Person and Organization.",
-        Description = @"A read-only dry run (issue #335): the derived target details, the fields that
+    [EndpointSummary("Preview converting a contact between Person and Organization.")]
+    [EndpointDescription(@"A read-only dry run (issue #335): the derived target details, the fields that
 would be lost or carried over, the contact-method labels that would clamp to Other, and any blockers.
 Writes nothing. Echo updatedAt as expectedUpdatedAt on the conversion. Needs contacts.read and
 contacts.update; blocker photo ids need photos.read and property names properties.read.")]
@@ -181,8 +180,8 @@ contacts.update; blocker photo ids need photos.read and property names propertie
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Convert a contact between Person and Organization.",
-        Description = @"Converts the contact in one transaction, deriving the target details from the
+    [EndpointSummary("Convert a contact between Person and Organization.")]
+    [EndpointDescription(@"Converts the contact in one transaction, deriving the target details from the
 stored row (issue #335); its id and its links are kept. 409 with code contact-conversion-stale when
 expectedUpdatedAt no longer matches, or contact-type-change-blocked while a photo person tag (to
 Organization) or a homeowner-association link (to Person) exists. 422 for the current type, or for a
@@ -247,18 +246,38 @@ derived name that needs an override.")]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a contact.",
-        Description = @"409 when the contact is named as a Beneficiary party on any contract. With
+    [EndpointSummary("Delete a contact.")]
+    [EndpointDescription(@"409 when the contact is named as a Beneficiary party on any contract. With
 detachBlockingLinks=true those link rows are removed and the contact deleted in ONE transaction; that
 needs contracts.update — when that class is actually present — in addition to contacts.delete, and the
 response is then 200 with a summary of what was destroyed.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the contact to delete.")] Guid id,
-        [FromQuery] [SwaggerParameter(Description = @"Remove the contact's blocking link rows —
+        [FromRoute(Name = "id")][Description(@"The ID for the contact to delete.")] Guid id,
+        [FromQuery][Description(@"Remove the contact's blocking link rows —
 Beneficiary contract parties — and delete it in one transaction, instead of refusing with a 409.
 Requires contracts.update when that class is actually present.")] bool detachBlockingLinks = false,
         CancellationToken cancellationToken = default)
+    {
+        // Book credits refuse the delete on BOTH paths, and the valve never removes them (issue #527 §5 item 12). This
+        // pre-check is a second snapshot, which is safe because it only decides a refusal: nothing it reads is ever
+        // destroyed, so the single-snapshot rule for the detach valve (CWE-367) does not apply. The service re-checks
+        // inside its transaction, and a credit added in between comes back below as the same shaped 409.
+        if (await BookCreditConflictAsync(id, cancellationToken) is { } blockedByBooks)
+        {
+            return blockedByBooks;
+        }
+
+        try
+        {
+            return await DeleteCheckedAsync(id, detachBlockingLinks, cancellationToken);
+        }
+        catch (DomainConflictException conflict) when (conflict.Message == ContactService.BookCreditMessage)
+        {
+            return await BookCreditConflictAsync(id, cancellationToken) ?? this.ConflictProblem(ContactService.BookCreditMessage);
+        }
+    }
+
+    private async Task<IActionResult> DeleteCheckedAsync(Guid id, bool detachBlockingLinks, CancellationToken cancellationToken)
     {
         if (detachBlockingLinks)
         {
@@ -272,7 +291,10 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
             // prove the claim for it. A caller missing a needed claim gets a 403 — never a silent
             // downgrade to the refused delete.
             var permitted = new HashSet<ContactDeleteBlockerClass>();
-            if (User.HasPermission(PermissionClaims.ContractsUpdate)) permitted.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            if (User.HasPermission(PermissionClaims.ContractsUpdate))
+            {
+                permitted.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            }
 
             var detached = await contactService.Delete(id, detachBlockingLinks: true, permitted, cancellationToken);
             if (detached is null)
@@ -307,15 +329,9 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
             // contract NAMES need contracts.read. The boundary costs nothing today (every shipped role
             // holding contacts.delete also holds contracts.read, asserted by a guard test) and is kept
             // for a future role.
-            var canReadContracts = User.HasPermission(PermissionClaims.ContractsRead);
             var extensions = new Dictionary<string, object?>
             {
-                ["contractBeneficiaries"] = new ContactContractBeneficiaryBlockers
-                {
-                    TotalLinks = blockers.ContractBeneficiaryLinks,
-                    ContractCount = blockers.Contracts.Count,
-                    Contracts = canReadContracts ? [.. blockers.Contracts] : [],
-                },
+                ["contractBeneficiaries"] = ContractBeneficiaryExtension(blockers),
             };
 
             return this.ConflictProblem(
@@ -328,6 +344,49 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
         await contactService.Delete(id, detachBlockingLinks: false, null, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// The claim-conditional <c>409</c> for a contact credited on books (issue #527 §5 item 12), or <see langword="null"/>
+    /// when nothing credits it. The counts are always present; book ids and titles need <c>books.read</c>. When contract
+    /// beneficiaries also block, both extensions are present and the message does not suggest the detach valve, which
+    /// cannot remove a book credit.
+    /// </summary>
+    private async Task<ObjectResult?> BookCreditConflictAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (await bookCredits.GetCreditsAsync(id, cancellationToken) is not { } credits)
+        {
+            return null;
+        }
+
+        if (!User.HasPermission(PermissionClaims.BooksRead))
+        {
+            credits = credits with { Books = [] };
+        }
+
+        var extensions = new Dictionary<string, object?> { ["bookCredits"] = credits };
+        var contracts = await referenceGuard.GetDeleteBlockersAsync(id, cancellationToken);
+        if (contracts.Any)
+        {
+            extensions["contractBeneficiaries"] = ContractBeneficiaryExtension(contracts);
+            return this.ConflictProblem(
+                "This contact is credited on one or more books and named as a beneficiary on one or more contracts, "
+                + "and cannot be deleted. Remove it from those books first; the contract links can then be detached.",
+                extensions);
+        }
+
+        return this.ConflictProblem(ContactService.BookCreditMessage, extensions);
+    }
+
+    /// <summary>
+    /// The <c>contractBeneficiaries</c> extension. The COUNT is unconditional; contract names need
+    /// <c>contracts.read</c>.
+    /// </summary>
+    private ContactContractBeneficiaryBlockers ContractBeneficiaryExtension(ContactDeleteBlockers blockers) => new()
+    {
+        TotalLinks = blockers.ContractBeneficiaryLinks,
+        ContractCount = blockers.Contracts.Count,
+        Contracts = User.HasPermission(PermissionClaims.ContractsRead) ? [.. blockers.Contracts] : [],
+    };
 
     /// <summary>
     /// The lead sentence of the blocked-delete 409. Class name only — never a contract name, which

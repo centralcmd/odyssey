@@ -558,7 +558,8 @@ public class ImportCalendarDialogTests
 
         h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Compose, h.Phase));
         Assert.Equal(1, h.Transfer.AbortCalls);
-        Assert.Equal("calendar.ics", h.Cut.Find(".odc-upload-file-name").GetAttribute("value"));
+        // The phase flips before the compose markup renders, so wait for the field rather than reading it at once.
+        h.Cut.WaitForAssertion(() => Assert.Equal("calendar.ics", h.Cut.Find(".odc-upload-file-name").GetAttribute("value")));
         h.Cut.WaitForAssertion(() => Assert.Contains(h.Js("odsFocusFirstIn"), i => Equals(i.Arguments[0], ImportCalendarDialog.UploadId)));
         h.Cut.WaitForAssertion(() => Assert.Equal(CalendarImportCopy.Stopped, h.Announced));
         Assert.Null(h.Alert);

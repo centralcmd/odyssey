@@ -1,0 +1,30 @@
+@*
+    PodcastChapterList — an episode's chapters (issue #559 §4.1; Odyssey Design System · ui_kits/web/Podcasts.jsx,
+    PodcastChapterList; podcasts.css .pod-chapters). An <ol>; each row is the start time in mono — the visible "12:04"
+    aria-hidden, the spoken "12 minutes 4 seconds" sr-only, both in <time datetime> — then the title in the podcast's
+    language and, when the chapter has one, its URL through OdsExternalLink: the one publisher URL kind the page shows.
+*@
+
+<ol class="pod-chapters">
+    @foreach (var chapter in Chapters)
+    {
+        var clock = PodcastFormat.Clock(chapter.StartMs);
+        <li class="pod-chapter">
+            <time class="pod-chapter-time" datetime="@clock.Iso"><span aria-hidden="true">@clock.Visible</span><span class="odc-sr-only">@clock.Spoken</span></time>
+            <span class="pod-chapter-main">
+                <span class="pod-chapter-title" lang="@Lang"><bdi>@chapter.Title</bdi></span>
+                @if (!string.IsNullOrWhiteSpace(chapter.Url))
+                {
+                    <OdsExternalLink Url="@chapter.Url" Actions="false" />
+                }
+            </span>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PodcastEpisodeChapterItem> Chapters { get; set; } = [];
+
+    /// <summary>The podcast's language for the chapter titles; null sets none.</summary>
+    [Parameter] public string? Lang { get; set; }
+}

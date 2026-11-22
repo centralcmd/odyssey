@@ -67,7 +67,9 @@ public class BudgetService
         var counts = await ComputeTransactionCounts(budgets, cancellationToken);
         var dtos = budgets.Adapt<List<ExistingBudget>>();
         foreach (var dto in dtos)
+        {
             dto.TransactionCount = counts.GetValueOrDefault(dto.BudgetId);
+        }
 
         return new PagedResult<ExistingBudget>
         {
@@ -266,7 +268,7 @@ public class BudgetService
         context.Budgets.Remove(budget);
         await context.SaveChangesAsync(cancellationToken);
     }
-    
+
     public async Task<BudgetReport?> GetTransactions(Guid budgetId, CancellationToken cancellationToken = default)
     {
         var budget = await context.Budgets
@@ -274,20 +276,20 @@ public class BudgetService
             .Include(b => b.BudgetItems)
             .ThenInclude(i => i.TransactionTag)
             .FirstOrDefaultAsync(l => l.BudgetId == budgetId, cancellationToken);
-        
+
         if (budget is null)
         {
             return null;
         }
-        
+
         var transactionTags = budget.BudgetItems
             .Select(i => i.TransactionTag)
             .ToList();
-        
+
         var transactionTagIds = transactionTags
             .Select(i => i!.TransactionTagId)
             .ToList();
-        
+
         // Any-of match through the join: a transaction belongs to the report if it carries at least one
         // of the budget's item tags. Each transaction appears once in the de-duplicated list below.
         var (periodStart, periodEndExclusive) = PeriodBounds.Of(budget.StartDate, budget.EndDate);

@@ -47,7 +47,9 @@ public class ContractSmartTagService
         var contractExists = await context.Contracts
             .AnyAsync(c => c.ContractId == contractId, cancellationToken);
         if (!contractExists)
+        {
             return null;
+        }
 
         var tags = await context.ContractSmartTags
             .Where(smartTag => smartTag.ContractId == contractId)
@@ -73,7 +75,9 @@ public class ContractSmartTagService
         var contractExists = await context.Contracts
             .AnyAsync(c => c.ContractId == contractId, cancellationToken);
         if (!contractExists)
+        {
             throw new DomainNotFoundException($"Contract with ID {contractId} was not found.");
+        }
 
         var tag = await context.TransactionTags
                 .FirstOrDefaultAsync(t => t.TransactionTagId == tagId, cancellationToken)
@@ -83,23 +87,29 @@ public class ContractSmartTagService
         // manage from the tags page. A tag archived AFTER being linked keeps its row — retroactively
         // dropping links would silently discard configuration.
         if (tag.Archived is not null)
+        {
             throw new DomainUnprocessableException(
                 $"Tag '{tag.Name}' is archived and cannot be added as a smart tag.");
+        }
 
         var alreadyAssociated = await context.ContractSmartTags
             .AnyAsync(
                 smartTag => smartTag.ContractId == contractId && smartTag.TransactionTagId == tagId,
                 cancellationToken);
         if (alreadyAssociated)
+        {
             throw new DomainConflictException(
                 $"Tag '{tag.Name}' is already a smart tag for this contract.");
+        }
 
         var maxSmartTags = (await limits.GetAsync(cancellationToken)).MaxSmartTagsPerContract;
         var smartTagCount = await context.ContractSmartTags
             .CountAsync(smartTag => smartTag.ContractId == contractId, cancellationToken);
         if (smartTagCount >= maxSmartTags)
+        {
             throw new DomainUnprocessableException(
                 $"A contract may have at most {maxSmartTags} smart tags.");
+        }
 
         context.ContractSmartTags.Add(new ContractSmartTag
         {
@@ -123,7 +133,9 @@ public class ContractSmartTagService
             .FirstOrDefaultAsync(
                 s => s.ContractId == contractId && s.TransactionTagId == tagId, cancellationToken);
         if (smartTag is null)
+        {
             return false;
+        }
 
         context.ContractSmartTags.Remove(smartTag);
         await context.SaveChangesAsync(cancellationToken);

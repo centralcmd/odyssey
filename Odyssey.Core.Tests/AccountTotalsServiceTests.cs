@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
@@ -17,16 +18,16 @@ public class AccountTotalsServiceTests
         DateTime? archived = null,
         DateTime? closed = null,
         DateTime? opened = null) => new()
-    {
-        AccountId = id,
-        Name = name,
-        Description = name,
-        Opened = opened ?? new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        AccountType = type,
-        CurrencyCode = currency,
-        Archived = archived,
-        Closed = closed,
-    };
+        {
+            AccountId = id,
+            Name = name,
+            Description = name,
+            Opened = opened ?? new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            AccountType = type,
+            CurrencyCode = currency,
+            Archived = archived,
+            Closed = closed,
+        };
 
     private static Transaction NewTransaction(Guid accountId, decimal amount) => new()
     {
@@ -431,15 +432,10 @@ public class AccountTotalsServiceTests
     // inclusive rule here would count a row at exactly `now` that the history excludes, and AC2
     // requires the two to agree exactly.
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
     private static AccountTotalsService AsOfFixedNow(OdysseyContext context) =>
-        new(context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow));
+        new(context, new CurrencyConversionService(context), new FakeTimeProvider(FixedNow));
 
     [Fact]
     public async Task Compute_IgnoresTransactionsStampedAtOrAfterNow()
@@ -641,7 +637,7 @@ public class AccountTotalsServiceTests
 
         var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
         var history = await new NetWorthHistoryService(
-            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
+            context, new CurrencyConversionService(context), new FakeTimeProvider(FixedNow))
             .ComputeAsync(new NetWorthHistoryQuery { MainCurrency = "USD" }, includeProperties: false);
 
         var last = history.Points[^1];

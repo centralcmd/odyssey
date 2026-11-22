@@ -17,6 +17,7 @@ using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Pages.Weather;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -485,7 +486,9 @@ public class WeatherCalendarJournalTests : IDisposable
         Assert.DoesNotContain("SERVER", cut.Markup, StringComparison.Ordinal);
         Assert.Equal(retry, cut.FindAll("button").Any(b => b.TextContent.Contains("Try again", StringComparison.Ordinal)));
         if (code == HttpStatusCode.TooManyRequests)
+        {
             Assert.Equal("true", cut.FindAll("button").Single(b => b.TextContent.Contains("Try again", StringComparison.Ordinal)).GetAttribute("aria-disabled"));
+        }
     }
 
     [Fact]
@@ -589,7 +592,9 @@ public class WeatherCalendarJournalTests : IDisposable
         Assert.All(named, f => Assert.Contains(f, files));
         Assert.All(named, f => Assert.True(File.Exists(f), f));
         foreach (var name in new[] { "JournalEntryWeather.razor", "WeatherEventSummaryText.razor", "CalendarEventWeatherSection.razor", "WeatherStepTable.razor" })
+        {
             Assert.Contains(Path.Combine(weatherDir, name), files);
+        }
 
         var hits = files
             .SelectMany(file => File.ReadAllLines(file).Select((line, i) => (file, line, i)))
@@ -610,19 +615,19 @@ public class WeatherCalendarJournalTests : IDisposable
         }.Select(f => Path.Combine(weatherDir, f)).ToList();
         Assert.All(files, f => Assert.True(File.Exists(f), f));
 
-        var hits = files.Where(f => Regex.IsMatch(StripComments(File.ReadAllText(f)), "°")).Select(Path.GetFileName).ToList();
+        var hits = files.Where(f => Regex.IsMatch(SourceLint.StripComments(File.ReadAllText(f)), "°")).Select(Path.GetFileName).ToList();
         Assert.True(hits.Count == 0, string.Join(", ", hits));
     }
-
-    private static string StripComments(string source) =>
-        Regex.Replace(Regex.Replace(source, @"@\*.*?\*@", "", RegexOptions.Singleline), @"^\s*//.*$", "", RegexOptions.Multiline);
 
     /// <summary>The text a screen reader takes as the button's name: everything but the aria-hidden glyphs.</summary>
     private static string VisibleName(AngleSharp.Dom.IElement element)
     {
         var clone = (AngleSharp.Dom.IElement)element.Clone(deep: true);
         foreach (var hidden in clone.QuerySelectorAll("[aria-hidden=true]").ToList())
+        {
             hidden.Remove();
+        }
+
         return Normalize(clone.TextContent);
     }
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -76,7 +77,7 @@ public class MapDefaultsAgreementTests
         return document.RootElement.GetProperty("Map").Clone();
     }
 
-    private static string Read(string relativePath) => File.ReadAllText(ClientSource.Sibling(relativePath));
+    private static string Read(string relativePath) => File.ReadAllText(SourceTree.File(relativePath));
 
     private static string Single(string file, string pattern)
     {

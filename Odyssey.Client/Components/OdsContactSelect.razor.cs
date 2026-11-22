@@ -164,7 +164,9 @@ public partial class OdsContactSelect
         {
             var linked = Contacts.FirstOrDefault(c => c.ContactId.ToString() == Value);
             if (linked is not null)
+            {
                 options.Insert(0, OdsContactOptions.From(linked));
+            }
         }
 
         return options;
@@ -175,14 +177,21 @@ public partial class OdsContactSelect
     private OdsOption? HandleCreate(string text, string? kind)
     {
         if (OnCreate is null)
+        {
             return null;
+        }
 
         var created = OnCreate(text, kind ?? EffectiveCreateKinds[0].Key);
         if (created is null)
+        {
             return null;
+        }
 
         if (!_created.Any(o => string.Equals(o.Value, created.Value, StringComparison.Ordinal)))
+        {
             _created.Add(created);
+        }
+
         return created;
     }
 

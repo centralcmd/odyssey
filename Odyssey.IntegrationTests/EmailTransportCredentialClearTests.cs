@@ -15,6 +15,7 @@ using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Microsoft.Extensions.Hosting;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Identity;
 
@@ -44,7 +45,7 @@ namespace Odyssey.IntegrationTests;
 /// and it is the one that fails if the transaction is ever removed.
 /// </para>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_email_transport_clear";
@@ -124,7 +125,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
         var connectionString = await MigratedSchemaAsync();
         await SeedAsync(connectionString, host: OriginalHost, startTls: true, withCredential: true, port: 587);
 
-        var audit = new CapturingLoggerProvider();
+        var audit = new RecordingLoggerProvider();
         await UpdateAsync(connectionString, new SystemSettingsUpdate { EmailSmtpPort = 2525 }, auditLogs: audit);
 
         await using var verify = new OdysseyContext(OptionsFor(connectionString));
@@ -169,7 +170,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
         var connectionString = await MigratedSchemaAsync();
         await SeedAsync(connectionString, host: OriginalHost, startTls: true, withCredential: true, port: 587);
 
-        var audit = new CapturingLoggerProvider();
+        var audit = new RecordingLoggerProvider();
         await UpdateAsync(
             connectionString,
             new SystemSettingsUpdate
@@ -256,7 +257,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
         var connectionString = await MigratedSchemaAsync();
         await SeedAsync(connectionString, host: OriginalHost, startTls: true, withCredential: true);
 
-        var audit = new CapturingLoggerProvider();
+        var audit = new RecordingLoggerProvider();
 
         await Assert.ThrowsAsync<InjectedWriteFailure>(() => UpdateAsync(
             connectionString,
@@ -296,7 +297,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
         var connectionString = await MigratedSchemaAsync();
         await SeedAsync(connectionString, host: OriginalHost, startTls: true, withCredential: true);
 
-        var audit = new CapturingLoggerProvider();
+        var audit = new RecordingLoggerProvider();
         await UpdateAsync(
             connectionString,
             new SystemSettingsUpdate { EmailSmtpHost = "smtp.newprovider.test" },
@@ -330,7 +331,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
         string connectionString,
         SystemSettingsUpdate request,
         bool failAfterSave = false,
-        CapturingLoggerProvider? auditLogs = null)
+        RecordingLoggerProvider? auditLogs = null)
     {
         var services = new ServiceCollection();
         services.AddLogging(logging =>
@@ -380,7 +381,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
         await service.UpdateAsync(Caller(), ActorId, request);
     }
 
-    private static ILogger<T> LoggerFor<T>(CapturingLoggerProvider? provider) =>
+    private static ILogger<T> LoggerFor<T>(RecordingLoggerProvider? provider) =>
         provider is null ? NullLogger<T>.Instance : new LoggerFactory([provider]).CreateLogger<T>();
 
     /// <summary>The full-permission administrator; the claim gates are covered at the API tier.</summary>
@@ -518,36 +519,3 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
 
 /// <summary>The injected failure, so a real one cannot be mistaken for it.</summary>
 public sealed class InjectedWriteFailure() : Exception("Injected failure inside the settings transaction.");
-
-/// <summary>Collects formatted log lines so a test can assert on what was, and was not, audited.</summary>
-public sealed class CapturingLoggerProvider : ILoggerProvider
-{
-    public List<string> Messages { get; } = [];
-
-    public ILogger CreateLogger(string categoryName) => new Collector(Messages);
-
-    public void Dispose()
-    {
-    }
-
-    private sealed class Collector(List<string> messages) : ILogger
-    {
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) =>
-            messages.Add(formatter(state, exception));
-    }
-
-    private sealed class NullScope : IDisposable
-    {
-        public static readonly NullScope Instance = new();
-
-        public void Dispose()
-        {
-        }
-    }
-}

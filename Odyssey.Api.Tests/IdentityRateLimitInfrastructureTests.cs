@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -44,7 +45,7 @@ public class IdentityRateLimitInfrastructureTests
     [Fact]
     public void TheShippedDefault_IsStillThirtyPerMinute()
     {
-        using var appsettings = JsonDocument.Parse(RepositoryRoot.ReadAllText("Odyssey.Api/appsettings.json"));
+        using var appsettings = JsonDocument.Parse(SourceTree.ReadAllText("Odyssey.Api/appsettings.json"));
 
         var identity = appsettings.RootElement.GetProperty("RateLimiting").GetProperty("Identity");
 
@@ -61,11 +62,11 @@ public class IdentityRateLimitInfrastructureTests
     public void BothDevStacks_RaiseTheIdentityLimit()
     {
         Assert.Contains(
-            $"{PermitLimitVariable}: ", RepositoryRoot.ReadAllText("docker-compose.yml"), StringComparison.Ordinal);
+            $"{PermitLimitVariable}: ", SourceTree.ReadAllText("docker-compose.yml"), StringComparison.Ordinal);
 
         Assert.Contains(
             $"WithEnvironment(\"{PermitLimitVariable}\"",
-            RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs")),
+            SourceTree.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs")),
             StringComparison.Ordinal);
     }
 
@@ -83,7 +84,7 @@ public class IdentityRateLimitInfrastructureTests
     [Fact]
     public void TheProductionOverlay_ResetsTheDevRelaxationBackOut()
     {
-        var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
+        var overlay = SourceTree.ReadAllText("docker-compose.prod.yml");
 
         Assert.Contains($"{PermitLimitVariable}: !reset", overlay, StringComparison.Ordinal);
 
@@ -113,12 +114,12 @@ public class IdentityRateLimitInfrastructureTests
     {
         Assert.DoesNotContain(
             "RateLimiting__IdentityEmail__PermitLimit: ",
-            RepositoryRoot.ReadAllText(composeFile),
+            SourceTree.ReadAllText(composeFile),
             StringComparison.Ordinal);
 
         Assert.DoesNotContain(
             "WithEnvironment(\"RateLimiting__IdentityEmail",
-            RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs")),
+            SourceTree.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs")),
             StringComparison.Ordinal);
     }
 }

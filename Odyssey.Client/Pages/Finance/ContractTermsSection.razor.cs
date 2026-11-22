@@ -83,8 +83,15 @@ public partial class ContractTermsSection
     {
         get
         {
-            if (HasNoTerms) return "0 entries";
-            if (_current.Count == 0) return "none in force";
+            if (HasNoTerms)
+            {
+                return "0 entries";
+            }
+
+            if (_current.Count == 0)
+            {
+                return "none in force";
+            }
 
             var incoming = _current.Count(TermVisuals.IsIncoming);
             // Only a priced term has a direction (issue #192), so the split counts those alone: a
@@ -103,7 +110,9 @@ public partial class ContractTermsSection
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
 
         await LoadAsync();
     }
@@ -114,7 +123,9 @@ public partial class ContractTermsSection
     protected override void OnParametersSet()
     {
         if (NewTermRequestToken is not { } token || token == _handledNewTermToken)
+        {
             return;
+        }
 
         _handledNewTermToken = token;
         OpenNew();
@@ -220,7 +231,9 @@ public partial class ContractTermsSection
         parts.Add($"since {OdsDates.Long(term.EffectiveFrom)}");
 
         if (cadence is not null)
+        {
             parts.Add(cadence);
+        }
 
         return string.Join(" · ", parts);
     }
@@ -238,12 +251,16 @@ public partial class ContractTermsSection
         var confirmed = await _confirm.AskAsync("Delete term?", $"Remove the {TermVisuals.DisplayName(term)} entry effective {OdsDates.Long(term.EffectiveFrom)}? This can’t be undone.", "Delete");
 
         if (!confirmed)
+        {
             return;
+        }
 
         var ok = (await Contracts.DeleteTermAsync(Contract.ContractId, term.TermId))
             .Toast(Snackbar, "Unable to delete term", "Term deleted.");
 
         if (ok)
+        {
             await OnTermChanged();
+        }
     }
 }

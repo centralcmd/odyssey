@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// and re-fetched rather than surfacing as a 409 (§16.3e), and the finalizing migration dropping a
 /// residual null journal-photo link.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
 {
     [SkippableFact]
@@ -158,201 +158,15 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
     /// behind — which had left a photo delete and a file delete disagreeing about which object was the
     /// durable one.
     /// </summary>
-    [SkippableFact]
-    public async Task Deleting_a_photo_also_deletes_the_file_it_wraps()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString);
-        var provider = photos.Host;
-
-        Guid photoId, fileId, blobId;
-        await using (var scope = provider.Scope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var (photo, file) = PhotoTestData.StageLegacyPhoto(context, userId: "user");
-            await context.SaveChangesAsync();
-            (photoId, fileId, blobId) = (photo.PhotoId, file.Id, file.FileBlobId!.Value);
-        }
-
-        await using (var scope = provider.Scope())
-        {
-            Assert.True(await scope.ServiceProvider.GetRequiredService<PhotoService>().Delete(photoId));
-        }
-
-        await using (var scope = provider.Scope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            Assert.False(await context.Photos.AnyAsync(p => p.PhotoId == photoId));
-
-            // The blob too, not just the metadata row: the FK runs metadata -> blob, so removing the
-            // metadata alone would leave the bytes orphaned and unreachable rather than reclaimed.
-            Assert.False(await context.FileMetadata.AnyAsync(f => f.Id == fileId));
-            Assert.Equal(0, await context.FileBlob.CountAsync(b => b.Id == blobId));
-        }
-    }
-
-    /// <summary>
-    /// The case that makes the symmetric delete safe to have. Nine tables carry a cascading foreign key
-    /// to <c>FileMetadata</c>, so deleting the file as a side effect of deleting a photo would silently
-    /// strip that file off a transaction or a journal entry that also holds it — the database would
-    /// oblige without complaint. The guard turns that into a 409 naming the other holder, and nothing is
-    /// deleted: not the file, and not the photo either.
-    /// </summary>
-    [SkippableFact]
-    public async Task Deleting_a_photo_whose_file_is_attached_elsewhere_is_refused_and_deletes_nothing()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString);
-        var provider = photos.Host;
-
-        Guid photoId, fileId;
-        var entryId = Guid.NewGuid();
-        await using (var scope = provider.Scope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var (photo, file) = PhotoTestData.StageLegacyPhoto(context, userId: "user");
-            await context.SaveChangesAsync();
-            (photoId, fileId) = (photo.PhotoId, file.Id);
-
-            // The same file, also attached to a journal entry.
-            context.JournalEntries.Add(new JournalEntry
-            {
-                JournalEntryId = entryId,
-                ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
-                Title = "Holds the same file",
-                Content = "holds",
-                EntryDate = DateTime.UtcNow,
-                CreatedByUserId = "user",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-            });
-            await context.SaveChangesAsync();
-
-            context.JournalEntryAttachments.Add(new JournalEntryAttachment
-            {
-                JournalEntryAttachmentId = Guid.NewGuid(),
-                JournalEntryId = entryId,
-                FileId = fileId,
-                CreatedAt = DateTime.UtcNow,
-            });
-            await context.SaveChangesAsync();
-        }
-
-        await using (var scope = provider.Scope())
-        {
-            var error = await Assert.ThrowsAsync<DomainConflictException>(
-                () => scope.ServiceProvider.GetRequiredService<PhotoService>().Delete(photoId));
-
-            // The message has to name the other holder, or the caller cannot act on the refusal.
-            Assert.Contains("journal-entry attachment", error.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        await using (var scope = provider.Scope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            Assert.True(await context.Photos.AnyAsync(p => p.PhotoId == photoId));
-            Assert.True(await context.FileMetadata.AnyAsync(f => f.Id == fileId));
-            Assert.True(await context.JournalEntryAttachments.AnyAsync(a => a.FileId == fileId));
-        }
-    }
-
-    // ── The backfill's relational path (PR #441 test review) ─────────────────────────────────────
-
-    [SkippableFact]
-    public async Task The_backfill_moves_a_legacy_photo_and_removes_its_unshared_file_on_MariaDB()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString);
-        var bytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
-        var (photoId, fileId) = await StageLegacyAsync(photos, bytes);
-
-        var outcome = await Backfill(photos).MoveOneAsync(photoId, default);
-
-        Assert.Equal(Odyssey.Core.Journal.Originals.PhotoBackfillOutcome.Moved, outcome);
-        await using var scope = photos.Host.Scope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var photo = await context.Photos.AsNoTracking().SingleAsync(p => p.PhotoId == photoId);
-        Assert.Equal((null, fileId), (photo.FileId, photo.LegacyFileId));
-        Assert.False(await context.FileMetadata.AnyAsync(f => f.Id == fileId));
-        var content = await scope.ServiceProvider.GetRequiredService<Odyssey.Core.Journal.Originals.PhotoOriginalSource>()
-            .ReadAllAsync(photoId, long.MaxValue, default);
-        Assert.Equal(bytes, content!.Bytes);
-    }
-
-    [SkippableFact]
-    public async Task The_backfill_keeps_a_file_attached_elsewhere_and_a_deleted_photo_is_skipped()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString);
-        var (shared, sharedFile) = await StageLegacyAsync(photos, PhotoTestData.Jpeg(PhotoTestData.NextSeed()));
-        await AttachAsync(photos, sharedFile);
-        var (deleted, _) = await StageLegacyAsync(photos, PhotoTestData.Jpeg(PhotoTestData.NextSeed()));
-        await using (var scope = photos.Host.Scope())
-        {
-            await scope.ServiceProvider.GetRequiredService<PhotoService>().Delete(deleted);
-        }
-
-        Assert.Equal(Odyssey.Core.Journal.Originals.PhotoBackfillOutcome.CopiedShared, await Backfill(photos).MoveOneAsync(shared, default));
-        Assert.Equal(Odyssey.Core.Journal.Originals.PhotoBackfillOutcome.Skipped, await Backfill(photos).MoveOneAsync(deleted, default));
-
-        await using var check = photos.Host.Scope();
-        var context = check.ServiceProvider.GetRequiredService<OdysseyContext>();
-        Assert.True(await context.FileMetadata.AnyAsync(f => f.Id == sharedFile));
-        Assert.True(await context.JournalEntryAttachments.AnyAsync(a => a.FileId == sharedFile));
-    }
-
-    /// <summary>
-    /// The race the commit's lock exists for: an attach to the legacy file that starts after the reference count has
-    /// been read. The file row is locked FOR UPDATE first, so the attach waits on it and then fails on the deleted
-    /// parent — it can never land on a file the backfill is about to remove and be cascaded away with it.
-    /// </summary>
-    [SkippableFact]
-    public async Task An_attach_racing_the_backfill_waits_for_its_commit_and_never_lands_on_the_removed_file()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        Task? attach = null;
-        var attachStarted = false;
-        var entryId = Guid.Empty;
-        await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString, configureServices: services =>
-            services.Replace(ServiceDescriptor.Scoped<IFileReferenceCounter>(sp => new RacingCounter(
-                new FileReferenceCounter(sp.GetRequiredService<OdysseyContext>()),
-                fileId =>
-                {
-                    attachStarted = true;
-                    attach = Task.Run(() => AttachWithNewConnectionAsync(fileId));
-                }))));
-        var (photoId, fileId) = await StageLegacyAsync(photos, PhotoTestData.Jpeg(PhotoTestData.NextSeed()));
-        entryId = await NewEntryAsync(photos);
-
-        async Task AttachWithNewConnectionAsync(Guid id)
-        {
-            await using var other = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-                .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)).Options);
-            other.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entryId, FileId = id, CreatedAt = DateTime.UtcNow });
-            await other.SaveChangesAsync();
-        }
-
-        var outcome = await Backfill(photos).MoveOneAsync(photoId, default);
-
-        Assert.True(attachStarted);
-        Assert.Equal(Odyssey.Core.Journal.Originals.PhotoBackfillOutcome.Moved, outcome);
-        var failure = await Assert.ThrowsAsync<DbUpdateException>(() => attach!);
-        Assert.Equal(1452, Assert.IsType<MySqlConnector.MySqlException>(failure.InnerException).Number);
-        await using var scope = photos.Host.Scope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        Assert.False(await context.FileMetadata.AnyAsync(f => f.Id == fileId));
-        Assert.False(await context.JournalEntryAttachments.AnyAsync(a => a.FileId == fileId));
-    }
-
     /// <summary>PR #441 security finding 1, on MariaDB: the Files store's visibility filter translates and holds.</summary>
     [SkippableFact]
-    public async Task The_files_store_hides_a_photo_only_file_and_shows_a_shared_one_on_MariaDB()
+    public async Task The_files_store_hides_a_former_file_only_a_photo_names_and_shows_a_shared_one_on_MariaDB()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString);
         var stem = $"vis-{Guid.NewGuid():N}";
-        var (_, photoOnly) = await StageLegacyAsync(photos, PhotoTestData.Jpeg(PhotoTestData.NextSeed()), $"{stem}-a.jpg");
-        var (_, shared) = await StageLegacyAsync(photos, PhotoTestData.Jpeg(PhotoTestData.NextSeed()), $"{stem}-b.jpg");
+        var photoOnly = await StageWithFormerFileAsync(photos, PhotoTestData.Jpeg(PhotoTestData.NextSeed()), $"{stem}-a.jpg");
+        var shared = await StageWithFormerFileAsync(photos, PhotoTestData.Jpeg(PhotoTestData.NextSeed()), $"{stem}-b.jpg");
         await AttachAsync(photos, shared);
 
         await using var scope = photos.Host.Scope();
@@ -364,16 +178,16 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
         Assert.NotNull(await files.GetFileMetadataAsync(shared));
     }
 
-    private static Odyssey.Core.Journal.Originals.PhotoOriginalBackfillJob Backfill(PhotoStoreHost photos) =>
-        ActivatorUtilities.CreateInstance<Odyssey.Core.Journal.Originals.PhotoOriginalBackfillJob>(photos.Host.Services);
-
-    private static async Task<(Guid PhotoId, Guid FileId)> StageLegacyAsync(PhotoStoreHost photos, byte[] bytes, string fileName = "p.jpg")
+    /// <summary>A photo on the store whose former file, kept in the Files store, it names as its <c>LegacyFileId</c>.</summary>
+    private static async Task<Guid> StageWithFormerFileAsync(PhotoStoreHost photos, byte[] bytes, string fileName)
     {
         await using var scope = photos.Host.Scope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var (photo, file) = PhotoTestData.StageLegacyPhoto(context, bytes, fileName, "user");
-        await context.SaveChangesAsync();
-        return (photo.PhotoId, file.Id);
+        var file = await StoredFileFixtures.StageFileAsync(
+            scope.ServiceProvider, bytes, fileName, "image/jpeg", Odyssey.Core.FileStorage.Files.StoredFileArea.Journal, uploadedByUserId: "user");
+        var photo = await StoredFileFixtures.StagePhotoAsync(scope.ServiceProvider, bytes, fileName, userId: "user");
+        photo.LegacyFileId = file.Id;
+        await scope.ServiceProvider.GetRequiredService<OdysseyContext>().SaveChangesAsync();
+        return file.Id;
     }
 
     private static async Task<Guid> NewEntryAsync(PhotoStoreHost photos)
@@ -382,8 +196,13 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var entry = new JournalEntry
         {
-            JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "t", Content = "c",
-            EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            JournalEntryId = Guid.NewGuid(),
+            ExternalUid = Guid.NewGuid().ToString(),
+            Title = "t",
+            Content = "c",
+            EntryDate = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         };
         context.JournalEntries.Add(entry);
         await context.SaveChangesAsync();
@@ -397,25 +216,5 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         context.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entryId, FileId = fileId, CreatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
-    }
-
-    /// <summary>
-    /// Starts a competing attach just after the real count is read — inside the commit's transaction, with the file row
-    /// already locked — and gives it a moment to reach the lock before the commit goes on.
-    /// </summary>
-    private sealed class RacingCounter(IFileReferenceCounter inner, Action<Guid> startRace) : IFileReferenceCounter
-    {
-        public IReadOnlyList<FileReference> References => inner.References;
-
-        public Task<IReadOnlyList<FileReference>> ReferencesNamingAsync(Guid fileId, CancellationToken cancellationToken) =>
-            inner.ReferencesNamingAsync(fileId, cancellationToken);
-
-        public async Task<bool> HasOtherReferencesAsync(Guid fileId, CancellationToken cancellationToken)
-        {
-            var result = await inner.HasOtherReferencesAsync(fileId, cancellationToken);
-            startRace(fileId);
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-            return result;
-        }
     }
 }

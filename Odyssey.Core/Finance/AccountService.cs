@@ -59,7 +59,7 @@ public class AccountService
         OrganizationNumber = r.OrganizationNumber,
         Archived = r.Archived,
     };
-    
+
     /// <summary>
     /// Server-side paged list (issue #277): search + type/status filters + allowlisted sort. The
     /// <c>balance</c> and <c>txnCount</c> keys are expressed as correlated subqueries so the ordering
@@ -320,7 +320,7 @@ public class AccountService
             }
         }
     }
-    
+
     /// <summary>
     /// Distinct CONTRACTS naming each account as a party — not party rows. An account linked to one
     /// contract in two roles is one contract, which is what the account's Contracts section lists.
@@ -363,7 +363,9 @@ public class AccountService
             .FirstOrDefaultAsync(cancellationToken);
 
         if (projection is null)
+        {
             return null;
+        }
 
         var account = projection.Account;
         var dto = account.Adapt<ExistingAccount>();
@@ -397,7 +399,9 @@ public class AccountService
     private async Task<Custodian?> ResolveCustodian(Guid? custodianId, CancellationToken cancellationToken = default)
     {
         if (custodianId is null)
+        {
             return null;
+        }
 
         var id = custodianId.Value;
         var refs = await contactLookup.ResolveRefsAsync([id], cancellationToken);
@@ -414,16 +418,22 @@ public class AccountService
     private async Task ValidateCustodianTarget(Guid? custodianId, CancellationToken cancellationToken = default)
     {
         if (custodianId is null)
+        {
             return;
+        }
 
         var id = custodianId.Value;
         var refs = await contactLookup.ResolveRefsAsync([id], cancellationToken);
 
         if (!refs.TryGetValue(id, out var custodian))
+        {
             throw new DomainValidationException($"Contact with ID {id} was not found.");
+        }
 
         if (custodian.Archived is not null)
+        {
             throw new DomainValidationException($"Contact with ID {id} is archived and cannot be set as a custodian.");
+        }
     }
 
     /// <summary>
@@ -434,7 +444,9 @@ public class AccountService
     private async Task<Dictionary<Guid, AccountEstimate>> GetCurrentEstimates(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
     {
         if (accountIds.Count == 0)
+        {
             return [];
+        }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var estimates = await context.AccountEstimates
@@ -457,7 +469,7 @@ public class AccountService
     public async Task<IList<ExistingAccountFile>?> GetAccountFiles(Guid accountId, CancellationToken cancellationToken = default) =>
         await FileLinks.List(accountId, cancellationToken);
 
-    
+
     public Task<ExistingAccount> Create(NewAccount newAccount, CancellationToken cancellationToken = default) =>
         Create(newAccount, accountId: null, cancellationToken);
 
@@ -507,7 +519,7 @@ public class AccountService
         dto.Custodian = await ResolveCustodian(account.CustodianId, cancellationToken);
         return dto;
     }
-    
+
     public async Task<ExistingAccount?> Update(Guid id, NewAccount putAccount, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts
@@ -566,7 +578,7 @@ public class AccountService
         dto.Custodian = await ResolveCustodian(account.CustodianId, cancellationToken);
         return dto;
     }
-    
+
     public async Task Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(e => e.AccountId == id, cancellationToken);

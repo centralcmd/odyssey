@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -25,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// ambient transaction instead of opening a second one. None of it is observable on EF InMemory, which
 /// honours neither transactions nor the execution strategy.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactConversionIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contact_conversion";
@@ -60,37 +61,63 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                 });
                 context.Contracts.Add(new Contract
                 {
-                    ContractId = contractId, Name = "Whole-of-life cover", Type = ContextContractType.Insurance, CreatedAtUtc = DateTime.UtcNow,
+                    ContractId = contractId,
+                    Name = "Whole-of-life cover",
+                    Type = ContextContractType.Insurance,
+                    CreatedAtUtc = DateTime.UtcNow,
                 });
                 context.Accounts.Add(new Account
                 {
-                    AccountId = accountId, Name = "Payroll", Description = "", Opened = DateTime.UtcNow, CurrencyCode = "USD", CustodianId = contactId,
+                    AccountId = accountId,
+                    Name = "Payroll",
+                    Description = "",
+                    Opened = DateTime.UtcNow,
+                    CurrencyCode = "USD",
+                    CustodianId = contactId,
                 });
                 await context.SaveChangesAsync();
 
                 context.ContractParties.Add(new ContractParty
                 {
                     // Beneficiary is the one role that blocks a contact DELETE; it must not block a conversion.
-                    ContractPartyId = Guid.NewGuid(), ContractId = contractId, ContactId = contactId, Role = ContextContractPartyRole.Beneficiary,
+                    ContractPartyId = Guid.NewGuid(),
+                    ContractId = contractId,
+                    ContactId = contactId,
+                    Role = ContextContractPartyRole.Beneficiary,
                 });
                 var fileId = SeedFile(context);
                 context.AccountFiles.Add(new AccountFile
                 {
-                    Id = Guid.NewGuid(), AccountId = accountId, FileMetadataId = fileId, AttachedAtUtc = DateTime.UtcNow,
-                    FileType = AccountFileType.Other, IssuedBy = contactId,
+                    Id = Guid.NewGuid(),
+                    AccountId = accountId,
+                    FileMetadataId = fileId,
+                    AttachedAtUtc = DateTime.UtcNow,
+                    FileType = AccountFileType.Other,
+                    IssuedBy = contactId,
                 });
                 context.ContractFiles.Add(new ContractFile
                 {
-                    ContractFileId = Guid.NewGuid(), ContractId = contractId, FileMetadataId = fileId, AttachedAtUtc = DateTime.UtcNow,
+                    ContractFileId = Guid.NewGuid(),
+                    ContractId = contractId,
+                    FileMetadataId = fileId,
+                    AttachedAtUtc = DateTime.UtcNow,
                     IssuedBy = contactId,
                 });
                 context.Transactions.Add(new Transaction
                 {
-                    TransactionId = transactionId, Description = "Salary", Amount = 100m, TimeStamp = DateTime.UtcNow, AccountId = accountId, ContactId = contactId,
+                    TransactionId = transactionId,
+                    Description = "Salary",
+                    Amount = 100m,
+                    TimeStamp = DateTime.UtcNow,
+                    AccountId = accountId,
+                    ContactId = contactId,
                 });
                 context.JournalEntries.Add(new JournalEntry
                 {
-                    JournalEntryId = entryId, ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "Met them", Content = "",
+                    JournalEntryId = entryId,
+                    ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+                    Title = "Met them",
+                    Content = "",
                     Contacts = [new JournalEntryContact { JournalEntryContactId = Guid.NewGuid(), ContactId = contactId }],
                 });
                 await context.SaveChangesAsync();
@@ -439,25 +466,23 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
     private static async Task<Guid> SeedPhotoAsync(OdysseyContext context)
     {
         var photoId = Guid.NewGuid();
-        context.Photos.Add(new Photo { PhotoId = photoId, FileId = SeedFile(context) });
+        context.Photos.Add(new Photo { PhotoId = photoId, StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"), FileName = "p.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = new string('a', 64), });
         await context.SaveChangesAsync();
         return photoId;
     }
 
     private static Guid SeedFile(OdysseyContext context)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
             FileName = "file.jpg",
             ContentType = "image/jpeg",
             SizeBytes = 3,
-            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blobContent)),
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
             UploadedAtUtc = DateTime.UtcNow,
         });
         return fileId;
@@ -533,18 +558,16 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
     /// <summary>A real photo (and its image file) tagging the contact, so the FK chain is genuine.</summary>
     private static async Task SeedPhotoTagAsync(OdysseyContext context, Guid contactId)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
             FileName = "tag.jpg",
             ContentType = "image/jpeg",
             SizeBytes = 3,
-            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            Sha256Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(blobContent)),
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
             UploadedAtUtc = DateTime.UtcNow,
         });
 
@@ -552,7 +575,11 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
         context.Photos.Add(new Photo
         {
             PhotoId = photoId,
-            FileId = fileId,
+            StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: "PhotoOriginals"),
+            FileName = "p.jpg",
+            ContentType = "image/jpeg",
+            SizeBytes = 3,
+            Sha256Hash = new string('a', 64),
             People = [new PhotoPerson { PhotoId = photoId, ContactId = contactId }],
         });
         await context.SaveChangesAsync();

@@ -101,7 +101,9 @@
     protected override void OnInitialized()
     {
         if (Rate is null)
+        {
             return;
+        }
 
         _rate = Rate.Rate;
         _asOf = Rate.AsOf.Date;
@@ -111,7 +113,9 @@
     {
         // Edit mode locks the pair behind chips, so the currency list is only needed to create.
         if (!OperatingSystem.IsBrowser() || IsEdit)
+        {
             return;
+        }
 
         _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
     }
@@ -119,7 +123,9 @@
     private async Task<bool> SaveAsync()
     {
         if (IsEdit)
+        {
             return await UpdateAsync();
+        }
 
         if (_from is null || _to is null)
         {

@@ -41,6 +41,39 @@ public static class RolePermissions
         PhotoAlbumsDelete,
     ];
 
+    /// <summary>
+    /// Books (issue #527). Every role holding <c>books.read</c>, <c>.create</c> or <c>.update</c> also holds
+    /// <c>contacts.read</c> (the main author is a required contact) and <c>books.tags.read</c> (tag icons);
+    /// <c>AuthorizationPolicyTests</c> pins both.
+    /// </summary>
+    public static readonly string[] BooksModuleClaims =
+    [
+        BooksCreate,
+        BooksRead,
+        BooksUpdate,
+        BooksDelete,
+        BookTagsCreate,
+        BookTagsRead,
+        BookTagsUpdate,
+        BookTagsDelete,
+    ];
+
+    /// <summary>
+    /// The Recipes module (issue #525). Every role holding a record claim also holds <c>recipes.tags.read</c>,
+    /// which the tag-icon pin in <c>AuthorizationPolicyTests</c> relies on (issue #345).
+    /// </summary>
+    public static readonly string[] RecipesModuleClaims =
+    [
+        RecipesCreate,
+        RecipesRead,
+        RecipesUpdate,
+        RecipesDelete,
+        RecipeTagsCreate,
+        RecipeTagsRead,
+        RecipeTagsUpdate,
+        RecipeTagsDelete,
+    ];
+
     public static readonly string[] JournalModuleClaims =
     [
         JournalCreate,
@@ -89,13 +122,20 @@ public static class RolePermissions
         NewsTagsCreate,
         NewsTagsUpdate,
         NewsTagsDelete,
+        PodcastAudioCreate,
+        PodcastAudioDelete,
     ];
 
-    /// <summary>What User holds of <see cref="NewsModuleClaims"/>: reading, read state and article tags.</summary>
+    /// <summary>
+    /// What User holds of <see cref="NewsModuleClaims"/>: reading, read state, article tags and podcast audio on the
+    /// server (issue #556 §7.2).
+    /// </summary>
     public static readonly string[] NewsReaderClaims =
     [
         NewsRead,
         NewsUpdate,
+        PodcastAudioCreate,
+        PodcastAudioDelete,
     ];
 
     public static readonly string[] AllClaims =
@@ -171,6 +211,8 @@ public static class RolePermissions
         FileAnalysisAudit,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..BooksModuleClaims,
+        ..RecipesModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         WeatherPointsRead,
@@ -188,7 +230,7 @@ public static class RolePermissions
     [
         ..AllClaims,
     ];
-    
+
     public static readonly string[] OwnerClaims =
     [
         AccountsCreate,
@@ -256,6 +298,8 @@ public static class RolePermissions
         ContractsDelete,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..BooksModuleClaims,
+        ..RecipesModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
@@ -294,6 +338,8 @@ public static class RolePermissions
         ContractsRead,
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
+        ..BooksModuleClaims,
+        ..RecipesModuleClaims,
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
@@ -333,6 +379,13 @@ public static class RolePermissions
         ProfileImagesRead,
         // News (issue #470 §7.2): the household's shared feeds, read only.
         NewsRead,
+        // Books (issue #527 §7.2): the household's catalogue and its tags, read only.
+        BooksRead,
+        BookTagsRead,
+        // Recipes (issue #525 §7.2): the household's recipes and their tags, read only. Photos stay withheld,
+        // since Guest holds no photos.read.
+        RecipesRead,
+        RecipeTagsRead,
     ];
 
     /// <summary>

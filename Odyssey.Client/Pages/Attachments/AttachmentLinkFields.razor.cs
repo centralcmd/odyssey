@@ -139,7 +139,10 @@ public partial class AttachmentLinkFields
     private async Task<bool> StageAttachmentAsync(AttachDocumentItem item)
     {
         if (Attachments.Any(a => a.Id == item.FileId))
+        {
             return true;
+        }
+
         if (AtCap(Attachments.Count))
         {
             _filesOverCap++;
@@ -159,7 +162,9 @@ public partial class AttachmentLinkFields
             _filesAdded++;
             await ChangedAsync(AttachmentLinkKind.Files);
             if (Voice == AttachmentLinkVoice.Journal)
+            {
                 await AnnounceAsync($"{meta.FileName} added to the {Noun}’s attachments.");
+            }
         }
 
         return true;
@@ -171,7 +176,10 @@ public partial class AttachmentLinkFields
         var over = _filesOverCap;
         _filesAdded = _filesOverCap = 0;
         if (Voice != AttachmentLinkVoice.Calendar || added + over == 0)
+        {
             return;
+        }
+
         await AnnounceAsync(over > 0 && Cap is { } cap
             ? $"Added {added}. Document limit reached: {cap}."
             : $"Added {Plural(added, "document", "documents")}.");
@@ -183,29 +191,43 @@ public partial class AttachmentLinkFields
         var room = Cap is { } cap ? Math.Max(0, cap - Photos.Count) : fresh.Count;
         var take = fresh.Take(room).ToList();
         foreach (var item in take)
+        {
             Photos.Add(new JournalDraftPhoto(item.PhotoId, item.Name, item.ThumbnailsReady));
+        }
 
         if (take.Count > 0)
+        {
             await ChangedAsync(AttachmentLinkKind.Photos);
+        }
 
         if (Voice == AttachmentLinkVoice.Journal)
         {
             if (take.Count > 0)
+            {
                 await AnnounceAsync(take.Count == 1 ? $"1 photo added to the {Noun}." : $"{take.Count} photos added to the {Noun}.");
+            }
+
             return;
         }
 
         if (fresh.Count > take.Count && Cap is { } limit)
+        {
             await AnnounceAsync($"Added {take.Count}. Photo limit reached: {limit}.");
+        }
         else if (take.Count > 0)
+        {
             await AnnounceAsync($"Added {Plural(take.Count, "photo", "photos")}.");
+        }
     }
 
     private async Task RemovePhotoAsync(JournalDraftPhoto photo)
     {
         var index = Photos.IndexOf(photo);
         if (index < 0)
+        {
             return;
+        }
+
         var neighbour = index + 1 < Photos.Count ? Photos[index + 1]
             : index > 0 ? Photos[index - 1]
             : null;
@@ -219,7 +241,10 @@ public partial class AttachmentLinkFields
     {
         var index = Attachments.FindIndex(a => a.Id == fileId);
         if (index < 0)
+        {
             return;
+        }
+
         var removed = Attachments[index];
         var neighbour = index + 1 < Attachments.Count ? Attachments[index + 1]
             : index > 0 ? Attachments[index - 1]
@@ -235,7 +260,10 @@ public partial class AttachmentLinkFields
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusAfter is not { } candidates)
+        {
             return;
+        }
+
         _focusAfter = null;
         try
         {
@@ -252,7 +280,9 @@ public partial class AttachmentLinkFields
     {
         if (_focusReturnJs is not null)
         {
-            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _focusReturnJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

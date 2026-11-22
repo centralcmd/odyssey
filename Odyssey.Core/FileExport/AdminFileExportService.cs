@@ -28,7 +28,7 @@ public sealed class AdminFileExportService
     private readonly OdysseyContext context;
     private readonly StoredFileContentSource source;
 
-    /// <param name="source">The one read path to a file's bytes (issue #448): a file on disk or a legacy blob alike.</param>
+    /// <param name="source">The one read path to a file's bytes (issue #448).</param>
     public AdminFileExportService(OdysseyContext context, StoredFileContentSource? source = null)
     {
         this.context = context;
@@ -99,12 +99,12 @@ public sealed class AdminFileExportService
             return files;
         }
 
-        // Present means a legacy blob that exists, or a committed stored object (issue #448): whichever backend holds it.
+        // Present means a committed stored object (issue #448), in whichever area the file sits.
         var missing = await query.CountAsync(file =>
-            (file.FileBlobId != null && !context.FileBlob.Any(blob => blob.Id == file.FileBlobId))
-            || (file.FinanceStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.FinanceStoredObjectId && o.State == StoredObjectState.Committed))
+            (file.FinanceStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.FinanceStoredObjectId && o.State == StoredObjectState.Committed))
             || (file.JournalStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.JournalStoredObjectId && o.State == StoredObjectState.Committed))
-            || (file.ContactAvatarStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.ContactAvatarStoredObjectId && o.State == StoredObjectState.Committed)),
+            || (file.ContactAvatarStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.ContactAvatarStoredObjectId && o.State == StoredObjectState.Committed))
+            || (file.LibraryStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.LibraryStoredObjectId && o.State == StoredObjectState.Committed)),
             cancellationToken);
         if (missing > 0)
         {

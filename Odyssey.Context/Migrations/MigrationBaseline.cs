@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace Odyssey.Context.Migrations;
 
 /// <summary>

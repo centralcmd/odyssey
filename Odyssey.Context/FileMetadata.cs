@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace Odyssey.Context;
@@ -31,12 +30,8 @@ public class FileMetadata
     [MaxLength(64)]
     public required string Sha256Hash { get; set; }
 
-    /// <summary>
-    /// The legacy database copy of the bytes (issue #448). Null once the file lives on the object store, when exactly one
-    /// of the three stored-object columns below is set instead (<c>CK_FileMetadata_ExactlyOneSource</c>). Read it only
-    /// through the file content source; a source-lint keeps it so.
-    /// </summary>
-    public Guid? FileBlobId { get; set; }
+    // The bytes live on the object store, in exactly one of the three stored-object columns below
+    // (CK_FileMetadata_ExactlyOneSource). The legacy database copy (FileBlob) is gone since RemoveLegacyFileBlobStorage.
 
     /// <summary>The bytes on the store, feature <c>FinanceFiles</c> (RESTRICT, issue #448 §4.1).</summary>
     public Guid? FinanceStoredObjectId { get; set; }
@@ -47,13 +42,12 @@ public class FileMetadata
     /// <summary>The bytes on the store, feature <c>ContactAvatars</c> (RESTRICT, issue #448 §4.1).</summary>
     public Guid? ContactAvatarStoredObjectId { get; set; }
 
+    /// <summary>The bytes on the store, feature <c>LibraryFiles</c> (RESTRICT; book attachments, #527).</summary>
+    public Guid? LibraryStoredObjectId { get; set; }
+
     [MaxLength(256)]
     public string? Description { get; set; }
 
     [Required]
     public required DateTime UploadedAtUtc { get; set; }
-
-    [ForeignKey(nameof(FileBlobId))]
-    [DeleteBehavior(DeleteBehavior.Cascade)]
-    public FileBlob? FileBlob { get; set; }
 }

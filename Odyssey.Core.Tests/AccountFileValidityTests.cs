@@ -38,7 +38,7 @@ public class AccountFileValidityTests
             ContentType = "application/pdf",
             SizeBytes = 1024,
             Sha256Hash = Guid.NewGuid().ToString("N"),
-            FileBlobId = Guid.NewGuid(),
+            FinanceStoredObjectId = Guid.NewGuid(),
             UploadedAtUtc = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();

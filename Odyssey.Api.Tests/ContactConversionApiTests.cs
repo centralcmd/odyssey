@@ -21,7 +21,7 @@ namespace Odyssey.Api.Tests;
 /// the claim gates, the binding of the two new models, the blocked and stale <c>409</c>s with their
 /// claim-conditional payload, the type-changing PUT, and the change-only photo person-tag rule.
 /// </summary>
-public class ContactConversionApiTests
+public class ContactConversionApiTests(ContactConversionApiTests.Host host) : SharedApiHostTests<ContactConversionApiTests.Host>(host)
 {
     private const string ActorUserId = "conversion-actor-id";
 
@@ -36,7 +36,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_WithoutUpdateClaim_IsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.ContactsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.ContactsRead]);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -50,7 +50,7 @@ public class ContactConversionApiTests
     [InlineData(PermissionClaims.ContactsUpdate)]
     public async Task Preview_NeedsBothReadAndUpdate(string onlyClaim)
     {
-        await using var factory = new ApiFactory([onlyClaim]);
+        var factory = Factory.ForCaller([onlyClaim]);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -64,7 +64,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Preview_WithoutTargetType_IsARequired400()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -79,7 +79,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_WithoutExpectedUpdatedAt_Is400()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -91,7 +91,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_OverrideForTheWrongTarget_Is400()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -106,7 +106,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Preview_ThenConvert_EchoingUpdatedAt_Converts()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -128,7 +128,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_ExtraBodyFields_AreNotSet()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -151,7 +151,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_SingleWordLegalName_Is422KeyedOnLastName()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedOrgAsync(factory, "Equinor");
         using var client = factory.CreateClient();
 
@@ -167,7 +167,7 @@ public class ContactConversionApiTests
     [InlineData("Carriage\rreturn")]
     public async Task Convert_OverrideWithALineBreak_Is400KeyedOnTheField(string lastName)
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedOrgAsync(factory, "Equinor");
         using var client = factory.CreateClient();
 
@@ -182,7 +182,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_StaleExpectedUpdatedAt_Is409WithTheStaleCode()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedPersonAsync(factory, "Ada", "Lovelace");
         using var client = factory.CreateClient();
 
@@ -198,7 +198,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_UnknownContact_Is404()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         using var client = factory.CreateClient();
         await EnsureDatabaseAsync(factory);
 
@@ -212,7 +212,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_BlockedByPhotoTags_WithoutPhotosRead_ShowsTheCountOnly()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedPersonAsync(factory, "Diego", "Ramos");
         await SeedPhotoTagAsync(factory, contact.Id);
         using var client = factory.CreateClient();
@@ -232,7 +232,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Convert_BlockedByPhotoTags_WithPhotosRead_ListsThePhotoIds()
     {
-        await using var factory = new ApiFactory(ContactsPhotosProperties);
+        var factory = Factory.ForCaller(ContactsPhotosProperties);
         var contact = await SeedPersonAsync(factory, "Diego", "Ramos");
         var photoId = await SeedPhotoTagAsync(factory, contact.Id);
         using var client = factory.CreateClient();
@@ -271,7 +271,7 @@ public class ContactConversionApiTests
     [Fact]
     public async Task Put_TypeChange_WhileBlocked_ReturnsTheSameBlocked409()
     {
-        await using var factory = new ApiFactory(ContactsOnly);
+        var factory = Factory.ForCaller(ContactsOnly);
         var contact = await SeedOrgAsync(factory, "Maple Heights HOA");
         await SeedAssociatedPropertyAsync(factory, contact.Id, "Maple St house");
         using var client = factory.CreateClient();
@@ -324,12 +324,12 @@ public class ContactConversionApiTests
     // ── Contract and role guards ────────────────────────────────────────────────
 
     [Fact]
-    public async Task Swagger_PutContact_DeclaresConflictAndUnprocessable()
+    public async Task OpenApi_PutContact_DeclaresConflictAndUnprocessable()
     {
         using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var responses = document.RootElement.GetProperty("paths").GetProperty("/api/contacts/{id}")
             .GetProperty("put").GetProperty("responses");
@@ -438,10 +438,13 @@ public class ContactConversionApiTests
         await context.SaveChangesAsync();
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     private sealed class PhotoFactory() : OdysseyApiFactory(
         [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate, PermissionClaims.FilesRead],
         ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

@@ -65,7 +65,7 @@ public class TransactionFileControllerTests
         };
         financeContext.Accounts.Add(account);
 
-        var fileBlob = new FileBlob { Id = Guid.NewGuid(), Content = new byte[] { 1, 2, 3 } };
+        var fileBlobContent = new byte[] { 1, 2, 3 };
         var fileMetadataId = Guid.NewGuid();
         var transaction = new Transaction
         {
@@ -77,7 +77,6 @@ public class TransactionFileControllerTests
             TimeStamp = DateTime.UtcNow,
             TransactionFiles = [],
         };
-        financeContext.FileBlob.Add(fileBlob);
         financeContext.FileMetadata.Add(new FileMetadata
         {
             Id = fileMetadataId,
@@ -88,8 +87,7 @@ public class TransactionFileControllerTests
             Sha256Hash = "abc",
             UploadedAtUtc = DateTime.UtcNow,
             Description = "Test file",
-            FileBlobId = fileBlob.Id,
-            FileBlob = fileBlob,
+            FinanceStoredObjectId = Guid.NewGuid(),
         });
         financeContext.Add(transaction);
         await financeContext.SaveChangesAsync();
@@ -139,7 +137,7 @@ public class TransactionFileControllerTests
         };
         financeContext.Accounts.Add(account);
 
-        var fileBlob = new FileBlob { Id = Guid.NewGuid(), Content = new byte[] { 1, 2, 3 } };
+        var fileBlobContent = new byte[] { 1, 2, 3 };
         var fileMetadataId = Guid.NewGuid();
         var transaction = new Transaction
         {
@@ -151,7 +149,6 @@ public class TransactionFileControllerTests
             TransactionFiles = [],
         };
         financeContext.Add(transaction);
-        financeContext.FileBlob.Add(fileBlob);
         financeContext.FileMetadata.Add(new FileMetadata
         {
             Id = fileMetadataId,
@@ -161,8 +158,7 @@ public class TransactionFileControllerTests
             SizeBytes = 100,
             Sha256Hash = "xyz",
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = fileBlob.Id,
-            FileBlob = fileBlob,
+            FinanceStoredObjectId = Guid.NewGuid(),
         });
         await financeContext.SaveChangesAsync();
 
@@ -197,7 +193,7 @@ public class TransactionFileControllerTests
         };
         financeContext.Accounts.Add(account);
 
-        var fileBlob = new FileBlob { Id = Guid.NewGuid(), Content = new byte[] { 1 } };
+        var fileBlobContent = new byte[] { 1 };
         var fileMetadataId = Guid.NewGuid();
         var transaction = new Transaction
         {
@@ -209,7 +205,6 @@ public class TransactionFileControllerTests
             TransactionFiles = [],
         };
         financeContext.Add(transaction);
-        financeContext.FileBlob.Add(fileBlob);
         financeContext.FileMetadata.Add(new FileMetadata
         {
             Id = fileMetadataId,
@@ -219,8 +214,7 @@ public class TransactionFileControllerTests
             SizeBytes = 50,
             Sha256Hash = "hash",
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = fileBlob.Id,
-            FileBlob = fileBlob,
+            FinanceStoredObjectId = Guid.NewGuid(),
         });
         await financeContext.SaveChangesAsync();
 
@@ -244,24 +238,23 @@ public class TransactionFileControllerTests
         var (controller, financeContext) = CreateControllerWithContexts();
 
         // Create a file entry so file lookup succeeds
-        var fileBlob = new FileBlob { Id = Guid.NewGuid(), Content = new byte[] { 1 } };
-        financeContext.FileBlob.Add(fileBlob);
+        var fileId = Guid.NewGuid();
         financeContext.FileMetadata.Add(new FileMetadata
         {
-            Id = Guid.NewGuid(),
+            Id = fileId,
             UploadedByUserId = "test-user",
             FileName = "a.txt",
             ContentType = "text/plain",
             SizeBytes = 1,
             Sha256Hash = "a",
-            FileBlobId = fileBlob.Id,
+            FinanceStoredObjectId = Guid.NewGuid(),
             UploadedAtUtc = DateTime.UtcNow,
         });
         await financeContext.SaveChangesAsync();
 
         var result = await controller.AttachTransactionFile(Guid.NewGuid(), new AttachTransactionFileRequest
         {
-            FileId = fileBlob.Id,
+            FileId = fileId,
         });
         var notFound = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status404NotFound, notFound.StatusCode);

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
@@ -24,11 +26,6 @@ public class ContractFileValidityTests
 
     private readonly OdysseyContext journal = TestContextFactory.CreateJournal();
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private sealed class StubCaps(int maxFilesPerContract) : ISystemSettingsLookup
     {
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
@@ -40,19 +37,19 @@ public class ContractFileValidityTests
     }
 
     private ContractService CreateService(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             NullLogger<ContractService>.Instance);
 
     private ContractPartyService Parties(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new StubCaps(maxFilesPerContract), NullLogger<ContractPartyService>.Instance);
 
     private ContractFileService Files(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+        new(context, TestContextFactory.ContactLookup(journal), new FakeTimeProvider(FixedToday),
             new StubCaps(maxFilesPerContract));
 
     private ContractSummaryService Summaries(OdysseyContext context, int maxFilesPerContract = 50) =>
-        new(context, new FixedTimeProvider(FixedToday), new StubCaps(maxFilesPerContract));
+        new(context, new FakeTimeProvider(FixedToday), new StubCaps(maxFilesPerContract));
 
     private static NewContract NewContractRequest() => new()
     {
@@ -65,21 +62,9 @@ public class ContractFileValidityTests
 
     private static async Task<Guid> SeedFileAsync(OdysseyContext context)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var metadata = new FileMetadata
-        {
-            Id = Guid.NewGuid(),
-            UploadedByUserId = TestUserId,
-            FileName = "agreement.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = 3,
-            Sha256Hash = Guid.NewGuid().ToString("N"),
-            UploadedAtUtc = FixedToday,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-        };
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(metadata);
+        var metadata = await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1, 2, 3], "agreement.pdf", uploadedByUserId: TestUserId,
+            uploadedAtUtc: FixedToday);
         await context.SaveChangesAsync();
         return metadata.Id;
     }

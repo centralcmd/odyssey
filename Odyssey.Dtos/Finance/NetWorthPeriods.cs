@@ -83,7 +83,10 @@ public static class NetWorthPeriods
     /// </summary>
     public static int CountPeriods(DateOnly from, DateOnly to, NetWorthInterval interval)
     {
-        if (from > to) return 0;
+        if (from > to)
+        {
+            return 0;
+        }
 
         var start = StartOfPeriod(from, interval);
         var last = StartOfPeriod(to, interval);

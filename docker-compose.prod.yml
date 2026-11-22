@@ -5,7 +5,7 @@
 #
 # Differences from the base (dev) compose:
 #   - Pulls pinned images from GHCR instead of building from source.
-#   - Runs in the Production environment (Swagger off, HTTPS-aware).
+#   - Runs in the Production environment (API docs off, HTTPS-aware).
 #   - Does NOT publish api/mariadb/client ports to the host — only Caddy is exposed.
 #   - Adds Caddy for automatic TLS (Let's Encrypt) in front of the client.
 #   - Persists DataProtection keys so redeploys don't log everyone out.
@@ -19,7 +19,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.localhost up -d
 #
 # Splitting it into a second overlay was considered and rejected. Everything that actually protects
-# a deployment — Production (Secure cookies, no Swagger, the real pseudonymization secret, no demo
+# a deployment — Production (Secure cookies, no API docs, the real pseudonymization secret, no demo
 # seed), the hardening blocks, the unpublished api/mariadb/client ports, the DataProtection keys
 # volume — has to be identical in both, so a second file would be a copy that drifts. Keeping TLS in
 # the localhost deployment is the point: it means CookieSecurePolicy.Always is satisfied by real
@@ -65,7 +65,7 @@ services:
       # It MUST be pinned here rather than left to the base file: the base interpolates
       # `${ASPNETCORE_ENVIRONMENT:-Development}` from the ENV FILE, and this map is the container's
       # environment, so an overlay used without a matching .env.prod would otherwise run the
-      # migrations job as Development in production. Same trap as the Swagger key above.
+      # migrations job as Development in production. Same trap as the API docs key above.
       DOTNET_ENVIRONMENT: Production
       # Pinned for the same reason, and it is the more dangerous of the two: nothing in the app
       # refuses the in-memory provider in Production (MigrationService/Program.cs reads the flag
@@ -91,13 +91,12 @@ services:
     build: !reset null
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      # The key the app actually reads (issue #451 §1.3). This map is the container's environment,
-      # so `SWAGGER_ENABLED` here was inert: the base file's `Swagger__Enabled: ${SWAGGER_ENABLED:-true}`
-      # is COMPOSE-level interpolation from the env file, and it only ever resolved to false because
-      # .env.prod.example happens to set the variable. A hand-written .env.prod, a `docker run` or a
-      # Kubernetes manifest got `:-true` and served Swagger UI in Production through the client's
-      # nginx /api/ proxy. Program.cs now also refuses to enable Swagger in Production at all.
-      Swagger__Enabled: "false"
+      # The key the app actually reads (issue #451 §1.3; renamed from Swagger__Enabled by issue #569). This map
+      # is the container's environment, so an env-file variable here would be inert: the base file's value is
+      # COMPOSE-level interpolation from the env file. A hand-written .env.prod, a `docker run` or a Kubernetes
+      # manifest once got the base default and served the docs in Production through the client's nginx /api/
+      # proxy. Program.cs also refuses to serve them in Production at all; this pin is the other half.
+      ApiDocs__Enabled: "false"
       # Pinned, not left to the env file, for the same class of reason: DatabaseExtension.cs reads
       # this flag in every environment, so `true` in Production is an API serving an empty in-memory
       # database that loses everything on restart — with no error anywhere saying so.
@@ -158,6 +157,8 @@ services:
       # Pinned like the migrations job's, for the same reason: the base file takes it from the env file,
       # and the secret registry's environment filter must agree with the API's.
       DOTNET_ENVIRONMENT: Production
+      # Never seed demo files in production (explicit guard on top of the environment gate), as for the migrations job.
+      Seed__DemoData: "false"
       # DataProtection__KeysPath comes from the base file, beside its read-only mount, so the two cannot
       # drift apart. That mount makes this the second container able to decrypt the stored credentials;
       # see docs/deployment.md before changing either.

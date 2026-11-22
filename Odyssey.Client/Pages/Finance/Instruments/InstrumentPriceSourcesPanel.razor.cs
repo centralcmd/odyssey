@@ -20,6 +20,7 @@ public partial class InstrumentPriceSourcesPanel
     internal const string SymbolRequired = "Enter the symbol as the source writes it.";
     internal const string SymbolFormat = "Use letters, digits, dots, hyphens and underscores, without '..'.";
     internal const string DailyLimitReached = "Daily request limit reached";
+    internal const string GenericSymbolHelp = "The symbol as the source writes it, e.g. EQNR.OL";
     internal const string BackgroundJobsHref = "/background-jobs?job=InstrumentPriceSync";
 
     [Parameter, EditorRequired] public ExistingInstrument Instrument { get; set; } = default!;
@@ -75,7 +76,11 @@ public partial class InstrumentPriceSourcesPanel
 
         public static SourceDraft From(ExistingInstrumentPriceBinding b) => new()
         {
-            SourceKey = b.SourceKey, SourceSymbol = b.SourceSymbol, Enabled = b.Enabled, HistoryStartDate = b.HistoryStartDate, Saved = b,
+            SourceKey = b.SourceKey,
+            SourceSymbol = b.SourceSymbol,
+            Enabled = b.Enabled,
+            HistoryStartDate = b.HistoryStartDate,
+            Saved = b,
         };
     }
 
@@ -89,7 +94,7 @@ public partial class InstrumentPriceSourcesPanel
         public string? SymbolError { get; set; }
     }
 
-    private sealed record PendingEnable(Guid Key, SourceDraft? Item, string ProviderName, string Symbol, string ReturnFocusToId);
+    private sealed record PendingEnable(Guid Key, SourceDraft? Item, string ProviderName, string Symbol, string ReturnFocusToId, string? DataProcessingNote);
 
     private bool Editable => CanEdit && Instrument.Archived is null;
 
@@ -121,6 +126,23 @@ public partial class InstrumentPriceSourcesPanel
 
     internal static string MaximumText(int max) => $"This instrument has the maximum of {max} sources.";
 
+    private InstrumentPriceSourceInfo? InfoOf(string? key) =>
+        Status?.Sources.FirstOrDefault(s => string.Equals(s.Key, key, StringComparison.Ordinal));
+
+    private string? NoteOf(string key) => InfoOf(key)?.DataProcessingNote is { Length: > 0 } note ? note.Trim() : null;
+
+    /// <summary>The source-symbol help line, in the provider's own notation when it declares one (issue #447).</summary>
+    internal static string SymbolHelp(InstrumentPriceSourceInfo? info) =>
+        info?.SymbolExample is { Length: > 0 } example
+            ? $"The symbol as {(string.IsNullOrWhiteSpace(info.DisplayName) ? info.Key : info.DisplayName.Trim())} writes it, e.g. {example.Trim()}"
+            : GenericSymbolHelp;
+
+    private string SymbolHelpFor(string? key) => SymbolHelp(InfoOf(key));
+
+    /// <summary>"Not asked again until {date}…" — the server's date for a binding skipped after a definitive failure (A9).</summary>
+    internal static string RetryText(DateOnly retryOn) =>
+        $"Not asked again until {RunTime.Date(retryOn)}. Change the symbol, or turn the source off and on, to try now.";
+
     private string NameOf(string key) => NameOf(Status, key);
 
     internal static string NameOf(InstrumentPriceSourcesStatus? status, string key) =>
@@ -137,20 +159,41 @@ public partial class InstrumentPriceSourcesPanel
 
     /// <summary>
     /// A source's state as words (§3.4; design system · <c>INS_VOCAB.sourceStates</c>): Off, Not installed, Not
-    /// configured, Daily request limit reached, Paused until {time}, or Active. Never a colour alone.
+    /// configured, Daily request limit reached, Hourly request limit reached · resumes at {time}, Paused until {time},
+    /// or Active. Never a colour alone.
     /// </summary>
     internal static string StateText(InstrumentPriceSourceInfo? info, bool enabled, bool registered, DateTime nowUtc)
     {
         if (!enabled)
+        {
             return "Off";
+        }
+
         if (info is null || !registered)
+        {
             return "Not installed";
+        }
+
         if (!info.Configured)
+        {
             return "Not configured";
+        }
+
         if (info.MaxRequestsPerDay > 0 && info.RequestsToday >= info.MaxRequestsPerDay)
+        {
             return DailyLimitReached;
+        }
+
+        if (info.HourlyLimitResetsAtUtc is { } resets && resets > nowUtc)
+        {
+            return $"Hourly request limit reached · resumes at {RunTime.Clock(resets)}";
+        }
+
         if (info.BackOffUntilUtc is { } until && until > nowUtc)
+        {
             return $"Paused until {RunTime.Clock(until)}";
+        }
+
         return "Active";
     }
 
@@ -200,7 +243,10 @@ public partial class InstrumentPriceSourcesPanel
     {
         var value = symbol?.Trim();
         if (string.IsNullOrEmpty(value))
+        {
             return SymbolRequired;
+        }
+
         return value.Length > InstrumentIdentifierRules.SourceSymbolMaxLength || !SourceSymbol.IsMatch(value)
                || InstrumentIdentifierRules.HasDotSegment(value)
             ? SymbolFormat
@@ -278,19 +324,24 @@ public partial class InstrumentPriceSourcesPanel
             return;
         }
 
-        _confirm = new PendingEnable(Guid.NewGuid(), item, NameOf(item.SourceKey), item.SourceSymbol.Trim(), SwitchHostId(item));
+        _confirm = new PendingEnable(Guid.NewGuid(), item, NameOf(item.SourceKey), item.SourceSymbol.Trim(), SwitchHostId(item), NoteOf(item.SourceKey));
     }
 
     private async Task OnEnableDecided(bool confirmed)
     {
         if (_confirm is not { } pending)
+        {
             return;
+        }
+
         _confirm = null;
 
         if (pending.Item is { } item)
         {
             if (confirmed)
+            {
                 item.Enabled = true;
+            }
             // MudSwitch keeps its own checked state: rebuild it from the model, which also hands focus back to it.
             item.ResetKey++;
         }
@@ -307,7 +358,9 @@ public partial class InstrumentPriceSourcesPanel
     {
         var target = index + by;
         if (target < 0 || target >= _draft.Count)
+        {
             return;
+        }
 
         var item = _draft[index];
         _draft.RemoveAt(index);
@@ -348,7 +401,10 @@ public partial class InstrumentPriceSourcesPanel
     private void OnAddSourceChanged(string value)
     {
         if (_adding is null)
+        {
             return;
+        }
+
         _adding.SourceKey = value;
         _adding.SourceError = null;
     }
@@ -356,7 +412,10 @@ public partial class InstrumentPriceSourcesPanel
     private void OnAddSymbolChanged(string? value)
     {
         if (_adding is null)
+        {
             return;
+        }
+
         _adding.Symbol = value;
         _adding.SymbolError = null;
     }
@@ -364,16 +423,20 @@ public partial class InstrumentPriceSourcesPanel
     private void TryAdd()
     {
         if (_adding is not { } adding)
+        {
             return;
+        }
 
         adding.SourceError = string.IsNullOrEmpty(adding.SourceKey) || Addable.All(s => s.Key != adding.SourceKey) ? "Choose a source." : null;
         adding.SymbolError = ValidateSymbol(adding.Symbol);
         if (adding.SourceError is not null || adding.SymbolError is not null)
+        {
             return;
+        }
 
         if (adding.Enabled)
         {
-            _confirm = new PendingEnable(Guid.NewGuid(), null, NameOf(adding.SourceKey!), adding.Symbol!.Trim(), $"{_uid}-add-on {AddButtonId}");
+            _confirm = new PendingEnable(Guid.NewGuid(), null, NameOf(adding.SourceKey!), adding.Symbol!.Trim(), $"{_uid}-add-on {AddButtonId}", NoteOf(adding.SourceKey!));
             return;
         }
 
@@ -384,7 +447,9 @@ public partial class InstrumentPriceSourcesPanel
     private void CommitAdd(bool enabled)
     {
         if (_adding is not { SourceKey: { } key } adding)
+        {
             return;
+        }
 
         var item = new SourceDraft
         {
@@ -413,13 +478,17 @@ public partial class InstrumentPriceSourcesPanel
     private async Task SaveAsync()
     {
         if (_saving)
+        {
             return;
+        }
 
         _itemErrors.Clear();
         foreach (var item in _draft)
         {
             if (ValidateSymbol(item.SourceSymbol) is { } error)
+            {
                 _itemErrors[item.Key] = error;
+            }
         }
 
         if (_itemErrors.Count > 0)
@@ -466,7 +535,10 @@ public partial class InstrumentPriceSourcesPanel
     {
         var match = BindingErrorKey.Match(field);
         if (!match.Success || !int.TryParse(match.Groups[1].Value, out var index) || index < 0 || index >= _draft.Count)
+        {
             return false;
+        }
+
         _itemErrors[_draft[index].Key] = message;
         return true;
     }
@@ -477,8 +549,12 @@ public partial class InstrumentPriceSourcesPanel
         _focusSummary = false;
         _focusId = null;
         if (target is null)
+        {
             return;
-        try { await Js.InvokeVoidAsync("odsFocusById", target); }
+        }
+
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", target); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime under bUnit */ }
     }

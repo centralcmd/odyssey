@@ -152,13 +152,18 @@ fi
 if command -v dotnet-ef >/dev/null 2>&1; then
   log "dotnet-ef already installed."
 else
-  # Intentionally unpinned. The EF Core PACKAGES are 9.0.x while the tool resolves to 10.x; the
-  # mismatch is what this repo has been scaffolded with, because a 9.x tool cannot load the net10.0
-  # startup assembly it has to reflect over.
+  # Pinned to the resolved SDK's own major, not to the EF Core PACKAGE version. Those are
+  # deliberately different: the packages are 9.0.x while the tool must match the SDK, because a 9.x
+  # tool cannot load the net10.0 startup assembly it has to reflect over. Left unpinned, the first
+  # .NET 11 release would install an 11.x tool whose apphost needs a runtime this machine lacks —
+  # which reads as "dotnet-ef is broken". The unpinned fallback keeps a band that has not been
+  # published yet from costing the session its migrations tool.
   # Non-fatal. Under `set -e` a transient NuGet failure here would abort the hook before the Docker
   # daemon was started, turning "no migrations tool" into "no integration tests either".
-  log "Installing dotnet-ef ..."
-  if dotnet tool install --global dotnet-ef >/dev/null 2>&1; then
+  sdk_major="$("$dotnet_bin" --version 2>/dev/null | cut -d. -f1 || true)"
+  log "Installing dotnet-ef ${sdk_major:+${sdk_major}.* }..."
+  if { [ -n "$sdk_major" ] && dotnet tool install --global dotnet-ef --version "${sdk_major}.*" >/dev/null 2>&1; } \
+     || dotnet tool install --global dotnet-ef >/dev/null 2>&1; then
     log "Installed dotnet-ef $(dotnet-ef --version 2>/dev/null | tail -1)."
   else
     log "WARNING: could not install dotnet-ef; migrations cannot be scaffolded this session."

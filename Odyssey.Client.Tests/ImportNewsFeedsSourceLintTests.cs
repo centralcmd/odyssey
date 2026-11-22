@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -17,7 +18,7 @@ public class ImportNewsFeedsSourceLintTests
     ];
 
     private static IEnumerable<(string Name, string Source)> Sources() =>
-        DialogFiles.Select(f => (f, ClientSource.WithoutComments(File.ReadAllText(Path.Combine(ClientSource.Root, f)))));
+        DialogFiles.Select(f => (f, SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, f)))));
 
     [Fact]
     public void The_scan_set_exists() => Assert.All(DialogFiles, f => Assert.True(File.Exists(Path.Combine(ClientSource.Root, f)), f));

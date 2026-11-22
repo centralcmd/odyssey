@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -18,23 +19,9 @@ public class ContractEventsApiClientTests
 {
     private static readonly Guid ContractId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    private sealed class RecordingHandler(string body, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
+    private static (IContractsApiClient Client, RecordingHttpHandler Handler) Create(string body)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(status)
-            {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
-            });
-        }
-    }
-
-    private static (IContractsApiClient Client, RecordingHandler Handler) Create(string body)
-    {
-        var handler = new RecordingHandler(body);
+        var handler = new RecordingHttpHandler(body);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new ContractsApiClient(api), handler);
     }

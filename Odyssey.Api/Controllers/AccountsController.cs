@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
@@ -73,15 +73,14 @@ public sealed class AccountsController : ControllerBase
     private bool CanIncludeProperties() =>
         User.HasPermission(PermissionClaims.PropertiesRead)
         && User.HasPermission(PermissionClaims.PropertiesEstimatesRead);
-    
+
     [HttpGet(Name = "GetAccounts")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingAccount>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List accounts.",
-        Description = @"List accounts with search, filtering, sorting and pagination.")]
+    [EndpointSummary("List accounts.")]
+    [EndpointDescription(@"List accounts with search, filtering, sorting and pagination.")]
     public async Task<IActionResult> Get(
         [FromQuery] AccountsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -94,9 +93,8 @@ public sealed class AccountsController : ControllerBase
     [HttpGet("summary", Name = "GetAccountSummary")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AccountSummary))]
-    [SwaggerOperation(
-        Summary = "Summary rollup: counts by status and type, the value aggregates and the per-account allocations.",
-        Description = @"Aggregated server-side so the page header and its allocation donuts do not have to fetch every account.")]
+    [EndpointSummary("Summary rollup: counts by status and type, the value aggregates and the per-account allocations.")]
+    [EndpointDescription(@"Aggregated server-side so the page header and its allocation donuts do not have to fetch every account.")]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken = default)
     {
         return Ok(await accountService.GetSummary(cancellationToken));
@@ -107,30 +105,27 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingAccount))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get an account based on the account ID.",
-        Description = @"Get an account based on the account ID.")]
+    [EndpointSummary("Get an account based on the account ID.")]
+    [EndpointDescription(@"Get an account based on the account ID.")]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
-            Description = @"The ID for the account to get.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the account to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var account = await accountService.Get(id, cancellationToken, includeContractCount: CanReadContracts());
         if (account is null)
         {
             return this.NotFoundProblem($"Account ID {id} not found.");
         }
-    
+
         return Ok(account);
     }
-    
+
     [HttpGet("totals", Name = "GetAccountTotals")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AccountTotals))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get total assets, liabilities and net worth in the main currency.",
-        Description = @"Converts each in-term account's balance — and, for a caller holding both
+    [EndpointSummary("Get total assets, liabilities and net worth in the main currency.")]
+    [EndpointDescription(@"Converts each in-term account's balance — and, for a caller holding both
                         properties.read and properties.estimates.read, the in-force estimate of each
                         property held now — into the main currency using the rate in force now, and
                         returns total assets (property value included), total liabilities, net worth,
@@ -148,8 +143,7 @@ public sealed class AccountsController : ControllerBase
                         it controls only what appears in lists. Closing one does, from its close date
                         onward.")]
     public async Task<IActionResult> GetTotals(
-        [FromQuery(Name = "mainCurrency")] [SwaggerParameter("MainCurrency", Required = false,
-            Description = @"The currency to convert into. Defaults to NOK.")] string? mainCurrency = null, CancellationToken cancellationToken = default)
+        [FromQuery(Name = "mainCurrency")][Description(@"The currency to convert into. Defaults to NOK.")] string? mainCurrency = null, CancellationToken cancellationToken = default)
     {
         var main = string.IsNullOrWhiteSpace(mainCurrency) ? DefaultMainCurrency : mainCurrency;
         var totals = await accountTotalsService.ComputeAsync(main, CanIncludeProperties(), cancellationToken);
@@ -163,9 +157,8 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Net worth over time, reconstructed from stored data.",
-        Description = @"Rebuilds the series on read from transactions, account estimates, property
+    [EndpointSummary("Net worth over time, reconstructed from stored data.")]
+    [EndpointDescription(@"Rebuilds the series on read from transactions, account estimates, property
                         estimates and exchange rates, with every point measured as of that point's own
                         instant. Property value is included only for a caller holding both
                         properties.read and properties.estimates.read (propertiesIncluded), and a
@@ -219,13 +212,11 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Create a new account.",
-        Description = @"Create a new account. If a new account is created, the url for the new account is 
+    [EndpointSummary("Create a new account.")]
+    [EndpointDescription(@"Create a new account. If a new account is created, the url for the new account is 
                         returned in the location header.")]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewAccount", Required = true, 
-            Description = "The new account to create.")] NewAccount newAccount, CancellationToken cancellationToken = default)
+        [FromBody][Description("The new account to create.")] NewAccount newAccount, CancellationToken cancellationToken = default)
     {
         var account = await accountService.Create(newAccount, cancellationToken);
         return CreatedAtRoute("GetAccount", new { id = account.AccountId }, "");
@@ -239,17 +230,14 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update the details for an account.",
-        Description = @"Update the details for an account. If the account ID does not exist, the account is
+    [EndpointSummary("Update the details for an account.")]
+    [EndpointDescription(@"Update the details for an account. If the account ID does not exist, the account is
                         created UNDER THAT ID and 201 is returned with its url in the location header, so a
                         retried PUT updates the same row rather than creating a second one. Creating needs
                         accounts.create in addition to accounts.update; without it an unknown ID is a 403.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
-            Description = @"The ID for the account to update.")] Guid id, 
-        [FromBody] [SwaggerParameter("NewAccount", Required = true, 
-            Description = @"The account with the updated values.")] NewAccount newAccount, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the account to update.")] Guid id,
+        [FromBody][Description(@"The account with the updated values.")] NewAccount newAccount, CancellationToken cancellationToken = default)
     {
         // Documented upsert (issue #239). The create half is authorized HERE, explicitly: the action's
         // [Authorize] names accounts.update only, and calling Post as a method would never run Post's
@@ -272,17 +260,15 @@ public sealed class AccountsController : ControllerBase
         var created = await accountService.Create(newAccount, id, cancellationToken);
         return CreatedAtRoute("GetAccount", new { id = created.AccountId }, "");
     }
-    
+
     [HttpDelete("{id}", Name = "DeleteAccount")]
     [Authorize(Policy = PermissionClaims.AccountsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete an account based on the account ID.",
-        Description = @"Delete an account based on the account ID.")]
+    [EndpointSummary("Delete an account based on the account ID.")]
+    [EndpointDescription(@"Delete an account based on the account ID.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the account to delete.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the account to delete.")] Guid id, CancellationToken cancellationToken = default)
     {
         await accountService.Delete(id, cancellationToken);
         return NoContent();
@@ -293,13 +279,15 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingAccountFile>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get files attached to an account.")]
+    [EndpointSummary("Get files attached to an account.")]
     public async Task<IActionResult> GetAccountFiles(
         [FromRoute(Name = "accountId")] Guid accountId, CancellationToken cancellationToken = default)
     {
         var files = await accountService.GetAccountFiles(accountId, cancellationToken);
         if (files is null)
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         await displayNames.EnrichFileAttributionAsync(User, files, cancellationToken);
         return Ok(files);
@@ -311,9 +299,8 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<AccountContractLink>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the contracts that name an account as a party.",
-        Description = @"One row per contract, with every role the account holds on it. Requires both
+    [EndpointSummary("Get the contracts that name an account as a party.")]
+    [EndpointDescription(@"One row per contract, with every role the account holds on it. Requires both
                         accounts.read and contracts.read: the rows name contracts, which accounts.read
                         alone does not license.")]
     public async Task<IActionResult> GetAccountContracts(
@@ -321,7 +308,9 @@ public sealed class AccountsController : ControllerBase
     {
         var contracts = await contractService.ListForAccountAsync(accountId, cancellationToken);
         if (contracts is null)
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         return Ok(contracts);
     }
@@ -335,17 +324,21 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Attach an uploaded file to an account (requires accounts.update + files.read).")]
+    [EndpointSummary("Attach an uploaded file to an account (requires accounts.update + files.read).")]
     public async Task<IActionResult> AttachAccountFile(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromBody] AttachAccountFileRequest request, CancellationToken cancellationToken = default)
     {
         if (!await accountService.Exists(accountId, cancellationToken))
+        {
             return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
         var fileMetadata = await fileService.GetFileMetadataAsync(request.FileId, cancellationToken);
         if (fileMetadata is null)
+        {
             return this.NotFoundProblem($"File ID {request.FileId} not found.");
+        }
 
         if (User.ActingUserId() is not { } userId)
         {
@@ -369,9 +362,8 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List the latest resumable analysis review per file for an account.",
-        Description = "Returns, for each of the account's statement files, the latest analysis job that can be " +
+    [EndpointSummary("List the latest resumable analysis review per file for an account.")]
+    [EndpointDescription("Returns, for each of the account's statement files, the latest analysis job that can be " +
                       "resumed (extraction completed, candidates still pending). A minimal counts-only summary keyed " +
                       "by file id — one request for the whole Files section. Files with no resumable job are simply " +
                       "absent. 503 when the feature is disabled.")]
@@ -393,15 +385,14 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Queue AI analysis of an account statement file.",
-        Description = "Records the consent and queues the analysis; the worker sends the file and extracts candidate "
+    [EndpointSummary("Queue AI analysis of an account statement file.")]
+    [EndpointDescription("Records the consent and queues the analysis; the worker sends the file and extracts candidate "
             + "transactions. Answers 202 with the job id; poll GET /api/file-analysis/{id}. 409 analysis_in_progress "
             + "carries the open job's id. File type must be Statement.")]
     public async Task<IActionResult> AnalyzeAccountFile(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "fileId")] Guid fileId,
-        [FromBody] [SwaggerParameter("Per-document consent for the external AI transfer", Required = false)]
+        [FromBody] [Description("Per-document consent for the external AI transfer")]
         AnalyzeFileRequest? request = null,
         CancellationToken cancellationToken = default)
     {
@@ -429,7 +420,7 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update an attached file's document type.")]
+    [EndpointSummary("Update an attached file's document type.")]
     public async Task<IActionResult> UpdateAccountFile(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "fileId")] Guid fileId,
@@ -445,7 +436,7 @@ public sealed class AccountsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Detach a file from an account.")]
+    [EndpointSummary("Detach a file from an account.")]
     public async Task<IActionResult> DetachAccountFile(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)

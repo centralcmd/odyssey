@@ -168,7 +168,10 @@ internal sealed class CalendarLinkService(OdysseyContext context)
             DiffPhotos(context.RecurrencePatternPhotos, photos, p => p.PhotoId, (p, i) => p.Position = i, desiredPhotos,
                 (photoId, i) => new RecurrencePatternPhoto
                 {
-                    RecurrencePatternId = patternId, PhotoId = photoId, Position = i, CreatedAt = now,
+                    RecurrencePatternId = patternId,
+                    PhotoId = photoId,
+                    Position = i,
+                    CreatedAt = now,
                 });
         }
     }
@@ -424,7 +427,9 @@ internal sealed class CalendarLinkService(OdysseyContext context)
             {
                 context.CalendarEventAttachments.Add(new CalendarEventAttachment
                 {
-                    CalendarEventId = row.CalendarEventId, FileId = link.FileId, CreatedAt = link.CreatedAt,
+                    CalendarEventId = row.CalendarEventId,
+                    FileId = link.FileId,
+                    CreatedAt = link.CreatedAt,
                 });
             }
 
@@ -432,7 +437,10 @@ internal sealed class CalendarLinkService(OdysseyContext context)
             {
                 context.CalendarEventPhotos.Add(new CalendarEventPhoto
                 {
-                    CalendarEventId = row.CalendarEventId, PhotoId = link.PhotoId, Position = link.Position, CreatedAt = link.CreatedAt,
+                    CalendarEventId = row.CalendarEventId,
+                    PhotoId = link.PhotoId,
+                    Position = link.Position,
+                    CreatedAt = link.CreatedAt,
                 });
             }
         }
@@ -471,7 +479,9 @@ internal sealed class CalendarLinkService(OdysseyContext context)
             {
                 context.CalendarEventAttachments.Add(new CalendarEventAttachment
                 {
-                    CalendarEventId = eventId, FileId = link.FileId, CreatedAt = link.CreatedAt,
+                    CalendarEventId = eventId,
+                    FileId = link.FileId,
+                    CreatedAt = link.CreatedAt,
                 });
                 pending++;
             }
@@ -480,7 +490,10 @@ internal sealed class CalendarLinkService(OdysseyContext context)
             {
                 context.CalendarEventPhotos.Add(new CalendarEventPhoto
                 {
-                    CalendarEventId = eventId, PhotoId = link.PhotoId, Position = link.Position, CreatedAt = link.CreatedAt,
+                    CalendarEventId = eventId,
+                    PhotoId = link.PhotoId,
+                    Position = link.Position,
+                    CreatedAt = link.CreatedAt,
                 });
                 pending++;
             }

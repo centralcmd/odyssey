@@ -10,11 +10,8 @@ namespace Odyssey.Client.Tests;
 /// Issue #388 AC 17: System settings → Weather names points, not locations, and the scheduled-points cap is the
 /// value the server serves.
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class WeatherSettingsRowsTests : IDisposable
+public class WeatherSettingsRowsTests
 {
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     [Fact]
     public async Task The_weather_card_shows_the_renamed_rows_with_the_cap_read_from_settings()
     {

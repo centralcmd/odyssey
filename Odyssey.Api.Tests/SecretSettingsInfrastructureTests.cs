@@ -1,4 +1,5 @@
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -55,7 +56,7 @@ public class SecretSettingsInfrastructureTests
     [Fact]
     public void TheDevComposeStack_GivesTheKeyRingToTheApiReadWriteAndTheWorkerReadOnly()
     {
-        var compose = RepositoryRoot.ReadAllText("docker-compose.yml");
+        var compose = SourceTree.ReadAllText("docker-compose.yml");
         var readWrite = $"- dataprotection_keys:{KeysPath}\n";
         var readOnly = $"- dataprotection_keys:{KeysPath}:ro\n";
 
@@ -99,7 +100,7 @@ public class SecretSettingsInfrastructureTests
     [Fact]
     public void TheProductionOverlay_AddsNothingToTheKeyRingWiring()
     {
-        var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
+        var overlay = SourceTree.ReadAllText("docker-compose.prod.yml");
 
         Assert.Equal(0, Occurrences(overlay, $"{EnvironmentVariable}: {KeysPath}"));
         Assert.Equal(0, Occurrences(overlay, $"- dataprotection_keys:{KeysPath}"));
@@ -117,7 +118,7 @@ public class SecretSettingsInfrastructureTests
     [Fact]
     public void TheAspireHost_GivesTheKeysDirectoryToTheApiAndTheWorkerOnly()
     {
-        var appHost = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs"));
+        var appHost = SourceTree.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs"));
         var grant = $"WithEnvironment(\"{EnvironmentVariable}\", dataProtectionKeysPath)";
 
         Assert.Equal(2, Occurrences(appHost, grant));
@@ -139,7 +140,7 @@ public class SecretSettingsInfrastructureTests
     [InlineData("Odyssey.Worker")]
     public void TheImage_CreatesTheKeysDirectoryOwnedByTheRuntimeUser(string project)
     {
-        var dockerfile = RepositoryRoot.ReadAllText(System.IO.Path.Combine(project, "Dockerfile"));
+        var dockerfile = SourceTree.ReadAllText(System.IO.Path.Combine(project, "Dockerfile"));
 
         Assert.Contains($"mkdir -p {KeysPath}", dockerfile, StringComparison.Ordinal);
         Assert.Contains($"chown -R app:app {KeysPath}", dockerfile, StringComparison.Ordinal);
@@ -161,7 +162,7 @@ public class SecretSettingsInfrastructureTests
     [Fact]
     public void TheDeploymentGuide_CarriesTheChownRemediationAndTheBackupGuidance()
     {
-        var guide = RepositoryRoot.ReadAllText(System.IO.Path.Combine("docs", "deployment.md"));
+        var guide = SourceTree.ReadAllText(System.IO.Path.Combine("docs", "deployment.md"));
 
         Assert.Contains($"chown -R app:app {KeysPath}", guide, StringComparison.Ordinal);
 
@@ -198,10 +199,10 @@ public class SecretSettingsInfrastructureTests
     {
         foreach (var file in new[] { "docker-compose.yml", "docker-compose.prod.yml" })
         {
-            Assert.DoesNotContain($"{key}:", RepositoryRoot.ReadAllText(file), StringComparison.Ordinal);
+            Assert.DoesNotContain($"{key}:", SourceTree.ReadAllText(file), StringComparison.Ordinal);
         }
 
-        var appHost = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs"));
+        var appHost = SourceTree.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs"));
         Assert.DoesNotContain($"\"{key}\"", appHost, StringComparison.Ordinal);
 
         // The .env templates carry the shell-style names rather than the double-underscore ones.
@@ -216,7 +217,7 @@ public class SecretSettingsInfrastructureTests
 
         foreach (var file in new[] { ".env.example", ".env.prod.example" })
         {
-            Assert.DoesNotContain($"{shellName}=", RepositoryRoot.ReadAllText(file), StringComparison.Ordinal);
+            Assert.DoesNotContain($"{shellName}=", SourceTree.ReadAllText(file), StringComparison.Ordinal);
         }
     }
 
@@ -252,9 +253,9 @@ public class SecretSettingsInfrastructureTests
     // substitute the compiled default for an unusable stored value.
     public void TheMovedTransportKeys_AreNotPlumbedThroughAnyMore(string key)
     {
-        Assert.DoesNotContain($"{key}:", RepositoryRoot.ReadAllText("docker-compose.yml"), StringComparison.Ordinal);
+        Assert.DoesNotContain($"{key}:", SourceTree.ReadAllText("docker-compose.yml"), StringComparison.Ordinal);
         Assert.DoesNotContain(
-            $"{key}:", RepositoryRoot.ReadAllText("docker-compose.prod.yml"), StringComparison.Ordinal);
+            $"{key}:", SourceTree.ReadAllText("docker-compose.prod.yml"), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -272,7 +273,7 @@ public class SecretSettingsInfrastructureTests
     {
         foreach (var file in new[] { ".env.example", ".env.prod.example" })
         {
-            Assert.DoesNotContain($"{shellName}=", RepositoryRoot.ReadAllText(file), StringComparison.Ordinal);
+            Assert.DoesNotContain($"{shellName}=", SourceTree.ReadAllText(file), StringComparison.Ordinal);
         }
     }
 
@@ -286,18 +287,20 @@ public class SecretSettingsInfrastructureTests
     public void TheEmailConfigurationSection_IsGoneFromAppsettings()
     {
         Assert.DoesNotContain(
-            "\"Email\"", RepositoryRoot.ReadAllText("Odyssey.Api/appsettings.json"), StringComparison.Ordinal);
+            "\"Email\"", SourceTree.ReadAllText("Odyssey.Api/appsettings.json"), StringComparison.Ordinal);
     }
 
     /// <summary>
     /// AC 18. The gap between deploying and entering each credential is a designed state, not an edge
     /// case — and for the relay password it means transactional mail stops. An operator has to be able
-    /// to read that before they upgrade, not deduce it from a support ticket.
+    /// to read that before they upgrade, not deduce it from a support ticket. Release notes live in
+    /// docs/upgrade-notes.md, which docs/deployment.md tells an operator to read before every upgrade.
     /// </summary>
     [Fact]
-    public void TheDeploymentGuide_CarriesTheCredentialEntryReleaseNote()
+    public void TheUpgradeNotes_CarryTheCredentialEntryReleaseNote()
     {
-        var guide = RepositoryRoot.ReadAllText(System.IO.Path.Combine("docs", "deployment.md"));
+        Assert.Contains("upgrade-notes.md", SourceTree.ReadAllText(System.IO.Path.Combine("docs", "deployment.md")), StringComparison.Ordinal);
+        var guide = SourceTree.ReadAllText(System.IO.Path.Combine("docs", "upgrade-notes.md"));
 
         Assert.Contains("Credentials", guide, StringComparison.Ordinal);
         Assert.Contains("not adopted from configuration", guide, StringComparison.OrdinalIgnoreCase);

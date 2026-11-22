@@ -41,9 +41,9 @@ public static class WorkerHost
         services.AddPeriodicJob<WeatherScheduleJob>();
         services.AddExchangeRateSync();
         services.AddPeriodicJob<ExchangeRateSyncJob>();
-        // Instrument prices (issue #446): no production source is registered yet, so the job writes nothing but its
-        // heartbeat until one is.
-        Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(services);
+        // Instrument prices (issue #446) with the production sources (Tiingo, issue #447). The job sends nothing until an
+        // Admin pastes a source's token and enables a binding.
+        Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddProductionInstrumentPriceSources(services);
         services.AddPeriodicJob<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncJob>();
         // The file store (issue #346 A3): shared with the API, which serves and writes; here the maintenance job
         // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. The job verifies the volumes
@@ -53,20 +53,23 @@ public static class WorkerHost
         // Photo thumbnails (issue #362): the job and the Magick.NET decoder run here and nowhere else. A failing
         // self-test or volume holds this job alone (it reports PolicyFailed or StorageUnavailable); the others run on.
         services.AddPhotoThumbnails();
-        // Photo originals (issue #428): the content source the thumbnail job reads through, and the backfill that moves
-        // legacy originals out of FileBlob. The lease elects one runner per tick across replicas.
+        // Photo originals (issue #428): the content source the thumbnail job reads through, and the writer the demo
+        // files use.
         services.AddPhotoOriginals();
-        services.AddPeriodicJob<PhotoOriginalBackfillJob>();
-        // Files on the store (issue #448): the three file areas and the move of every remaining FileBlob onto them. The
-        // lease elects one runner per tick; a file a legacy photo wraps waits for the photo move above.
+        // Files on the store (issue #448): the three file areas, their writer and content source.
         services.AddStoredFiles();
-        services.AddPeriodicJob<FileBlobBackfillJob>();
+        // The demo files and photos (Development/Testing only, DemoDataGate): written onto the store once the API has
+        // initialised the volumes, with the rows that name them. The migrations job seeds the rest of the demo set.
+        services.AddSingleton<Odyssey.Worker.DemoData.DemoFileSeeder>();
+        services.AddHostedService<Odyssey.Worker.DemoData.DemoFileSeedingService>();
         // News reader (issue #470): the NewsArticles storage feature and the egress client, shared with the API, and the
         // fetch job — purge, fetch, ingest, images and maintenance — which runs here only (§7.9: the API makes no
         // outbound request). Every replica runs it; the per-feed leases and the host throttle rows coordinate them.
         Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsReader(services);
         Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsFeedFetching(services);
         services.AddPeriodicJob<Odyssey.Core.Internet.News.Jobs.NewsFeedJob>();
+        services.AddPeriodicJob<Odyssey.Core.Internet.News.Podcasts.PodcastAudioDownloadJob>();
+        services.AddPeriodicJob<Odyssey.Core.Internet.News.Podcasts.PodcastAudioRetentionJob>();
         // Recurrence keys (issue #519 §11): keys every pre-#519 series in the background, one locked series at a time.
         services.AddPeriodicJob<Odyssey.Core.Journal.RecurrenceKeyBackfillJob>();
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();

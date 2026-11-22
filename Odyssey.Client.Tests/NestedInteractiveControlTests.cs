@@ -8,6 +8,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -179,7 +180,9 @@ public class NestedInteractiveControlTests
     private static IEnumerable<IElement> Ancestors(IElement element, IElement root)
     {
         for (var parent = element.ParentElement; parent is not null && parent != root.ParentElement; parent = parent.ParentElement)
+        {
             yield return parent;
+        }
     }
 
     private static void AssertNoNesting(IRenderedComponent<IComponent> cut)
@@ -361,10 +364,7 @@ public class NestedInteractiveControlTests
             .Where(file => Regex.IsMatch(File.ReadAllText(file), @"<ActivatorContent\b"));
         var code = ClientSource.SourceFiles()
             .Where(file => file.EndsWith(".cs", StringComparison.Ordinal))
-            .Where(file => File.ReadLines(file)
-                .Select(line => line.TrimStart())
-                .Where(line => !line.StartsWith("//", StringComparison.Ordinal))
-                .Any(line => Regex.IsMatch(line, @"\bActivatorContent\b")));
+            .Where(file => Regex.IsMatch(SourceLint.StripComments(File.ReadAllText(file)), @"\bActivatorContent\b"));
         var offenders = markup.Concat(code)
             .Select(file => Path.GetRelativePath(ClientSource.Root, file))
             .ToList();

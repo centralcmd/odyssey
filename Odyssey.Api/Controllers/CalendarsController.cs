@@ -7,7 +7,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -30,7 +29,7 @@ public sealed class CalendarsController : ControllerBase
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingCalendar>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List calendars with search, sort and paging.")]
+    [EndpointSummary("List calendars with search, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] CalendarsQueryParams query, CancellationToken cancellationToken = default)
     {
@@ -41,7 +40,7 @@ public sealed class CalendarsController : ControllerBase
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingCalendar))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a calendar.")]
+    [EndpointSummary("Get a calendar.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -54,7 +53,7 @@ public sealed class CalendarsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingCalendar))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a calendar.")]
+    [EndpointSummary("Create a calendar.")]
     public async Task<IActionResult> Post(
         [FromBody] NewCalendar request, CancellationToken cancellationToken = default)
     {
@@ -73,7 +72,7 @@ public sealed class CalendarsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Rename, redescribe or recolour a calendar.")]
+    [EndpointSummary("Rename, redescribe or recolour a calendar.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewCalendar request, CancellationToken cancellationToken = default)
@@ -92,7 +91,7 @@ public sealed class CalendarsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an empty calendar; a calendar with events or recurrence patterns returns 409.")]
+    [EndpointSummary("Delete an empty calendar; a calendar with events or recurrence patterns returns 409.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

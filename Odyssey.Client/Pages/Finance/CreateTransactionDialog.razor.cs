@@ -89,21 +89,14 @@ public partial class CreateTransactionDialog
         : "Income — click the sign, or type − in the amount, for expense.";
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
-    /// <summary>
-    /// Whether the dialog is running interactively; the claim and reference-data load is skipped
-    /// off-browser (prerender).
-    /// </summary>
-    /// <remarks>
-    /// A swappable seam, as <c>TransactionListView.InteractiveCheck</c> is, so bUnit can drive the
-    /// edit-mode save path. Process-wide: a test class that moves it must restore it and run in the
-    /// <c>TransactionDialogCollection</c>.
-    /// </remarks>
-    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+    [Inject] private IRenderInteractivity Interactivity { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!InteractiveCheck())
+        if (!Interactivity.IsInteractive)
+        {
             return;
+        }
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
@@ -134,7 +127,9 @@ public partial class CreateTransactionDialog
         {
             _selectedAccount = _accounts.FirstOrDefault(a => a.AccountId == id);
             if (_selectedAccount is not null && !string.IsNullOrWhiteSpace(_selectedAccount.CurrencyCode))
+            {
                 _currencyCode = _selectedAccount.CurrencyCode;
+            }
         }
 
         ResolveCurrencyFallback();
@@ -166,7 +161,9 @@ public partial class CreateTransactionDialog
         if (Transaction is { } t2)
         {
             foreach (var tag in t2.TransactionTags)
+            {
                 byId[tag.TransactionTagId.ToString()] = tag;
+            }
         }
         _tagsById = byId;
         _tagOptions = byId.Values.Select(OdsTransactionTagOptions.From).OrderBy(o => o.Label).ToList();
@@ -181,7 +178,9 @@ public partial class CreateTransactionDialog
         // Edit mode: the transaction's own contact still needs an option to display its name
         // even if it has since been archived.
         if (Transaction?.Contact is { } existingCp && _cpOptions.All(o => o.Value != existingCp.ContactId.ToString()))
+        {
             _cpOptions.Add(OdsContactOptions.From(existingCp));
+        }
     }
 
     private async Task LoadCurrencies()
@@ -206,14 +205,18 @@ public partial class CreateTransactionDialog
     {
         _amountText = value;
         if (_amountError && TryParseAmount(out _))
+        {
             _amountError = false;
+        }
     }
 
     private void OnDateChanged(DateTime? value)
     {
         _timeStamp = value;
         if (value is not null)
+        {
             _dateError = false;
+        }
     }
 
     private void OnDirectionChanged(string direction) => _isExpense = direction == "expense";
@@ -223,7 +226,9 @@ public partial class CreateTransactionDialog
         _selectedAccount = account;
         _accountError = false;
         if (!string.IsNullOrWhiteSpace(account.CurrencyCode))
+        {
             _currencyCode = account.CurrencyCode;
+        }
     }
 
     // The account rows are this dialog's own single-choice buttons (issue #255), so choosing one has
@@ -244,7 +249,9 @@ public partial class CreateTransactionDialog
     {
         var index = Array.IndexOf(_statuses, _status);
         if (index < 0)
+        {
             return;
+        }
 
         var next = e.Key switch
         {
@@ -255,7 +262,9 @@ public partial class CreateTransactionDialog
             _ => -1,
         };
         if (next < 0)
+        {
             return;
+        }
 
         _status = _statuses[next];
         await _statusRefs[next].FocusAsync();
@@ -274,7 +283,9 @@ public partial class CreateTransactionDialog
                 .OfType<ExistingTransactionTag>()
                 .ToList();
             if (chosen.Count == 0)
+            {
                 return null;
+            }
 
             var glyph = TagIcons.Resolve(chosen, tag => tag.AsIconCandidate());
             var from = TagIcons.Order(chosen, tag => tag.AsIconCandidate())
@@ -290,7 +301,10 @@ public partial class CreateTransactionDialog
     {
         var option = ContactCreator.Begin(text, kind);
         if (option is not null)
+        {
             _cpOptions = [.. _cpOptions, option];
+        }
+
         return option;
     }
 
@@ -298,7 +312,10 @@ public partial class CreateTransactionDialog
     {
         var option = TagCreator.Begin(text);
         if (option is not null)
+        {
             _tagOptions = [.. _tagOptions, option];
+        }
+
         return option;
     }
 
@@ -306,7 +323,10 @@ public partial class CreateTransactionDialog
     {
         _cpOptions = _cpOptions.Where(o => o.Value != tempId).ToList();
         if (_contactId == tempId)
+        {
             _contactId = null;
+        }
+
         StateHasChanged();
     }
 
@@ -368,7 +388,9 @@ public partial class CreateTransactionDialog
     private async Task SaveClicked()
     {
         if (_isSaving)
+        {
             return;
+        }
 
         _descError = string.IsNullOrWhiteSpace(_description);
         _amountError = !TryParseAmount(out var magnitude);
@@ -377,7 +399,9 @@ public partial class CreateTransactionDialog
         // required, so clearing it is refused here rather than silently posted.
         _dateError = _timeStamp is null;
         if (_descError || _amountError || _accountError || _dateError)
+        {
             return;
+        }
 
         if (string.IsNullOrWhiteSpace(_currencyCode))
         {
@@ -395,7 +419,9 @@ public partial class CreateTransactionDialog
             {
                 var update = BuildPayload(magnitude);
                 if (!(await Transactions.UpdateAsync(Transaction!.TransactionId, update)).Toast(Snackbar, "Update failed"))
+                {
                     return;
+                }
 
                 Snackbar.Add("Transaction updated.", Severity.Success);
                 await OnSaved.InvokeAsync();

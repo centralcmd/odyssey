@@ -20,8 +20,7 @@ namespace Odyssey.Client.Tests;
 /// confirm-before-save. The two OPML import rows close the group (issue #509 §4.2, AC 20), the size cap first: the entry cap on the ordinary claim, the size
 /// cap on the security one (amendment v5).
 /// </summary>
-[Collection(SettingsPageCollection.Name)]
-public class NewsSettingsRowsTests : IDisposable
+public class NewsSettingsRowsTests
 {
     private static readonly string[] NewsKeys =
     [
@@ -29,8 +28,6 @@ public class NewsSettingsRowsTests : IDisposable
         "newsImageStoreMaxGiB", "newsTextStoreMaxGiB", "newsFeedMaxArticlesPerDay", "newsFeedMaxImageMbPerDay",
         Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes", "newsOpmlMaxImportEntries",
     ];
-
-    public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
 
     private static IReadOnlyList<string> Rendered(IRenderedComponent<Settings> page) =>
         [.. NewsKeys.Where(key => page.FindAll($"#ss-ttl-{key}").Count == 1)];
@@ -214,21 +211,34 @@ public class NewsSettingsRowsTests : IDisposable
         foreach (var property in properties.Values.Where(p => p.PropertyType == typeof(int)))
         {
             if (property.Name.EndsWith("Ceiling", StringComparison.Ordinal))
+            {
                 property.SetValue(dto, 1_000_000);
+            }
             else if (property.Name.EndsWith("Floor", StringComparison.Ordinal))
+            {
                 property.SetValue(dto, 1);
+            }
         }
 
         foreach (var item in Settings.AllItems)
         {
             if (item.Field is not { } field || !properties.TryGetValue(field, out var property))
+            {
                 continue;
+            }
+
             if (property.PropertyType == typeof(int))
+            {
                 property.SetValue(dto, Math.Max(item.Min, 1));
+            }
             else if (property.PropertyType == typeof(decimal))
+            {
                 property.SetValue(dto, item.DecimalMin);
+            }
             else if (property.PropertyType == typeof(string) && !item.AllowEmpty)
+            {
                 property.SetValue(dto, "x");
+            }
         }
 
         dto.EmailSmtpHost = "smtp.old.test";

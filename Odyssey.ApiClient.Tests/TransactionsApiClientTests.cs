@@ -2,6 +2,7 @@ using System.Net;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -12,28 +13,12 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class TransactionsApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public HttpResponseMessage Response { get; set; } = Json("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
-
-        public static HttpResponseMessage Json(string body, HttpStatusCode status = HttpStatusCode.OK) =>
-            new(status) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") };
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            return Task.FromResult(Response);
-        }
-    }
-
     private static NewTransaction SampleTransaction() =>
         new() { Description = "Rent", Amount = 1200m, AccountId = Guid.NewGuid() };
 
-    private static (TransactionsApiClient Client, RecordingHandler Handler) Create()
+    private static (TransactionsApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         return (new TransactionsApiClient(new OdysseyApi(
             new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") })), handler);
     }
@@ -107,7 +92,7 @@ public class TransactionsApiClientTests
     public async Task ListAllAsync_unwraps_the_paged_body_into_items()
     {
         var (client, handler) = Create();
-        handler.Response = RecordingHandler.Json(
+        handler.Response = RecordingHttpHandler.Json(
             """
             {"items":[{"transactionId":"11111111-1111-1111-1111-111111111111","description":"Rent",
                        "amount":1200,"timeStamp":"2030-01-01T00:00:00Z",
@@ -129,7 +114,7 @@ public class TransactionsApiClientTests
     public async Task ListAllAsync_reads_the_display_icon_and_embedded_tag_icons()
     {
         var (client, handler) = Create();
-        handler.Response = RecordingHandler.Json(
+        handler.Response = RecordingHttpHandler.Json(
             """
             {"items":[{"transactionId":"11111111-1111-1111-1111-111111111111","description":"Lunch",
                        "amount":-12,"timeStamp":"2030-01-01T00:00:00Z",
@@ -185,7 +170,7 @@ public class TransactionsApiClientTests
     public async Task DeleteAsync_surfaces_the_problem_detail()
     {
         var (client, handler) = Create();
-        handler.Response = RecordingHandler.Json(
+        handler.Response = RecordingHttpHandler.Json(
             """{"detail":"That transaction is referenced by a budget."}""", HttpStatusCode.Conflict);
 
         var result = await client.DeleteAsync(Guid.NewGuid());

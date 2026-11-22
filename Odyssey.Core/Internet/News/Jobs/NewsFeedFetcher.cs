@@ -127,7 +127,9 @@ public sealed class NewsFeedFetcher(
         {
             return new NewsFetchResult
             {
-                Kind = NewsFetchResultKind.Failure, ErrorKind = NewsFeedErrorKind.BlockedAddress, ErrorMessage = "The feed address is not an http(s) address.",
+                Kind = NewsFetchResultKind.Failure,
+                ErrorKind = NewsFeedErrorKind.BlockedAddress,
+                ErrorMessage = "The feed address is not an http(s) address.",
             };
         }
 

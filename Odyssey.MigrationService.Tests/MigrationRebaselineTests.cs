@@ -183,7 +183,7 @@ public partial class MigrationRebaselineTests
     [Fact]
     public void A_history_older_than_the_baseline_with_no_bridge_says_to_recreate()
     {
-        var error = new MigrationBaselineException("OdysseyContext", new MigrationBaseline("20270101000000_Base", null), "20261231000000_Old");
+        var error = new MigrationBaselineException(new MigrationBaseline("20270101000000_Base", null), "20261231000000_Old");
 
         Assert.Equal(MigrationBaselineGap.BelowBaseline, error.Gap);
         Assert.Contains("'20270101000000_Base'", error.Message);
@@ -195,7 +195,7 @@ public partial class MigrationRebaselineTests
     [Fact]
     public void A_history_older_than_the_baseline_with_a_bridge_names_the_release_to_upgrade_through()
     {
-        var error = new MigrationBaselineException("OdysseyContext", new MigrationBaseline("20270101000000_Base", "v0.60.0"), "20261231000000_Old");
+        var error = new MigrationBaselineException(new MigrationBaseline("20270101000000_Base", "v0.60.0"), "20261231000000_Old");
 
         Assert.Contains("Upgrade to v0.60.0 first", error.Message);
         Assert.Equal("v0.60.0", error.BridgeRelease);
@@ -204,7 +204,7 @@ public partial class MigrationRebaselineTests
     [Fact]
     public void A_history_newer_than_the_baseline_is_a_foreign_set()
     {
-        var error = new MigrationBaselineException("OdysseyContext", new MigrationBaseline("20270101000000_Base", "v0.60.0"), "20270202000000_Other");
+        var error = new MigrationBaselineException(new MigrationBaseline("20270101000000_Base", "v0.60.0"), "20270202000000_Other");
 
         Assert.Equal(MigrationBaselineGap.ForeignSet, error.Gap);
         Assert.Contains("different migration set", error.Message);
@@ -217,7 +217,7 @@ public partial class MigrationRebaselineTests
         var drift = new MigrationDrift("20270101000000_X", "table 'Accounts'");
         string[] ids = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"];
 
-        var error = new MigrationDriftException("OdysseyContext", drift, ids);
+        var error = new MigrationDriftException(drift, ids);
 
         Assert.Contains("superseded set", error.Message);
         Assert.Contains("'a5'", error.Message);
@@ -229,7 +229,7 @@ public partial class MigrationRebaselineTests
     [Fact]
     public void A_drift_without_superseded_ids_names_both_causes()
     {
-        var error = new MigrationDriftException("OdysseyContext", new MigrationDrift("20270101000000_X", "table 'Accounts'"));
+        var error = new MigrationDriftException(new MigrationDrift("20270101000000_X", "table 'Accounts'"));
 
         Assert.Contains("interrupted", error.Message);
         Assert.Contains("docs/migration-history-drift.md", error.Message);

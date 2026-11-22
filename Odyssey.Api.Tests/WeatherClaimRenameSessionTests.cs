@@ -59,7 +59,9 @@ public class WeatherClaimRenameSessionTests
         {
             context.RoleClaims.Add(new Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>
             {
-                RoleId = RoleDefinitions.AdminId, ClaimType = PermissionClaims.Type, ClaimValue = value,
+                RoleId = RoleDefinitions.AdminId,
+                ClaimType = PermissionClaims.Type,
+                ClaimValue = value,
             });
         }
 

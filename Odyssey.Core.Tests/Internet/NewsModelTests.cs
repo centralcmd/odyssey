@@ -119,21 +119,27 @@ public class NewsModelTests
     public void The_job_checks_admit_the_news_job_and_its_counters()
     {
         var runs = Entity<JobRun>().GetCheckConstraints().ToDictionary(c => c.ModelName);
-        // Issue #519 appended the recurrence key backfill (10).
-        Assert.Equal("`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)", runs["CK_JobRuns_JobType"].Sql);
-        Assert.Equal("`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)",
+        // Issue #519 appended the recurrence key backfill (10), issue #556 the two podcast audio jobs (11, 12); 5 and 7
+        // are the two retired file moves.
+        Assert.Equal("`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)", runs["CK_JobRuns_JobType"].Sql);
+        Assert.Equal("`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)",
             Entity<JobHeartbeat>().GetCheckConstraints().Single(c => c.ModelName == "CK_JobHeartbeats_JobType").Sql);
         foreach (var counter in new[]
         {
             nameof(NewsFeedJobRun.FeedsFetched), nameof(NewsFeedJobRun.ItemsStored), nameof(NewsFeedJobRun.ItemsRevised),
             nameof(NewsFeedJobRun.ImagesStored), nameof(NewsFeedJobRun.FeedsQuarantined), nameof(NewsFeedJobRun.FeedsMarked),
+            nameof(NewsFeedJobRun.ArtworkStored), nameof(NewsFeedJobRun.ArtworkFailed), nameof(NewsFeedJobRun.ChaptersFetched),
+            nameof(PodcastAudioDownloadJobRun.DownloadsStored), nameof(PodcastAudioDownloadJobRun.DownloadsFailed),
+            nameof(PodcastAudioDownloadJobRun.DownloadsDeferred), nameof(PodcastAudioDownloadJobRun.DownloadsRecovered),
+            nameof(PodcastAudioDownloadJobRun.ReservationsRefused), nameof(PodcastAudioDownloadJobRun.AudioBytesStored),
+            nameof(PodcastAudioRetentionJobRun.AudioReleased), nameof(PodcastAudioRetentionJobRun.AudioBytesReleased),
         })
         {
             Assert.Contains($"COALESCE(`{counter}`, 0) >= 0", runs["CK_JobRuns_CountersNonNegative"].Sql, StringComparison.Ordinal);
         }
 
-        // Unchanged: the per-feed leases are the job's guard, and no new held reason exists.
-        Assert.Equal("`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6", runs["CK_JobRuns_HeldReason"].Sql);
+        // The per-feed leases are the job's guard, and no new held reason exists (6, BackingOff, is retired).
+        Assert.Equal("`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5", runs["CK_JobRuns_HeldReason"].Sql);
         Assert.Equal("IF(`Status` = 0 AND (`JobType` IN (1, 3, 8) OR `Trigger` = 1), `JobType`, NULL)",
             Entity<JobRun>().FindProperty(nameof(JobRun.ExclusiveGuard))!.GetComputedColumnSql());
         Assert.Equal(typeof(NewsFeedJobRun), DesignModel.Value.GetEntityTypes()

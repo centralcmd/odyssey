@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Identity;
@@ -38,9 +37,8 @@ public sealed class ContractsController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ContractListItem>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List contracts (lean projection with derived status), with search, filtering, sorting and pagination.",
-        Description = @"'search' matches the name, the description, the reference number and linked contact-party
+    [EndpointSummary("List contracts (lean projection with derived status), with search, filtering, sorting and pagination.")]
+    [EndpointDescription(@"'search' matches the name, the description, the reference number and linked contact-party
                         names (case-insensitive substring). 'sortBy' accepts Name (default), StartDate, EndDate,
                         Type, Status and ReferenceNumber; ReferenceNumber sorts ascending by default with
                         contracts that have none last in both directions (issue #181).")]
@@ -55,10 +53,8 @@ public sealed class ContractsController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ContractSummary))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary =
-            "Summary rollup: counts by status and by type, the run rate, and the derived upcoming movements.",
-        Description = @"The run rate is direction-aware (issue #159): 'monthly'/'yearly'/'byType' are the
+    [EndpointSummary("Summary rollup: counts by status and by type, the run rate, and the derived upcoming movements.")]
+    [EndpointDescription(@"The run rate is direction-aware (issue #159): 'monthly'/'yearly'/'byType' are the
                         OUTGOING side and keep their pre-#159 meaning, 'incomingMonthly'/'incomingYearly'/
                         'incomingByType' are the incoming side, and 'netMonthly'/'netYearly' are incoming
                         minus outgoing — the only signed figures in the payload. No gross ever mixes the
@@ -77,7 +73,7 @@ public sealed class ContractsController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingContract))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get one contract with minimal party/file references and derived status.")]
+    [EndpointSummary("Get one contract with minimal party/file references and derived status.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -96,7 +92,7 @@ public sealed class ContractsController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsCreate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingContract))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a contract.")]
+    [EndpointSummary("Create a contract.")]
     public async Task<IActionResult> Post(
         [FromBody] NewContract request, CancellationToken cancellationToken = default)
     {
@@ -121,8 +117,8 @@ public sealed class ContractsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a contract's fields, including its archive and pause state (no dedicated archive or pause endpoint).",
-        Description = @"422 when the requested type would leave an existing party holding a role that type
+    [EndpointSummary("Update a contract's fields, including its archive and pause state (no dedicated archive or pause endpoint).")]
+    [EndpointDescription(@"422 when the requested type would leave an existing party holding a role that type
 rejects (issue #157). The body names each offending party by id, role and display name, and nothing is
 written — re-role those parties or detach them first.
 
@@ -180,7 +176,7 @@ ends before it starts.")]
     [Authorize(Policy = PermissionClaims.ContractsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Permanently delete a contract (cascades party + file links; leaves the underlying records).")]
+    [EndpointSummary("Permanently delete a contract (cascades party + file links; leaves the underlying records).")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

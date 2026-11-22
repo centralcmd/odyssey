@@ -97,7 +97,7 @@ public static class NewsErrors
 
     public static NewsException TagInUse(int feedCount, int articleCount) => new(
         HttpStatusCode.Conflict, NewsErrorCodes.TagInUse,
-        "Tag is in use by one or more feeds or articles; archive it instead of deleting.",
+        "Tag is in use by one or more feeds, articles or episodes; archive it instead of deleting.",
         extensions: new Dictionary<string, object?> { ["feedCount"] = feedCount, ["articleCount"] = articleCount });
 
     public static NewsException TagArchived(Guid tagId) => new(
@@ -130,6 +130,28 @@ public static class NewsErrors
     public static NewsException OpmlConflict() => new(
         HttpStatusCode.Conflict, NewsErrorCodes.OpmlConflict,
         "Another change added one of these feeds while the import ran; nothing was imported. Try again.");
+
+    // ── Podcasts (issue #556 §9.1) ────────────────────────────────────────────────────────────────────────────
+
+    public static NewsException AutomationNotPodcast(string field) => new(
+        HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedAutomationNotPodcast,
+        "Automatic downloads and automatic removal are only for podcast feeds.", field);
+
+    public static DomainValidationException FeedKindUnknown() => new(
+        "Unknown feed type.", NewsErrorCodes.FeedKindUnknown, "kind");
+
+    public static NewsException PodcastAudioBusy(Guid episodeId) => new(
+        HttpStatusCode.Conflict, NewsErrorCodes.PodcastAudioBusy,
+        $"The audio of episode {episodeId} is downloading right now; try again when it has finished.");
+
+    public static NewsException PodcastAudioCooldown(Guid episodeId, int retryAfterSeconds) => new(
+        HttpStatusCode.TooManyRequests, NewsErrorCodes.PodcastAudioCooldown,
+        $"The audio of episode {episodeId} was requested or removed a moment ago; try again later.",
+        retryAfterSeconds: retryAfterSeconds);
+
+    public static NewsException PodcastAudioQuotaReached() => new(
+        HttpStatusCode.InsufficientStorage, NewsErrorCodes.PodcastAudioQuotaReached,
+        "The audio storage limit is reached. Remove audio from the server, or ask an administrator to raise the limit.");
 
     public static DomainValidationException CursorInvalid() => new(
         "The list position is no longer valid; start again from the first page.", NewsErrorCodes.CursorInvalid, "cursor");

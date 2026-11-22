@@ -35,14 +35,21 @@ public class CalendarAttachmentDialogTests
 
     internal static CalendarLinkFileDto File(string name, Guid? id = null) => new()
     {
-        FileId = id ?? Guid.NewGuid(), CreatedAt = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
-        FileName = name, ContentType = "application/pdf", SizeBytes = 2048, UploadedAtUtc = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc),
+        FileId = id ?? Guid.NewGuid(),
+        CreatedAt = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+        FileName = name,
+        ContentType = "application/pdf",
+        SizeBytes = 2048,
+        UploadedAtUtc = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc),
     };
 
     internal static CalendarLinkPhotoDto Photo(string title, int position, Guid? id = null) => new()
     {
-        PhotoId = id ?? Guid.NewGuid(), Position = position, CreatedAt = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
-        Title = title, FileName = $"{title}.jpg",
+        PhotoId = id ?? Guid.NewGuid(),
+        Position = position,
+        CreatedAt = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+        Title = title,
+        FileName = $"{title}.jpg",
     };
 
     /// <summary>A standalone event with <paramref name="files"/> and <paramref name="photos"/> linked, as a detail read returns it.</summary>
@@ -52,11 +59,17 @@ public class CalendarAttachmentDialogTests
         var p = photos?.ToList() ?? [];
         return new ExistingCalendarEvent
         {
-            CalendarEventId = EventId, CalendarId = CalendarId, Title = "Dentist",
+            CalendarEventId = EventId,
+            CalendarId = CalendarId,
+            Title = "Dentist",
             StartDateTime = new DateTime(2026, 6, 4, 9, 0, 0, DateTimeKind.Unspecified),
             EndDateTime = new DateTime(2026, 6, 4, 10, 0, 0, DateTimeKind.Unspecified),
-            TimeZoneId = "UTC", IsKeyed = true,
-            Attachments = f, Photos = p, AttachmentCount = f.Count, PhotoCount = p.Count,
+            TimeZoneId = "UTC",
+            IsKeyed = true,
+            Attachments = f,
+            Photos = p,
+            AttachmentCount = f.Count,
+            PhotoCount = p.Count,
         };
     }
 
@@ -64,9 +77,15 @@ public class CalendarAttachmentDialogTests
     internal static ExistingCalendarEvent Withheld(ExistingCalendarEvent source, bool files, bool photos)
     {
         if (files)
+        {
             source.Attachments = [.. source.Attachments!.Select(a => new CalendarLinkFileDto { FileId = a.FileId, CreatedAt = a.CreatedAt })];
+        }
+
         if (photos)
+        {
             source.Photos = [.. source.Photos!.Select(p => new CalendarLinkPhotoDto { PhotoId = p.PhotoId, Position = p.Position, CreatedAt = p.CreatedAt })];
+        }
+
         return source;
     }
 
@@ -84,11 +103,22 @@ public class CalendarAttachmentDialogTests
         var p = photos?.ToList() ?? [];
         return new ExistingRecurrencePattern
         {
-            RecurrencePatternId = PatternId, CalendarId = CalendarId, Title = "Choir",
-            StartDateTime = new DateTime(2026, 6, 1, 18, 0, 0), EndDateTime = new DateTime(2026, 6, 1, 20, 0, 0), TimeZoneId = "UTC",
-            Frequency = RecurrenceFrequency.Weekly, Interval = 1, DaysOfWeek = DaysOfWeekFlags.Monday, OccurrenceCount = 10,
-            Version = Version, IsKeyed = true,
-            Attachments = f, Photos = p, AttachmentCount = f.Count, PhotoCount = p.Count,
+            RecurrencePatternId = PatternId,
+            CalendarId = CalendarId,
+            Title = "Choir",
+            StartDateTime = new DateTime(2026, 6, 1, 18, 0, 0),
+            EndDateTime = new DateTime(2026, 6, 1, 20, 0, 0),
+            TimeZoneId = "UTC",
+            Frequency = RecurrenceFrequency.Weekly,
+            Interval = 1,
+            DaysOfWeek = DaysOfWeekFlags.Monday,
+            OccurrenceCount = 10,
+            Version = Version,
+            IsKeyed = true,
+            Attachments = f,
+            Photos = p,
+            AttachmentCount = f.Count,
+            PhotoCount = p.Count,
         };
     }
 
@@ -216,8 +246,12 @@ public class CalendarAttachmentDialogTests
 
     internal static ExistingCalendarEvent Echo(NewCalendarEvent body) => new()
     {
-        CalendarEventId = EventId, CalendarId = body.CalendarId, Title = body.Title,
-        StartDateTime = body.StartDateTime, EndDateTime = body.EndDateTime, TimeZoneId = body.TimeZoneId,
+        CalendarEventId = EventId,
+        CalendarId = body.CalendarId,
+        Title = body.Title,
+        StartDateTime = body.StartDateTime,
+        EndDateTime = body.EndDateTime,
+        TimeZoneId = body.TimeZoneId,
     };
 
     private static string Text(IElement e) => ImportCalendarDialogTests.Harness.Label(e);
@@ -736,7 +770,8 @@ public class CalendarAttachmentDialogTests
         h.Calendar.Setup(c => c.UpdateEventWithResultAsync(EventId, It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingCalendarEvent>.Failure(HttpStatusCode.UnprocessableEntity, new ApiProblem
             {
-                Status = 422, Detail = "Unknown photo(s).",
+                Status = 422,
+                Detail = "Unknown photo(s).",
                 Errors = new Dictionary<string, string[]> { ["photoIds"] = ["Unknown photo(s)."] },
             }));
 

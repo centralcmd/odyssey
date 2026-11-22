@@ -13,14 +13,11 @@ namespace Odyssey.MigrationService;
 /// interruption as a superseded set. With such ids present the message names that cause; without them it names
 /// both causes, because an interruption and a renumber leave the same schema behind.
 /// </remarks>
-public sealed class MigrationDriftException(
-    string contextName, MigrationDrift drift, IReadOnlyList<string>? supersededIds = null)
-    : Exception(BuildMessage(contextName, drift, supersededIds ?? []))
+public sealed class MigrationDriftException(MigrationDrift drift, IReadOnlyList<string>? supersededIds = null)
+    : Exception(BuildMessage(drift, supersededIds ?? []))
 {
     /// <summary>The most superseded ids the message lists.</summary>
     internal const int SupersededIdLimit = 5;
-
-    public string ContextName { get; } = contextName;
 
     public string MigrationId { get; } = drift.MigrationId;
 
@@ -29,10 +26,10 @@ public sealed class MigrationDriftException(
     /// <summary>History ids absent from this build and later than the baseline; empty when none.</summary>
     public IReadOnlyList<string> SupersededIds { get; } = supersededIds ?? [];
 
-    private static string BuildMessage(string contextName, MigrationDrift drift, IReadOnlyList<string> superseded)
+    private static string BuildMessage(MigrationDrift drift, IReadOnlyList<string> superseded)
     {
         var head =
-            $"{contextName}: migration '{drift.MigrationId}' is recorded as pending, but the {drift.ExistingObject} " +
+            $"Migration '{drift.MigrationId}' is recorded as pending, but the {drift.ExistingObject} " +
             "it creates already exists. The database is out of step with __EFMigrationsHistory. ";
 
         if (superseded.Count > 0)

@@ -172,9 +172,15 @@ public partial class OdsLocationSelect
         {
             // A staged value names itself; it was never on the server.
             if (Value is { IsStaged: true } staged)
+            {
                 return [StagedOption(staged.NewName!)];
+            }
+
             if (Value is { IsStagedAddress: true } address)
+            {
                 return [LocationVisuals.StagedAddressOptionFor(ComboValue!, address.Candidate!)];
+            }
+
             return ComboValue is { } v && _current.TryGetValue(v, out var known) ? [known] : [];
         }
     }
@@ -189,7 +195,10 @@ public partial class OdsLocationSelect
             var helpId = hasHelp ? $"{_inputId}-help" : null;
             var errorId = string.IsNullOrEmpty(Error) ? null : hasHelp ? $"{_inputId}-help-error" : $"{_inputId}-help";
             if (Bare)
+            {
                 helpId = errorId = null;
+            }
+
             var ids = new[] { helpId, errorId, AddressSearchOn ? DisclosureId : null, DescribedById }
                 .Where(v => !string.IsNullOrEmpty(v)).ToArray();
             return ids.Length == 0 ? null : string.Join(' ', ids);
@@ -254,7 +263,9 @@ public partial class OdsLocationSelect
         var places = await SavedPlacesAsync(query, ct);
         var rows = places.Select(p => SavedOptionFor(p) with { Group = SavedGroup }).ToList();
         if (addresses is null)
+        {
             return rows;
+        }
 
         var candidates = await addresses;
         if (candidates is null)
@@ -269,7 +280,10 @@ public partial class OdsLocationSelect
         {
             var value = AddressValue(candidate);
             if (!_candidates.TryAdd(value, candidate))
+            {
                 continue;
+            }
+
             rows.Add(LocationVisuals.CandidateOptionFor(value, candidate));
         }
 
@@ -284,11 +298,17 @@ public partial class OdsLocationSelect
     {
         var extra = Math.Max(0, AddressDebounceMs - DebounceMs);
         if (extra > 0)
+        {
             await Task.Delay(extra, ct);
+        }
+
         var result = await Locations.SearchAsync(new LocationSearchRequest { Query = query.Trim(), Region = LocationSearchRegion.Norway }, ct);
         ct.ThrowIfCancellationRequested();
         if (!result.IsSuccess || result.Value is not { } response)
+        {
             return null;
+        }
+
         return [.. response.Candidates.Where(c => c.Kind == LocationCandidateKind.Address && !string.IsNullOrWhiteSpace(c.Line1))];
     }
 
@@ -304,10 +324,16 @@ public partial class OdsLocationSelect
     private async Task<OdsOption?> ResolveAsync(string value)
     {
         if (!Guid.TryParse(value, out var id))
+        {
             return null;
+        }
+
         var result = await Locations.GetAsync(id);
         if (!result.IsSuccess || result.Value is not { } place)
+        {
             return null;
+        }
+
         var option = SavedOptionFor(place);
         _current[value] = option;
         return option;
@@ -317,7 +343,10 @@ public partial class OdsLocationSelect
     {
         var name = LocationTextCleaner.Clean(text);
         if (name is null)
+        {
             return null;
+        }
+
         _ = OnStage.InvokeAsync(name);
         return StagedOption(name);
     }

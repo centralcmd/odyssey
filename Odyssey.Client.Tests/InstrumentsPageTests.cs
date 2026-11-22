@@ -17,22 +17,12 @@ using Xunit;
 
 namespace Odyssey.Client.Tests;
 
-/// <summary>Serialises the classes that move <c>InstrumentsPage.InteractiveCheck</c>, a process-wide static.</summary>
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class InstrumentsPageCollection
-{
-    public const string Name = "Instruments page";
-}
-
 /// <summary>
 /// The <c>/instruments</c> page (issue #452 §3): claim gating (absent, never greyed), the list states, the row menu,
 /// the saving row, deep links with their pin and focus, and the source rules for the new files.
 /// </summary>
-[Collection(InstrumentsPageCollection.Name)]
-public sealed class InstrumentsPageTests : IDisposable
+public sealed class InstrumentsPageTests
 {
-    public void Dispose() => InstrumentsPage.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static readonly string[] Guest = [PermissionClaims.InstrumentsRead];
 
     private static readonly string[] Owner =
@@ -48,21 +38,21 @@ public sealed class InstrumentsPageTests : IDisposable
     internal static ExistingInstrument Instrument(
         string symbol, int? priceCount = 0, bool archived = false, bool locked = false, Guid? id = null,
         InstrumentType type = InstrumentType.Stock) => new()
-    {
-        InstrumentId = id ?? Guid.NewGuid(),
-        Symbol = symbol,
-        MicCode = type == InstrumentType.Fund ? null : "XOSL",
-        Isin = "NO0010096985",
-        Name = symbol + " name",
-        Type = type,
-        CurrencyCode = "NOK",
-        ShowOnDashboard = true,
-        Archived = archived ? new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc) : null,
-        PriceCount = priceCount,
-        LatestClose = priceCount > 0 ? 284.6m : null,
-        LatestTradingDate = priceCount > 0 ? new DateOnly(2026, 11, 6) : null,
-        IdentityLocked = locked || priceCount > 0,
-    };
+        {
+            InstrumentId = id ?? Guid.NewGuid(),
+            Symbol = symbol,
+            MicCode = type == InstrumentType.Fund ? null : "XOSL",
+            Isin = "NO0010096985",
+            Name = symbol + " name",
+            Type = type,
+            CurrencyCode = "NOK",
+            ShowOnDashboard = true,
+            Archived = archived ? new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc) : null,
+            PriceCount = priceCount,
+            LatestClose = priceCount > 0 ? 284.6m : null,
+            LatestTradingDate = priceCount > 0 ? new DateOnly(2026, 11, 6) : null,
+            IdentityLocked = locked || priceCount > 0,
+        };
 
     private static ApiResult<T> Ok<T>(T value) => ApiResult<T>.Success(value, HttpStatusCode.OK);
 
@@ -99,7 +89,7 @@ public sealed class InstrumentsPageTests : IDisposable
         ctx.Services.AddSingleton(sources.Object);
         ctx.Services.AddSingleton(reference.Object);
         ctx.Services.AddSingleton<ISnackbar>(snackbar);
-        InstrumentsPage.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         return new Harness { Ctx = ctx, Api = api, Sources = sources, Snackbar = snackbar };
     }
 
@@ -329,7 +319,9 @@ public sealed class InstrumentsPageTests : IDisposable
         Assert.DoesNotContain("Shown from a link", cut.Markup);
         Assert.DoesNotContain(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusChainOrHeading");
         if (!Guid.TryParse(value, out var __))
+        {
             h.Api.Verify(a => a.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 
     // ── Row removal focus (§3.3) ─────────────────────────────────────────────────────────────────
@@ -401,7 +393,11 @@ public sealed class InstrumentsPageTests : IDisposable
 
         var option = InstrumentVisuals.OptionFor(new ExistingInstrument
         {
-            InstrumentId = Guid.NewGuid(), Symbol = "VWCE", Name = "All-World", Type = InstrumentType.Etf, CurrencyCode = "EUR",
+            InstrumentId = Guid.NewGuid(),
+            Symbol = "VWCE",
+            Name = "All-World",
+            Type = InstrumentType.Etf,
+            CurrencyCode = "EUR",
         });
         Assert.Equal("VWCE · All-World", option.Label);
         Assert.Equal(named[1].Icon, option.Icon);

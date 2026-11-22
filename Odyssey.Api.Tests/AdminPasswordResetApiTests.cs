@@ -14,6 +14,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 
@@ -22,20 +23,29 @@ namespace Odyssey.Api.Tests;
 /// <summary>
 /// The admin-initiated password reset (issue #406): <c>POST /api/users/{id}/password-reset</c>, the
 /// derived <see cref="OdysseyUserManager"/> that clears the flag, and the two exposure points for it.
+///
+/// <para>
+/// One host serves the class (<see cref="SharedApiHostClients"/>). The per-recipient send throttle is an in-process
+/// singleton the store reset does not clear, so every test mails its own address (<see cref="targetEmail"/>) rather
+/// than spending one shared recipient's budget.
+/// </para>
 /// </summary>
-public class AdminPasswordResetApiTests
+public class AdminPasswordResetApiTests(AdminPasswordResetApiTests.Host host)
+    : SharedApiHostTests<AdminPasswordResetApiTests.Host>(host)
 {
     private const string ActorUserId = "admin-actor-id";
     private const string TargetUserId = "reset-target-id";
-    private const string TargetEmail = "target@example.com";
     private const string Password = "Password123!Safe";
     private const string NewPassword = "Renewed987!Passphrase";
+
+    /// <summary>This test's own recipient, so no test reads or spends another's per-recipient throttle window.</summary>
+    private readonly string targetEmail = $"target-{Guid.NewGuid():N}@example.com";
 
     [Fact]
     public async Task WithoutUsersUpdate_TheEndpointIsForbidden()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersRead]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
@@ -49,8 +59,8 @@ public class AdminPasswordResetApiTests
     {
         // No SMTP host in Testing, so the link is logged rather than relayed — which in that environment
         // IS the delivery mechanism, hence emailDelivered: true.
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         var stampBefore = await SecurityStampAsync(factory, TargetUserId);
         using var client = factory.CreateClient();
 
@@ -67,8 +77,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task AnUnknownTarget_IsNotFound_AndSendsNothing()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync("/api/users/nobody/password-reset", content: null);
@@ -80,8 +90,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task AnUnconfirmedTarget_IsUnprocessable_AndChangesNothing()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail, emailConfirmed: false);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail, emailConfirmed: false);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
@@ -94,8 +104,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task TheEmailedLink_MatchesTheSelfServiceShape()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
@@ -104,7 +114,7 @@ public class AdminPasswordResetApiTests
         Assert.True(link.IsAbsoluteUri);
         Assert.Equal("/reset-password", link.AbsolutePath);
         Assert.Contains("code=", link.Query, StringComparison.Ordinal);
-        Assert.DoesNotContain(TargetEmail, link.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(targetEmail, link.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -115,19 +125,19 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task TheAdminIssuedCode_CompletesAReset_AndRetiresTheOldPassword()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
         var code = CodeFrom(Assert.Single(ResetLinks(factory)));
 
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = TargetEmail, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = targetEmail, resetCode = code, newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
-        Assert.True(await LoginSucceedsAsync(factory, TargetEmail, NewPassword), "The new password should sign in.");
-        Assert.False(await LoginSucceedsAsync(factory, TargetEmail, Password), "The old password should be refused.");
+        Assert.True(await LoginSucceedsAsync(factory, targetEmail, NewPassword), "The new password should sign in.");
+        Assert.False(await LoginSucceedsAsync(factory, targetEmail, Password), "The old password should be refused.");
     }
 
     /// <summary>
@@ -138,15 +148,15 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task TheIssuedToken_IsStillValidAfterTheCallReturns()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
         var code = CodeFrom(Assert.Single(ResetLinks(factory)));
 
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = TargetEmail, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = targetEmail, resetCode = code, newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
     }
@@ -154,17 +164,17 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task APreviouslyIssuedResetLink_IsInvalidatedByTheAdminReset()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
-        await client.PostAsJsonAsync("/forgotPassword", new { email = TargetEmail });
+        await client.PostAsJsonAsync("/forgotPassword", new { email = targetEmail });
         var selfServiceCode = CodeFrom(ResetLinks(factory)[^1]);
 
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
 
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = TargetEmail, resetCode = selfServiceCode, newPassword = NewPassword });
+            "/resetPassword", new { email = targetEmail, resetCode = selfServiceCode, newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.BadRequest, reset.StatusCode);
     }
@@ -172,6 +182,7 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task AThrottledRecipient_Is429_AndNothingIsMutated()
     {
+        // A host of its own: the throttle is a replaced service.
         await using var factory = new ApiFactory(
             [PermissionClaims.UsersUpdate],
             configureServices: services =>
@@ -179,7 +190,7 @@ public class AdminPasswordResetApiTests
                 services.RemoveAll<IEmailSendThrottle>();
                 services.AddSingleton<IEmailSendThrottle>(new StubThrottle { Allow = false });
             });
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         var stampBefore = await SecurityStampAsync(factory, TargetUserId);
         using var client = factory.CreateClient();
 
@@ -200,6 +211,7 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task ThePerRecipientBudget_IsConsumedOncePerReset()
     {
+        // A host of its own: the throttle is a replaced service.
         var throttle = new CountingThrottle(budget: 3);
         await using var factory = new ApiFactory(
             [PermissionClaims.UsersUpdate],
@@ -208,7 +220,7 @@ public class AdminPasswordResetApiTests
                 services.RemoveAll<IEmailSendThrottle>();
                 services.AddSingleton<IEmailSendThrottle>(throttle);
             });
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         var statuses = new List<HttpStatusCode>();
@@ -227,13 +239,11 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task WhenTheSendFails_TheResponseSaysSo_AndTheResetStands()
     {
-        // A refused connection is a deterministic SMTP failure that resolves fast.
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate])
-        {
-            SmtpHost = "127.0.0.1",
-            SmtpPort = 1,
-        };
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        // A refused connection is a deterministic SMTP failure that resolves fast. The transport is settings rows,
+        // read uncached on the send path, so this test's relay replaces the host's for it alone.
+        var factory = Factory;
+        await SystemSettingsSeed.SetTransportAsync(factory.Services, "127.0.0.1", 1, "https://app.example.test");
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         var stampBefore = await SecurityStampAsync(factory, TargetUserId);
         using var client = factory.CreateClient();
 
@@ -257,11 +267,11 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task TheAdminPath_UsesTheSameSenderAsForgotPassword()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
-        await client.PostAsJsonAsync("/forgotPassword", new { email = TargetEmail });
+        await client.PostAsJsonAsync("/forgotPassword", new { email = targetEmail });
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
 
         var senderLines = factory.Logs.ForCategory(typeof(SmtpEmailSender).FullName!).ToList();
@@ -271,7 +281,7 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task SelfTargeting_Succeeds_AndGatesTheActingAdmin()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory;
         await CreateUserAsync(factory, ActorUserId, "actor@example.com");
         using var client = factory.CreateClient();
 
@@ -289,6 +299,7 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task ExceedingThePerActorLimit_Is429_AndTheOverLimitCallMutatesNothing()
     {
+        // A host of its own: it spends a real rate-limit window, which a shared host raises out of reach.
         await using var factory = new ApiFactory(
             [PermissionClaims.UsersUpdate],
             configuration: new Dictionary<string, string?>
@@ -323,8 +334,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task EveryResetIsAttributable_WithoutLoggingTheAddressOrTheToken()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
@@ -336,17 +347,17 @@ public class AdminPasswordResetApiTests
 
         Assert.Contains(ActorUserId, entry.Message, StringComparison.Ordinal);
         Assert.Contains(TargetUserId, entry.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain(TargetEmail, entry.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(targetEmail, entry.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(code, entry.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task TheUserManager_ResolvesToTheDerivedOne()
+    public void TheUserManager_ResolvesToTheDerivedOne()
     {
         // MapIdentityApi resolves UserManager<ApplicationUser>, not the derived type, so it is *that*
         // service type that has to resolve to OdysseyUserManager — registering the derived type alone
         // would leave every flag-clearing path silently unhooked.
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
+        var factory = Factory;
         using var scope = factory.Services.CreateScope();
 
         Assert.IsType<OdysseyUserManager>(scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>());
@@ -355,8 +366,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task CompletingTheEmailedReset_ClearsTheFlag()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
 
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
@@ -364,7 +375,7 @@ public class AdminPasswordResetApiTests
         Assert.True(await MustChangePasswordAsync(factory, TargetUserId));
 
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = TargetEmail, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = targetEmail, resetCode = code, newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
         Assert.False(await MustChangePasswordAsync(factory, TargetUserId));
@@ -377,8 +388,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task EnrollingInTwoFactor_DoesNotClearTheFlag()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
 
@@ -397,8 +408,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task ChangingTheEmail_DoesNotClearTheFlag()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
 
@@ -417,8 +428,8 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task TheFlagIsVisibleToAdmins_OnBothUserReads()
     {
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate, PermissionClaims.UsersRead]);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
+        var factory = Factory.ForCaller([PermissionClaims.UsersUpdate, PermissionClaims.UsersRead]);
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
         using var client = factory.CreateClient();
         await client.PostAsync($"/api/users/{TargetUserId}/password-reset", content: null);
 
@@ -433,9 +444,9 @@ public class AdminPasswordResetApiTests
     public async Task TheFlagIsVisibleToTheTarget_OnTheirOwnProfile_AndCannotBeOverposted()
     {
         // The acting principal IS the target here, so the profile read is the target's own.
-        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate], actorUserId: TargetUserId);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
+        using var client = factory.ClientFor([PermissionClaims.UsersUpdate], actorUserId: TargetUserId);
 
         var before = await client.GetFromJsonAsync<ProfileDto>("/api/profile");
         Assert.False(before!.MustChangePassword);
@@ -449,9 +460,9 @@ public class AdminPasswordResetApiTests
     [Fact]
     public async Task PuttingTheFlagOnTheProfile_CannotSetIt()
     {
-        await using var factory = new ApiFactory([], actorUserId: TargetUserId);
-        await CreateUserAsync(factory, TargetUserId, TargetEmail);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        await CreateUserAsync(factory, TargetUserId, targetEmail);
+        using var client = factory.ClientFor([], actorUserId: TargetUserId);
 
         var response = await client.PutAsJsonAsync("/api/profile", new
         {
@@ -559,7 +570,10 @@ public class AdminPasswordResetApiTests
         }
     }
 
-    private sealed class ApiFactory(
+    /// <summary>The class's shared host: a <c>users.update</c> admin, the transport seeded, logs captured.</summary>
+    public sealed class Host() : ApiFactory([PermissionClaims.UsersUpdate]);
+
+    public class ApiFactory(
         IReadOnlyCollection<string> permissions,
         string actorUserId = ActorUserId,
         IReadOnlyDictionary<string, string?>? configuration = null,
@@ -575,12 +589,7 @@ public class AdminPasswordResetApiTests
                 configureServices?.Invoke(services);
             })
     {
-        public CapturingLoggerProvider Logs { get; } = new();
-
-        /// <summary>The relay this factory seeds. Empty means the link is logged, not delivered.</summary>
-        public string SmtpHost { get; init; } = string.Empty;
-
-        public int? SmtpPort { get; init; }
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
@@ -597,14 +606,25 @@ public class AdminPasswordResetApiTests
         protected override IHost CreateHost(IHostBuilder builder)
         {
             var host = base.CreateHost(builder);
-
-            SystemSettingsSeed
-                .SetTransportAsync(host.Services, SmtpHost, SmtpPort, "https://app.example.test")
-                .GetAwaiter()
-                .GetResult();
-
+            SeedTransportAsync(host.Services).GetAwaiter().GetResult();
             return host;
         }
+
+        /// <summary>
+        /// A shared host starts each test as a fresh one does: the store reset drops the transport rows, so they are
+        /// seeded again, and the log lines of earlier tests — which every reset-link assertion reads — are forgotten.
+        /// #552's first attempt at sharing this class skipped both, and every link count read the previous test's.
+        /// </summary>
+        public override async Task ResetStoreAsync()
+        {
+            await base.ResetStoreAsync();
+            await SeedTransportAsync(Services);
+            Logs.Clear();
+        }
+
+        /// <summary>No relay: under Testing the sender logs the composed link instead of delivering it.</summary>
+        private static Task SeedTransportAsync(IServiceProvider services) =>
+            SystemSettingsSeed.SetTransportAsync(services, string.Empty, port: null, "https://app.example.test");
 
         private static IReadOnlyDictionary<string, string?> Merge(IReadOnlyDictionary<string, string?>? overrides)
         {

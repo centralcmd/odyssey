@@ -1,0 +1,9 @@
+/* Books — page-specific bits only; the record scaffold, chips, tiles and dialogs are shared (design system · books.css). */
+
+/* A title wraps rather than ellipsising: a long subtitle is part of what tells two editions apart. */
+.acct-list ::deep .bk-card .odc-record-name { white-space: normal; overflow-wrap: anywhere; }
+
+/* "Has every tag" is open-ended (user data): its trigger is wide enough that the list opens at the trigger's width. */
+.ph-filter-bar ::deep .bk-tag-filter { min-width: 240px; }
+
+.ph-filter-bar ::deep .bk-author-filter { min-width: 200px; }

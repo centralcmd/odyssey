@@ -12,7 +12,7 @@ using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Internet;
 using Odyssey.Testing.FileStorage;
 using Odyssey.Testing.News;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 using static Odyssey.Testing.News.NewsFeedFixtures;
 
@@ -789,8 +789,12 @@ public sealed class NewsFeedJobTests : IAsyncLifetime
         });
         using var session = new NewsFetchSession(new NewsClaim
         {
-            FeedId = feedId, Url = FeedUrl, Owner = owner, Fence = fence,
-            ClaimTime = news.Clock.GetUtcNow().UtcDateTime, Interval = TimeSpan.FromMinutes(30),
+            FeedId = feedId,
+            Url = FeedUrl,
+            Owner = owner,
+            Fence = fence,
+            ClaimTime = news.Clock.GetUtcNow().UtcDateTime,
+            Interval = TimeSpan.FromMinutes(30),
         });
 
         var ran = 0;
@@ -872,8 +876,11 @@ public sealed class NewsFeedJobTests : IAsyncLifetime
         {
             c.JobRuns.Add(new NewsFeedJobRun
             {
-                JobRunId = runId, Trigger = JobRunTrigger.Manual, Status = JobRunStatus.Running,
-                StartedAtUtc = news.Clock.GetUtcNow().UtcDateTime, LastActivityAtUtc = news.Clock.GetUtcNow().UtcDateTime,
+                JobRunId = runId,
+                Trigger = JobRunTrigger.Manual,
+                Status = JobRunStatus.Running,
+                StartedAtUtc = news.Clock.GetUtcNow().UtcDateTime,
+                LastActivityAtUtc = news.Clock.GetUtcNow().UtcDateTime,
             });
             await c.SaveChangesAsync();
         });

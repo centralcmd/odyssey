@@ -174,7 +174,10 @@ public class ContactMethodLabelTests
         using var harness = new Harness();
         var stored = new ExistingPhoneNumber
         {
-            Id = PhoneId, ContactId = ContactId, Label = PhoneLabel.Claims, Value = "+47 22 00 00 00",
+            Id = PhoneId,
+            ContactId = ContactId,
+            Label = PhoneLabel.Claims,
+            Value = "+47 22 00 00 00",
         };
 
         var cut = harness.RenderDialog(
@@ -419,7 +422,9 @@ public class ContactMethodLabelTests
                 .Returns((Guid _, NewPhoneNumber p, CancellationToken _) =>
                 {
                     if (addPhoneResult is { } rejection)
+                    {
                         return Task.FromResult(rejection);
+                    }
 
                     AddedPhones.Add(p);
                     return Task.FromResult(ApiResult.Success(HttpStatusCode.Created));
@@ -487,7 +492,10 @@ public class ContactMethodLabelTests
             builder.AddComponentParameter(3, nameof(ContactDetailPanel.Contact), Contact);
             builder.AddComponentParameter(4, nameof(ContactDetailPanel.CanEdit), true);
             if (AddKind is not null)
+            {
                 builder.AddComponentParameter(5, nameof(ContactDetailPanel.AddRequest), ((string, Guid)?)(AddKind, Guid.NewGuid()));
+            }
+
             builder.CloseComponent();
         }
     }

@@ -71,7 +71,10 @@ internal static class CalendarIcsExport
     {
         var kinds = Kinds(summary);
         if (kinds.Count == 0)
+        {
             return string.Empty;
+        }
+
         var size = ByteSize.Format(summary.AttachmentBytes);
         return size.Length == 0 ? $" with {string.Join(" and ", kinds)}" : $" with {string.Join(" and ", kinds)} ({size} of attachments)";
     }
@@ -92,7 +95,10 @@ internal static class CalendarIcsExport
     public static string WhatFile(string noun, CalendarIcsExportSummary summary)
     {
         if (noun == "event")
+        {
             return "One event, as an iCalendar (.ics) file.";
+        }
+
         var what = What(summary);
         return $"{char.ToUpperInvariant(what[0])}{what[1..]}, as an iCalendar (.ics) file.";
     }
@@ -120,9 +126,15 @@ internal static class CalendarIcsExport
     {
         var kinds = new List<string>();
         if (summary.AttachmentCount > 0)
+        {
             kinds.Add($"{summary.AttachmentCount} {(summary.AttachmentCount == 1 ? "document" : "documents")}");
+        }
+
         if (summary.PhotoCount > 0)
+        {
             kinds.Add($"{summary.PhotoCount} {(summary.PhotoCount == 1 ? "photo" : "photos")}");
+        }
+
         return kinds;
     }
 

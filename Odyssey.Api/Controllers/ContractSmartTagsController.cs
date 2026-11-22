@@ -3,7 +3,6 @@ using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
@@ -46,16 +45,17 @@ public sealed class ContractSmartTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingTransactionTag>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the smart tags configured for a contract.",
-        Description = @"Lists the transaction tags currently associated with the contract as smart
+    [EndpointSummary("Get the smart tags configured for a contract.")]
+    [EndpointDescription(@"Lists the transaction tags currently associated with the contract as smart
                         tags, oldest association first. An empty list is a healthy 200, never a 404.")]
     public async Task<IActionResult> GetContractSmartTags(
         [FromRoute(Name = "contractId")] Guid contractId, CancellationToken cancellationToken = default)
     {
         var tags = await contractSmartTagService.GetSmartTags(contractId, cancellationToken);
         if (tags is null)
+        {
             return this.NotFoundProblem($"Contract ID {contractId} not found.");
+        }
 
         return Ok(tags);
     }
@@ -72,9 +72,8 @@ public sealed class ContractSmartTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List the transactions a contract's smart tags match.",
-        Description = @"A transaction matches when it carries one of the contract's smart tags, is dated
+    [EndpointSummary("List the transactions a contract's smart tags match.")]
+    [EndpointDescription(@"A transaction matches when it carries one of the contract's smart tags, is dated
                         inside the contract's term, and its merchant is a contact party on the contract.
                         Paged, searchable and sortable with the transaction list's keys. The summary
                         totals the whole matched set per currency, independent of search and paging.
@@ -86,7 +85,9 @@ public sealed class ContractSmartTagsController : ControllerBase
     {
         var result = await smartTagTransactions.ListAsync(contractId, query, cancellationToken);
         if (result is null)
+        {
             return this.NotFoundProblem($"Contract ID {contractId} not found.");
+        }
 
         await displayNames.EnrichFileAttributionAsync(User, result.Page.Items, cancellationToken);
         return Ok(result);
@@ -99,7 +100,7 @@ public sealed class ContractSmartTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Associate an existing tag with a contract as a smart tag.")]
+    [EndpointSummary("Associate an existing tag with a contract as a smart tag.")]
     public async Task<IActionResult> AddContractSmartTag(
         [FromRoute(Name = "contractId")] Guid contractId,
         [FromRoute(Name = "tagId")] Guid tagId, CancellationToken cancellationToken = default)
@@ -113,15 +114,17 @@ public sealed class ContractSmartTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove a smart-tag association from a contract.")]
+    [EndpointSummary("Remove a smart-tag association from a contract.")]
     public async Task<IActionResult> RemoveContractSmartTag(
         [FromRoute(Name = "contractId")] Guid contractId,
         [FromRoute(Name = "tagId")] Guid tagId, CancellationToken cancellationToken = default)
     {
         var removed = await contractSmartTagService.RemoveSmartTag(contractId, tagId, cancellationToken);
         if (!removed)
+        {
             return this.NotFoundProblem(
                 $"Tag ID {tagId} is not a smart tag for contract ID {contractId}.");
+        }
 
         return NoContent();
     }

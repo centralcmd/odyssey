@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using MudBlazor.Utilities;
 using Odyssey.Client.Theme;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -54,8 +55,13 @@ public class ControlContrastTests
     {
         var data = new TheoryData<Theme, Fill>();
         foreach (var theme in Enum.GetValues<Theme>())
+        {
             foreach (var fill in Enum.GetValues<Fill>())
+            {
                 data.Add(theme, fill);
+            }
+        }
+
         return data;
     }
 
@@ -340,7 +346,7 @@ public class ControlContrastTests
 
     private static readonly Lazy<string> MudCss = new(() =>
     {
-        var props = File.ReadAllText(Path.Combine(ClientSource.Root, "..", "Directory.Packages.props"));
+        var props = File.ReadAllText(SourceTree.File("Directory.Packages.props"));
         var version = Regex.Match(props, @"<PackageVersion\s+Include=""MudBlazor""\s+Version=""(?<v>[^""]+)""").Groups["v"].Value;
         Assert.False(string.IsNullOrEmpty(version), "MudBlazor has no PackageVersion in Directory.Packages.props.");
 
@@ -672,8 +678,12 @@ public class ControlContrastTests
         {
             switch (selectorList[i])
             {
-                case '(': depth++; break;
-                case ')': depth--; break;
+                case '(':
+                    depth++;
+                    break;
+                case ')':
+                    depth--;
+                    break;
                 case ',' when depth == 0:
                     yield return selectorList[start..i];
                     start = i + 1;
@@ -792,8 +802,16 @@ public class ControlContrastTests
         var previous = css.LastIndexOfAny(['}', ';'], open);
         var selector = css[(previous + 1)..open];
 
-        if (NamesTheme(selector, "dark")) return Theme.Dark;
-        if (NamesTheme(selector, "light")) return Theme.Light;
+        if (NamesTheme(selector, "dark"))
+        {
+            return Theme.Dark;
+        }
+
+        if (NamesTheme(selector, "light"))
+        {
+            return Theme.Light;
+        }
+
         return null;
     }
 

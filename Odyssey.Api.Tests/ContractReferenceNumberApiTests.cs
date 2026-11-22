@@ -5,10 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using ContractType = Odyssey.Dtos.Finance.ContractType;
 
@@ -18,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// The contract reference number over real HTTP (issue #181): the two write paths' validation and
 /// normalisation, the two read shapes, the widened search and the new sort key.
 /// </summary>
-public class ContractReferenceNumberApiTests
+public class ContractReferenceNumberApiTests(ContractReferenceNumberApiTests.Host host) : SharedApiHostTests<ContractReferenceNumberApiTests.Host>(host)
 {
     private const string ActorUserId = "contract-reference-actor-id";
     private const string Path = "/api/contracts";
@@ -36,7 +38,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task A_reference_number_round_trips_through_create_and_get()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "AGR-2026/114-B.2");
@@ -52,7 +54,7 @@ public class ContractReferenceNumberApiTests
     [InlineData("   ")]
     public async Task A_blank_or_null_reference_number_stores_null(string? value)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, value);
@@ -64,7 +66,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task An_omitted_reference_number_stores_null()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, new { name = "No number", type = ContractType.Other });
@@ -84,7 +86,7 @@ public class ContractReferenceNumberApiTests
     [InlineData("😀-2026")]
     public async Task Printable_values_are_accepted_and_round_trip_verbatim(string value)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, value);
@@ -98,7 +100,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task Surrounding_whitespace_is_trimmed_on_both_write_paths()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "  REF-1  ");
@@ -120,7 +122,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task A_put_with_null_or_an_omitted_reference_number_clears_it()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "REF-1");
@@ -144,7 +146,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task Sixty_four_characters_are_accepted_and_sixty_five_are_refused_without_echo()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var atLimit = new string('A', ContractReferenceNumber.MaxLength);
@@ -169,7 +171,7 @@ public class ContractReferenceNumberApiTests
     [InlineData("REF-1\n")]
     public async Task Control_and_format_characters_are_refused_on_both_write_paths(string value)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, New(value));
@@ -185,7 +187,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task An_object_shaped_reference_number_is_refused_and_creates_nothing()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, new
@@ -202,7 +204,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task Two_contracts_may_share_a_reference_number()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var first = await CreateAsync(client, "1001");
@@ -218,7 +220,7 @@ public class ContractReferenceNumberApiTests
         const string Accepted = "LOGPROBE-ACCEPTED-7731";
         const string Refused = "LOGPROBE-REFUSED\n-7731";
 
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, services => services.AddSingleton<ILoggerProvider>(logs));
         using var client = factory.CreateClient();
 
@@ -239,7 +241,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task The_list_row_carries_the_reference_number()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "CUST-5508217", name: "With number");
@@ -254,7 +256,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task Search_matches_a_contract_whose_only_match_is_its_reference_number()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var target = await CreateAsync(client, "AGR-2026/114-B.2", name: "Lease", description: "Flat");
@@ -268,7 +270,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task Sorting_by_reference_number_keeps_nulls_last_in_both_directions()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         await CreateAsync(client, "B-2", name: "b");
@@ -290,7 +292,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task An_unknown_sort_key_is_still_refused()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"{Path}?sortBy=notAKey");
@@ -303,7 +305,7 @@ public class ContractReferenceNumberApiTests
     [Fact]
     public async Task Deleting_the_contract_removes_its_reference_number()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var created = await CreateAsync(client, "GONE-1");
@@ -369,18 +371,16 @@ public class ContractReferenceNumberApiTests
         StartDate = FixedToday.AddMonths(-1),
     };
 
-    private sealed class ApiFactory(
+    public class ApiFactory(
         IReadOnlyCollection<string>? permissions,
         Action<IServiceCollection>? extra = null)
         : OdysseyApiFactory(permissions, ActorUserId, configureServices: services =>
         {
             services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
+            services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedToday));
             extra?.Invoke(services);
         });
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

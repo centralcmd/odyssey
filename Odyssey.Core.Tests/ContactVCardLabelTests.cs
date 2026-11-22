@@ -66,7 +66,9 @@ public class ContactVCardLabelTests
     {
         var colon = line.IndexOf(':');
         if (line.StartsWith(' ') || colon < 0)
+        {
             return line;
+        }
 
         var parameters = line[..colon].Split(';')
             .Where(segment => !segment.StartsWith("X-ODYSSEY-LABEL=", StringComparison.Ordinal));
@@ -92,7 +94,10 @@ public class ContactVCardLabelTests
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.Support, Value = "support@acme.example" });
         await service.CreateAddress(created.ContactId, new NewAddress
         {
-            Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+            Label = AddressLabel.Visiting,
+            Line1 = "Storgata 55",
+            City = "Oslo",
+            CountryCode = "NO",
         }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);
@@ -117,7 +122,10 @@ public class ContactVCardLabelTests
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.Home, Value = "ada@example.com" });
         await service.CreateAddress(created.ContactId, new NewAddress
         {
-            Label = AddressLabel.Work, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+            Label = AddressLabel.Work,
+            Line1 = "Storgata 55",
+            City = "Oslo",
+            CountryCode = "NO",
         }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);
@@ -139,7 +147,10 @@ public class ContactVCardLabelTests
 
         await service.CreateAddress(created.ContactId, new NewAddress
         {
-            Label = AddressLabel.Postal, Line1 = "Postboks 1", City = "Oslo", CountryCode = "NO",
+            Label = AddressLabel.Postal,
+            Line1 = "Postboks 1",
+            City = "Oslo",
+            CountryCode = "NO",
         }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);
@@ -215,7 +226,10 @@ public class ContactVCardLabelTests
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.General, Value = "post@acme.example" });
         await service.CreateAddress(created.ContactId, new NewAddress
         {
-            Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+            Label = AddressLabel.Visiting,
+            Line1 = "Storgata 55",
+            City = "Oslo",
+            CountryCode = "NO",
         }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);

@@ -24,6 +24,15 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # The Identity auth cookie bakes every permission claim into its value, so the Cookie REQUEST header
+    # grows with the claim catalogue. At 0.50.0 an Admin's auth cookie alone is ~8.3 KB, past nginx's
+    # default `4 8k`, which answers every request — static files included — with "400 Request Header Or
+    # Cookie Too Large" before any location is matched. 32k matches Kestrel's MaxRequestHeadersTotalSize
+    # behind this proxy, so more would only move the failure to the API. Server level, so it covers every
+    # location; nginx honours it here because this is the only (default) server on the port. This buys
+    # time only: the cookie must stop growing with the catalogue (issue #583).
+    large_client_header_buffers 4 32k;
+
     # Security response headers (defense-in-depth for a financial-PII SPA). Defined at the
     # server level so they're inherited by the location blocks below (nginx only inherits
     # add_header when the child level defines none of its own). HSTS is set at the Caddy TLS
@@ -69,6 +78,10 @@ server {
         # twice ("nosniff, nosniff") and ContactAvatarRenderTests fails under Compose. nginx's copy is
         # the one that covers every response, so the upstream's is the one dropped.
         proxy_hide_header X-Content-Type-Options;
+
+        # Same for Referrer-Policy: the API's documentation page sets no-referrer (issue #569), and the server-level
+        # add_header already sends that exact value on every response. Keep nginx's copy only.
+        proxy_hide_header Referrer-Policy;
 
         # The api container sits on the same Docker network, so a healthy connect takes well under a
         # millisecond. nginx's 60 s default only matters when the API is DOWN (stopped, restarting):
@@ -151,6 +164,29 @@ server {
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
         client_body_timeout 3600s;
+    }
+
+    # Podcast audio downloads (issue #556 §5.3 #8): the API stamps an episode as downloaded only after it has written
+    # the whole file, so nginx must not buffer the response — buffered, a slow or aborted client would look complete to
+    # the API, and a 1 GB episode would park on nginx's temp disk. A transfer gets an hour. The route is a GET, so the
+    # body limit is the smallest nginx default worth stating, not a size any request needs.
+    location ~ ^/api/api/podcast-episodes/[^/]+/audio/content$ {
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://api:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_connect_timeout 5s;
+        proxy_buffer_size 16k;
+        proxy_buffers 8 16k;
+        proxy_busy_buffers_size 32k;
+
+        client_max_body_size 1m;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
     }
 
     # Household locations (issue #350 §7.7): no access log. The geocoding search sends an address someone

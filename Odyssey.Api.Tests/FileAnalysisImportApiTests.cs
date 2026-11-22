@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -36,9 +37,13 @@ public class FileAnalysisImportApiTests
         var (jobId, candidateId) = await SeedAsync(factory, account =>
         {
             if (closed)
+            {
                 account.Closed = DateTime.UtcNow;
+            }
             else
+            {
                 account.Archived = DateTime.UtcNow;
+            }
         });
         using var client = factory.CreateClient();
 
@@ -105,7 +110,9 @@ public class FileAnalysisImportApiTests
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == "USD"))
+        {
             context.Currencies.Add(new Currency { CurrencyCode = "USD", Name = "US Dollar", MinorUnits = 2, Symbol = "$" });
+        }
 
         var account = new Account
         {
@@ -119,9 +126,8 @@ public class FileAnalysisImportApiTests
         configureAccount?.Invoke(account);
         context.Accounts.Add(account);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
@@ -129,7 +135,7 @@ public class FileAnalysisImportApiTests
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash",
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         });
         var accountFile = new AccountFile

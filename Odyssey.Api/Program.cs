@@ -3,6 +3,7 @@ using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Api;
+using Odyssey.Api.ApiDocs;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Legal;
@@ -340,7 +341,7 @@ builder.Services.AddSingleton<Odyssey.Api.GlobalExportConcurrencyLimiter>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
-builder.AddOpenApiExplorer();
+builder.AddOpenApiDocument();
 
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<TermService>();
@@ -367,8 +368,9 @@ builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<CurrencyConversionService>();
 // Instrument prices (issue #446): the watchlist, manual prices and the price-source catalogue.
-// AddInstrumentPriceSync adds the source status, binding list and run-now; the worker runs the sync itself.
-Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(builder.Services);
+// The production sources (Tiingo, issue #447) are registered in both hosts: the API reads their metadata for the
+// status, bindings and run-now and never calls one; the worker runs the sync itself.
+Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddProductionInstrumentPriceSources(builder.Services);
 builder.Services.AddScoped<AccountTotalsService>();
 builder.Services.AddScoped<NetWorthHistoryService>();
 builder.Services.AddScoped<FileService>();
@@ -453,7 +455,6 @@ builder.Services.AddScoped<ContractEventService>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IContactLookup, Odyssey.Core.Journal.ContactLookup>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IContactReferenceGuard, Odyssey.Core.Finance.ContactReferenceGuard>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IFileLookup, Odyssey.Core.Finance.FileLookup>();
-builder.Services.AddScoped<Odyssey.Core.Finance.IFileReferenceGuard, Odyssey.Core.Finance.FileReferenceGuard>();
 builder.Services.AddScoped<Odyssey.Core.Journal.JournalEntryService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.JournalEntryIcsService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.JournalTagService>();
@@ -462,15 +463,24 @@ builder.Services.AddScoped<Odyssey.Core.Journal.JournalTaskTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.TaskIcsService>();
 
 // Photos module (issue #321), now part of the merged OdysseyContext; consumes the Finance lookups above and
-// the bounded image-content reader for in-process EXIF/IPTC/XMP extraction. IPhotoLookup is the narrow
+// reads originals through PhotoOriginalSource for in-process EXIF/IPTC/XMP extraction. IPhotoLookup is the narrow
 // read surface the Journal module uses to link library photos. Gated by claims only.
-builder.Services.AddScoped<Odyssey.Core.Finance.IImageContentReader, Odyssey.Core.Finance.ImageContentReader>();
 builder.Services.AddSingleton<Odyssey.Core.Journal.IPhotoMetadataExtractor, Odyssey.Core.Journal.PhotoMetadataExtractor>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoMetadataService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoAlbumService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.IPhotoLookup, Odyssey.Core.Journal.PhotoLookup>();
+
+// Books (issue #527), a Library-module feature. Gated by the books.* claims only; IContactBookCredits lets the
+// Journal-side contact delete ask about book credits without referencing the Books namespace.
+builder.Services.AddScoped<Odyssey.Core.Books.BookService>();
+builder.Services.AddScoped<Odyssey.Core.Books.BookTagService>();
+builder.Services.AddScoped<Odyssey.Core.Journal.IContactBookCredits, Odyssey.Core.Books.ContactBookCredits>();
+// Recipes (issue #525). No feature toggle — gated by the recipes.* claims only; links library photos through
+// IPhotoLookup above.
+builder.Services.AddScoped<Odyssey.Core.Recipes.RecipeService>();
+builder.Services.AddScoped<Odyssey.Core.Recipes.RecipeTagService>();
 
 // Calendar module (issue #323). No feature toggle — capability is gated by claims only.
 builder.Services.AddScoped<Odyssey.Core.Journal.CalendarService>();
@@ -558,14 +568,13 @@ builder.Services.AddSingleton(TimeProvider.System);
 // registers NO hosted service for the store (A3.1). Volumes and bindings are deploy-time configuration
 // (FileStorage:Volumes / FileStorage:Bindings), verified below before the host listens.
 builder.Services.AddFileStorage();
-// Photo thumbnails (issue #362): the storage feature, the service the photo paths use and the rename observer. The
+// Photo thumbnails (issue #362): the storage feature, the service the photo paths use. The
 // job and the decoder are the worker's alone; nothing here decodes an image.
 builder.Services.AddPhotoThumbnails();
-// Photo originals (issue #428): the storage feature, the content source every reader uses and the writer. The
-// backfill that moves legacy originals out of FileBlob runs in the worker.
+// Photo originals (issue #428): the storage feature, the content source every reader uses and the writer.
 builder.Services.AddPhotoOriginals();
 // Files on the store (issue #448): the finance, journal and contact-avatar areas, the writer every upload uses and the
-// content source every download reads through. The move of the legacy FileBlobs runs in the worker.
+// content source every download reads through.
 builder.Services.AddStoredFiles();
 // News reader (issue #470): the NewsArticles storage feature, which every host with volumes binds. The fetching job runs
 // in the worker; the API makes no outbound request for news.
@@ -574,6 +583,8 @@ builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.INewsArticleSearch
 builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.NewsListCursor>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsFeedService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsArticleService>();
+builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.PodcastEpisodeCursor>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Podcasts.PodcastEpisodeService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsTagService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsStatusService>();
 // OPML import and export (issue #508): the services, and the one-import-at-a-time permit, shared by every request.
@@ -671,7 +682,9 @@ builder.Services.AddOptions<ForwardedHeadersOptions>().Configure(options =>
         : ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
 
     foreach (var cidr in networks)
+    {
         options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
+    }
 }).ValidateOnStart();
 
 var app = builder.Build();
@@ -782,17 +795,18 @@ identityApi.LogPasswordResetCompletion(
 // /api/account. Whether the block landed is checked, fail-fast, at the bottom of this file.
 identityApi.BlockManageInfoWrites();
 
-// Swagger is on by default in Development, and elsewhere only when Swagger:Enabled says so — but
-// NEVER in Production (issue #451 §1.3). The config half used to be the whole story, and it defaults
-// to true in the container stack, so any deployment that did not explicitly pass the variable served
-// the API's full surface at /api/swagger through the client's nginx proxy. The environment check is
-// the half that cannot be forgotten in an env file.
-var enableSwagger = app.Environment.IsDevelopment()
-    || (app.Configuration.GetValue<bool>("Swagger:Enabled") && !app.Environment.IsProduction());
-if (enableSwagger)
+// API documentation (issue #569): the OpenAPI document at /openapi/v1.json and the Scalar reference at
+// /scalar/v1. On by default in Development, elsewhere only when ApiDocs:Enabled says so — and NEVER in
+// Production (issue #451 §1.3): the environment check is the half that cannot be forgotten in an env file.
+// ApiDocs:RequireLogin is parsed in every environment, so a malformed value stops the host wherever it was
+// written, even where the docs are off.
+var apiDocsRequireLogin = ApiDocsConfiguration.ReadRequireLogin(app.Configuration);
+ApiDocsConfiguration.WarnOnRetiredKey(
+    app.Configuration, app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(ApiDocsConfiguration)));
+if (ApiDocsConfiguration.IsEnabled(app.Environment, app.Configuration))
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseApiDocsHeaders();
+    app.MapApiDocs(apiDocsRequireLogin);
 }
 
 app.UseExceptionHandler(new ExceptionHandlerOptions

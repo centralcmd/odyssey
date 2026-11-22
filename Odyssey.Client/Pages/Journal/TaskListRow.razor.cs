@@ -71,7 +71,9 @@ public partial class TaskListRow : IAsyncDisposable
     {
         // Wait out the list's reload: the neighbour's menu does not exist until the rows are back.
         if (!_pendingFocus || (_filesOpen && _files is null))
+        {
             return;
+        }
 
         _pendingFocus = false;
         var neighbour = _focusAfterRemoval;
@@ -97,7 +99,9 @@ public partial class TaskListRow : IAsyncDisposable
     {
         if (_focusReturnJs is not null)
         {
-            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _focusReturnJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 
@@ -105,7 +109,9 @@ public partial class TaskListRow : IAsyncDisposable
     {
         _filesOpen = !_filesOpen;
         if (_filesOpen)
+        {
             await LoadFilesAsync();
+        }
     }
 
     private async System.Threading.Tasks.Task LoadFilesAsync()
@@ -127,9 +133,13 @@ public partial class TaskListRow : IAsyncDisposable
         {
             _files = null;
             if (Task.AttachmentCount > 0)
+            {
                 await LoadFilesAsync();
+            }
             else
+            {
                 _filesOpen = false;
+            }
         }
     }
 
@@ -167,7 +177,8 @@ public partial class TaskListRow : IAsyncDisposable
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "edit", Label = "Edit task",
+                Icon = "edit",
+                Label = "Edit task",
                 OnClick = EventCallback.Factory.Create(this, () => OnEdit.InvokeAsync(Task)),
             });
         }
@@ -176,14 +187,16 @@ public partial class TaskListRow : IAsyncDisposable
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "attach_file", Label = "Attach documents",
+                Icon = "attach_file",
+                Label = "Attach documents",
                 OnClick = EventCallback.Factory.Create(this, () => OnAttach.InvokeAsync(Task)),
             });
         }
 
         items.Add(new OdsMenuItem
         {
-            Icon = "event_note", Label = "Export as iCalendar",
+            Icon = "event_note",
+            Label = "Export as iCalendar",
             OnClick = EventCallback.Factory.Create(this, () => OnExport.InvokeAsync(Task)),
         });
         items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => OnCopyId.InvokeAsync(Task.JournalTaskId))));
@@ -203,7 +216,9 @@ public partial class TaskListRow : IAsyncDisposable
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "delete", Label = "Delete", Danger = true,
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
                 OnClick = EventCallback.Factory.Create(this, () => OnDelete.InvokeAsync(Task.JournalTaskId)),
             });
         }

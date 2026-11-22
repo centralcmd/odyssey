@@ -30,7 +30,10 @@ internal static class UserDisplay
         var local = basis.Split('@')[0];
         var parts = local.Split('.', '_', '-', ' ').Where(p => p.Length > 0).ToArray();
         if (parts.Length == 0)
+        {
             return basis;
+        }
+
         return string.Join(" ", parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
     }
 
@@ -39,9 +42,15 @@ internal static class UserDisplay
         var name = DisplayName(user);
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
+        {
             return "?";
+        }
+
         if (parts.Length == 1)
+        {
             return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        }
+
         return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
     }
 
@@ -72,7 +81,10 @@ internal static class UserDisplay
     public static string LockoutText(ExistingUser user)
     {
         if (user.LockoutEnd is not { } end || end <= DateTimeOffset.UtcNow)
+        {
             return "—";
+        }
+
         return end.Year >= 9999 ? "Indefinite" : end.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
     }
 

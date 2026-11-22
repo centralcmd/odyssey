@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.TestData.Generators;
 using Odyssey.Dtos;
 using Odyssey.Context;
@@ -36,15 +36,15 @@ public static class Contacts
     public const string Landlord = "Jane Smith (Landlord)";
     public const string CashWithdrawal = "Cash Withdrawal";
 
-    // The household, and one former member. These exist so the insurance link collections have real
-    // people to name — insured contacts and beneficiaries (issue #27) — including the ARCHIVED case,
-    // which is the one a demo cannot fabricate at read time: the seeded policy keeps the link, and the
-    // read path returns it with no name.
+    // The household, and one former member. The policyholder and the spouse are parties to the seeded
+    // Insurance contract (policyholder and beneficiary); the former member is the demo's ARCHIVED
+    // person (issue #27). They were first seeded for the insurance-policy link collections, which
+    // were removed with that feature.
     public const string PolicyHolder = "Alex Rivera";
     public const string Spouse = "Sam Rivera";
     public const string FormerBeneficiary = "Chris Rivera";
 
-    /// <summary>A second insurance provider, so a policy can be placed across co-insurers.</summary>
+    /// <summary>A second insurance provider. No seeded contract names it today.</summary>
     public const string Allstate = "Allstate";
 
     /// <summary>A deceased person — the issue #48 case that must NOT read as archived.</summary>
@@ -94,25 +94,25 @@ public static class Contacts
         string key, string firstName, string lastName, string notes,
         DateTime? archived = null, string? middleName = null,
         DateOnly? dateOfBirth = null, DateOnly? dateOfDeath = null) => new()
-    {
-        ContactId = IdFor(key),
-        ExternalUid = ExternalUidFor(key),
-        NormalizedName = Normalize($"{firstName} {lastName}"),
-        Type = ContactType.Person,
-        Notes = notes,
-        Archived = archived,
-        CreatedAt = SeededAt,
-        UpdatedAt = SeededAt,
-        PersonDetails = new PersonDetails
         {
             ContactId = IdFor(key),
-            FirstName = firstName,
-            LastName = lastName,
-            MiddleName = middleName,
-            DateOfBirth = dateOfBirth,
-            DateOfDeath = dateOfDeath,
-        },
-    };
+            ExternalUid = ExternalUidFor(key),
+            NormalizedName = Normalize($"{firstName} {lastName}"),
+            Type = ContactType.Person,
+            Notes = notes,
+            Archived = archived,
+            CreatedAt = SeededAt,
+            UpdatedAt = SeededAt,
+            PersonDetails = new PersonDetails
+            {
+                ContactId = IdFor(key),
+                FirstName = firstName,
+                LastName = lastName,
+                MiddleName = middleName,
+                DateOfBirth = dateOfBirth,
+                DateOfDeath = dateOfDeath,
+            },
+        };
 
     /// <summary>
     /// Aliases for a seeded contact (issue #48). Ids are deterministic like every other seeded key, so
@@ -150,24 +150,20 @@ public static class Contacts
     public static Guid AvatarFileIdFor(string contactKey) =>
         DeterministicGuid.From($"contact-avatar-file::{contactKey}");
 
-    private static Guid AvatarBlobIdFor(string contactKey) =>
-        DeterministicGuid.From($"contact-avatar-blob::{contactKey}");
-
     /// <summary>
-    /// The Files-store rows behind <see cref="WithAvatars"/>. These are ORDINARY file rows — the
-    /// description is the same fixed, non-PII marker the upload path writes, and the filename is
-    /// generated from the contact id rather than carrying a person's name.
+    /// The images behind <see cref="WithAvatars"/>, in the contact-avatar area. These are ORDINARY file rows — the
+    /// description is the same fixed, non-PII marker the upload path writes, and the filename is generated from the
+    /// contact id rather than carrying a person's name.
     ///
     /// <para>
-    /// They are returned separately from <see cref="Build"/> because <c>Contact.AvatarFileId</c> is a
-    /// real foreign key, so the seeder has to write these <b>before</b> the contacts that point at them
-    /// — earlier than the rest of the Files store, which is seeded with finance.
+    /// <c>Contact.AvatarFileId</c> is a real foreign key, and only the worker's demo-file seeder can write the file, so
+    /// <see cref="Build"/> leaves every contact without an image and that seeder points the contact at it once the file
+    /// exists.
     /// </para>
     /// </summary>
-    public static (List<FileBlob> Blobs, List<FileMetadata> Files) BuildAvatarFiles()
+    public static List<DemoContactAvatar> BuildAvatarFiles()
     {
-        var blobs = new List<FileBlob>();
-        var files = new List<FileMetadata>();
+        var avatars = new List<DemoContactAvatar>();
 
         for (var i = 0; i < WithAvatars.Length; i++)
         {
@@ -179,23 +175,12 @@ public static class Contacts
                 ? DemoImages.GradientPng(DemoImages.ContactLogoWidth, DemoImages.ContactLogoHeight, seed: 3 + i)
                 : DemoImages.GradientPng(DemoImages.ContactAvatarSize, seed: 3 + i);
 
-            var blobId = AvatarBlobIdFor(contactKey);
-            blobs.Add(new FileBlob { Id = blobId, Content = content });
-            files.Add(new FileMetadata
-            {
-                Id = AvatarFileIdFor(contactKey),
-                UploadedByUserId = null,
-                FileName = $"contact-avatar-{IdFor(contactKey).ToString("N")[..8]}.png",
-                ContentType = "image/png",
-                SizeBytes = content.LongLength,
-                Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
-                FileBlobId = blobId,
-                Description = "Contact image",
-                UploadedAtUtc = SeededAt,
-            });
+            avatars.Add(new DemoContactAvatar(IdFor(contactKey), DemoFileFactory.File(
+                AvatarFileIdFor(contactKey), StoredFileArea.ContactAvatars, null,
+                $"contact-avatar-{IdFor(contactKey).ToString("N")[..8]}.png", "image/png", "Contact image", SeededAt, content)));
         }
 
-        return (blobs, files);
+        return avatars;
     }
 
     /// <summary>
@@ -245,8 +230,7 @@ public static class Contacts
             })
             .ToList();
 
-        // The Person contacts. The landlord predates the household, which exists so the insurance
-        // link collections have real people to name.
+        // The Person contacts: the landlord, then the household (see the constants above).
         //
         // The landlord carries a MAIDEN NAME and a middle name — the two additions of issue #48 that
         // are searchable — so the alias and middle-name search arms have something real to match.
@@ -254,17 +238,16 @@ public static class Contacts
             middleName: "Elisabeth", dateOfBirth: new DateOnly(1968, 3, 14)));
         contacts.Add(Person(PolicyHolder, "Alex", "Rivera", "Policyholder on the household policies"));
         contacts.Add(Person(Spouse, "Sam", "Rivera", "Named on the household policies"));
-        // Archived on purpose: this is the demo's UNNAMED-member case. The Term Life policy keeps the
-        // beneficiary link, and the read path returns it with its id and type but NO name — the state
-        // an ordinary write can neither remove nor accidentally delete (issue #27 §9).
+        // Archived on purpose: the demo's archived person (issue #27). Nothing links to it any more;
+        // it was the beneficiary of a seeded insurance policy before that feature was removed.
         contacts.Add(Person(
             FormerBeneficiary, "Chris", "Rivera", "Former beneficiary — archived",
             archived: SeededAt.AddYears(1)));
 
         // The DECEASED case (issue #48). Recording a death date archives nothing and removes no
-        // capability, so this contact keeps its policy links and stays selectable everywhere — which
-        // is exactly what the demo has to show, since the archived case above looks superficially
-        // similar and is not the same thing at all.
+        // capability, so this contact stays selectable everywhere — which is exactly what the demo has
+        // to show, since the archived case above looks superficially similar and is not the same thing
+        // at all.
         contacts.Add(Person(LatePartner, "Morgan", "Rivera",
             "Late partner — the record stays live; finance rows still reference it",
             dateOfBirth: new DateOnly(1951, 9, 2), dateOfDeath: new DateOnly(2024, 3, 11)));
@@ -272,16 +255,8 @@ public static class Contacts
         AttachAliases(contacts);
         AttachAddresses(contacts);
 
-        // One person with a picture, one organization with a logo (issue #86). Attached here rather
-        // than in the definitions above so the pair is named in exactly one place.
-        foreach (var (contactKey, _) in WithAvatars)
-        {
-            var target = contacts.FirstOrDefault(c => c.ContactId == IdFor(contactKey));
-            if (target is not null)
-            {
-                target.AvatarFileId = AvatarFileIdFor(contactKey);
-            }
-        }
+        // One person with a picture, one organization with a logo (issue #86): see BuildAvatarFiles. The
+        // contacts are built without one, since the image is written later, by the worker.
 
         return contacts;
     }

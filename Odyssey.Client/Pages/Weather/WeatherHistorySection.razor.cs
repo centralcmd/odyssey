@@ -81,14 +81,20 @@ public partial class WeatherHistorySection
     {
         // A different place starts over on its remembered window; a re-render of the same place keeps it.
         if (_loadedFor == WeatherPointId)
+        {
             return;
+        }
+
         _loadedFor = WeatherPointId;
         _bounds = null;
         _response = null;
         _phase = Phase.Loading;
         _saved = await PageState.LoadAsync<SavedWindow>(StateKey(WeatherPointId));
         if (_loadedFor != WeatherPointId)
+        {
             return;
+        }
+
         _measures = RestoreMeasures(_saved?.Measures);
         (_from, _to) = Resolve(_saved, Today().AddDays(-1), null);
         await LoadAsync(firstLoad: true);
@@ -108,7 +114,10 @@ public partial class WeatherHistorySection
 
         var result = await Weather.DailyAsync(_from, _to, WeatherPointId);
         if (seq != _requestSeq)
+        {
             return;
+        }
+
         if (!result.IsSuccess || result.Value is not { } response)
         {
             _phase = result.Status == HttpStatusCode.TooManyRequests ? Phase.RateLimited : Phase.Error;
@@ -147,13 +156,22 @@ public partial class WeatherHistorySection
     {
         var to = saved?.To is { } end && end < latest ? end : latest;
         if (earliest is { } first && to < first)
+        {
             to = latest;
+        }
+
         var from = saved?.From ?? to.AddDays(-(DefaultDays - 1));
         if (from > to)
+        {
             from = to.AddDays(-(DefaultDays - 1));
+        }
+
         from = Max(from, to.AddDays(-(MaxDays - 1)));
         if (earliest is { } floor)
+        {
             from = Max(from, floor);
+        }
+
         return (from, to);
     }
 
@@ -180,7 +198,10 @@ public partial class WeatherHistorySection
     private Task Move(DateOnly end)
     {
         if (Earliest is not { } earliest || Latest is not { } latest)
+        {
             return Task.CompletedTask;
+        }
+
         (_from, _to) = Place(end, DaysShown, earliest, latest);
         return Changed();
     }
@@ -200,7 +221,10 @@ public partial class WeatherHistorySection
     private Task PickFrom(DateTime? value)
     {
         if (value is not { } picked || DateOnly.FromDateTime(picked) is var from && from == _from)
+        {
             return Task.CompletedTask;
+        }
+
         _from = from;
         return Changed();
     }
@@ -208,7 +232,10 @@ public partial class WeatherHistorySection
     private Task PickTo(DateTime? value)
     {
         if (value is not { } picked || DateOnly.FromDateTime(picked) is var to && to == _to)
+        {
             return Task.CompletedTask;
+        }
+
         _to = to;
         return Changed();
     }
@@ -272,7 +299,10 @@ public partial class WeatherHistorySection
     {
         var known = (saved ?? []).Where(k => WeatherMeasures.All.Any(m => m.Key == k)).Distinct().ToList();
         if (known.Count == 0)
+        {
             return [WeatherMeasures.Temperature];
+        }
+
         var group = WeatherMeasures.Of(known[0]).Group;
         return [.. known.Where(k => WeatherMeasures.Of(k).Group == group)];
     }
@@ -290,7 +320,9 @@ public partial class WeatherHistorySection
     {
         _measures = WeatherMeasures.NextSelection(_measures, next);
         if (_bounds is not null)
+        {
             Remember();
+        }
     }
 
     /// <summary>One fact: its figure in bold, then its day or <see cref="After"/> in plain text.</summary>

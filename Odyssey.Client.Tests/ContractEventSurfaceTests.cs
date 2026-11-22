@@ -54,18 +54,18 @@ public class ContractEventSurfaceTests
         DateTime? occurredAt = null,
         string? createdBy = "Jane Doe",
         ContractEventSource source = ContractEventSource.User) => new()
-    {
-        ContractEventId = Guid.NewGuid(),
-        ContractId = ContractId,
-        Type = type,
-        Source = source,
-        Title = title,
-        Description = description,
-        Notes = notes,
-        OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
-        CreatedBy = createdBy,
-        CreatedAtUtc = new DateTime(2026, 6, 14, 9, 35, 0, DateTimeKind.Utc),
-    };
+        {
+            ContractEventId = Guid.NewGuid(),
+            ContractId = ContractId,
+            Type = type,
+            Source = source,
+            Title = title,
+            Description = description,
+            Notes = notes,
+            OccurredAt = occurredAt ?? new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+            CreatedBy = createdBy,
+            CreatedAtUtc = new DateTime(2026, 6, 14, 9, 35, 0, DateTimeKind.Utc),
+        };
 
     // ── The rail's content (§4.1) ────────────────────────────────────────────
 
@@ -1110,7 +1110,9 @@ public class ContractEventSurfaceTests
 
         var start = css.IndexOf(selector + " {", StringComparison.Ordinal);
         if (start < 0)
+        {
             start = css.IndexOf(selector, StringComparison.Ordinal);
+        }
 
         Assert.True(start >= 0, $"No rule for '{selector}' in odyssey-components.css.");
 

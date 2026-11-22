@@ -235,61 +235,6 @@ public class PhotoThumbnailJobRun : JobRun
 }
 
 /// <summary>
-/// A burst or manual run of the photo-original move (issue #428), or a held period of one process — storage
-/// unavailable, or the back-off after a storage or database error.
-/// </summary>
-public class PhotoOriginalBackfillJobRun : JobRun
-{
-    public PhotoOriginalBackfillJobRun() : base(Dtos.Application.JobType.PhotoOriginalBackfill)
-    {
-    }
-
-    /// <summary>Moved, with the database file removed because nothing else used it.</summary>
-    public int PhotosMoved { get; set; }
-
-    /// <summary>Moved, with the database file kept because something else still uses it.</summary>
-    public int PhotosCopiedShared { get; set; }
-
-    /// <summary>Parked for a reason of their own (a <c>PhotoOriginalBackfillFailures</c> code).</summary>
-    public int PhotosParked { get; set; }
-
-    /// <summary>Ticks cut short by a storage or database error; the move then backs off.</summary>
-    public int Interruptions { get; set; }
-
-    protected override (int Processed, int Failed) HeadlineCounts() => (PhotosMoved + PhotosCopiedShared, PhotosParked);
-}
-
-/// <summary>
-/// A burst or manual run of the file move (issue #448), or a held period of one process — storage unavailable, or the
-/// back-off after a storage or database error. <see cref="Interruptions"/> shares its column with
-/// <see cref="PhotoOriginalBackfillJobRun.Interruptions"/>.
-/// </summary>
-public class FileBlobBackfillJobRun : JobRun
-{
-    public FileBlobBackfillJobRun() : base(Dtos.Application.JobType.FileBlobBackfill)
-    {
-    }
-
-    /// <summary>Moved to <c>finance-files/</c>.</summary>
-    public int FinanceFilesMoved { get; set; }
-
-    /// <summary>Moved to <c>journal-files/</c>.</summary>
-    public int JournalFilesMoved { get; set; }
-
-    /// <summary>Moved to <c>contact-avatars/</c>.</summary>
-    public int ContactAvatarsMoved { get; set; }
-
-    /// <summary>Parked for a reason of their own (a <c>FileBlobBackfillFailures</c> code).</summary>
-    public int FilesParked { get; set; }
-
-    /// <summary>Ticks cut short by a storage or database error; the move then backs off.</summary>
-    public int Interruptions { get; set; }
-
-    protected override (int Processed, int Failed) HeadlineCounts() =>
-        (FinanceFilesMoved + JournalFilesMoved + ContactAvatarsMoved, FilesParked);
-}
-
-/// <summary>
 /// An instrument-price sync run or a purge of an instrument's prices (issue #446 §4.6). The purge takes the same
 /// <see cref="JobRun.ExclusiveGuard"/>, so a purge and a sync never overlap.
 /// </summary>
@@ -311,6 +256,14 @@ public class InstrumentPriceSyncJobRun : JobRun
 
     public int RequestsMade { get; set; }
 
+    /// <summary>
+    /// Instruments not attempted, or whose backfill span was stopped, because a request cap or the run's forward budget
+    /// was reached (issue #447 A8). A
+    /// deferral is not a failure: it triggers no fallback, writes nothing on the binding, and makes the next run due
+    /// at the start of the next quota hour while a binding is behind.
+    /// </summary>
+    public int InstrumentsDeferred { get; set; }
+
     /// <summary>Rows removed by a purge run.</summary>
     public int PricesDeleted { get; set; }
 
@@ -318,10 +271,6 @@ public class InstrumentPriceSyncJobRun : JobRun
         (InstrumentsSucceeded + PricesDeleted, InstrumentsFailed);
 }
 
-/// <summary>
-/// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
-/// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
-/// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes
 /// <summary>
 /// A burst of the file-analysis queue (issue #444): one row covers the ticks that claimed work, like the
 /// thumbnail job's. Counts only.
@@ -365,8 +314,57 @@ public class NewsFeedJobRun : JobRun
     /// <summary>The manual run's counter: feeds it marked due.</summary>
     public int FeedsMarked { get; set; }
 
+    /// <summary>Podcast artwork stored with its renditions (issue #556 §3.8).</summary>
+    public int ArtworkStored { get; set; }
+
+    public int ArtworkFailed { get; set; }
+
+    /// <summary>Podcasting 2.0 chapter files fetched (issue #556 §3.8).</summary>
+    public int ChaptersFetched { get; set; }
+
     protected override (int Processed, int Failed) HeadlineCounts() =>
-        (FeedsFetched + ItemsStored + ItemsRevised + ImagesStored + FeedsMarked, FeedsQuarantined);
+        (FeedsFetched + ItemsStored + ItemsRevised + ImagesStored + FeedsMarked + ArtworkStored + ChaptersFetched,
+            FeedsQuarantined + ArtworkFailed);
+}
+
+/// <summary>
+/// A burst of the podcast audio download queue (issue #556 §3.6). The audio rows' guard columns and fences are the
+/// job's guard, so a burst is not exclusive; it has no manual run.
+/// </summary>
+public class PodcastAudioDownloadJobRun : JobRun
+{
+    public PodcastAudioDownloadJobRun() : base(Dtos.Application.JobType.PodcastAudioDownload)
+    {
+    }
+
+    public int DownloadsStored { get; set; }
+
+    public int DownloadsFailed { get; set; }
+
+    public int DownloadsDeferred { get; set; }
+
+    /// <summary>Expired-lease downloads returned to the queue (§3.6 step 1).</summary>
+    public int DownloadsRecovered { get; set; }
+
+    public int ReservationsRefused { get; set; }
+
+    public long AudioBytesStored { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (DownloadsStored, DownloadsFailed);
+}
+
+/// <summary>A daily or manual run of the podcast audio auto-delete (issue #556 §3.7).</summary>
+public class PodcastAudioRetentionJobRun : JobRun
+{
+    public PodcastAudioRetentionJobRun() : base(Dtos.Application.JobType.PodcastAudioRetention)
+    {
+    }
+
+    public int AudioReleased { get; set; }
+
+    public long AudioBytesReleased { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (AudioReleased, 0);
 }
 
 /// <summary>

@@ -59,21 +59,21 @@ public class PropertyDocumentsSectionTests
 
     private static ExistingPropertyFile Document(
         string name, PropertyFileType type = PropertyFileType.Deed, Guid? issuedBy = null) => new()
-    {
-        PropertyFileId = Guid.NewGuid(),
-        PropertyId = PropertyId,
-        FileType = type,
-        AttachedAtUtc = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
-        IssuedBy = issuedBy,
-        FileMetadata = new ExistingFileMetadata
         {
-            Id = Guid.NewGuid(),
-            FileName = name,
-            ContentType = "application/pdf",
-            SizeBytes = 25_800,
-            UploadedAtUtc = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
-        },
-    };
+            PropertyFileId = Guid.NewGuid(),
+            PropertyId = PropertyId,
+            FileType = type,
+            AttachedAtUtc = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
+            IssuedBy = issuedBy,
+            FileMetadata = new ExistingFileMetadata
+            {
+                Id = Guid.NewGuid(),
+                FileName = name,
+                ContentType = "application/pdf",
+                SizeBytes = 25_800,
+                UploadedAtUtc = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
+            },
+        };
 
     private static ExistingContact Contact(Guid id, string name) => new()
     {
@@ -146,7 +146,9 @@ public class PropertyDocumentsSectionTests
         // OnInitializedAsync early-returns outside the browser: the two seams are the way in.
         cut.InvokeAsync(() => section.Instance.UseContacts(contacts ?? [], canReadContacts)).GetAwaiter().GetResult();
         if (load)
+        {
             cut.InvokeAsync(() => section.Instance.LoadAsync()).GetAwaiter().GetResult();
+        }
 
         return harness;
     }

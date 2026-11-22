@@ -176,7 +176,8 @@ public partial class OdsTypeSelect
 
     private async Task FocusAsync(string id)
     {
-        try { await Js.InvokeVoidAsync("odsFocusById", id); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", id); }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 

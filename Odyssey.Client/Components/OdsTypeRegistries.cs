@@ -1,4 +1,5 @@
 using Odyssey.Dtos;
+using Odyssey.Dtos.Books;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Components;
@@ -628,6 +629,65 @@ public static partial class OdsTypeRegistries
     ];
 
     /// <summary>
+    /// BookFormat (issue #527), in ordinal order — the design system's <c>BOOK_FORMATS</c> (<c>books-data.js</c>). A
+    /// book's format is its type-equivalent, so it is the record accent and, without a cover, the mark. The colours
+    /// are the property-type recipe (<c>oklch(0.74 0.12 h)</c>, E-book lifted to L 0.78, Other near-neutral).
+    /// </summary>
+    public static readonly IReadOnlyList<OdsTypeOption> BookFormats =
+    [
+        new() { Key = "Hardcover",       Label = "Hardcover",        Icon = "menu_book",       Color = "oklch(0.74 0.12 255)", Soft = "oklch(0.74 0.12 255 / 0.16)" },
+        new() { Key = "Paperback",       Label = "Paperback",        Icon = "book",            Color = "oklch(0.74 0.12 200)", Soft = "oklch(0.74 0.12 200 / 0.16)" },
+        new() { Key = "PocketPaperback", Label = "Pocket paperback", Icon = "import_contacts", Color = "oklch(0.74 0.12 170)", Soft = "oklch(0.74 0.12 170 / 0.16)" },
+        new() { Key = "Audiobook",       Label = "Audiobook",        Icon = "headphones",      Color = "oklch(0.74 0.12 305)", Soft = "oklch(0.74 0.12 305 / 0.16)" },
+        new() { Key = "Ebook",           Label = "E-book",           Icon = "tablet_android",  Color = "oklch(0.78 0.12 75)",  Soft = "oklch(0.78 0.12 75 / 0.16)" },
+        new() { Key = "Pdf",             Label = "PDF",              Icon = "picture_as_pdf",  Color = "oklch(0.74 0.12 25)",  Soft = "oklch(0.74 0.12 25 / 0.16)" },
+        new() { Key = "Other",           Label = "Other",            Icon = "category",        Color = "oklch(0.72 0.03 250)", Soft = "oklch(0.72 0.03 250 / 0.16)" },
+    ];
+
+    /// <summary>
+    /// The descriptor for a book format. An ordinal this build does not know reads <i>Unknown format</i> in the
+    /// neutral colour — never the trailing <i>Other</i>, which is a real value a reader could act on.
+    /// </summary>
+    public static OdsTypeOption BookFormatOf(BookFormat format) =>
+        BookFormats.FirstOrDefault(t => t.Key == format.ToString()) ?? UnknownBookFormat;
+
+    private static readonly OdsTypeOption UnknownBookFormat =
+        new() { Key = "Unknown", Label = "Unknown format", Icon = "help_outline", Color = "oklch(0.72 0.03 250)", Soft = "oklch(0.72 0.03 250 / 0.16)" };
+
+    /// <summary>
+    /// A stored file's kind, derived from its content type — the design system's <c>bkFileKind</c>, for a surface
+    /// whose files carry no document type (a book's files). EPUB is <i>E-book</i>; E-book and PDF wear their
+    /// book-format colours. Whether a kind is previewed is the Files page's own allow-list, which leaves EPUB out.
+    /// </summary>
+    public static OdsFileKindInfo FileKindOf(string? contentType)
+    {
+        var ct = contentType?.ToLowerInvariant() ?? string.Empty;
+        return ct switch
+        {
+            "application/epub+zip" => EbookKind,
+            "application/pdf" => FromFormat("PDF", "picture_as_pdf", nameof(BookFormat.Pdf)),
+            _ when ct.StartsWith("image/", StringComparison.Ordinal) => new("Image", "image", NeutralKindColor, NeutralKindSoft),
+            _ when ct.Contains("wordprocessingml", StringComparison.Ordinal) || ct.Contains("msword", StringComparison.Ordinal)
+                => new("Word document", "description", NeutralKindColor, NeutralKindSoft),
+            "application/zip" => new("ZIP archive", "folder_zip", NeutralKindColor, NeutralKindSoft),
+            "text/plain" => new("Text", "notes", NeutralKindColor, NeutralKindSoft),
+            _ => new("File", "draft", NeutralKindColor, NeutralKindSoft),
+        };
+    }
+
+    /// <summary>The E-book kind — one colour wherever an EPUB is listed (book files, the Files page, journal rows).</summary>
+    public static readonly OdsFileKindInfo EbookKind = FromFormat("E-book", "menu_book", nameof(BookFormat.Ebook));
+
+    private static OdsFileKindInfo FromFormat(string label, string icon, string formatKey)
+    {
+        var format = BookFormats.First(f => f.Key == formatKey);
+        return new(label, icon, format.Color, format.Soft);
+    }
+
+    private const string NeutralKindColor = "var(--mud-palette-text-secondary)";
+    private const string NeutralKindSoft = "var(--mud-palette-action-default-hover)";
+
+    /// <summary>
     /// InstrumentType — Stock · ETF · Fund · Other (issue #446 §4.1; design system ·
     /// <c>ui_kits/web/instruments-data.js</c> <c>INS_VOCAB.types</c>). Each type carries its own category hue,
     /// as account and property types do — sky for Stock, violet for ETF, green for Fund — drawn on the record
@@ -803,6 +863,9 @@ public static partial class OdsTypeRegistries
 
         public static readonly IReadOnlyList<OdsCreateKind> Photo =
             [new("photo", "Photo tag") { Icon = "photo" }];
+
+        public static readonly IReadOnlyList<OdsCreateKind> Recipe =
+            [new("recipe", "Recipe tag") { Icon = "restaurant_menu" }];
     }
 
     /// <summary>
@@ -836,6 +899,7 @@ public static partial class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> TaxStatementFileOptions = ToOptions(TaxStatementFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractOptions = ToOptions(ContractTypes);
     public static readonly IReadOnlyList<OdsOption> PropertyOptions = ToOptions(PropertyTypes);
+    public static readonly IReadOnlyList<OdsOption> BookFormatOptions = ToOptions(BookFormats);
     public static readonly IReadOnlyList<OdsOption> InstrumentOptions = ToOptions(InstrumentTypes);
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
     public static readonly IReadOnlyList<OdsOption> PropertyFileOptions = ToOptions(PropertyFileTypes);

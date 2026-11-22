@@ -16,6 +16,22 @@ public interface INewsCounterWriter
 
     /// <summary>Adds to the storage totals (either delta may be negative, for a released file).</summary>
     Task AddToStorageAsync(OdysseyContext context, long imageBytes, long textAndSourceBytes, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Adds to the podcast storage totals (issue #556 §4.7); any delta may be negative. A graced audio release moves its
+    /// bytes from <c>AudioBytes</c> to <c>AudioPendingReleaseBytes</c> in one call.
+    /// </summary>
+    Task AddToPodcastStorageAsync(
+        OdysseyContext context, PodcastStorageDelta delta, CancellationToken cancellationToken);
+}
+
+/// <summary>One change to the podcast columns of <see cref="NewsStorageTotal"/>.</summary>
+public readonly record struct PodcastStorageDelta(long AudioBytes = 0, long AudioPendingReleaseBytes = 0, long AudioReservedBytes = 0, long ArtworkBytes = 0)
+{
+    public bool IsZero => AudioBytes == 0 && AudioPendingReleaseBytes == 0 && AudioReservedBytes == 0 && ArtworkBytes == 0;
+
+    /// <summary>A graced release of <paramref name="bytes"/> of stored audio: out of the stored total, into the pending one.</summary>
+    public static PodcastStorageDelta AudioReleased(long bytes) => new(AudioBytes: -bytes, AudioPendingReleaseBytes: bytes);
 }
 
 /// <summary>
@@ -78,6 +94,37 @@ public sealed class NewsCounterWriter : INewsCounterWriter
 
         row.ImageBytes += imageBytes;
         row.TextAndSourceBytes += textAndSourceBytes;
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task AddToPodcastStorageAsync(OdysseyContext context, PodcastStorageDelta delta, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (delta.IsZero)
+        {
+            return;
+        }
+
+        if (context.Database.IsRelational())
+        {
+            // GREATEST(0, …): the hourly recount corrects drift, but a decrement racing it must never trip the CHECK.
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE `NewsStorageTotals` SET `AudioBytes` = GREATEST(0, `AudioBytes` + {delta.AudioBytes}), `AudioPendingReleaseBytes` = GREATEST(0, `AudioPendingReleaseBytes` + {delta.AudioPendingReleaseBytes}), `AudioReservedBytes` = GREATEST(0, `AudioReservedBytes` + {delta.AudioReservedBytes}), `ArtworkBytes` = GREATEST(0, `ArtworkBytes` + {delta.ArtworkBytes}) WHERE `Id` = {NewsStorageTotal.SingletonId}",
+                cancellationToken);
+            return;
+        }
+
+        var row = await context.NewsStorageTotals.FirstOrDefaultAsync(t => t.Id == NewsStorageTotal.SingletonId, cancellationToken);
+        if (row is null)
+        {
+            row = new NewsStorageTotal { Id = NewsStorageTotal.SingletonId };
+            context.NewsStorageTotals.Add(row);
+        }
+
+        row.AudioBytes = Math.Max(0, row.AudioBytes + delta.AudioBytes);
+        row.AudioPendingReleaseBytes = Math.Max(0, row.AudioPendingReleaseBytes + delta.AudioPendingReleaseBytes);
+        row.AudioReservedBytes = Math.Max(0, row.AudioReservedBytes + delta.AudioReservedBytes);
+        row.ArtworkBytes = Math.Max(0, row.ArtworkBytes + delta.ArtworkBytes);
         await context.SaveChangesAsync(cancellationToken);
     }
 }

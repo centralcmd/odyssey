@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -14,7 +15,7 @@ public class LargeFileProxyRouteTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "nginx", "templates", "default.conf.template"));
 
     private static readonly string Caddy =
-        File.ReadAllText(Path.Combine(ClientSource.Root, "..", "Caddyfile"));
+        File.ReadAllText(SourceTree.File("Caddyfile"));
 
     public static TheoryData<string> CalendarIcsRoutes()
     {
@@ -72,6 +73,19 @@ public class LargeFileProxyRouteTests
         Assert.Matches(@"(?m)^\s*proxy_buffering\s+off\s*;", block);
         Assert.Matches(@"(?m)^\s*client_max_body_size\s+10241m\s*;", block);
         Assert.Matches(@"(?m)^\s*proxy_read_timeout\s+3600s\s*;", block);
+    }
+
+    [Fact]
+    public void Podcast_audio_downloads_stream_unbuffered_so_the_last_played_stamp_sees_the_client()
+    {
+        var pattern = Regex.Matches(Nginx, @"(?m)^\s*location ~ (\S+) \{").Select(m => m.Groups[1].Value).Single(p => p.Contains("podcast-episodes"));
+        Assert.Matches(pattern, $"/api/api/podcast-episodes/{Guid.NewGuid()}/audio/content");
+        Assert.DoesNotMatch(pattern, $"/api/api/podcast-episodes/{Guid.NewGuid()}/audio");
+        Assert.DoesNotMatch(pattern, "/api/api/podcast-episodes");
+        var at = Nginx.IndexOf(pattern, StringComparison.Ordinal);
+        var block = Nginx[at..Nginx.IndexOf('}', at)];
+        Assert.Matches(@"(?m)^\s*proxy_buffering\s+off\s*;", block);
+        Assert.Matches(@"(?m)^\s*proxy_send_timeout\s+3600s\s*;", block);
     }
 
     private static Regex NginxIcsPattern() =>

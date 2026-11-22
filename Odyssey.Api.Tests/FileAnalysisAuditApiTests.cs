@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
@@ -22,12 +23,12 @@ namespace Odyssey.Api.Tests;
 /// feature is disabled (the audit record outlives the toggle), and the controller enriches each
 /// row's initiating user (name/email) from the identity store.
 /// </summary>
-public class FileAnalysisAuditApiTests
+public class FileAnalysisAuditApiTests(FileAnalysisAuditApiTests.Host host) : SharedApiHostTests<FileAnalysisAuditApiTests.Host>(host)
 {
     [Fact]
     public async Task GetAuditLog_WithoutAuditClaim_ReturnsForbidden()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.FileAnalysisRead]);
+        var factory = Factory.ForCaller([PermissionClaims.FileAnalysisRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/file-analysis/audit");
@@ -39,7 +40,7 @@ public class FileAnalysisAuditApiTests
     public async Task GetAuditLog_WithUsersReadButNotAuditClaim_ReturnsForbidden()
     {
         // The audit boundary is deliberately separate from users.read — holding users.read is not enough.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.UsersRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/file-analysis/audit");
@@ -50,7 +51,7 @@ public class FileAnalysisAuditApiTests
     [Fact]
     public async Task GetAuditLog_WithAuditClaim_ReturnsEmptyListWhenNoTransfers()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.FileAnalysisAudit]);
+        var factory = Factory.ForCaller([PermissionClaims.FileAnalysisAudit]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/file-analysis/audit");
@@ -66,7 +67,7 @@ public class FileAnalysisAuditApiTests
     {
         // The real auditor is an Admin, who holds both file-analysis.audit and users.read; the name is
         // resolved via the shared resolver (#316) and the dedicated Email column is preserved unchanged.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.FileAnalysisAudit, PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.FileAnalysisAudit, PermissionClaims.UsersRead]);
         using var client = factory.CreateClient();
 
         const string userId = "audit-initiator-id";
@@ -89,7 +90,7 @@ public class FileAnalysisAuditApiTests
     [Fact]
     public async Task GetAuditLog_UnknownInitiator_NameIsUnknownUser_EmailNull()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.FileAnalysisAudit, PermissionClaims.UsersRead]);
+        var factory = Factory.ForCaller([PermissionClaims.FileAnalysisAudit, PermissionClaims.UsersRead]);
         using var client = factory.CreateClient();
 
         // A transfer whose initiating user no longer exists in the identity store: the resolver returns
@@ -131,8 +132,7 @@ public class FileAnalysisAuditApiTests
         };
         db.Accounts.Add(account);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var file = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -141,7 +141,7 @@ public class FileAnalysisAuditApiTests
             ContentType = "application/pdf",
             SizeBytes = 318_000,
             Sha256Hash = "hash",
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(file);
@@ -174,4 +174,7 @@ public class FileAnalysisAuditApiTests
         });
         await db.SaveChangesAsync();
     }
+
+    /// <summary>The class's shared host: every test sets its own caller (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

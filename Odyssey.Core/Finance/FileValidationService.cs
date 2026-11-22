@@ -1,6 +1,5 @@
 using Odyssey.Core;
 using Odyssey.Core.Imaging;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace Odyssey.Core.Finance;
@@ -69,7 +68,7 @@ public class FileValidationService
         // allow-list. Signature-less text formats are exempt — see HeaderMatchesContentType.
         using (var headerStream = file.OpenReadStream())
         {
-            Span<byte> header = stackalloc byte[16];
+            Span<byte> header = stackalloc byte[FileHeaderSignatures.HeaderLength];
             var read = headerStream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
             if (!HeaderMatchesContentType(file.ContentType, header[..read]))
             {
@@ -128,13 +127,6 @@ public class FileValidationService
         return sanitized.Length > MaxFileNameLength ? sanitized[..MaxFileNameLength].TrimEnd() : sanitized;
     }
 
-    public async Task<string> ComputeSha256HashAsync(Stream stream)
-    {
-        using var sha256 = SHA256.Create();
-        var hashBytes = await sha256.ComputeHashAsync(stream);
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
-    }
-
     /// <summary>
     /// Returns whether the file's leading bytes match a known signature for the declared content type.
     /// Types with no reliable magic number (plain text, CSV) are trusted to the allow-list and the
@@ -173,6 +165,10 @@ public class FileValidationService
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "text/plain",
             "text/csv",
+
+            // E-books (#527). EPUB is XHTML in a ZIP; it is only ever downloaded (forced attachment + nosniff),
+            // never rendered or parsed server-side — re-open the security review before that changes.
+            "application/epub+zip",
 
             // Images. image/svg+xml is intentionally excluded: SVG is an active-content format that can
             // embed <script>/event handlers, so it is treated as an XSS vector and never accepted on upload.

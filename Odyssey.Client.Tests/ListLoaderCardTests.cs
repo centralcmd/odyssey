@@ -69,6 +69,8 @@ public class ListLoaderCardTests
     private static CurrenciesHarness RenderCurrencies()
     {
         var ctx = NewContext(PermissionClaims.CurrenciesRead);
+        // The card's first load stays off, so each test starts the requests it races itself.
+        ctx.UseInteractivity(false);
         CurrenciesHarness? harness = null;
 
         var currencies = new Mock<ICurrenciesApiClient>();
@@ -269,7 +271,9 @@ public class ListLoaderCardTests
             {
                 // The subline's whole-library count asks for a one-row window; answer it at once.
                 if (pageSize == 1)
+                {
                     return Task.FromResult(Page<PhotoSummary>());
+                }
 
                 var call = new PhotoCall(search, page, ct, new());
                 calls.Add(call);

@@ -302,14 +302,21 @@ public partial class ContactConvertDialog
         if (ToOrganization)
         {
             if (string.IsNullOrWhiteSpace(_legalName))
+            {
                 _errors[Fields.LegalName] = "Legal name is required.";
+            }
         }
         else
         {
             if (string.IsNullOrWhiteSpace(_firstName))
+            {
                 _errors[Fields.FirstName] = "First name is required.";
+            }
+
             if (string.IsNullOrWhiteSpace(_lastName))
+            {
                 _errors[Fields.LastName] = "Last name is required.";
+            }
         }
 
         return _errors.Count == 0;

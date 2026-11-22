@@ -84,32 +84,45 @@ licensing.
 | MailKit / MimeKit | MIT |
 | Ical.Net | MIT |
 | QRCoder | MIT |
-| Swashbuckle.AspNetCore | MIT |
+| Scalar.AspNetCore | MIT |
 | MessagePack | MIT |
 | Bogus | MIT |
 | Microsoft.Playwright | MIT |
-| Aspire (AppHost SDK, Hosting) | MIT |
+| Aspire (`Aspire.Hosting`, `Aspire.Hosting.AppHost`, the AppHost SDK) | MIT |
 | bunit | MIT |
 | Testcontainers | MIT |
 | coverlet.collector | MIT |
 | MetadataExtractor | Apache License 2.0 |
+| Magick.NET (`Magick.NET-Q8-AnyCPU`, worker only) | Apache License 2.0 |
 | xunit | Apache License 2.0 |
-| AwesomeAssertions | Apache License 2.0 |
 | Moq | BSD 3-Clause |
 | Xunit.SkippableFact | Microsoft Public License (MS-PL) |
 
-Two entries carry history worth knowing before changing them:
+Two notes worth knowing before changing this list:
 
-- **AwesomeAssertions replaces FluentAssertions.** FluentAssertions 7.x was Apache-2.0;
-  8.0 moved to the Xceed license, which is free for open source but charges for commercial
-  use. Rather than freeze at 7.2.2 indefinitely or take on a licence that would bind any
-  future commercial use of this codebase, Odyssey moved to the Apache-2.0 community fork,
-  which continues the same lineage and API.
+- **There is no assertion library.** Tests use xUnit's `Assert`. The one file that used
+  AwesomeAssertions was rewritten and the package removed (November 2026). Do not add
+  FluentAssertions back: since 8.0 it is under the Xceed licence, which charges for
+  commercial use.
 - **`Xunit.SkippableFact` is MS-PL**, the only non-MIT/Apache/BSD entry here. It is a
   test-only dependency and is never shipped in a published artifact.
 
 MetadataExtractor was chosen over ImageSharp specifically to avoid the latter's
 Split license.
+
+---
+
+## Native image library: ImageMagick (worker image only)
+
+Photo thumbnails (issue #362) are rendered by **Magick.NET** (Apache License 2.0; the version is
+pinned in `Directory.Packages.props`), which is referenced by `Odyssey.Worker` alone and so ships only
+in the worker container image — never in the API, client or migrations images. The package carries a
+prebuilt native **ImageMagick** library, distributed under the
+[ImageMagick License](https://imagemagick.org/script/license.php) (an Apache-2.0-style permissive
+licence). That native build bundles ImageMagick's delegate libraries — the codecs
+it decodes and encodes with, such as libjpeg-turbo, libpng, libwebp and zlib — each under its own
+permissive licence. The [Magick.NET repository](https://github.com/dlemstra/Magick.NET) lists the
+delegates and their licences for each release; check it for the pinned version when bumping.
 
 ---
 

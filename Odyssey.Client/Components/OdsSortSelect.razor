@@ -96,7 +96,9 @@
         {
             var first = Fields.Count > 0 ? Fields[0] : null;
             if (_current?.Key is not { } key)
+            {
                 return first;
+            }
             return Fields.FirstOrDefault(f => f.Key == key)
                 ?? new OdsSortField<TRow> { Key = key, Label = Capitalize(key), Type = OdsSortType.Text };
         }
@@ -177,14 +179,18 @@
     private async Task PickField(OdsSortField<TRow> option)
     {
         if (_field is null || option.Key != _field.Key)
+        {
             await Emit(new OdsTableSort(option.Key, OdsSortHelpers.DefaultDir(option)));
+        }
         await _popup.CloseAsync();
     }
 
     private Task Flip()
     {
         if (_field is null)
+        {
             return Task.CompletedTask;
+        }
         var next = _dir == OdsSortDirection.Asc ? OdsSortDirection.Desc : OdsSortDirection.Asc;
         return Emit(new OdsTableSort(_field.Key, next));
     }

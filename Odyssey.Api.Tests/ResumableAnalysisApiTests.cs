@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Finance;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -116,8 +117,7 @@ public class ResumableAnalysisApiTests
         };
         db.Accounts.Add(account);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var file = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -126,7 +126,7 @@ public class ResumableAnalysisApiTests
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash",
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(file);
@@ -167,8 +167,16 @@ public class ResumableAnalysisApiTests
                 Currency = "USD",
                 ReviewStatus = status,
             });
-        for (var i = 0; i < pending; i++) AddCandidate(ReviewStatus.Pending);
-        for (var i = 0; i < reviewed; i++) AddCandidate(ReviewStatus.Accepted);
+        for (var i = 0; i < pending; i++)
+        {
+            AddCandidate(ReviewStatus.Pending);
+        }
+
+        for (var i = 0; i < reviewed; i++)
+        {
+            AddCandidate(ReviewStatus.Accepted);
+        }
+
         await db.SaveChangesAsync();
 
         return (account.AccountId, file.Id, job.Id);

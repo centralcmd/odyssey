@@ -34,9 +34,13 @@ public class PlotWidthObserverTests
                 import.Returns(new ValueTask<IJSObjectReference>(HeldImport.Task));
             }
             else if (importFails is null)
+            {
                 import.Returns(new ValueTask<IJSObjectReference>(Module.Object));
+            }
             else
+            {
                 import.Returns(ValueTask.FromException<IJSObjectReference>(importFails));
+            }
 
             Module.Setup(m => m.InvokeAsync<IJSObjectReference>("observe", It.IsAny<object?[]?>()))
                 .Returns(() =>
@@ -55,7 +59,10 @@ public class PlotWidthObserverTests
             var handle = new Mock<IJSObjectReference>();
             var disconnect = handle.Setup(h => h.InvokeAsync<IJSVoidResult>("disconnect", It.IsAny<object?[]?>()));
             if (onDisconnect is not null)
+            {
                 disconnect.Returns(ValueTask.FromException<IJSVoidResult>(onDisconnect));
+            }
+
             Handles.Add(handle);
             Pending[index].SetResult(handle.Object);
             return handle;
@@ -107,6 +114,14 @@ public class PlotWidthObserverTests
         var second = observer.SyncAsync(PlotB);
         bridge.HeldImport!.SetResult(bridge.Module.Object);
         await first;
+        // The newer plot's observe call is issued by a continuation of the same import, which may not have
+        // run yet when the first sync returns: wait for it rather than assume it.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (bridge.Pending.Count == 0 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+
         bridge.Release(0);
         await second;
 

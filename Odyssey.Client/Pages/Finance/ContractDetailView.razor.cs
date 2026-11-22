@@ -233,30 +233,30 @@ public partial class ContractDetailView : IAsyncDisposable
         switch (party.Kind)
         {
             case ContractPartyKind.Account when party.Account is { } a:
-            {
-                // An account whose type did not resolve has no type to STATE, so the caption falls
-                // back to the kind: "Account" carries more than the bare word "Unknown", which names
-                // nothing a reader can act on.
-                var typeLabel = a.Type is AccountType.Unknown ? null : AccountTypeVisuals.Label(a.Type);
-                return new PartyVisual("Account", a.Name, typeLabel,
-                    AccountTypeVisuals.MaterialIcon(a.Type), AccountTypeVisuals.FgColor(a.Type), AccountTypeVisuals.BgColor(a.Type));
-            }
+                {
+                    // An account whose type did not resolve has no type to STATE, so the caption falls
+                    // back to the kind: "Account" carries more than the bare word "Unknown", which names
+                    // nothing a reader can act on.
+                    var typeLabel = a.Type is AccountType.Unknown ? null : AccountTypeVisuals.Label(a.Type);
+                    return new PartyVisual("Account", a.Name, typeLabel,
+                        AccountTypeVisuals.MaterialIcon(a.Type), AccountTypeVisuals.FgColor(a.Type), AccountTypeVisuals.BgColor(a.Type));
+                }
             // The DTO member is still named Institution — it is a serialized enum value, so renaming it
             // would de-authorize nothing but would break every stored and in-flight payload. The design
             // renamed what the reader sees, which is all that changed here.
             case ContractPartyKind.Institution when party.Institution is { } c:
-            {
-                var m = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
-                return new PartyVisual("Contact", c.Name, m.Label, m.Icon, m.Color, m.Soft);
-            }
+                {
+                    var m = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
+                    return new PartyVisual("Contact", c.Name, m.Label, m.Icon, m.Color, m.Soft);
+                }
             // Issue #208. The reference carries id, name and TYPE only — never the detail row — so the
             // caption is the type ("Real estate", "Vehicle"), the design system's own fallback when the
             // finer kind is not known, and never an address, registration or VIN.
             case ContractPartyKind.Property when party.Property is { } pr:
-            {
-                var t = OdsTypeRegistries.PropertyTypeOf(pr.Type);
-                return new PartyVisual("Property", pr.Name, t.Label, t.Icon, t.Color, t.Soft);
-            }
+                {
+                    var t = OdsTypeRegistries.PropertyTypeOf(pr.Type);
+                    return new PartyVisual("Property", pr.Name, t.Label, t.Icon, t.Color, t.Soft);
+                }
             default:
                 // Neither reference projection resolved. The ROLE still reads on the overline — it is a
                 // top-level field on the party and does not depend on the target — but there is no
@@ -295,7 +295,10 @@ public partial class ContractDetailView : IAsyncDisposable
             });
         }
 
-        if (!CanWrite) return items;
+        if (!CanWrite)
+        {
+            return items;
+        }
 
         if (OnEditParty.HasDelegate && resolved && !PartyRoleLabel.IsUnknown(party.Role))
         {
@@ -344,11 +347,18 @@ public partial class ContractDetailView : IAsyncDisposable
 
     private async Task DetachPartyAsync(ExistingContractParty party)
     {
-        if (!CanWrite) return;
+        if (!CanWrite)
+        {
+            return;
+        }
+
         var r = Resolve(party);
         var confirmed = await _confirm.AskAsync("Detach party", $"Detach '{r.Name}' from this contract? The {r.KindLabel.ToLowerInvariant()} itself is not affected.", "Detach", "link_off");
 
-        if (!confirmed) return;
+        if (!confirmed)
+        {
+            return;
+        }
 
         // Armed BEFORE the write, while the list still holds the party: the tile that had focus is
         // gone by the time the re-fetched contract arrives.

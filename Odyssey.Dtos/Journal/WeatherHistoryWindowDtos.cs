@@ -42,17 +42,17 @@ public enum WeatherHistoryWindowStatus
 /// <summary>One window on the single-point read (issue #436 §5.1).</summary>
 public sealed record ExistingWeatherHistoryWindow
 {
-    public DateOnly From { get; init; }
+    public DateOnly From { get; set; }
 
-    public DateOnly? To { get; init; }
+    public DateOnly? To { get; set; }
 
-    public WeatherHistoryWindowStatus Status { get; init; }
+    public WeatherHistoryWindowStatus Status { get; set; }
 
     /// <summary>Checked days of this window inside the effective range.</summary>
-    public int CoveredDays { get; init; }
+    public int CoveredDays { get; set; }
 
     /// <summary>Days of this window inside the effective range; null for an ongoing window.</summary>
-    public int? FetchableDays { get; init; }
+    public int? FetchableDays { get; set; }
 
     public override string ToString() => nameof(ExistingWeatherHistoryWindow) + " { (redacted) }";
 }
@@ -60,14 +60,14 @@ public sealed record ExistingWeatherHistoryWindow
 /// <summary>The window summary on every <see cref="ExistingWeatherPoint"/>, list and single read alike.</summary>
 public sealed record WeatherHistoryWindowSummary
 {
-    public int Count { get; init; }
+    public int Count { get; set; }
 
-    public DateOnly? EarliestFrom { get; init; }
+    public DateOnly? EarliestFrom { get; set; }
 
     /// <summary>The latest end; null when there are no windows or one is ongoing.</summary>
-    public DateOnly? LatestTo { get; init; }
+    public DateOnly? LatestTo { get; set; }
 
-    public bool HasOpenEnd { get; init; }
+    public bool HasOpenEnd { get; set; }
 
     public static WeatherHistoryWindowSummary From(IReadOnlyCollection<(DateOnly From, DateOnly? To)> windows)
     {

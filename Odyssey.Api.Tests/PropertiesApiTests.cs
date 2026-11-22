@@ -15,7 +15,7 @@ namespace Odyssey.Api.Tests;
 /// Property CRUD and the list over HTTP (issue #167): the subtype invariant, the type-immutability
 /// <c>422</c>, the non-upsert <c>PUT</c>, the delete cascade, and the server-side list contract.
 /// </summary>
-public class PropertiesApiTests
+public class PropertiesApiTests(PropertiesApiTests.Host host) : SharedApiHostTests<PropertiesApiTests.Host>(host)
 {
     private const string ActorUserId = "properties-actor-id";
 
@@ -38,7 +38,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_RealEstate_ReturnsCreated_AtItsGetRoute_AndRoundTripsEveryDetailField()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var details = new RealEstateDetailsDto
@@ -92,7 +92,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_Vehicle_ReturnsCreated_AtItsGetRoute_AndRoundTripsEveryDetailField()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var details = new VehicleDetailsDto
@@ -125,7 +125,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_Vehicle_NormalizesRegistrationNumberAndVin()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var body = VehicleBody() with
@@ -145,7 +145,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_RealEstateWithOnlyVehicleDetails_ReturnsBadRequestKeyedOnRealEstateDetails()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var body = RealEstateBody() with
@@ -166,7 +166,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_RealEstateWithBothDetailObjects_ReturnsBadRequest()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var body = RealEstateBody() with { VehicleDetails = new VehicleDetailsDto { Kind = VehicleKind.Car } };
@@ -183,7 +183,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_VehicleWithOnlyRealEstateDetails_ReturnsBadRequestKeyedOnVehicleDetails()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var body = VehicleBody() with
@@ -204,7 +204,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_VehicleWithBothDetailObjects_ReturnsBadRequestKeyedOnRealEstateDetails()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var body = VehicleBody() with { RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House } };
@@ -221,7 +221,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_WithTypeOmitted_ReturnsBadRequestKeyedOnType()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(PropertiesPath, new
@@ -244,7 +244,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Put_ChangingTheType_ReturnsUnprocessableKeyedOnType_AndLeavesThePropertyUnchanged()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
         var created = (await (await client.PostAsJsonAsync(PropertiesPath, RealEstateBody()))
             .Content.ReadFromJsonAsync<ExistingProperty>())!;
@@ -266,7 +266,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Put_SameType_ReturnsNoContent_AndUpdatesTheFields()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
         var created = (await (await client.PostAsJsonAsync(PropertiesPath, RealEstateBody()))
             .Content.ReadFromJsonAsync<ExistingProperty>())!;
@@ -276,7 +276,10 @@ public class PropertiesApiTests
             Notes = "Renovated",
             RealEstateDetails = new RealEstateDetailsDto
             {
-                Kind = RealEstateKind.Apartment, City = "Oslo", BuildYear = 2001, ApplyTo = Odyssey.Dtos.Journal.AddressApplyTo.ThisRecord,
+                Kind = RealEstateKind.Apartment,
+                City = "Oslo",
+                BuildYear = 2001,
+                ApplyTo = Odyssey.Dtos.Journal.AddressApplyTo.ThisRecord,
             },
         };
         var response = await client.PutAsJsonAsync(PropertyPath(created.PropertyId), replacement);
@@ -294,7 +297,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Put_UnknownId_ReturnsNotFound_AndCreatesNothing()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
         var unknownId = Guid.NewGuid();
 
@@ -308,7 +311,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Get_UnknownId_ReturnsNotFound()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(PropertyPath(Guid.NewGuid()))).StatusCode);
@@ -323,7 +326,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Delete_RemovesDetailsEstimatesAndSmartTagLinks_AndLeavesTheTags()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var propertyId = await SeedPropertyAsync(factory);
         var survivorId = await SeedPropertyAsync(factory, "Survivor");
         await SeedEstimateAsync(factory, propertyId, 1000m, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
@@ -354,7 +357,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Delete_UnknownId_ReturnsNotFound()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync(PropertyPath(Guid.NewGuid()))).StatusCode);
@@ -369,7 +372,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task Post_WithAPropertyIdInsideRealEstateDetails_CreatesUnderTheNewId_AndTouchesNoOtherProperty()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var victimId = await SeedPropertyAsync(factory, "Victim", city: "Tromsø");
         using var client = factory.CreateClient();
 
@@ -406,7 +409,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task List_Search_MatchesNameAndDetailFields()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         await SeedPropertyAsync(factory, "Harbour flat", city: "Stavanger");
         await SeedPropertyAsync(factory, "Cabin", city: "Geilo");
         await SeedPropertyAsync(factory, "Old Volvo", PropertyType.Vehicle);
@@ -424,7 +427,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task List_TypesFilter_ReturnsOnlyTheRequestedSubtypes()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         await SeedPropertyAsync(factory, "House");
         await SeedPropertyAsync(factory, "Car", PropertyType.Vehicle);
         await SeedPropertyAsync(factory, "Boat", PropertyType.Vehicle);
@@ -445,7 +448,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task List_StatusesFilter_UsesTheDerivedStatus()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var past = DateTime.UtcNow.AddYears(-1);
         var future = DateTime.UtcNow.AddYears(1);
         await SeedPropertyAsync(factory, "Owned");
@@ -475,7 +478,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task List_SortByAndSortDir_OrderTheRows()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         await SeedPropertyAsync(factory, "Bravo", PropertyType.Vehicle, acquired: new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         await SeedPropertyAsync(factory, "Alpha", acquired: new DateTime(2010, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         await SeedPropertyAsync(factory, "Charlie", acquired: new DateTime(2015, 1, 1, 0, 0, 0, DateTimeKind.Utc));
@@ -496,9 +499,12 @@ public class PropertiesApiTests
     [Fact]
     public async Task List_OffsetAndLimit_SliceThePage_AndTotalCountIsPreSlice()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         foreach (var name in new[] { "A", "B", "C", "D", "E" })
+        {
             await SeedPropertyAsync(factory, name);
+        }
+
         await SeedPropertyAsync(factory, "Z car", PropertyType.Vehicle);
         using var client = factory.CreateClient();
 
@@ -527,7 +533,7 @@ public class PropertiesApiTests
     [MemberData(nameof(InvalidListQueries))]
     public async Task List_InvalidQuery_ReturnsBadRequest(string query)
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync(PropertiesPath + query)).StatusCode);
@@ -537,7 +543,7 @@ public class PropertiesApiTests
     [Fact]
     public async Task List_SearchOverTheLengthCap_ReturnsBadRequest()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var tooLong = new string('a', ListDefaults.MaxSearchLength + 1);
@@ -596,6 +602,9 @@ public class PropertiesApiTests
         return factory;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

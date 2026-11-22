@@ -170,7 +170,9 @@ public partial class PhotosCard
         StateHasChanged();
 
         if (await FetchAsync(page: 1, pageSize: _visible) is not { } load)
+        {
             return;
+        }
 
         // A failed fetch yields no items; without this the grid would render "No photos yet".
         _loadError = !load.IsSuccess;
@@ -281,10 +283,15 @@ public partial class PhotosCard
         // A reload in flight owns the grid; appending a page of the old result set onto it would mix
         // two queries, and superseding it would leave the loading state to nobody.
         if (_loading)
+        {
             return;
+        }
 
         if (await FetchAsync(page: _photos.Count / _pageSize + 1, pageSize: _pageSize) is not { } load)
+        {
             return;
+        }
+
         _photos.AddRange(load.Items);
         _total = load.TotalCount;
         _visible = _photos.Count; // keep the window size in sync for a later mutation refresh
@@ -316,15 +323,29 @@ public partial class PhotosCard
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 
     // ── Selection ──
-    private void ToggleSelect(Guid id) { if (!_selected.Add(id)) _selected.Remove(id); }
+    private void ToggleSelect(Guid id)
+    {
+        if (!_selected.Add(id))
+        {
+            _selected.Remove(id);
+        }
+    }
     private void StartSelectWith(Guid id) { _selecting = true; _selected.Clear(); _selected.Add(id); }
     private void ExitSelect() { _selecting = false; _selected.Clear(); }
     private void ToggleSelectAll()
     {
         if (_selected.Count >= _photos.Count)
+        {
             _selected.Clear();
+        }
         else
-        { _selected.Clear(); foreach (var p in _photos) _selected.Add(p.PhotoId); }
+        {
+            _selected.Clear();
+            foreach (var p in _photos)
+            {
+                _selected.Add(p.PhotoId);
+            }
+        }
     }
 
     private void OpenDetail(Guid id) => _detailIndex = _photos.FindIndex(p => p.PhotoId == id);
@@ -340,7 +361,9 @@ public partial class PhotosCard
     private async Task ToggleArchiveAsync(Guid id)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         await MutateAsync(id, u => u.Archived = !u.Archived);
         _detailIndex = null;
@@ -350,7 +373,9 @@ public partial class PhotosCard
     private async Task<bool> MutateAsync(Guid id, Action<UpdatePhoto> mutate)
     {
         if (!_canUpdate)
+        {
             return false;
+        }
 
         var p = await Photos.GetAsync(id);
         if (p is null)
@@ -372,7 +397,9 @@ public partial class PhotosCard
     private async Task DeleteAsync(Guid id)
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         if ((await Photos.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Photo deleted."))
         {
@@ -385,10 +412,15 @@ public partial class PhotosCard
     private async Task BulkFavouriteAsync()
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         foreach (var id in _selected.ToList())
+        {
             await MutateSilentAsync(id, u => u.Favourite = true);
+        }
+
         ExitSelect();
         await RefreshAsync();
     }
@@ -396,10 +428,15 @@ public partial class PhotosCard
     private async Task BulkArchiveAsync(bool archive)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         foreach (var id in _selected.ToList())
+        {
             await MutateSilentAsync(id, u => u.Archived = archive);
+        }
+
         ExitSelect();
         await RefreshAsync();
     }
@@ -407,10 +444,15 @@ public partial class PhotosCard
     private async Task BulkDeleteAsync()
     {
         if (!_canDelete)
+        {
             return;
+        }
 
         foreach (var id in _selected.ToList())
+        {
             (await Photos.DeleteAsync(id)).Toast(Snackbar, "Delete failed");
+        }
+
         Snackbar.Add($"{_selected.Count} photo(s) deleted.", Severity.Success);
         ExitSelect();
         await RefreshAsync();
@@ -419,7 +461,9 @@ public partial class PhotosCard
     private async Task MutateSilentAsync(Guid id, Action<UpdatePhoto> mutate)
     {
         if (!_canUpdate)
+        {
             return;
+        }
 
         var p = await Photos.GetAsync(id);
         if (p is null)

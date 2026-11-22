@@ -8,6 +8,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage;
 using Odyssey.Testing.FileStorage;
+using Odyssey.Testing.Logging;
 
 namespace Odyssey.Api.Tests.FileStorage;
 
@@ -15,12 +16,25 @@ namespace Odyssey.Api.Tests.FileStorage;
 /// The store's own API host (issue #346 §11): temp volumes, the test features bound to them, the test reference
 /// tables, and a test-only controller that serves a stored object the way a consumer must. Every other API test
 /// host stays a no-op, because it configures no volume (A2.1).
+///
+/// <para>
+/// A test class shares one by deriving its host from it (<c>public sealed class Host() : FileStorageApiFactory([])</c>,
+/// see <see cref="SharedApiHostClients"/>); <see cref="ResetStoreAsync"/> then also empties both volumes, the captured
+/// logs and the space probe. A test that deletes a volume's marker drives host-wide state no reset restores, and keeps
+/// a host of its own (<see cref="Create"/>).
+/// </para>
 /// </summary>
-internal sealed class FileStorageApiFactory : OdysseyApiFactory
+public class FileStorageApiFactory : OdysseyApiFactory
 {
     private readonly DirectoryInfo volumes;
 
-    private FileStorageApiFactory(IReadOnlyCollection<string>? permissions, DirectoryInfo volumes, CapturingLoggerProvider logs, TestSpaceProbe space)
+    /// <summary>A host on fresh temp volumes, for a test class to derive its shared host from.</summary>
+    protected FileStorageApiFactory(IReadOnlyCollection<string>? permissions)
+        : this(permissions, NewVolumes(), new RecordingLoggerProvider(), new TestSpaceProbe())
+    {
+    }
+
+    private FileStorageApiFactory(IReadOnlyCollection<string>? permissions, DirectoryInfo volumes, RecordingLoggerProvider logs, TestSpaceProbe space)
         : base(
             permissions,
             configuration: new Dictionary<string, string?>
@@ -36,7 +50,10 @@ internal sealed class FileStorageApiFactory : OdysseyApiFactory
                 ["FileStorage:Bindings:FinanceFiles"] = "primary",
                 ["FileStorage:Bindings:JournalFiles"] = "primary",
                 ["FileStorage:Bindings:ContactAvatars"] = "primary",
+                ["FileStorage:Bindings:LibraryFiles"] = "primary",
                 ["FileStorage:Bindings:NewsArticles"] = "primary",
+                ["FileStorage:Bindings:PodcastAudio"] = "primary",
+                ["FileStorage:Bindings:PodcastArtwork"] = "primary",
             },
             configureServices: services =>
             {
@@ -58,18 +75,31 @@ internal sealed class FileStorageApiFactory : OdysseyApiFactory
         Space = space;
     }
 
-    public CapturingLoggerProvider Logs { get; }
+    public RecordingLoggerProvider Logs { get; }
 
     public TestSpaceProbe Space { get; }
 
     public string VolumeRoot(string name) => Path.Combine(volumes.FullName, name);
 
-    public static FileStorageApiFactory Create(IReadOnlyCollection<string>? permissions)
+    public static FileStorageApiFactory Create(IReadOnlyCollection<string>? permissions) =>
+        new(permissions, NewVolumes(), new RecordingLoggerProvider(), new TestSpaceProbe());
+
+    /// <summary>A shared host starts each test as a fresh one would: empty volumes, no captured log, the probe's default.</summary>
+    public override async Task ResetStoreAsync()
+    {
+        await base.ResetStoreAsync();
+        ClearVolume(VolumeRoot("primary"));
+        ClearVolume(VolumeRoot("archive"));
+        Logs.Clear();
+        Space.Override = new TestSpaceProbe().Override;
+    }
+
+    private static DirectoryInfo NewVolumes()
     {
         var volumes = Directory.CreateTempSubdirectory("odyssey-api-fs-");
         Directory.CreateDirectory(Path.Combine(volumes.FullName, "primary"));
         Directory.CreateDirectory(Path.Combine(volumes.FullName, "archive"));
-        return new FileStorageApiFactory(permissions, volumes, new CapturingLoggerProvider(), new TestSpaceProbe());
+        return volumes;
     }
 
     protected override void Dispose(bool disposing)

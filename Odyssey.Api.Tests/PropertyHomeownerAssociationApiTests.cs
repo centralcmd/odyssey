@@ -19,7 +19,7 @@ namespace Odyssey.Api.Tests;
 /// the existing property bodies, the slim projection rides every read, and the R1–R4 rules run only when
 /// the id changes.
 /// </summary>
-public class PropertyHomeownerAssociationApiTests
+public class PropertyHomeownerAssociationApiTests(PropertyHomeownerAssociationApiTests.Host host) : SharedApiHostTests<PropertyHomeownerAssociationApiTests.Host>(host)
 {
     private const string ActorUserId = "property-hoa-actor-id";
     private const string AssociationKey = "RealEstateDetails.HomeownerAssociationId";
@@ -51,7 +51,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Post_WithOrganization_ReturnsCreated_AndEveryReadCarriesTheSameProjection()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var association = await SeedContactAsync(factory, "Storgata Borettslag");
         using var client = factory.CreateClient();
 
@@ -77,7 +77,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Put_WithDifferentOrganization_ChangesTheLink()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var first = await SeedContactAsync(factory, "First Sameie");
         var second = await SeedContactAsync(factory, "Second Sameie");
         using var client = factory.CreateClient();
@@ -95,7 +95,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Put_WithNullAssociation_ClearsTheLink()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var association = await SeedContactAsync(factory, "Storgata Borettslag");
         using var client = factory.CreateClient();
         var id = await CreateAsync(client, Flat(association));
@@ -112,7 +112,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Put_OmittingTheField_ClearsTheLink()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var association = await SeedContactAsync(factory, "Storgata Borettslag");
         using var client = factory.CreateClient();
         var id = await CreateAsync(client, Flat(association));
@@ -130,7 +130,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Post_WithPerson_Returns422_KeyedOnTheField_AndStoresNothing()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var person = await SeedContactAsync(factory, "Kari Nordmann", ContactType.Person);
         using var client = factory.CreateClient();
 
@@ -144,7 +144,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Put_ChangingToPerson_Returns422_AndKeepsTheStoredLink()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var association = await SeedContactAsync(factory, "Storgata Borettslag");
         var person = await SeedContactAsync(factory, "Kari Nordmann", ContactType.Person);
         using var client = factory.CreateClient();
@@ -160,7 +160,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Post_WithUnknownId_Returns400_KeyedOnTheField()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
         var unknown = Guid.NewGuid();
 
@@ -175,7 +175,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Post_WithEmptyGuid_Returns400_KeyedOnTheField()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(PropertiesPath, Flat(Guid.Empty));
@@ -187,7 +187,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Post_WithArchivedOrganization_Returns400_AndNeverEchoesTheName()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var archived = await SeedContactAsync(factory, "Gamle Sameie", archived: true);
         using var client = factory.CreateClient();
 
@@ -203,7 +203,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Put_KeepingALinkWhoseContactWasArchivedAndRetyped_IsAccepted()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var association = await SeedContactAsync(factory, "Storgata Borettslag");
         using var client = factory.CreateClient();
         var id = await CreateAsync(client, Flat(association));
@@ -228,7 +228,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Post_CarryingANestedAssociationObject_CreatesNoContact_RenamesNone_AndSetsNoLink()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var existing = await SeedContactAsync(factory, "Storgata Borettslag");
         using var client = factory.CreateClient();
         var contactsBefore = await CountAsync<Contact>(factory);
@@ -254,7 +254,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Vehicle_HasNoAssociation()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(PropertiesPath, VehicleBody());
@@ -266,7 +266,7 @@ public class PropertyHomeownerAssociationApiTests
     [Fact]
     public async Task Projection_SerializesExactlyContactIdNameAndArchived()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        var factory = Factory.ForCaller(FullAccess);
         var association = await SeedContactAsync(factory, "Storgata Borettslag", organizationNumber: "912345678");
         using var client = factory.CreateClient();
         var id = await CreateAsync(client, Flat(association));
@@ -351,6 +351,9 @@ public class PropertyHomeownerAssociationApiTests
         return factory;
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

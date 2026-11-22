@@ -3,8 +3,10 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
 using Odyssey.Context;
+using Odyssey.Core.Finance.Instruments.Sources;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -16,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// and source; one priority per instrument; the widened <c>ExclusiveGuard</c>), the CHECKs, and the foreign keys'
 /// on-delete behaviour. None of it is observable on EF InMemory.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_instrument_prices";
@@ -51,8 +53,11 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         await using var other = NewContext();
         other.JobRuns.Add(new ExchangeRateSyncJobRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Running,
-            StartedAtUtc = Now, LastActivityAtUtc = Now,
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Scheduled,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = Now,
+            LastActivityAtUtc = Now,
         });
         await other.SaveChangesAsync();
     }
@@ -94,6 +99,7 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     [InlineData("UPDATE `InstrumentPriceSourceBindings` SET `Priority` = 0")]
     [InlineData("UPDATE `InstrumentPriceSourceBindings` SET `Priority` = 10")]
     [InlineData("UPDATE `InstrumentPriceSourceStates` SET `RequestCount` = -1")]
+    [InlineData("UPDATE `InstrumentPriceSourceStates` SET `RequestHourCount` = -1")]
     public async Task The_checks_refuse_an_out_of_contract_value(string sql)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -110,6 +116,30 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
+    public async Task The_job_run_counters_check_refuses_a_negative_deferred_count()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        await using var context = NewContext();
+        context.JobRuns.Add(new InstrumentPriceSyncJobRun
+        {
+            JobRunId = Guid.NewGuid(),
+            Trigger = JobRunTrigger.Scheduled,
+            Status = JobRunStatus.Succeeded,
+            StartedAtUtc = Now,
+            ClaimedAtUtc = Now,
+            LastActivityAtUtc = Now,
+            FinishedAtUtc = Now,
+            InstrumentsDeferred = 2,
+        });
+        await context.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<MySqlException>(() => context.Database.ExecuteSqlRawAsync(
+            "UPDATE `JobRuns` SET `InstrumentsDeferred` = -1"));
+        Assert.Equal(4025, exception.Number);
+    }
+
+    [SkippableFact]
     public async Task The_price_column_keeps_eight_decimals_and_eighteen_digits()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -118,7 +148,11 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         var instrument = await AddInstrumentAsync(context);
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = Day, Close = 9999999999.99999999m, CreatedAtUtc = Now,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = Day,
+            Close = 9999999999.99999999m,
+            CreatedAtUtc = Now,
         });
         await context.SaveChangesAsync();
 
@@ -169,7 +203,12 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         var instrument = await AddInstrumentAsync(context, createdBy: userId);
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = Day, Close = 1m, CreatedAtUtc = Now, CreatedByUserId = userId,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = Day,
+            Close = 1m,
+            CreatedAtUtc = Now,
+            CreatedByUserId = userId,
         });
         await context.SaveChangesAsync();
 
@@ -208,7 +247,12 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     {
         context.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = date, Close = 10m, SourceKey = source, CreatedAtUtc = Now,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = date,
+            Close = 10m,
+            SourceKey = source,
+            CreatedAtUtc = Now,
         });
         await context.SaveChangesAsync();
     }
@@ -217,7 +261,12 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     {
         context.InstrumentPriceSourceBindings.Add(new InstrumentPriceSourceBinding
         {
-            InstrumentId = instrument, SourceKey = source, SourceSymbol = "EQNR.OL", Priority = priority, Enabled = true, UpdatedAtUtc = Now,
+            InstrumentId = instrument,
+            SourceKey = source,
+            SourceSymbol = "EQNR.OL",
+            Priority = priority,
+            Enabled = true,
+            UpdatedAtUtc = Now,
         });
         await context.SaveChangesAsync();
     }
@@ -226,7 +275,11 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     {
         context.JobRuns.Add(new InstrumentPriceSyncJobRun
         {
-            JobRunId = Guid.NewGuid(), Trigger = trigger, Status = JobRunStatus.Running, StartedAtUtc = Now, LastActivityAtUtc = Now,
+            JobRunId = Guid.NewGuid(),
+            Trigger = trigger,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = Now,
+            LastActivityAtUtc = Now,
         });
         await context.SaveChangesAsync();
     }
@@ -242,6 +295,90 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
                  ({id}, 'prices@instruments.test', 'PRICES@INSTRUMENTS.TEST', 'prices@instruments.test', 'PRICES@INSTRUMENTS.TEST', 1,
                   'hash', 'stamp', 'concurrency', 0, 0, 1, 0, 0)
              """);
+
+    /// <summary>Issue #447 A1: two replicas reserving at once never exceed either cap, and every reservation is counted.</summary>
+    [SkippableFact]
+    public async Task Two_replicas_reserving_concurrently_never_exceed_either_cap()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var limits = new InstrumentPriceSourceLimits(30, TimeSpan.Zero, MaxRequestsPerRun: 10, MaxRequestsPerDay: 15, MaxRequestsPerHour: 10);
+        int reserved;
+        var providers = Enumerable.Range(0, 2).Select(_ => new ServiceCollection().AddScoped(_ => NewContext()).BuildServiceProvider()).ToList();
+        try
+        {
+            // Two replicas race each other; each replica's own reservations are sequential, as one run's requests are.
+            var streams = await Task.WhenAll(providers.Select(provider => Task.Run(async () =>
+            {
+                var quota = new SourceRequestQuota(provider.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
+                var outcomes = new List<QuotaReservation>();
+                for (var i = 0; i < 12; i++)
+                {
+                    outcomes.Add(await quota.TryReserveAsync("tiingo", limits, CancellationToken.None));
+                }
+
+                return outcomes;
+            })));
+            var all = streams.SelectMany(o => o).ToList();
+
+            // A reservation that loses five races in a row fails closed (Contended) and sends nothing; every other
+            // attempt reserves until the hourly cap, then is refused by it. So the count is exact, never above the cap.
+            var contended = all.Count(o => o == QuotaReservation.Contended);
+            reserved = all.Count(o => o == QuotaReservation.Reserved);
+            Assert.Equal(Math.Min(10, all.Count - contended), reserved);
+            Assert.All(all, o => Assert.Contains(o, new[] { QuotaReservation.Reserved, QuotaReservation.HourCapReached, QuotaReservation.Contended }));
+        }
+        finally
+        {
+            foreach (var provider in providers)
+            {
+                await provider.DisposeAsync();
+            }
+        }
+        await using var context = NewContext();
+        var state = await context.InstrumentPriceSourceStates.AsNoTracking().SingleAsync(s => s.SourceKey == "tiingo");
+        Assert.Equal(reserved, state.RequestHourCount);
+        Assert.Equal(reserved, state.RequestCount);
+    }
+
+    [SkippableFact]
+    public async Task The_hourly_cap_migration_reverts_and_reapplies_cleanly()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        await using var context = NewContext();
+        context.InstrumentPriceSourceStates.Add(new InstrumentPriceSourceState
+        {
+            SourceKey = "tiingo",
+            RequestHourUtc = Now,
+            RequestHourCount = 3,
+            UpdatedAtUtc = Now,
+        });
+        await context.SaveChangesAsync();
+
+        // The migration just before the hourly cap. Reverting to it also undoes any migration that sorts after this one;
+        // the assertions below look only at what the hourly cap's own Up and Down change.
+        await MigrationSeam.MigrateToAsync(context, "_AddPodcastFeeds");
+        Assert.Equal(0L, await MigrationSeam.CountAsync(context,
+            $"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{Database}' AND COLUMN_NAME IN ('RequestHourUtc', 'RequestHourCount', 'InstrumentsDeferred')"));
+        // Down drops the new CHECK and restores the counters CHECK without the deferred counter.
+        Assert.Equal(0L, await CheckCountAsync(context, "CK_InstrumentPriceSourceStates_RequestHourCount"));
+        Assert.Equal(1L, await CheckCountAsync(context, "CK_JobRuns_CountersNonNegative"));
+        Assert.Equal(0L, await CheckCountAsync(context, "CK_JobRuns_CountersNonNegative", "InstrumentsDeferred"));
+
+        await context.Database.MigrateAsync();
+        Assert.True(await MigrationSeam.HasRunAsync(context, "_AddInstrumentPriceHourlyCap"));
+        Assert.Equal(1L, await CheckCountAsync(context, "CK_InstrumentPriceSourceStates_RequestHourCount"));
+        Assert.Equal(1L, await CheckCountAsync(context, "CK_JobRuns_CountersNonNegative", "InstrumentsDeferred"));
+        // The kept row reads the column default.
+        Assert.Equal(0L, await MigrationSeam.CountAsync(context,
+            "SELECT COUNT(*) FROM `InstrumentPriceSourceStates` WHERE `RequestHourCount` <> 0 OR `RequestHourUtc` IS NOT NULL"));
+    }
+
+    private static Task<long> CheckCountAsync(OdysseyContext context, string name, string? clauseContains = null) =>
+        MigrationSeam.CountAsync(context,
+            $"SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '{Database}' AND CONSTRAINT_NAME = '{name}'"
+            + (clauseContains is null ? string.Empty : $" AND CHECK_CLAUSE LIKE '%{clauseContains}%'"));
 
     private async Task MigratedAsync()
     {

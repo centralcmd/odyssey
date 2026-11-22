@@ -4,7 +4,7 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// Two directives in the <c>/api/</c> proxy block that only the Compose browser tier would otherwise catch
+/// Directives in the site config that only the Compose browser tier would otherwise catch
 /// regressing. Each was found by stopping or probing the live stack, and neither leaves a trace in a unit
 /// test: removing one only changes what a running nginx does.
 /// </summary>
@@ -43,6 +43,22 @@ public class NginxProxyConfigTests
         Assert.InRange(int.Parse(match.Groups[1].Value), 1, 10);
     }
 
+    /// <summary>
+    /// The auth cookie carries every permission claim, so the browser's Cookie header grows with the claim
+    /// catalogue. nginx's default <c>4 8k</c> answered every request after sign-in with "400 Request Header Or
+    /// Cookie Too Large" at 0.50.0 (Admin's cookie alone was ~8.3 KB). The raise must sit at server level, where
+    /// it covers every location, and must not exceed Kestrel's 32 KB total-header limit behind this proxy.
+    /// </summary>
+    [Fact]
+    public void The_server_accepts_request_headers_up_to_kestrels_limit()
+    {
+        var match = Regex.Match(ServerLevel(), @"(?m)^\s*large_client_header_buffers\s+(\d+)\s+(\d+)k\s*;");
+
+        Assert.True(match.Success, "The server block must set large_client_header_buffers.");
+        Assert.True(int.Parse(match.Groups[1].Value) >= 4, "Keep at least nginx's default four buffers.");
+        Assert.Equal(32, int.Parse(match.Groups[2].Value));
+    }
+
     private static string ApiLocation()
     {
         var text = Uncommented();
@@ -68,7 +84,9 @@ public class NginxProxyConfigTests
         {
             depth += text[i] switch { '{' => 1, '}' => -1, _ => 0 };
             if (depth == 0)
+            {
                 return text[(open + 1)..i];
+            }
         }
 
         throw new InvalidOperationException("Unbalanced braces in the site config template.");

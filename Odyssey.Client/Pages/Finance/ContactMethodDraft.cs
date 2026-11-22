@@ -50,7 +50,9 @@ public sealed class ContactMethodDraft
     {
         var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (!IsLabelOffered(kind, contactType))
+        {
             errors["label"] = "Label is required.";
+        }
 
         switch (kind)
         {
@@ -58,10 +60,18 @@ public sealed class ContactMethodDraft
                 // The address is the Address field's (AddressBlockModel.Validate): a picked place needs no fields.
                 break;
             case "email":
-                if (!EmailRegex.IsMatch(Value.Trim())) errors["value"] = "Enter a valid email address.";
+                if (!EmailRegex.IsMatch(Value.Trim()))
+                {
+                    errors["value"] = "Enter a valid email address.";
+                }
+
                 break;
             default:
-                if (!PhoneRegex.IsMatch(Value.Trim())) errors["value"] = "Enter a valid phone number.";
+                if (!PhoneRegex.IsMatch(Value.Trim()))
+                {
+                    errors["value"] = "Enter a valid phone number.";
+                }
+
                 break;
         }
         return errors;
@@ -126,9 +136,15 @@ public sealed class ContactMethodDraft
 
     public static ContactMethodDraft FromAddress(ExistingAddress a) => new()
     {
-        Id = a.Id, Label = a.Label.ToString(), IsPrimary = a.IsPrimary,
-        Line1 = a.Line1, Line2 = a.Line2 ?? string.Empty, City = a.City,
-        PostalCode = a.PostalCode ?? string.Empty, Region = a.Region ?? string.Empty, CountryCode = a.CountryCode,
+        Id = a.Id,
+        Label = a.Label.ToString(),
+        IsPrimary = a.IsPrimary,
+        Line1 = a.Line1,
+        Line2 = a.Line2 ?? string.Empty,
+        City = a.City,
+        PostalCode = a.PostalCode ?? string.Empty,
+        Region = a.Region ?? string.Empty,
+        CountryCode = a.CountryCode,
         Stored = a,
     };
 
@@ -137,11 +153,17 @@ public sealed class ContactMethodDraft
 
     public static ContactMethodDraft FromEmail(ExistingEmailAddress e) => new()
     {
-        Id = e.Id, Label = e.Label.ToString(), IsPrimary = e.IsPrimary, Value = e.Value,
+        Id = e.Id,
+        Label = e.Label.ToString(),
+        IsPrimary = e.IsPrimary,
+        Value = e.Value,
     };
 
     public static ContactMethodDraft FromPhone(ExistingPhoneNumber p) => new()
     {
-        Id = p.Id, Label = p.Label.ToString(), IsPrimary = p.IsPrimary, Value = p.Value,
+        Id = p.Id,
+        Label = p.Label.ToString(),
+        IsPrimary = p.IsPrimary,
+        Value = p.Value,
     };
 }

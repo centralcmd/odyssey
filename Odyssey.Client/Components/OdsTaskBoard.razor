@@ -122,10 +122,14 @@
         {
             var s = Status(t);
             if (_byCol.TryGetValue(s, out var bucket))
+            {
                 bucket.Add(t);
+            }
         }
         foreach (var bucket in _byCol.Values)
+        {
             bucket.Sort((a, b) => Position(a).CompareTo(Position(b)));
+        }
     }
 
     private static string Label(JournalTaskStatus s) => s.ToString();
@@ -143,7 +147,9 @@
         var i = list.FindIndex(x => Id(x) == Id(t));
         var j = i + dir;
         if (j < 0 || j >= list.Count)
+        {
             return;
+        }
         await Emit(t, s, j, "reordered in");
     }
 
@@ -152,7 +158,9 @@
         var ci = _colIndex[Status(t)];
         var cj = ci + dir;
         if (cj < 0 || cj >= Columns.Count)
+        {
             return;
+        }
         var target = Columns[cj];
         await Emit(t, target, _byCol[target].Count, "moved to");
     }
@@ -161,11 +169,15 @@
     {
         _overCol = null;
         if (_dragId is not { } dragId)
+        {
             return;
+        }
         var moved = Tasks.FirstOrDefault(x => Id(x) == dragId);
         _dragId = null;
         if (moved is null)
+        {
             return;
+        }
         await Emit(moved, toStatus, toIndex, "moved to");
     }
 }

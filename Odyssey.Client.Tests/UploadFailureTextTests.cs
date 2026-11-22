@@ -89,39 +89,4 @@ public sealed class UploadFailureTextTests
     [InlineData(int.MaxValue, "shortly")]
     public void Retry_after_rounds_up_to_whole_minutes(int? seconds, string expected) =>
         Assert.Equal(expected, UploadRetryWording.When(seconds is { } s ? TimeSpan.FromSeconds(s) : null));
-
-    private static FileBackfillStatus Status(int toMove = 0, int waiting = 0, int failed = 0) => new()
-    {
-        ToMove = toMove, WaitingOnPhotos = waiting, Failed = failed, Remaining = toMove + waiting + failed,
-        OnDisk = new FileBackfillOnDisk { Finance = 1, Journal = 2, ContactAvatars = 3 },
-    };
-
-    [Fact]
-    public void The_file_move_card_reads_its_states_in_precedence_order()
-    {
-        Assert.Equal("Every file is on disk.", BackgroundJobPresentation.FileMoveView(Status()).Lead);
-        Assert.Equal("4 files still to move from the database to disk.",
-            BackgroundJobPresentation.FileMoveView(Status(toMove: 4, waiting: 2, failed: 1)).Lead);
-        Assert.Equal("2 files are waiting for the photo move to finish.",
-            BackgroundJobPresentation.FileMoveView(Status(waiting: 2, failed: 1)).Lead);
-        Assert.Equal("1 file is waiting for the photo move to finish.",
-            BackgroundJobPresentation.FileMoveView(Status(waiting: 1)).Lead);
-        Assert.StartsWith("Only parked files are left.", BackgroundJobPresentation.FileMoveView(Status(failed: 1)).Lead, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void The_file_move_card_takes_its_counts_as_sent_and_names_every_area()
-    {
-        var view = BackgroundJobPresentation.FileMoveView(Status(toMove: 4, waiting: 2, failed: 1) with
-        {
-            FailedByCode = new() { ["type"] = 1, ["hash"] = 0 },
-        });
-
-        Assert.Equal(
-            [("To move", 4, null), ("Parked", 1, null), ("Waiting on photos", 2, null),
-             ("Finance files", 1, "on disk"), ("Journal files", 2, "on disk"), ("Contact avatars", 3, "on disk")],
-            view.Tiles.Select(t => (t.Label, t.Value, t.Foot)));
-        Assert.Equal(["Unsupported type: 1"], view.ParkedLines);
-        Assert.Equal("Parked files by reason", view.ParkedListCaption);
-    }
 }

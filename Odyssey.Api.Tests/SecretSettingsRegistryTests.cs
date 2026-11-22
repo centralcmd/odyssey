@@ -338,7 +338,7 @@ public class SecretSettingsRegistryTests
 
     /// <summary>
     /// Substitutes a Production-filtered registry rather than booting the host in Production, which
-    /// would also change authentication, HTTPS redirection and Swagger and turn this into a test of
+    /// would also change authentication, HTTPS redirection and the API docs and turn this into a test of
     /// something else.
     /// </summary>
     private sealed class ProductionRegistryFactory() : OdysseyApiFactory(

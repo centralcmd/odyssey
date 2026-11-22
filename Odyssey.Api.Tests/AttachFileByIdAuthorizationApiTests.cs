@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -17,7 +18,7 @@ namespace Odyssey.Api.Tests;
 /// (a confused deputy). The contract and property surfaces already stacked <c>files.read</c>; these
 /// are the three that did not.
 /// </summary>
-public sealed class AttachFileByIdAuthorizationApiTests
+public sealed class AttachFileByIdAuthorizationApiTests(AttachFileByIdAuthorizationApiTests.Host host) : SharedApiHostTests<AttachFileByIdAuthorizationApiTests.Host>(host)
 {
     public enum Surface
     {
@@ -45,7 +46,7 @@ public sealed class AttachFileByIdAuthorizationApiTests
     [MemberData(nameof(Cases))]
     public async Task Attach_RequiresRecordUpdateAndFilesRead(Surface surface, string[] claims, HttpStatusCode expected)
     {
-        await using var factory = new OdysseyApiFactory(claims);
+        var factory = Factory.ForCaller(claims);
         var seeded = await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -96,8 +97,7 @@ public sealed class AttachFileByIdAuthorizationApiTests
         };
         db.TaxStatements.Add(taxStatement);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -105,7 +105,7 @@ public sealed class AttachFileByIdAuthorizationApiTests
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(metadata);
@@ -124,4 +124,7 @@ public sealed class AttachFileByIdAuthorizationApiTests
 
         return (account.AccountId, transaction.TransactionId, taxStatement.TaxStatementId, metadata.Id);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

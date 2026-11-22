@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -13,14 +14,8 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class FileAnalysisQueueApiClientTests
 {
-    private sealed class StubHandler(Func<HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
-            Task.FromResult(respond());
-    }
-
     private static OdysseyApi Api(Func<HttpResponseMessage> respond) =>
-        new(new HttpClient(new StubHandler(respond)) { BaseAddress = new Uri("http://localhost/") });
+        new(new HttpClient(new RecordingHttpHandler(_ => respond())) { BaseAddress = new Uri("http://localhost/") });
 
     private static ApiProblem Problem(string json) =>
         System.Text.Json.JsonSerializer.Deserialize<ApiProblem>(json, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;

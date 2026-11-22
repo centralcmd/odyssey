@@ -244,22 +244,4 @@ public class AccountEstimateServiceTests
 
         Assert.False(await service.Delete(accountId, Guid.NewGuid()));
     }
-
-    [Fact]
-    public async Task DeletingAccount_CascadesToEstimates()
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context);
-        var service = new AccountEstimateService(context);
-
-        await service.Create(accountId, Estimate(300000m, new DateTime(2026, 1, 1)));
-
-        var account = await context.Accounts
-            .Include(a => a.AccountEstimates)
-            .FirstAsync(a => a.AccountId == accountId);
-        context.Accounts.Remove(account);
-        await context.SaveChangesAsync();
-
-        Assert.Empty(await context.AccountEstimates.ToListAsync());
-    }
 }

@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
@@ -19,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// <c>400</c>, the four empty causes, ISO-8601 date binding, and the exact agreement between the final
 /// point and <c>/api/accounts/totals</c>.
 /// </summary>
-public class NetWorthHistoryApiTests
+public class NetWorthHistoryApiTests(NetWorthHistoryApiTests.Host host) : SharedApiHostTests<NetWorthHistoryApiTests.Host>(host)
 {
     private const string ActorUserId = "net-worth-history-actor-id";
     private const string Path = "/api/accounts/net-worth-history";
@@ -29,19 +30,14 @@ public class NetWorthHistoryApiTests
     // their own would make the agreement below a flaky test rather than a contract.
     private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(
             permissions,
             ActorUserId,
             configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedNow));
+                services.AddSingleton<TimeProvider>(new FakeTimeProvider(FixedNow));
             });
 
     private static readonly string[] ReadAccounts = [PermissionClaims.AccountsRead];
@@ -51,7 +47,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(Path)).StatusCode);
@@ -60,7 +56,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task WithoutAccountsRead_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Path)).StatusCode);
@@ -69,7 +65,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task WithAccountsRead_ReturnsOk()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -81,7 +77,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task TheFinalPoint_EqualsTheTotalsEndpointExactly()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
 
         // The dataset deliberately carries future-dated rows of all three kinds plus an account that
         // has not opened yet. Before issue #90 G7 the totals counted every one of them and the two
@@ -139,7 +135,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task ARangeError_CarriesAnErrorsDictionary()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -154,7 +150,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task AFutureTo_IsRejected()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -169,7 +165,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task AWindowOverTheIntervalCap_IsRejectedAndNamesTheCap()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -185,7 +181,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task AWindowExactlyAtTheIntervalCap_IsAccepted()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -197,7 +193,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task AnUnsupportedCurrency_IsAFlatDetail_AndEchoesNothingElse()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory, context => context.Accounts.Add(
             Account(Guid.NewGuid(), "Zurich brokerage", AccountType.InvestmentAccount, "CHF", FixedNow.AddYears(-1))));
         using var client = factory.CreateClient();
@@ -223,7 +219,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task NoAccounts_IsReportedAsItsOwnCause()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -237,7 +233,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task AWindowBeforeTheFirstAccount_IsReportedAsItsOwnCause()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory, context => context.Accounts.Add(
             Account(Guid.NewGuid(), "Checking", AccountType.CheckingAccount, "USD", FixedNow.AddYears(-1))));
         using var client = factory.CreateClient();
@@ -252,7 +248,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task NothingConvertible_IsReportedAsItsOwnCause()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory, context =>
         {
             var zurich = Guid.NewGuid();
@@ -307,7 +303,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task ALocaleFormattedDate_IsRejected()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
 
@@ -321,7 +317,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task AnIsoDate_Binds()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory, context => context.Accounts.Add(
             Account(Guid.NewGuid(), "Checking", AccountType.CheckingAccount, "USD", new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc))));
         using var client = factory.CreateClient();
@@ -344,7 +340,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task TheEarliestRepresentableTo_IsAWellFormedEmptyResponse()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory, context => context.Accounts.Add(
             Account(Guid.NewGuid(), "Checking", AccountType.CheckingAccount, "USD", FixedNow.AddYears(-1))));
         using var client = factory.CreateClient();
@@ -361,7 +357,7 @@ public class NetWorthHistoryApiTests
     [Fact]
     public async Task TheLatestRepresentableWindow_DoesNotOverflow()
     {
-        await using var factory = new ApiFactory(ReadAccounts);
+        var factory = Factory.ForCaller(ReadAccounts);
         await SeedAsync(factory, context => context.Accounts.Add(
             Account(Guid.NewGuid(), "Checking", AccountType.CheckingAccount, "USD", FixedNow.AddYears(-1))));
         using var client = factory.CreateClient();
@@ -376,12 +372,12 @@ public class NetWorthHistoryApiTests
     // ── AC24 — the OpenAPI document ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Swagger_RendersFromAndToAsIsoDates()
+    public async Task OpenApi_RendersFromAndToAsIsoDates()
     {
         await using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -403,12 +399,12 @@ public class NetWorthHistoryApiTests
     }
 
     [Fact]
-    public async Task Swagger_DeclaresTheForbiddenResponse()
+    public async Task OpenApi_DeclaresTheForbiddenResponse()
     {
         await using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         var responses = document.RootElement
@@ -468,4 +464,7 @@ public class NetWorthHistoryApiTests
         AsOf = asOf,
         CreatedAt = asOf,
     };
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

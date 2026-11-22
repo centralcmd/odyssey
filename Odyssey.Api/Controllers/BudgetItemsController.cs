@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 
 using Odyssey.Core.Finance;
 
@@ -29,9 +29,8 @@ public sealed class BudgetItemsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingBudgetItem>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List budget items.",
-        Description = @"List budget items with search, filtering, sorting and pagination.")]
+    [EndpointSummary("List budget items.")]
+    [EndpointDescription(@"List budget items with search, filtering, sorting and pagination.")]
     public async Task<IActionResult> Get(
         [FromQuery] BudgetItemsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -45,12 +44,10 @@ public sealed class BudgetItemsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingBudgetItem))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get a budget item based on the budget item ID.",
-        Description = @"Get a budget item based on the budget item ID.")]
+    [EndpointSummary("Get a budget item based on the budget item ID.")]
+    [EndpointDescription(@"Get a budget item based on the budget item ID.")]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the budget item to get.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the budget item to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var budgetItem = await budgetItemService.Get(id, cancellationToken);
         if (budgetItem is null)
@@ -67,15 +64,13 @@ public sealed class BudgetItemsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Create a new budget item.",
-        Description = @"Create a new budget item. A budget item is a planned amount for a transaction tag, so 
+    [EndpointSummary("Create a new budget item.")]
+    [EndpointDescription(@"Create a new budget item. A budget item is a planned amount for a transaction tag, so 
                         transactionTagId is required: a missing, empty, unknown or archived tag is a 400, and a tag 
                         already planned for in the target budget is a 409. If a new budget item is created, the url 
                         for the new budget item is returned in the location header.")]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewBudgetItem", Required = true,
-            Description = "The new budget item to create.")] NewBudgetItem newBudgetItem, CancellationToken cancellationToken = default)
+        [FromBody][Description("The new budget item to create.")] NewBudgetItem newBudgetItem, CancellationToken cancellationToken = default)
     {
         var budgetItem = await budgetItemService.Create(newBudgetItem, cancellationToken);
         return CreatedAtRoute("GetBudgetItem", new { id = budgetItem.BudgetItemId }, "");
@@ -88,15 +83,12 @@ public sealed class BudgetItemsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update the details for a budget item.",
-        Description = @"Update the details for a budget item. Not an upsert: an unknown ID is a 404 and
+    [EndpointSummary("Update the details for a budget item.")]
+    [EndpointDescription(@"Update the details for a budget item. Not an upsert: an unknown ID is a 404 and
                         nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the budget item to update.")] Guid id,
-        [FromBody] [SwaggerParameter("NewBudgetItem", Required = true,
-            Description = @"The budget item with the updated values.")] NewBudgetItem newBudgetItem, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the budget item to update.")] Guid id,
+        [FromBody][Description(@"The budget item with the updated values.")] NewBudgetItem newBudgetItem, CancellationToken cancellationToken = default)
     {
         var budgetItem = await budgetItemService.Update(id, newBudgetItem, cancellationToken);
         return budgetItem is null
@@ -108,12 +100,10 @@ public sealed class BudgetItemsController : ControllerBase
     [Authorize(Policy = PermissionClaims.BudgetsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete a budget item based on the budget item ID.",
-        Description = @"Delete a budget item based on the budget item ID.")]
+    [EndpointSummary("Delete a budget item based on the budget item ID.")]
+    [EndpointDescription(@"Delete a budget item based on the budget item ID.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the budget item to delete.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the budget item to delete.")] Guid id, CancellationToken cancellationToken = default)
     {
         await budgetItemService.Delete(id, cancellationToken);
         return NoContent();

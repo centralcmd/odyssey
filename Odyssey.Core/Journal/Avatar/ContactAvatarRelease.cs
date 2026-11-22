@@ -97,7 +97,7 @@ public static class ContactAvatarRelease
             return AvatarReleaseOutcome.DetachedOnly;
         }
 
-        // The shared removal: a legacy blob goes with the row, an image on disk is released (issue #448).
+        // The shared removal: the image on disk is released with the row (issue #448).
         await StoredFileRemoval.StageRemoveAsync(context, store, metadata, cancellationToken);
         return AvatarReleaseOutcome.Deleted;
     }

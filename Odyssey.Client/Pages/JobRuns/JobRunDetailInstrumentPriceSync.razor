@@ -1,5 +1,6 @@
 @*
-    An instrument-price sync run's or purge's detail (issue #446 §4.6): instruments attempted, succeeded and failed, the
+    An instrument-price sync run's or purge's detail (issue #446 §4.6): instruments attempted, succeeded, failed and
+    deferred (a request limit left them for the next hour, issue #447 — not a failure), the
     prices it inserted (or a purge deleted), fallbacks used and the wire requests it made. Counts only. The full
     Background jobs surface for this job is specified in frontend issue #452 §3.6.
 *@
@@ -9,6 +10,7 @@
     <OdsMetaTile Label="@Text("Attempted")">@N(Sync.InstrumentsAttempted)</OdsMetaTile>
     <OdsMetaTile Label="@Text("Succeeded")">@N(Sync.InstrumentsSucceeded)</OdsMetaTile>
     <OdsMetaTile Label="@Text("Failed")">@N(Sync.InstrumentsFailed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Deferred")">@N(Sync.InstrumentsDeferred)</OdsMetaTile>
     <OdsMetaTile Label="@Text("Prices added")">@N(Sync.PricesInserted)</OdsMetaTile>
     <OdsMetaTile Label="@Text("Prices deleted")">@N(Sync.PricesDeleted)</OdsMetaTile>
     <OdsMetaTile Label="@Text("Fallbacks")">@N(Sync.FallbacksUsed)</OdsMetaTile>

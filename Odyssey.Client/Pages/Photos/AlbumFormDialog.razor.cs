@@ -84,7 +84,10 @@ public partial class AlbumFormDialog
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusAfter is not { } candidates)
+        {
             return;
+        }
+
         _focusAfter = null;
         try
         {
@@ -101,7 +104,9 @@ public partial class AlbumFormDialog
     {
         if (_focusReturnJs is not null)
         {
-            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            try
+            { await _focusReturnJs.DisposeAsync(); }
+            catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 
@@ -258,13 +263,18 @@ public partial class AlbumFormDialog
         {
             var id = item.PhotoId;
             if (target.Contains(id))
+            {
                 continue;
+            }
+
             _pickedInfo[id] = item;
             target.Add(id);
             added++;
         }
         if (added > 0)
+        {
             _announce = added == 1 ? "1 photo added to the album." : $"{added} photos added to the album.";
+        }
     }
 
     private void Move(int index, int delta)

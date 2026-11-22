@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Locations;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -88,12 +89,18 @@ public class LocalTimeZoneDateHandlingTests
         var (service, accountId) = await NewTransactionServiceAsync(context);
         var created = await service.Create(new NewTransaction
         {
-            Description = "Coffee", Amount = 3, AccountId = accountId, TimeStamp = Utc(2021, 7, 1, 0),
+            Description = "Coffee",
+            Amount = 3,
+            AccountId = accountId,
+            TimeStamp = Utc(2021, 7, 1, 0),
         });
 
         var updated = await service.Update(created.TransactionId, new NewTransaction
         {
-            Description = "Coffee", Amount = 3, AccountId = accountId, TimeStamp = Tokyo(2021, 7, 4, 5),
+            Description = "Coffee",
+            Amount = 3,
+            AccountId = accountId,
+            TimeStamp = Tokyo(2021, 7, 4, 5),
         });
 
         AssertUtc(Utc(2021, 7, 3, 20), updated!.TimeStamp);
@@ -104,7 +111,7 @@ public class LocalTimeZoneDateHandlingTests
     {
         using var zone = LocalTimeZoneScope.UseTokyo();
         await using var context = TestContextFactory.Create();
-        var service = new TaxStatementService(context, new FixedTimeProvider(Now));
+        var service = new TaxStatementService(context, new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewTaxStatement
         {
@@ -158,7 +165,7 @@ public class LocalTimeZoneDateHandlingTests
     {
         using var zone = LocalTimeZoneScope.UseTokyo();
         await using var context = TestContextFactory.Create();
-        var service = new TaxStatementService(context, new FixedTimeProvider(Now));
+        var service = new TaxStatementService(context, new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewTaxStatement
         {
@@ -194,7 +201,7 @@ public class LocalTimeZoneDateHandlingTests
     {
         using var zone = LocalTimeZoneScope.UseTokyo();
         await using var context = TestContextFactory.Create();
-        var service = new TaxStatementService(context, new FixedTimeProvider(Now));
+        var service = new TaxStatementService(context, new FakeTimeProvider(Now));
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(new NewTaxStatement
         {
@@ -216,7 +223,7 @@ public class LocalTimeZoneDateHandlingTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new CalendarEventService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new CalendarEventService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewCalendarEvent
         {
@@ -253,7 +260,7 @@ public class LocalTimeZoneDateHandlingTests
         var calendar = new Context.Calendar { Name = "Personal" };
         context.Calendars.Add(calendar);
         await context.SaveChangesAsync();
-        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FakeTimeProvider(Now));
 
         var created = await service.Create(new NewRecurrencePattern
         {

@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Identity;
@@ -42,9 +41,8 @@ public sealed class ContractTermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingTerm>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the term (rate/fee) history for a contract.",
-        Description = @"Lists the full term history for the contract, newest effective date first.
+    [EndpointSummary("Get the term (rate/fee) history for a contract.")]
+    [EndpointDescription(@"Lists the full term history for the contract, newest effective date first.
                         Optionally filtered by an as-of date. An archived contract's history stays
                         readable.")]
     public async Task<IActionResult> GetTerms(
@@ -59,9 +57,8 @@ public sealed class ContractTermsController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CurrentTerm>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the currently-effective term of each series on a contract.",
-        Description = @"Returns the in-force entry of each labelled series that has at least one
+    [EndpointSummary("Get the currently-effective term of each series on a contract.")]
+    [EndpointDescription(@"Returns the in-force entry of each labelled series that has at least one
                         entry, as of now or the supplied as-of date. An empty array is a healthy
                         response — a contract with no recorded price is not a defect.")]
     public async Task<IActionResult> GetCurrentTerms(
@@ -79,9 +76,8 @@ public sealed class ContractTermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Create a term (rate/fee) entry on a contract.",
-        Description = @"Every term is a labelled series; 'label' names what it prices. A money-valued
+    [EndpointSummary("Create a term (rate/fee) entry on a contract.")]
+    [EndpointDescription(@"Every term is a labelled series; 'label' names what it prices. A money-valued
                         term must name its currency — a contract has none of its own to default from.
                         'direction' says which way the money moves from the household's perspective;
                         it is optional, omitting it means Outgoing, and every unit accepts either.")]
@@ -111,9 +107,8 @@ public sealed class ContractTermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Replace a term entry on a contract.",
-        Description = @"The owner is not changeable through this endpoint — the route is the only
+    [EndpointSummary("Replace a term entry on a contract.")]
+    [EndpointDescription(@"The owner is not changeable through this endpoint — the route is the only
                         thing that names it. A term id belonging to a different contract is a 404, never a 403 and never a silent success.
 
                         This is a FULL replace and 'direction' is not exempt: omitting it resets the
@@ -144,7 +139,7 @@ public sealed class ContractTermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a term entry from a contract (the contract itself is untouched).")]
+    [EndpointSummary("Delete a term entry from a contract (the contract itself is untouched).")]
     public async Task<IActionResult> DeleteTerm(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "termId")] Guid termId, CancellationToken cancellationToken = default)

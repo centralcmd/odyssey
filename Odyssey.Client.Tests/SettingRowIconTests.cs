@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -37,7 +38,7 @@ public class SettingRowIconTests
     /// </summary>
     private static List<(string Key, string Icon)> CatalogueIcons()
     {
-        var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var text = ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
         return Regex.Matches(text, @"new\(""(?<key>[A-Za-z0-9-]+)"",\s*""(?<icon>[a-z0-9_]+)""")
             .Select(match => (match.Groups["key"].Value, match.Groups["icon"].Value))
@@ -50,7 +51,7 @@ public class SettingRowIconTests
     /// </summary>
     private static HashSet<string> FontLigatures()
     {
-        var path = ClientSource.Sibling(Path.Combine("Odyssey.Client.Tests", "MaterialIconsLigatures.txt"));
+        var path = SourceTree.File(Path.Combine("Odyssey.Client.Tests", "MaterialIconsLigatures.txt"));
         var ligatures = File.ReadAllLines(path)
             .Select(line => line.Trim())
             .Where(line => line.Length > 0 && !line.StartsWith('#'))
@@ -162,7 +163,7 @@ public class SettingRowIconTests
     [Fact]
     public void No_settings_row_title_contains_a_comma_or_a_period()
     {
-        var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        var text = ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
         var titles = Regex.Matches(
                 text, @"new\(""(?<key>[A-Za-z0-9-]+)"",\s*""[a-z0-9_]+"",\s*""(?<title>(?:[^""\\]|\\.)*)""")

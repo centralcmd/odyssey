@@ -36,10 +36,6 @@ internal static class SeededTables
             "A singleton byte counter the worker updates."),
         new("FileStorageMaintenanceLeases", SeededTableClass.Keys,
             "A singleton lease the worker rewrites on every tick."),
-        new("FileBlobBackfillLeases", SeededTableClass.Keys,
-            "A singleton lease the backfill job rewrites."),
-        new("PhotoOriginalBackfillLeases", SeededTableClass.Keys,
-            "A singleton lease the backfill job rewrites."),
         new("PhotoThumbnailBuckets", SeededTableClass.Keys,
             "A singleton bucket counter the thumbnail writer increments."),
     ];

@@ -33,7 +33,7 @@
     }
     else
     {
-        <JournalEntryFields Draft="_draft" TagOptions="_tagOpts" ContactOptions="_contactOpts" AutoFocus="true"
+        <JournalEntryFields Draft="_draft" TagOptions="_tagOpts" ArchivedTagNames="ArchivedTagNames" ContactOptions="_contactOpts" AutoFocus="true"
                             OnCreateTag="@(_canCreateTag ? CreateTagOption : null)"
                             OnCreateContact="@(_canCreateContact ? CreateContactOption : null)"
                             CanDownload="_canDownloadFiles"

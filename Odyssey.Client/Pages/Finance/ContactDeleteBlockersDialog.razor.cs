@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Odyssey.Dtos.Books;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -20,6 +21,19 @@ public partial class ContactDeleteBlockersDialog
     [Parameter] public ContactContractBeneficiaryBlockers ContractBeneficiaries { get; set; } = new();
 
     /// <summary>
+    /// The 409's <c>bookCredits</c> (issue #527 / #571 §3.10): the contact is credited as a book's main author or a
+    /// contributor (RESTRICT keys). A count always; titles only for a <c>books.read</c> holder. Non-null switches the
+    /// dialog to its books state — there is no detach for a credit; it is removed on the Books page.
+    /// </summary>
+    [Parameter] public ContactBookCreditBlockers? BookCredits { get; set; }
+
+    /// <summary>The 409 carried a <c>bookCredits</c> member this build could not read: the books state, without numbers.</summary>
+    [Parameter] public bool BookCreditsUnreadable { get; set; }
+
+    /// <summary>A detach-and-delete was refused because a credit appeared in between: say that nothing was deleted.</summary>
+    [Parameter] public bool DetachRefused { get; set; }
+
+    /// <summary>
     /// Whether the caller holds <c>contracts.update</c>. Gates the detach affordance; the server gates
     /// it too, with a 403 — this only keeps the dialog from offering an action it knows will fail.
     /// </summary>
@@ -37,6 +51,12 @@ public partial class ContactDeleteBlockersDialog
     private DetachedContactLinks? _result;
 
     private bool BlockedByContracts => ContractBeneficiaries.TotalLinks > 0;
+
+    /// <summary>The books state: a book credit blocks, and nothing here can release it.</summary>
+    private bool BlockedByBooks => BookCredits is not null || BookCreditsUnreadable;
+
+    /// <summary>Counts the dialog may state; a malformed member falls back to "one or more books".</summary>
+    private bool BookCountsKnown => BookCredits is { BookCount: > 0, TotalCredits: > 0 };
 
     private int TotalBlockingLinks => ContractBeneficiaries.TotalLinks;
 

@@ -96,31 +96,49 @@ public class CurrencyServiceTests
 
         var account = new Context.Account
         {
-            Name = "Brokerage", Description = "Brokerage", Opened = DateTime.UtcNow, CurrencyCode = "NOK",
+            Name = "Brokerage",
+            Description = "Brokerage",
+            Opened = DateTime.UtcNow,
+            CurrencyCode = "NOK",
         };
         context.Accounts.Add(account);
         context.Accounts.Add(new Context.Account
         {
-            Name = "Savings", Description = "Savings", Opened = DateTime.UtcNow, CurrencyCode = "NOK",
+            Name = "Savings",
+            Description = "Savings",
+            Opened = DateTime.UtcNow,
+            CurrencyCode = "NOK",
         });
         context.Transactions.Add(new Context.Transaction
         {
-            AccountId = account.AccountId, Description = "Coffee", Amount = -4m, TimeStamp = DateTime.UtcNow,
+            AccountId = account.AccountId,
+            Description = "Coffee",
+            Amount = -4m,
+            TimeStamp = DateTime.UtcNow,
             CurrencyCode = "NOK",
         });
         context.Budgets.Add(new Context.Budget
         {
-            Name = "2026", StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 12, 31),
+            Name = "2026",
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = new DateTime(2026, 12, 31),
             BaseCurrencyCode = "NOK",
         });
         context.TaxStatements.Add(new Context.TaxStatement
         {
-            Name = "2025", FiscalYear = 2025, StartDate = new DateTime(2025, 1, 1),
-            EndDate = new DateTime(2025, 12, 31), BaseCurrencyCode = "NOK", CreatedAtUtc = DateTime.UtcNow,
+            Name = "2025",
+            FiscalYear = 2025,
+            StartDate = new DateTime(2025, 1, 1),
+            EndDate = new DateTime(2025, 12, 31),
+            BaseCurrencyCode = "NOK",
+            CreatedAtUtc = DateTime.UtcNow,
         });
         context.ExchangeRates.Add(new Context.ExchangeRate
         {
-            FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, AsOf = DateTime.UtcNow,
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "NOK",
+            Rate = 10m,
+            AsOf = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();
 
@@ -145,19 +163,30 @@ public class CurrencyServiceTests
 
         context.Properties.Add(new Context.Property
         {
-            Name = "Cabin", Description = "Cabin", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
+            Name = "Cabin",
+            Description = "Cabin",
+            Type = PropertyType.RealEstate,
+            CurrencyCode = "NOK",
         });
         context.AccountEstimates.Add(new Context.AccountEstimate
         {
-            AccountId = Guid.NewGuid(), Value = 1m, EffectiveFrom = DateTime.UtcNow, CurrencyCode = "NOK",
+            AccountId = Guid.NewGuid(),
+            Value = 1m,
+            EffectiveFrom = DateTime.UtcNow,
+            CurrencyCode = "NOK",
         });
         context.PropertyEstimates.Add(new Context.PropertyEstimate
         {
-            PropertyId = Guid.NewGuid(), Value = 1m, EffectiveFrom = DateTime.UtcNow, CurrencyCode = "NOK",
+            PropertyId = Guid.NewGuid(),
+            Value = 1m,
+            EffectiveFrom = DateTime.UtcNow,
+            CurrencyCode = "NOK",
         });
         context.Terms.Add(new Context.Term
         {
-            ContractId = Guid.NewGuid(), EffectiveFrom = DateTime.UtcNow, CurrencyCode = "NOK",
+            ContractId = Guid.NewGuid(),
+            EffectiveFrom = DateTime.UtcNow,
+            CurrencyCode = "NOK",
         });
         await context.SaveChangesAsync();
 
@@ -180,7 +209,10 @@ public class CurrencyServiceTests
 
         context.ExchangeRates.Add(new Context.ExchangeRate
         {
-            FromCurrencyCode = "NOK", ToCurrencyCode = "USD", Rate = 0.1m, AsOf = DateTime.UtcNow,
+            FromCurrencyCode = "NOK",
+            ToCurrencyCode = "USD",
+            Rate = 0.1m,
+            AsOf = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();
 

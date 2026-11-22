@@ -15,7 +15,7 @@ namespace Odyssey.IntegrationTests;
 /// token (the requester's <c>SET NULL</c> key is pinned with the others by <c>UserAttributionForeignKeyTests</c>).
 /// None of it is observable on EF InMemory, which computes no column and enforces no index, CHECK or key.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class JobRunsRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_job_runs";
@@ -70,42 +70,24 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
         await MigratedAsync();
         var id = Guid.NewGuid();
 
-        // An unknown job type: 10 is the recurrence-key backfill's since issue #519.
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 11, 0, 0, NOW(), NOW(), UUID())");
+        // An unknown job type: 10 is the recurrence-key backfill's since issue #519, 11 and 12 the podcast audio jobs'
+        // since issue #556.
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 13, 0, 0, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `ItemsRevised`) VALUES ('{id}', 9, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `AnalysesFailed`) VALUES ('{id}', 6, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 1, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 5, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 1, 1, NOW(), NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `PointsFailed`) VALUES ('{id}', 2, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `PhotosParked`) VALUES ('{id}', 5, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
+        // 5 and 7 are the retired file moves' ordinals, and 6 the retired BackingOff held reason: never stored again.
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 5, 0, 1, NOW(), NOW(), NOW(), UUID())");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 7, 0, 1, NOW(), NOW(), NOW(), UUID())");
+        await AssertCheckAsync($"INSERT INTO `JobHeartbeats` (`JobType`, `WorkerId`, `LastTickAtUtc`) VALUES (5, UUID(), NOW())");
+        await AssertCheckAsync($"INSERT INTO `JobHeartbeats` (`JobType`, `WorkerId`, `LastTickAtUtc`) VALUES (7, UUID(), NOW())");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `WorkerId`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 4, 0, 5, 6, UUID(), NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `PricesInserted`) VALUES ('{id}', 8, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `WorkerId`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 5, 0, 5, 7, UUID(), NOW(), NOW(), UUID())");
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `FilesParked`) VALUES ('{id}', 7, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `WorkerId`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 4, 0, 5, 7, UUID(), NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `PhotoThumbnailJobs` (`PhotoId`, `State`, `Generation`, `Attempts`, `LeaseExpiries`, `RerunRequested`, `Priority`, `AttemptedRecipeVersion`, `NextAttemptAtUtc`, `UpdatedAtUtc`, `ManualRequeues`) VALUES ('{id}', 3, 0, 0, 0, 0, 0, 0, NOW(), NOW(), 2)");
-    }
-
-    /// <summary>Issue #428: the photo-original move's rows — a finished burst and a back-off held period — are accepted.</summary>
-    [SkippableFact]
-    public async Task A_photo_original_move_run_and_its_back_off_period_are_accepted()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await MigratedAsync();
-        var burst = Running<PhotoOriginalBackfillJobRun>(JobRunTrigger.Scheduled);
-        burst.PhotosMoved = 4;
-        burst.Interruptions = 1;
-        burst.Finish(JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage, DateTime.UtcNow);
-
-        await AddAsync(burst);
-        await AddAsync(new PhotoOriginalBackfillJobRun
-        {
-            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Held, HeldReason = JobHeldReason.BackingOff,
-            StartedAtUtc = DateTime.UtcNow, LastActivityAtUtc = DateTime.UtcNow, WorkerId = Guid.NewGuid(),
-        });
-        await using var context = NewContext();
-        context.JobHeartbeats.Add(new JobHeartbeat { JobType = JobType.PhotoOriginalBackfill, WorkerId = Guid.NewGuid(), LastTickAtUtc = DateTime.UtcNow });
-        await context.SaveChangesAsync();
-        Assert.Equal(2, await context.Set<PhotoOriginalBackfillJobRun>().CountAsync());
     }
 
     /// <summary>Issue #444: the file-analysis queue's burst and heartbeat rows are accepted by the widened CHECKs.</summary>
@@ -155,14 +137,24 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
     private static TRun Running<TRun>(JobRunTrigger trigger)
         where TRun : JobRun, new() => new()
         {
-            JobRunId = Guid.NewGuid(), Trigger = trigger, Status = JobRunStatus.Running,
-            StartedAtUtc = DateTime.UtcNow, LastActivityAtUtc = DateTime.UtcNow, ClaimedAtUtc = DateTime.UtcNow, WorkerId = Guid.NewGuid(),
+            JobRunId = Guid.NewGuid(),
+            Trigger = trigger,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = DateTime.UtcNow,
+            LastActivityAtUtc = DateTime.UtcNow,
+            ClaimedAtUtc = DateTime.UtcNow,
+            WorkerId = Guid.NewGuid(),
         };
 
     private static PhotoThumbnailJobRun Held(Guid worker) => new()
     {
-        JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Held, HeldReason = JobHeldReason.DecoderPaused,
-        StartedAtUtc = DateTime.UtcNow, LastActivityAtUtc = DateTime.UtcNow, WorkerId = worker,
+        JobRunId = Guid.NewGuid(),
+        Trigger = JobRunTrigger.Scheduled,
+        Status = JobRunStatus.Held,
+        HeldReason = JobHeldReason.DecoderPaused,
+        StartedAtUtc = DateTime.UtcNow,
+        LastActivityAtUtc = DateTime.UtcNow,
+        WorkerId = worker,
     };
 
     private async Task AddAsync(JobRun run)

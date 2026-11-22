@@ -8,6 +8,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
@@ -24,7 +25,7 @@ namespace Odyssey.IntegrationTests;
 /// §10 performance targets — all of which depend on what Pomelo sends to MariaDB, which the EF InMemory provider
 /// cannot show.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelper output)
 {
     private const string Database = "odyssey_weather_batch";
@@ -362,8 +363,14 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
         var id = Guid.NewGuid();
         context.JournalEntries.Add(new JournalEntry
         {
-            JournalEntryId = id, ExternalUid = $"urn:uuid:{id}", Title = "Entry", Content = "Text",
-            EntryDate = entryDate, LocationId = placeId, CreatedAt = Noon, UpdatedAt = Noon,
+            JournalEntryId = id,
+            ExternalUid = $"urn:uuid:{id}",
+            Title = "Entry",
+            Content = "Text",
+            EntryDate = entryDate,
+            LocationId = placeId,
+            CreatedAt = Noon,
+            UpdatedAt = Noon,
         });
         await context.SaveChangesAsync();
         return id;
@@ -377,8 +384,12 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
         context.Calendars.Add(new Calendar { CalendarId = calendarId, Name = $"Calendar {id:N}", CreatedAt = Noon, UpdatedAt = Noon });
         context.CalendarEvents.Add(new CalendarEvent
         {
-            CalendarEventId = id, CalendarId = calendarId, Title = "Event", LocationId = placeId,
-            StartDateTime = start, EndDateTime = end,
+            CalendarEventId = id,
+            CalendarId = calendarId,
+            Title = "Event",
+            LocationId = placeId,
+            StartDateTime = start,
+            EndDateTime = end,
         });
         await context.SaveChangesAsync();
         return id;
@@ -444,15 +455,15 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
         }, AdminId, true, CancellationToken.None));
     }
 
-    private static WeatherBatchReadService Batch(OdysseyContext context) => new(context, new Settings(), new FixedTime());
+    private static WeatherBatchReadService Batch(OdysseyContext context) => new(context, new Settings(), new FakeTimeProvider(Noon));
 
-    private static WeatherReadService Read(OdysseyContext context) => new(context, Fetch(context), new Settings(), new FixedTime());
+    private static WeatherReadService Read(OdysseyContext context) => new(context, Fetch(context), new Settings(), new FakeTimeProvider(Noon));
 
     private static WeatherFetchService Fetch(OdysseyContext context) =>
-        new(context, new NoForecasts(), new NoObservations(), new Settings(), new NoSecrets(), new FixedTime());
+        new(context, new NoForecasts(), new NoObservations(), new Settings(), new NoSecrets(), new FakeTimeProvider(Noon));
 
     private static WeatherPointService Admin(OdysseyContext context) =>
-        new(context, Fetch(context), new Settings(), new RelationalWeatherHistoryPurger(context), new FixedTime());
+        new(context, Fetch(context), new Settings(), new RelationalWeatherHistoryPurger(context), new FakeTimeProvider(Noon));
 
     private static string Describe(CommandCapture capture) =>
         $"{capture.Commands.Count} commands:\n" + string.Join("\n---\n", capture.Commands.Select(c => c.Length > 200 ? c[..200] : c));
@@ -594,11 +605,6 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
 
             base.Dispose(disposing);
         }
-    }
-
-    private sealed class FixedTime : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(Noon);
     }
 
     private sealed class Settings : IWeatherSettingsLookup

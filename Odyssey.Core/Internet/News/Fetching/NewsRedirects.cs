@@ -41,7 +41,8 @@ public sealed record NewsRedirectState(int Hops, string? SuggestedUrl, bool Perm
 }
 
 /// <summary>
-/// Manual redirects (issue #470 §7.9): at most <see cref="MaxRedirects"/> hops actually requested, every hop re-checked
+/// Manual redirects (issue #470 §7.9): at most <see cref="MaxRedirects"/> hops (or the caller's cap: podcast audio
+/// passes 10, issue #556 §3.5) actually requested, every hop re-checked
 /// by the policy (the caller re-runs <see cref="NewsEgressPolicy.CheckUrl"/> through <see cref="NewsEgress.CreateRequest"/>,
 /// and the connect-time check runs again for the new connection). A same-host 301/308 records a suggested URL; a
 /// cross-host one — a subdomain included — does not, and never lets a grant follow it.
@@ -50,7 +51,8 @@ public static class NewsRedirects
 {
     public const int MaxRedirects = 5;
 
-    public static NewsRedirectStep Next(Uri current, HttpStatusCode status, Uri? location, NewsEgressContext context, NewsRedirectState state)
+    public static NewsRedirectStep Next(
+        Uri current, HttpStatusCode status, Uri? location, NewsEgressContext context, NewsRedirectState state, int maxRedirects = MaxRedirects)
     {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(context);
@@ -62,7 +64,7 @@ public static class NewsRedirects
             return new NewsRedirectStep(NewsRedirectOutcome.NotARedirect, null, context, state);
         }
 
-        if (state.Hops >= MaxRedirects)
+        if (state.Hops >= maxRedirects)
         {
             return new NewsRedirectStep(NewsRedirectOutcome.TooManyRedirects, null, context, state);
         }

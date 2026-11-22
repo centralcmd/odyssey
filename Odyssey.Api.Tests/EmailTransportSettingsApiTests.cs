@@ -23,7 +23,7 @@ namespace Odyssey.Api.Tests;
 /// <c>EmailTransportCredentialClearTests</c> in <c>Odyssey.IntegrationTests</c> owns it (AC 4d).
 /// </para>
 /// </summary>
-public class EmailTransportSettingsApiTests
+public class EmailTransportSettingsApiTests(EmailTransportSettingsApiTests.Host host) : SharedApiHostTests<EmailTransportSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string ActorUserId = "88888888-8888-8888-8888-888888888888";
@@ -47,7 +47,7 @@ public class EmailTransportSettingsApiTests
     [Fact]
     public async Task Get_ServesAllFourCompiledDefaults()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -62,7 +62,7 @@ public class EmailTransportSettingsApiTests
     [Fact]
     public async Task Get_WithoutTheReadClaim_IsForbidden()
     {
-        await using var factory = new ApiFactory(NoRead);
+        var factory = Factory.ForCaller(NoRead);
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Path)).StatusCode);
@@ -87,7 +87,7 @@ public class EmailTransportSettingsApiTests
     [MemberData(nameof(SecurityGatedWrites))]
     public async Task Put_WithOnlyTheOrdinaryWriteClaim_IsForbidden_AndWritesNothing(SystemSettingsUpdate request)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
+        var factory = Factory.ForCaller(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, request);
@@ -132,7 +132,7 @@ public class EmailTransportSettingsApiTests
     [MemberData(nameof(RejectedHosts))]
     public async Task Put_WithAMalformedHost_Is400_AndNeverEchoesTheValue(string host)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { EmailSmtpHost = host });
@@ -151,7 +151,7 @@ public class EmailTransportSettingsApiTests
     [Fact]
     public async Task Put_WithAnEmptyHost_IsAccepted_AndMeansUnconfigured()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         (await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { EmailSmtpHost = "smtp.example.test" }))
@@ -176,7 +176,7 @@ public class EmailTransportSettingsApiTests
     [Fact]
     public async Task Put_CanonicalisesTheHostBeforeStoringIt()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(
@@ -194,7 +194,7 @@ public class EmailTransportSettingsApiTests
     public async Task Put_WithAnOutOfRangePort_Is400(int port)
     {
         // AC 8's write half — [Range] on the DTO, applied by model validation before the service runs.
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { EmailSmtpPort = port });
@@ -212,7 +212,7 @@ public class EmailTransportSettingsApiTests
     [InlineData("99999", SystemSettingsBounds.EmailSmtpPortMax)]
     public async Task Get_ClampsAStoredOutOfRangePort_AndReportsIt(string stored, int expected)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.EmailSmtpPort, stored);
         using var client = factory.CreateClient();
 
@@ -239,7 +239,7 @@ public class EmailTransportSettingsApiTests
     [MemberData(nameof(RejectedBaseUrls))]
     public async Task Put_WithARejectedClientBaseUrl_Is400(string value)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { EmailClientBaseUrl = value });
@@ -259,7 +259,7 @@ public class EmailTransportSettingsApiTests
     [InlineData("https://odyssey.example.test/app")]
     public async Task Put_WithAnAcceptedClientBaseUrl_Succeeds(string value)
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { EmailClientBaseUrl = value });
@@ -278,7 +278,7 @@ public class EmailTransportSettingsApiTests
     [Fact]
     public async Task Get_ReportsAStoredClientBaseUrlTheRuleRejects()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.EmailClientBaseUrl, "http://attacker.example.test");
         using var client = factory.CreateClient();
@@ -306,7 +306,7 @@ public class EmailTransportSettingsApiTests
     [Fact]
     public async Task Put_TakesEffectOnTheNextRead()
     {
-        await using var factory = new ApiFactory(ReadAndBoth);
+        var factory = Factory.ForCaller(ReadAndBoth);
         using var client = factory.CreateClient();
 
         (await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { EmailSmtpHost = "smtp.first.test" }))
@@ -348,7 +348,10 @@ public class EmailTransportSettingsApiTests
 
     // No photo volume: these tests read the settings table as EF InMemory leaves it without EnsureCreated (no seeded
     // rows), and verifying a volume ensures the store is created.
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId,
             configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" });
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

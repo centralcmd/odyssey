@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -19,13 +20,8 @@ public class NetWorthHistoryServiceTests
 {
     private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => new(utcNow);
-    }
-
     private static NetWorthHistoryService Service(OdysseyContext context, DateTime? now = null) =>
-        new(context, new CurrencyConversionService(context), new FixedTimeProvider(now ?? FixedNow));
+        new(context, new CurrencyConversionService(context), new FakeTimeProvider(now ?? FixedNow));
 
     private static NetWorthHistoryQuery Query(
         NetWorthInterval interval = NetWorthInterval.Monthly,

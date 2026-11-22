@@ -27,7 +27,7 @@ namespace Odyssey.Api.Tests;
 /// move alone), the <c>[Range]</c> on every write DTO against the constants (so a new money property
 /// cannot ship unbounded), and the HTTP boundary itself (so the bound really yields a <c>400</c>).
 /// </remarks>
-public class MoneyBoundsTests
+public class MoneyBoundsTests(MoneyBoundsTests.Host host) : SharedApiHostTests<MoneyBoundsTests.Host>(host)
 {
     private const string ActorUserId = "money-bounds-actor";
 
@@ -40,7 +40,7 @@ public class MoneyBoundsTests
         PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisImport,
     ];
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
 
     // ── The constants against the EF model ────────────────────────────────────
@@ -92,6 +92,10 @@ public class MoneyBoundsTests
         // and by CHECK constraints in the database (issue #350).
         (typeof(Context.Location), nameof(Context.Location.Latitude)),
         (typeof(Context.Location), nameof(Context.Location.Longitude)),
+        // Ingredient quantities, decimal(12,3) — not money; bounded by [Range(RecipeLimits.MinAmount/MaxAmount)] on
+        // RecipeIngredientRequest and a 3-decimal check in RecipeService (issue #525 §8.1).
+        (typeof(Context.RecipeIngredient), nameof(Context.RecipeIngredient.Amount)),
+        (typeof(Context.RecipeIngredient), nameof(Context.RecipeIngredient.AmountMax)),
         // Weather (issue #348): never written from a request body. Site coordinates are the rounded copies a
         // weather-point write (issue #387, range-checked on NewWeatherPoint/UpdateWeatherPoint) produces; the run, step, observation and day values are parsed from MET/Frost responses and
         // range-checked by the parsers (WeatherHttp.InRange) before they are stored.
@@ -256,6 +260,10 @@ public class MoneyBoundsTests
     // request can carry as a decimal that is not here must name the MoneyBounds [Range].
     private static readonly Dictionary<string, string> DecimalMembersOutsideMoneyBounds = new(StringComparer.Ordinal)
     {
+        [$"{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest)}.{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest.Amount)}"] =
+            "An ingredient quantity, decimal(12,3); bounded by [Range(RecipeLimits.MinAmount, RecipeLimits.MaxAmount)] (issue #525).",
+        [$"{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest)}.{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest.AmountMax)}"] =
+            "An ingredient range end, decimal(12,3); bounded by [Range(RecipeLimits.MinAmount, RecipeLimits.MaxAmount)] (issue #525).",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.LivingAreaSqm)}"] =
             "An area in square metres, decimal(18,2); bounded by its own [Range(0, 1_000_000)].",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.PlotAreaSqm)}"] =
@@ -515,7 +523,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task CreateTransaction_AmountPastTheColumn_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         // The annotation 400 precedes the account lookup, so no account needs seeding.
@@ -527,7 +535,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task CreateTaxStatement_AmountAtTheColumnMax_IsAccepted()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -541,7 +549,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task CreateTaxStatement_AmountJustPastTheColumnMax_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/tax-statements", TaxStatement(1_000_000_000_000m));
@@ -554,7 +562,7 @@ public class MoneyBoundsTests
     [InlineData("9999999999.99999999")]
     public async Task CreateExchangeRate_RateAtTheColumnBounds_IsAccepted(string rate)
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         await EnsureReferenceDataAsync(factory);
         using var client = factory.CreateClient();
 
@@ -571,7 +579,7 @@ public class MoneyBoundsTests
     [InlineData("10000000000")]      // past decimal(18,8): was a 500
     public async Task CreateExchangeRate_RateOutsideTheColumn_Returns400(string rate)
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/exchange-rates", NewRate(Parse(rate)));
@@ -585,7 +593,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task ImportCandidates_AmountOverridePastTheColumn_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         // The attribute sits on a positional record's constructor parameter; this proves MVC honours it.
@@ -599,7 +607,7 @@ public class MoneyBoundsTests
     [Fact]
     public async Task ImportCandidates_AmountOverrideAtTheColumnMax_PassesModelValidation()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         // The control for the case above: the same body within bounds gets past model validation and
@@ -612,11 +620,14 @@ public class MoneyBoundsTests
     [Fact]
     public async Task UpdateExchangeRate_RateBelowTheColumnStep_Returns400()
     {
-        await using var factory = new ApiFactory(Claims);
+        var factory = Factory.ForCaller(Claims);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync($"/api/exchange-rates/{Guid.NewGuid()}", Rate(0.000000001m));
 
         await AssertBadRequestOn(response, nameof(UpdateExchangeRate.Rate));
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

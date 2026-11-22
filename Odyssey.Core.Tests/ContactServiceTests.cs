@@ -167,7 +167,9 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard());
         foreach (var name in new[] { "Bravo", "Alpha", "Charlie" })
+        {
             await service.Create(Org(name));
+        }
 
         var asc = await service.ListAsync(new ContactsQueryParams { SortBy = ContactSortBy.Name, SortDir = SortDirection.Asc }, claims: LocationClaims.Trusted);
         Assert.Equal(["Alpha", "Bravo", "Charlie"], asc.Items.Select(c => c.ResolvedDisplayName));
@@ -216,7 +218,10 @@ public class ContactServiceTests
 
         var address = await service.CreateAddress(cp.ContactId, new NewAddress
         {
-            Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "no",
+            Label = AddressLabel.Visiting,
+            Line1 = "Storgata 55",
+            City = "Oslo",
+            CountryCode = "no",
         }, claims: LocationClaims.Trusted);
 
         Assert.NotNull(address);

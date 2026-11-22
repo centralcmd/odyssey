@@ -22,7 +22,7 @@ namespace Odyssey.IntegrationTests;
 /// Spec B paths that touch series membership (AC 14), and the series-delete copy at its 200,000-row bound inside one
 /// transaction (AC 5). The EF InMemory tiers run no cascade and no transaction, so none of this is visible there.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOutputHelper output)
 {
     private const string Database = "odyssey_calendar_attachments";
@@ -144,10 +144,14 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
             // Daily for 1,000 days, all before the fixed clock: every row is detached and keeps a copy.
             var created = await new RecurrencePatternService(context, limits, new FakeTimeProvider(Now)).Create(new NewRecurrencePattern
             {
-                CalendarId = calendarId, Title = "Daily", StartDateTime = new DateTime(2022, 1, 1, 9, 0, 0),
-                EndDateTime = new DateTime(2022, 1, 1, 10, 0, 0), Frequency = DtoFrequency.Daily,
+                CalendarId = calendarId,
+                Title = "Daily",
+                StartDateTime = new DateTime(2022, 1, 1, 9, 0, 0),
+                EndDateTime = new DateTime(2022, 1, 1, 10, 0, 0),
+                Frequency = DtoFrequency.Daily,
                 RecurrenceEndDate = new DateTime(2022, 1, 1, 9, 0, 0).AddDays(999),
-                AttachmentFileIds = [.. files], PhotoIds = [.. photos],
+                AttachmentFileIds = [.. files],
+                PhotoIds = [.. photos],
             }, User, claims: LocationClaims.Trusted, linkClaims: CalendarLinkClaims.Trusted);
             patternId = created.RecurrencePatternId;
             Assert.Equal(1000, created.GeneratedEventCount);
@@ -272,15 +276,21 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
 
     private static NewCalendarEvent Event(Guid calendarId) => new()
     {
-        CalendarId = calendarId, Title = "Meeting",
-        StartDateTime = new DateTime(2026, 3, 2, 10, 0, 0), EndDateTime = new DateTime(2026, 3, 2, 11, 0, 0),
+        CalendarId = calendarId,
+        Title = "Meeting",
+        StartDateTime = new DateTime(2026, 3, 2, 10, 0, 0),
+        EndDateTime = new DateTime(2026, 3, 2, 11, 0, 0),
     };
 
     private static NewRecurrencePattern Weekly(Guid calendarId, int count) => new()
     {
-        CalendarId = calendarId, Title = "Standup",
-        StartDateTime = new DateTime(2026, 2, 2, 9, 0, 0), EndDateTime = new DateTime(2026, 2, 2, 10, 0, 0),
-        Frequency = DtoFrequency.Weekly, DaysOfWeek = DtoDays.Monday, OccurrenceCount = count,
+        CalendarId = calendarId,
+        Title = "Standup",
+        StartDateTime = new DateTime(2026, 2, 2, 9, 0, 0),
+        EndDateTime = new DateTime(2026, 2, 2, 10, 0, 0),
+        Frequency = DtoFrequency.Weekly,
+        DaysOfWeek = DtoDays.Monday,
+        OccurrenceCount = count,
     };
 
     private static RecurrencePatternService Patterns(OdysseyContext context) =>
@@ -314,13 +324,17 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
         for (var i = 0; i < files; i++)
         {
             var bytes = Encoding.UTF8.GetBytes($"file {i} {Guid.NewGuid()}");
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = bytes };
             var file = new FileMetadata
             {
-                Id = Guid.NewGuid(), UploadedByUserId = User, FileName = $"f{i}.txt", ContentType = "text/plain",
-                SizeBytes = bytes.Length, Sha256Hash = PhotoTestData.Sha256(bytes), FileBlobId = blob.Id, UploadedAtUtc = Now,
+                Id = Guid.NewGuid(),
+                UploadedByUserId = User,
+                FileName = $"f{i}.txt",
+                ContentType = "text/plain",
+                SizeBytes = bytes.Length,
+                Sha256Hash = PhotoTestData.Sha256(bytes),
+                FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
+                UploadedAtUtc = Now,
             };
-            context.FileBlob.Add(blob);
             context.FileMetadata.Add(file);
             fileIds.Add(file.Id);
         }
@@ -328,7 +342,21 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
         var photoIds = new List<Guid>();
         for (var i = 0; i < photos; i++)
         {
-            photoIds.Add(PhotoTestData.StageLegacyPhoto(context, userId: User).Photo.PhotoId);
+            var hash = StoredFileFixtures.Sha256(PhotoTestData.Jpeg(PhotoTestData.NextSeed()));
+            var photo = new Photo
+            {
+                PhotoId = Guid.NewGuid(),
+                StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: Odyssey.Core.Journal.Originals.PhotoOriginalStorage.FeatureKey),
+                FileName = $"p{i}.jpg",
+                ContentType = "image/jpeg",
+                SizeBytes = 3,
+                Sha256Hash = hash,
+                CreatedByUserId = User,
+                CreatedAt = Now,
+                UpdatedAt = Now,
+            };
+            context.Photos.Add(photo);
+            photoIds.Add(photo.PhotoId);
         }
 
         await context.SaveChangesAsync();

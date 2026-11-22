@@ -10,13 +10,13 @@ namespace Odyssey.Core.Finance;
 /// <summary>
 /// Backs <see cref="IFileAnalysisSettingsLookup"/> (issue #421 Wave 1): a 30s
 /// <see cref="IMemoryCache"/> TTL over the six file-analysis rows, evicted synchronously by
-/// <see cref="SystemSettingsService"/> the moment any of them actually changes, so the writing
+/// <c>SystemSettingsService</c> the moment any of them actually changes, so the writing
 /// instance never serves its own stale read back to the admin who just changed it.
 ///
 /// <para>
 /// <strong>Absent and invalid are not the same thing.</strong> A row that is absent while the query
 /// itself succeeded resolves to its compiled default as a <em>healthy</em> value — "should not happen
-/// post-migration", the same defensive posture <see cref="SystemSettingsService"/> takes on reads, and
+/// post-migration", the same defensive posture <c>SystemSettingsService</c> takes on reads, and
 /// exactly what <c>ImportExportLimitsLookup</c> documents. Only a failed query, or a row that is
 /// present carrying a value this setting cannot use, is degraded. Conflating the two would return
 /// <c>503</c> from the consent-gate endpoint on any database whose settings rows have not been seeded

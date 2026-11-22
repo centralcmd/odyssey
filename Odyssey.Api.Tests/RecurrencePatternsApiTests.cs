@@ -11,7 +11,7 @@ using Odyssey.Api.Tests.Infrastructure;
 
 namespace Odyssey.Api.Tests;
 
-public class RecurrencePatternsApiTests
+public class RecurrencePatternsApiTests(RecurrencePatternsApiTests.Host host) : SharedApiHostTests<RecurrencePatternsApiTests.Host>(host)
 {
     private const string ActorUserId = "recurrence-patterns-actor-id";
     private const string CalendarsPath = "/api/calendars";
@@ -26,7 +26,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task List_Unauthenticated_ReturnsUnauthorized()
     {
-        await using var factory = new ApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(PatternsPath);
@@ -37,7 +37,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task List_WithoutCalendarClaims_ReturnsForbidden()
     {
-        await using var factory = new ApiFactory(permissions: []);
+        var factory = Factory.ForCaller([]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(PatternsPath);
@@ -48,7 +48,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Create_Weekly_GeneratesExactOccurrenceCount()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Family");
@@ -85,7 +85,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Create_MonthlyDayOfMonth31_ClampsToLastDayOfShorterMonth()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Bills");
@@ -112,7 +112,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Create_TemplateDurationOver366Days_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -134,7 +134,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Create_MissingBothEndConditions_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -155,7 +155,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Create_BothEndConditions_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -183,7 +183,7 @@ public class RecurrencePatternsApiTests
     [InlineData(129)]
     public async Task Create_DaysOfWeekWithUndefinedBit_ReturnsBadRequestAndStoresNothing(int rawDays)
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -211,7 +211,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Update_DaysOfWeekWithUndefinedBit_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -236,7 +236,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Create_ProjectedOccurrencesExceedCap_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Personal");
@@ -258,7 +258,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Update_RegeneratesFutureEventsOnly_LeavesPastUntouched()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Family");
@@ -309,7 +309,7 @@ public class RecurrencePatternsApiTests
     [Fact]
     public async Task Delete_HardDeletesFutureEvents_DetachesPastEvents()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        var factory = Factory.ForCaller(ReadWrite);
         using var client = factory.CreateClient();
 
         var calendar = await CreateCalendarAsync(client, "Family");
@@ -376,7 +376,7 @@ public class RecurrencePatternsApiTests
         return (await post.Content.ReadFromJsonAsync<ExistingRecurrencePattern>())!;
     }
 
-    private sealed class ApiFactory : OdysseyApiFactory
+    public class ApiFactory : OdysseyApiFactory
     {
         // The server resolves TimeProvider.System too (no override registered here), so this is the
         // same clock the RecurrencePatternService instances inside the test host use for "now".
@@ -394,4 +394,7 @@ public class RecurrencePatternsApiTests
             services.AddDbContext<CalendarContext>(options => options.UseInMemoryDatabase(calendarDatabaseName));
         }
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

@@ -15,6 +15,7 @@ using Odyssey.Core.Jobs;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -321,7 +322,7 @@ public class ExchangeRateSyncTests
         // A re-requested day that is already stored is skipped, and a skipped row is never warned about.
         (await harness.Context.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom = new DateOnly(2026, 10, 23);
         await harness.Context.SaveChangesAsync();
-        harness.SyncLog.Entries.Clear();
+        harness.SyncLog.Clear();
         harness.Clock.Advance(TimeSpan.FromMinutes(2)); // past the manual-run cooldown
         var again = await harness.RunManualAsync();
 
@@ -547,8 +548,10 @@ public class ExchangeRateSyncTests
         {
             var run = new ExchangeRateSyncJobRun
             {
-                Trigger = JobRunTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
-                Status = JobRunStatus.Running, StartedAtUtc = Now,
+                Trigger = JobRunTrigger.Manual,
+                Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Running,
+                StartedAtUtc = Now,
             };
             seed.Set<ExchangeRateSyncJobRun>().Add(run);
             await seed.SaveChangesAsync();
@@ -588,8 +591,10 @@ public class ExchangeRateSyncTests
         {
             seed.Set<ExchangeRateSyncJobRun>().Add(new ExchangeRateSyncJobRun
             {
-                Trigger = JobRunTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
-                Status = JobRunStatus.Running, StartedAtUtc = Now,
+                Trigger = JobRunTrigger.Manual,
+                Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Running,
+                StartedAtUtc = Now,
             });
             await seed.SaveChangesAsync();
         }
@@ -950,8 +955,12 @@ public class ExchangeRateSyncTests
         bool archived, bool enabled, bool locked, bool? supported, bool backfillComplete, CurrencyStatus expected) =>
         Assert.Equal(expected, CurrencyStatuses.Of(archived, new ExistingExchangeRateSyncCurrency
         {
-            CurrencyCode = "USD", Name = "US Dollar", Enabled = enabled, Locked = locked,
-            Supported = supported, BackfillComplete = backfillComplete,
+            CurrencyCode = "USD",
+            Name = "US Dollar",
+            Enabled = enabled,
+            Locked = locked,
+            Supported = supported,
+            BackfillComplete = backfillComplete,
         }));
 
     [Fact]
@@ -1128,7 +1137,10 @@ public class ExchangeRateSyncTests
         await harness.EnableAsync("USD", backfilledFrom: new DateOnly(2019, 1, 1));
         harness.Context.ExchangeRates.Add(new ExchangeRate
         {
-            FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, CreatedAt = Now,
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "NOK",
+            Rate = 10m,
+            CreatedAt = Now,
             AsOf = ExchangeRateSyncClock.FetchedAsOf(new DateOnly(2019, 1, 2), ExchangeRateSyncClock.Oslo!),
             Provider = ExchangeRateProvider.NorgesBank,
         });
@@ -1326,8 +1338,12 @@ public class ExchangeRateSyncTests
         {
             harness.Context.ExchangeRates.Add(new ExchangeRate
             {
-                FromCurrencyCode = i % 2 == 0 ? "USD" : "NOK", ToCurrencyCode = i % 2 == 0 ? "NOK" : "USD",
-                Rate = 1m, AsOf = start.AddDays(i / 2), CreatedAt = Now, Provider = ExchangeRateProvider.NorgesBank,
+                FromCurrencyCode = i % 2 == 0 ? "USD" : "NOK",
+                ToCurrencyCode = i % 2 == 0 ? "NOK" : "USD",
+                Rate = 1m,
+                AsOf = start.AddDays(i / 2),
+                CreatedAt = Now,
+                Provider = ExchangeRateProvider.NorgesBank,
             });
         }
 
@@ -1449,7 +1465,10 @@ public class ExchangeRateSyncTests
         await harness.EnableAsync("USD", backfilledFrom: new DateOnly(2026, 10, 1));
         harness.Context.ExchangeRates.Add(new ExchangeRate
         {
-            FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, CreatedAt = Now,
+            FromCurrencyCode = "USD",
+            ToCurrencyCode = "NOK",
+            Rate = 10m,
+            CreatedAt = Now,
             AsOf = ExchangeRateSyncClock.FetchedAsOf(new DateOnly(2026, 10, 22), ExchangeRateSyncClock.Oslo!),
             Provider = ExchangeRateProvider.NorgesBank,
         });
@@ -1463,14 +1482,14 @@ public class ExchangeRateSyncTests
         DateTime finished,
         JobRunTrigger trigger = JobRunTrigger.Scheduled,
         ExchangeRateSyncErrorKind? errorKind = null) => new()
-    {
-        Trigger = trigger,
-        Provider = ExchangeRateProvider.NorgesBank,
-        Status = status,
-        ErrorKind = errorKind,
-        StartedAtUtc = finished.AddSeconds(-5),
-        FinishedAtUtc = finished,
-    };
+        {
+            Trigger = trigger,
+            Provider = ExchangeRateProvider.NorgesBank,
+            Status = status,
+            ErrorKind = errorKind,
+            StartedAtUtc = finished.AddSeconds(-5),
+            FinishedAtUtc = finished,
+        };
 
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
@@ -1598,18 +1617,6 @@ public class ExchangeRateSyncTests
         Assert.Equal(EntityState.Added, h.Context.Entry(h.Context.Currencies.Local.Single(c => c.CurrencyCode == "ZZZ")).State);
     }
 
-    internal sealed class RecordingLogger<T> : ILogger<T>
-    {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            Entries.Add((logLevel, formatter(state, exception)));
-    }
-
     private sealed class Harness : IAsyncDisposable
     {
         private Harness(OdysseyContext context, StubProvider provider, MutableClock clock, FakeSettings settings)
@@ -1657,7 +1664,10 @@ public class ExchangeRateSyncTests
         {
             Context.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency
             {
-                CurrencyCode = code, Enabled = true, HistoryStartDate = start, BackfilledFrom = backfilledFrom,
+                CurrencyCode = code,
+                Enabled = true,
+                HistoryStartDate = start,
+                BackfilledFrom = backfilledFrom,
                 UpdatedAtUtc = Clock.UtcNow,
             });
             await Context.SaveChangesAsync();

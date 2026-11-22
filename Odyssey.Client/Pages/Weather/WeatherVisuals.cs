@@ -99,7 +99,9 @@ public static class WeatherVisuals
     public static WeatherSymbolInfo? SymbolOf(string? code)
     {
         if (string.IsNullOrEmpty(code))
+        {
             return null;
+        }
 
         var parts = code.Split('_', 2);
         var raw = parts[0];
@@ -108,9 +110,14 @@ public static class WeatherVisuals
         var key = thunder ? raw[..^Thunder.Length] : raw;
         key = BaseAliases.GetValueOrDefault(key, key);
         if (!Symbols.TryGetValue(key, out var symbol))
+        {
             return new WeatherSymbolInfo(code, "Unknown conditions", "cloud", false);
+        }
+
         if (thunder)
+        {
             return new WeatherSymbolInfo(code, $"{symbol.Label} and thunder", "thunderstorm", true);
+        }
 
         var icon = variant switch
         {
@@ -145,7 +152,10 @@ public static class WeatherVisuals
     public static string Temp(decimal? value)
     {
         if (value is not { } v)
+        {
             return "—";
+        }
+
         var rounded = (int)Math.Round(v, MidpointRounding.AwayFromZero);
         return rounded < 0 ? $"−{-rounded}°" : $"{rounded}°";
     }
@@ -168,15 +178,24 @@ public static class WeatherVisuals
 
     private static readonly Dictionary<string, string> CompassWords = new(StringComparer.Ordinal)
     {
-        ["N"] = "north", ["NE"] = "north-east", ["E"] = "east", ["SE"] = "south-east",
-        ["S"] = "south", ["SW"] = "south-west", ["W"] = "west", ["NW"] = "north-west",
+        ["N"] = "north",
+        ["NE"] = "north-east",
+        ["E"] = "east",
+        ["SE"] = "south-east",
+        ["S"] = "south",
+        ["SW"] = "south-west",
+        ["W"] = "west",
+        ["NW"] = "north-west",
     };
 
     /// <summary>The compass point a wind blows FROM, or null when unknown.</summary>
     public static string? CompassOf(decimal? degrees)
     {
         if (degrees is not { } d)
+        {
             return null;
+        }
+
         var normalized = ((double)d % 360 + 360) % 360;
         return Compass[(int)Math.Round(normalized / 45, MidpointRounding.AwayFromZero) % 8];
     }

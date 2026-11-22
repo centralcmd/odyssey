@@ -20,7 +20,7 @@ public sealed record ExistingBudget
     /// and date range. Computed by the service, not mapped from the entity.
     /// </summary>
     public int TransactionCount { get; set; }
-    
+
     public decimal ExpectedIncomes => BudgetItems
         .Where(i => i.CategoryType == BudgetCategoryType.Income)
         .Sum(i => i.PlannedAmount);

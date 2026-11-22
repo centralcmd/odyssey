@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -15,30 +16,9 @@ public class ExchangeRateSyncApiClientTests
 {
     private const string Base = "/api/system-settings/exchange-rate-sync";
 
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (ExchangeRateSyncApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        public string ResponseJson { get; set; } = """{"items":[],"offset":0,"limit":25,"totalCount":0}""";
-
-        public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return new HttpResponseMessage(Status)
-            {
-                Content = new StringContent(ResponseJson, System.Text.Encoding.UTF8, "application/json"),
-            };
-        }
-    }
-
-    private static (ExchangeRateSyncApiClient Client, RecordingHandler Handler) Create()
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new ExchangeRateSyncApiClient(api), handler);
     }
@@ -65,7 +45,7 @@ public class ExchangeRateSyncApiClientTests
     public async Task UpdateCurrency_puts_the_update_to_the_escaped_code()
     {
         var (client, handler) = Create();
-        handler.ResponseJson = """{"currencyCode":"USD","name":"US dollar","enabled":true}""";
+        handler.Body = """{"currencyCode":"USD","name":"US dollar","enabled":true}""";
 
         var result = await client.UpdateCurrencyAsync("USD",
             new ExchangeRateSyncCurrencyUpdate { Enabled = true, HistoryStartDate = new DateOnly(2020, 1, 1) });
@@ -81,7 +61,7 @@ public class ExchangeRateSyncApiClientTests
     public async Task PurgeCurrency_deletes_the_currencys_fetched_rates()
     {
         var (client, handler) = Create();
-        handler.ResponseJson = """{"rowsDeleted":157}""";
+        handler.Body = """{"rowsDeleted":157}""";
 
         var result = await client.PurgeCurrencyAsync("DKK");
 
@@ -95,18 +75,18 @@ public class ExchangeRateSyncApiClientTests
     {
         var (client, handler) = Create();
 
-        handler.ResponseJson = """{"state":1,"enabledCount":4}""";
+        handler.Body = """{"state":1,"enabledCount":4}""";
         var status = await client.GetStatusAsync();
         Assert.Equal($"{Base}/status", handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal(ExchangeRateSyncState.Scheduled, status.Value!.State);
 
-        handler.ResponseJson = """{"items":[],"offset":10,"limit":10,"totalCount":0}""";
+        handler.Body = """{"items":[],"offset":10,"limit":10,"totalCount":0}""";
         await client.ListRunsAsync(2, 10);
         Assert.Equal($"{Base}/runs", handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Contains("offset=10", handler.LastRequest.RequestUri.Query);
 
         handler.Status = HttpStatusCode.Accepted;
-        handler.ResponseJson = """{"runId":"7c9e6679-7425-40de-944b-e07fc1f90ae7"}""";
+        handler.Body = """{"runId":"7c9e6679-7425-40de-944b-e07fc1f90ae7"}""";
         var started = await client.RunNowAsync();
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.Equal($"{Base}/runs", handler.LastRequest.RequestUri!.AbsolutePath);

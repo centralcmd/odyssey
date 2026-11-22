@@ -31,7 +31,10 @@ public partial class WeatherPointsUiTests
     {
         var text = label.TextContent;
         foreach (var h in label.QuerySelectorAll("[aria-hidden=true]"))
+        {
             text = text.Replace(h.TextContent, "", StringComparison.Ordinal);
+        }
+
         return text.Trim();
     }
 
@@ -300,9 +303,13 @@ public partial class WeatherPointsUiTests
         cut.WaitForAssertion(() => Assert.Contains("Window 2: This window overlaps window 1.", cut.Markup));
 
         if (add)
+        {
             await Press(cut, "New window");
+        }
         else
+        {
             await cut.InvokeAsync(() => RemoveButton(cut, 1).Click());
+        }
 
         cut.WaitForAssertion(() => Assert.DoesNotContain("overlaps window", cut.Markup));
         Assert.DoesNotContain("Window 2:", cut.Markup);

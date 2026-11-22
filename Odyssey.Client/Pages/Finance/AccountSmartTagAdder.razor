@@ -131,9 +131,13 @@
     private Task Toggle(OdsOption option, bool wasChecked)
     {
         if (wasChecked)
+        {
             return OnRemove.InvokeAsync(option.Value);
+        }
         if (AtCap)
+        {
             return Task.CompletedTask;
+        }
         return OnAdd.InvokeAsync(option.Value);
     }
 }

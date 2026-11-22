@@ -31,12 +31,15 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/photos", PermissionClaims.PhotosRead),
         ("/api/albums", PermissionClaims.PhotoAlbumsRead),
         ("/api/photo-tags", PermissionClaims.PhotoTagsRead),
-        // Admin-only via the dedicated file-analysis.audit claim, seeded onto the Admin role by a
-        // hand-written role-claim migration. Exercises that seeding over real login (the injected-claim
+        // Recipes (issue #525) — every role holds both reads, Guest included.
+        ("/api/recipes", PermissionClaims.RecipesRead),
+        ("/api/recipe-tags", PermissionClaims.RecipeTagsRead),
+        // Admin-only via the dedicated file-analysis.audit claim, granted to the Admin role by
+        // RoleClaimSeeder's reconciliation. Exercises that seeding over real login (the injected-claim
         // API tier can't) — Admin → 200, Owner/User/Guest → 403. (#264)
         ("/api/file-analysis/audit", PermissionClaims.FileAnalysisAudit),
-        // System settings (issue #349) — Admin-only, seeded by the same hand-written-migration
-        // pattern at fresh ids 264-266. GET never writes, so it's safe in the strict-200 matrix.
+        // System settings (issue #349) — Admin-only, reconciled onto the role by RoleClaimSeeder the
+        // same way. GET never writes, so it's safe in the strict-200 matrix.
         ("/api/system-settings", PermissionClaims.SystemSettingsRead),
         // Encrypted secret settings (issue #444) — the STATUS endpoint, gated by the same read claim as
         // its plaintext sibling and for the same reason: a write-only caller must not be able to probe
@@ -75,6 +78,8 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/news-status", PermissionClaims.FileStorageRead),
         // The OPML export (issue #508 §5.1): every fetch URL, so news-feeds.update (Admin and Owner). A read-only 200.
         ("/api/news-feeds/opml", PermissionClaims.NewsFeedsUpdate),
+        // Podcasts (issue #556 §7.2): the episode list is news.read, a database-only 200.
+        ("/api/podcast-episodes?limit=1", PermissionClaims.NewsRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503
@@ -91,6 +96,12 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // Issue #470: a random id is a 404 once authorized.
         ($"/api/news-feeds/{Guid.NewGuid()}", PermissionClaims.NewsRead),
         ($"/api/news-articles/{Guid.NewGuid()}", PermissionClaims.NewsRead),
+        // Issue #556: a random episode or artwork id is a 404 once authorized.
+        ($"/api/podcast-episodes/{Guid.NewGuid()}", PermissionClaims.NewsRead),
+        ($"/api/podcast-episodes/{Guid.NewGuid()}/audio/content", PermissionClaims.NewsRead),
+        ($"/api/podcast-artwork/{Guid.NewGuid()}/content", PermissionClaims.NewsRead),
+        // Issue #525: a random recipe id is a 404 once authorized.
+        ($"/api/recipes/{Guid.NewGuid()}", PermissionClaims.RecipesRead),
     ];
 
     // Write-gated endpoints and the write claim each requires. Probed with DELETE against a random,
@@ -114,6 +125,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/photos/{Guid.NewGuid()}", PermissionClaims.PhotosDelete),
         ($"/api/albums/{Guid.NewGuid()}", PermissionClaims.PhotoAlbumsDelete),
         ($"/api/photo-tags/{Guid.NewGuid()}", PermissionClaims.PhotoTagsDelete),
+        // Recipes (issue #525): Admin/Owner/User delete; Guest holds no recipe write claim.
+        ($"/api/recipes/{Guid.NewGuid()}", PermissionClaims.RecipesDelete),
+        ($"/api/recipe-tags/{Guid.NewGuid()}", PermissionClaims.RecipeTagsDelete),
         ($"/api/users/{Guid.NewGuid()}", PermissionClaims.UsersDelete), // Admin-only discriminator.
         ($"/api/instruments/{Guid.NewGuid()}", PermissionClaims.InstrumentsDelete),
         ($"/api/instrument-prices/{Guid.NewGuid()}", PermissionClaims.InstrumentPricesDelete),
@@ -121,6 +135,8 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/news-feeds/{Guid.NewGuid()}", PermissionClaims.NewsFeedsDelete),
         ($"/api/news-tags/{Guid.NewGuid()}", PermissionClaims.NewsTagsDelete),
         ($"/api/news-articles/{Guid.NewGuid()}/tags/{Guid.NewGuid()}", PermissionClaims.NewsUpdate),
+        // Podcasts (issue #556 §7.2): removing stored audio is podcast-audio.delete — Admin, Owner and User, not Guest.
+        ($"/api/podcast-episodes/{Guid.NewGuid()}/audio", PermissionClaims.PodcastAudioDelete),
     ];
 
     // Write endpoints stacking two [Authorize] policies: a role must hold EVERY claim, so one holding
@@ -131,6 +147,14 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
     [
         ("/api/system-settings/exchange-rate-sync/currencies/ZZZ/rates",
             [PermissionClaims.SystemSettingsUpdate, PermissionClaims.ExchangeRatesDelete]),
+    ];
+
+    // Write endpoints that take a POST and no body, probed against a random id so the call is non-mutating: a role
+    // holding the claim gets past authorization to a 404, one lacking it a 403 before the handler runs.
+    private static readonly (string Endpoint, string RequiredClaim)[] PostGatedEndpoints =
+    [
+        // Podcasts (issue #556 §7.2): a server download is podcast-audio.create — Admin, Owner and User, not Guest.
+        ($"/api/podcast-episodes/{Guid.NewGuid()}/audio", PermissionClaims.PodcastAudioCreate),
     ];
 
     private static IEnumerable<(string Endpoint, string[] RequiredClaims)> AllWriteGatedEndpoints =>
@@ -261,6 +285,33 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
                         response.StatusCode == HttpStatusCode.Forbidden,
                         $"{user.Role} DELETE {endpoint} (lacks '{requiredClaim}'): expected 403 Forbidden, " +
                         $"got {(int)response.StatusCode} {response.StatusCode}.");
+                }
+            }
+        }
+    }
+
+    [SkippableFact]
+    public async Task Each_role_is_allowed_or_forbidden_on_post_writes_per_its_real_claims()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        foreach (var user in DemoUsers.All)
+        {
+            var client = await fixture.CreateAuthenticatedClientAsync(user.Email, user.Password);
+            var claims = ClaimsForRole(user.Role);
+            foreach (var (endpoint, requiredClaim) in PostGatedEndpoints)
+            {
+                var response = await fixture.PostWithAntiforgeryAsync(client, endpoint, new { });
+                if (claims.Contains(requiredClaim))
+                {
+                    Assert.True(
+                        response.StatusCode is not (HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden),
+                        $"{user.Role} POST {endpoint} (has '{requiredClaim}'): expected to pass authorization, got {(int)response.StatusCode}.");
+                }
+                else
+                {
+                    Assert.True(
+                        response.StatusCode == HttpStatusCode.Forbidden,
+                        $"{user.Role} POST {endpoint} (lacks '{requiredClaim}'): expected 403 Forbidden, got {(int)response.StatusCode}.");
                 }
             }
         }

@@ -322,8 +322,11 @@ public class SettingsFaultSurfaceTests
     {
         var warnings = new Dictionary<string, string>
         {
-            ["A"] = "cost", ["B"] = "cost", ["C"] = "cost",
-            [Window] = "fault", [Fetch] = "fault",
+            ["A"] = "cost",
+            ["B"] = "cost",
+            ["C"] = "cost",
+            [Window] = "fault",
+            [Fetch] = "fault",
         };
 
         var faults = Faults((Window, SettingFaultKind.Unreadable), (Fetch, SettingFaultKind.Clamped));
@@ -346,7 +349,7 @@ public class SettingsFaultSurfaceTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor"));
 
     private static string CodeBehind() =>
-        File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
+        ClientSource.CodeBehind("Pages/Settings.razor.cs");
 
     /// <summary>
     /// The fault summary must be visible to a caller holding only <c>system-settings.read</c>, and must

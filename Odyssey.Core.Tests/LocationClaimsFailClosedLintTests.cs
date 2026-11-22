@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -40,33 +41,12 @@ public partial class LocationClaimsFailClosedLintTests
 
     private static IEnumerable<(string Path, string Code)> ProductionFiles()
     {
-        var root = SolutionRoot();
+        var root = SourceTree.Root;
         return ProductionProjects
-            .SelectMany(project => Directory.EnumerateFiles(Path.Combine(root, project), "*.cs", SearchOption.AllDirectories))
-            .Where(path => !IsBuildOutput(path))
-            .Select(path => (Path.GetRelativePath(root, path).Replace('\\', '/'), StripComments(File.ReadAllText(path))));
+            .SelectMany(project => SourceTree.Files(project))
+            .Select(path => (Path.GetRelativePath(root, path).Replace('\\', '/'), SourceLint.StripComments(File.ReadAllText(path))));
     }
 
     [GeneratedRegex(@"claims\s*\?\?=?\s*LocationClaims\.(?<target>\w+)")]
     private static partial Regex ClaimsFallback();
-
-    private static string StripComments(string code) =>
-        Regex.Replace(Regex.Replace(code, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline),
-            @"//.*?$", string.Empty, RegexOptions.Multiline);
-
-    private static bool IsBuildOutput(string path) =>
-        path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-        || path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution root from the test binary.");
-    }
 }

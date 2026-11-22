@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Components;
 using Odyssey.Client.Auth;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -93,17 +94,10 @@ public class LegalComplianceHandlerTests
     }
 
     private static HttpClient ClientFor(NavigationManager navigation, HttpStatusCode status) =>
-        new(new LegalComplianceHandler(navigation) { InnerHandler = new StubHandler(status) })
+        new(new LegalComplianceHandler(navigation) { InnerHandler = new RecordingHttpHandler(status) })
         {
             BaseAddress = new Uri(Base),
         };
-
-    private sealed class StubHandler(HttpStatusCode status) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(status));
-    }
 
     private sealed class FakeNavigationManager : NavigationManager
     {

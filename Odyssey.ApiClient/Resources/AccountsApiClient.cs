@@ -213,13 +213,24 @@ public sealed class AccountsApiClient(IOdysseyApi api) : IAccountsApiClient
         // is what makes the wire form independent of either end's culture.
         var parts = new List<string>(4);
         if (!string.IsNullOrWhiteSpace(mainCurrency))
+        {
             parts.Add($"mainCurrency={Uri.EscapeDataString(mainCurrency)}");
+        }
+
         if (interval is { } resolution)
+        {
             parts.Add($"interval={Uri.EscapeDataString(resolution.ToString())}");
+        }
+
         if (from is { } lower)
+        {
             parts.Add($"from={lower.ToString("o", CultureInfo.InvariantCulture)}");
+        }
+
         if (to is { } upper)
+        {
             parts.Add($"to={upper.ToString("o", CultureInfo.InvariantCulture)}");
+        }
 
         var path = $"{Base}/net-worth-history";
         return api.GetAsync<NetWorthHistory>(

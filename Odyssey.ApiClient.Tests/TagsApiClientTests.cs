@@ -6,6 +6,7 @@ using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Internet;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -18,30 +19,9 @@ namespace Odyssey.ApiClient.Tests;
 /// </summary>
 public class TagsApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
+    private static (ITagsApiClient<T> Client, RecordingHttpHandler Handler) Create<T>(string basePath)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        public HttpResponseMessage Response { get; set; } =
-            new(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""{"items":[],"offset":0,"limit":50,"totalCount":0}""",
-                                            System.Text.Encoding.UTF8, "application/json"),
-            };
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return Response;
-        }
-    }
-
-    private static (ITagsApiClient<T> Client, RecordingHandler Handler) Create<T>(string basePath)
-    {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new TagsApiClient<T>(api, basePath), handler);
     }
@@ -152,9 +132,10 @@ public class TagsApiClientTests
     [InlineData(typeof(ExistingJournalTaskTag), "/api/task-tags")]
     [InlineData(typeof(ExistingPhotoTag), "/api/photo-tags")]
     [InlineData(typeof(ExistingNewsTag), "/api/news-tags")]
+    [InlineData(typeof(Odyssey.Dtos.Recipes.ExistingRecipeTag), "/api/recipe-tags")]
     public async Task The_registered_client_for_each_tag_type_targets_that_type_s_route(Type tagType, string expectedPath)
     {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         var services = new ServiceCollection();
         services.AddOdysseyApiClient();
         services.AddScoped(_ => new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });

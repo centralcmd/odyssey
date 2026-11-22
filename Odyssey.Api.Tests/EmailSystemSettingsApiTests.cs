@@ -20,7 +20,7 @@ namespace Odyssey.Api.Tests;
 /// bug class the descriptor registry exists to prevent.
 /// </para>
 /// </summary>
-public class EmailSystemSettingsApiTests
+public class EmailSystemSettingsApiTests(EmailSystemSettingsApiTests.Host host) : SharedApiHostTests<EmailSystemSettingsApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
     private const string ActorUserId = "22222222-2222-2222-2222-222222222222";
@@ -35,7 +35,7 @@ public class EmailSystemSettingsApiTests
     [Fact]
     public async Task Get_ServesTheCompiledDefaults_WhenNoRowsExist()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
@@ -50,7 +50,7 @@ public class EmailSystemSettingsApiTests
     [Fact]
     public async Task Put_RoundTripsAllFour()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
@@ -77,16 +77,24 @@ public class EmailSystemSettingsApiTests
     [InlineData(nameof(SystemSettingsUpdate.EmailPerRecipientWindowMinutes))]
     public async Task Put_WithOnlyTheOrdinaryWriteClaim_IsForbidden_AndNamesTheField(string field)
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
+        var factory = Factory.ForCaller(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var update = new SystemSettingsUpdate();
         switch (field)
         {
-            case nameof(SystemSettingsUpdate.EmailFromAddress): update.EmailFromAddress = "a@b.test"; break;
-            case nameof(SystemSettingsUpdate.EmailFromName): update.EmailFromName = "Acme"; break;
-            case nameof(SystemSettingsUpdate.EmailPerRecipientLimit): update.EmailPerRecipientLimit = 9; break;
-            default: update.EmailPerRecipientWindowMinutes = 9; break;
+            case nameof(SystemSettingsUpdate.EmailFromAddress):
+                update.EmailFromAddress = "a@b.test";
+                break;
+            case nameof(SystemSettingsUpdate.EmailFromName):
+                update.EmailFromName = "Acme";
+                break;
+            case nameof(SystemSettingsUpdate.EmailPerRecipientLimit):
+                update.EmailPerRecipientLimit = 9;
+                break;
+            default:
+                update.EmailPerRecipientWindowMinutes = 9;
+                break;
         }
 
         var response = await client.PutAsJsonAsync(Path, update);
@@ -105,7 +113,7 @@ public class EmailSystemSettingsApiTests
     [InlineData("   ")]
     public async Task Put_RejectsAFromAddressThatIsNotASingleBareMailbox(string value)
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { EmailFromAddress = value });
@@ -118,7 +126,7 @@ public class EmailSystemSettingsApiTests
     {
         // MimeKit encodes display names correctly, so this is defence in depth rather than the only
         // barrier against header injection — but a control character has no business in a display name.
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -132,7 +140,7 @@ public class EmailSystemSettingsApiTests
     [InlineData(1001)]
     public async Task Put_RejectsAnOutOfRangeRecipientLimit(int limit)
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -145,7 +153,7 @@ public class EmailSystemSettingsApiTests
     public async Task Put_TrimsTheStoredSenderIdentity()
     {
         // Untrimmed values make a GET-then-PUT of unchanged data stop being a no-op.
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        var factory = Factory.ForCaller(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -156,6 +164,9 @@ public class EmailSystemSettingsApiTests
         Assert.Equal("billing@acme.test", dto!.EmailFromAddress);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
+    public class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId);
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : ApiFactory([]);
 }

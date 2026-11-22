@@ -83,9 +83,15 @@ internal static class CalendarEventCopy
     {
         var parts = new List<string>();
         if (overrides > 0)
+        {
             parts.Add($"{Plural(overrides, "occurrence", "occurrences")} you edited separately");
+        }
+
         if (exclusions > 0)
+        {
             parts.Add($"{Plural(exclusions, "occurrence", "occurrences")} you deleted");
+        }
+
         return (string.Join(" and ", parts), parts.Count == 1 && overrides + exclusions == 1);
     }
 

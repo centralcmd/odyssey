@@ -8,7 +8,7 @@ namespace Odyssey.Dtos.Application;
 /// unchanged" (matching every other field on that DTO); a non-null <see cref="CapacityLimit"/> means
 /// "set this field", and is itself one of two shapes — <c>{ unlimited: true }</c> (no limit) or
 /// <c>{ value: 20000 }</c> (a finite cap). <see cref="Unlimited"/> and <see cref="Value"/> are
-/// mutually exclusive; <see cref="Odyssey.Api.SystemSettings.SystemSettingsService"/> rejects any
+/// mutually exclusive; <c>SystemSettingsService</c> rejects any
 /// other combination (both set, or neither) with a 400 naming the field.
 /// </summary>
 public sealed record CapacityLimit

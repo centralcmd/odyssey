@@ -209,7 +209,9 @@ public partial class AccountSmartTagsSection
         get
         {
             if (!IsScoped || !CanReadTransactions || _scope is null)
+            {
                 return null;
+            }
 
             var from = _scope.From is { } f ? OdsDates.Long(f) : null;
             var last = _scope.ToExclusive is { } t ? OdsDates.Long(t.AddDays(-1)) : null;
@@ -239,11 +241,15 @@ public partial class AccountSmartTagsSection
         get
         {
             if (!IsScoped || !_hasTags)
+            {
                 return null;
+            }
 
             if (!CanReadTransactions)
+            {
                 return new("lock", "Transactions are not visible to you",
                     "The watched tags stay listed. Showing what matches them needs transactions.read as well as contracts.read.");
+            }
 
             return Reason switch
             {
@@ -309,7 +315,10 @@ public partial class AccountSmartTagsSection
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
+        {
             return;
+        }
+
         await LoadAsync();
     }
 
@@ -318,7 +327,9 @@ public partial class AccountSmartTagsSection
         _isOpen = !_isOpen;
         // Lazy-load on first expand if the initial fetch was skipped (e.g. prerender).
         if (_isOpen && !_isLoaded && _error is null)
+        {
             await LoadAsync();
+        }
     }
 
     /// <summary>
@@ -460,7 +471,9 @@ public partial class AccountSmartTagsSection
             sortDir: sortBy is null ? null : _sort.Dir == OdsSortDirection.Asc ? "Asc" : "Desc");
 
         if (sequence != _readSequence)
+        {
             return;
+        }
 
         if (result is { IsSuccess: true, Value: { } value })
         {
@@ -496,7 +509,9 @@ public partial class AccountSmartTagsSection
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusScopeLine)
+        {
             return;
+        }
 
         _focusScopeLine = false;
         try
@@ -513,7 +528,9 @@ public partial class AccountSmartTagsSection
     {
         var next = value?.Trim() ?? "";
         if (next == _search)
+        {
             return;
+        }
 
         _search = next;
         _page = 1;
@@ -524,7 +541,9 @@ public partial class AccountSmartTagsSection
     {
         // A column the server cannot sort by keeps the current order.
         if (!ServerSortKeys.ContainsKey(sort.Key))
+        {
             return;
+        }
 
         _sort = sort;
         _page = 1;

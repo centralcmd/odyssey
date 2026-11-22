@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -5,7 +6,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using Odyssey.TestData;
 using Odyssey.TestData.Catalog;
-using Odyssey.TestData.Fixtures;
+using Odyssey.Testing.Fixtures;
 using Xunit;
 
 namespace Odyssey.E2ETests.Api;
@@ -98,8 +99,10 @@ public class ContactAvatarPermissionTests(ApiStackFixture fixture)
         var client = await fixture.CreateAuthenticatedClientAsync(actor.Email, actor.Password);
         var contactId = Contacts.IdFor(Contacts.Landlord);
 
-        var response = await client.GetAsync(
-            $"/api/contacts/{contactId}/avatar?v={Contacts.AvatarFileIdFor(Contacts.Landlord)}");
+        var url = $"/api/contacts/{contactId}/avatar?v={Contacts.AvatarFileIdFor(Contacts.Landlord)}";
+        HttpResponseMessage response = null!;
+        // The worker writes the demo images after the stack comes up (DemoFileSeeder), so wait for this one.
+        await DemoFileWait.UntilAsync(async () => (response = await client.GetAsync(url)).StatusCode == HttpStatusCode.OK);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -115,7 +118,9 @@ public class ContactAvatarPermissionTests(ApiStackFixture fixture)
         var url = $"/api/contacts/{Contacts.IdFor(Contacts.FirstNationalBank)}/avatar"
             + $"?v={Contacts.AvatarFileIdFor(Contacts.FirstNationalBank)}";
 
-        var first = await client.GetAsync(url);
+        HttpResponseMessage first = null!;
+        // The worker writes the demo images after the stack comes up (DemoFileSeeder), so wait for this one.
+        await DemoFileWait.UntilAsync(async () => (first = await client.GetAsync(url)).StatusCode == HttpStatusCode.OK);
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
 
         using var conditional = new HttpRequestMessage(HttpMethod.Get, url);

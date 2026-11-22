@@ -60,7 +60,7 @@ public static class DocumentAttachmentExtensions
     }
 
     /// <summary>
-    /// The download response every document endpoint shares (issue #448 §5.3), for a file on disk or a legacy one alike:
+    /// The download response every document endpoint shares (issue #448 §5.3):
     /// <c>nosniff</c>; the strong <c>ETag</c> handed to the framework, so <c>If-None-Match</c> answers <c>304</c> and
     /// <c>If-Range</c> works; range processing; <c>Cache-Control: private, no-cache</c>; and the forced attachment
     /// disposition, written by <c>File(…, fileDownloadName)</c> and never by hand (issue #247), so a stored name holding a

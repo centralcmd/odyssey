@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -16,34 +17,23 @@ public class CalendarRecurrenceApiClientTests
 {
     private static readonly Guid Id = Guid.Parse("7c1d0000-0000-0000-0000-000000000001");
 
-    private sealed class RecordingHandler(HttpStatusCode status, string? body) : HttpMessageHandler
+    private static (CalendarApiClient Client, RecordingHttpHandler Handler) Create(HttpStatusCode status, string? body)
     {
-        public HttpRequestMessage? LastRequest { get; private set; }
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            var response = new HttpResponseMessage(status);
-            if (body is not null)
-                response.Content = new StringContent(body, Encoding.UTF8, "application/json");
-            return response;
-        }
-    }
-
-    private static (CalendarApiClient Client, RecordingHandler Handler) Create(HttpStatusCode status, string? body)
-    {
-        var handler = new RecordingHandler(status, body);
+        var handler = new RecordingHttpHandler(status, body);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new CalendarApiClient(api), handler);
     }
 
     private static NewRecurrencePattern Pattern() => new()
     {
-        CalendarId = Id, Title = "Standup", StartDateTime = new DateTime(2026, 3, 16, 9, 0, 0),
-        EndDateTime = new DateTime(2026, 3, 16, 10, 0, 0), Frequency = RecurrenceFrequency.Weekly,
-        DaysOfWeek = DaysOfWeekFlags.Monday, OccurrenceCount = 4, TimeZoneId = "Europe/Oslo",
+        CalendarId = Id,
+        Title = "Standup",
+        StartDateTime = new DateTime(2026, 3, 16, 9, 0, 0),
+        EndDateTime = new DateTime(2026, 3, 16, 10, 0, 0),
+        Frequency = RecurrenceFrequency.Weekly,
+        DaysOfWeek = DaysOfWeekFlags.Monday,
+        OccurrenceCount = 4,
+        TimeZoneId = "Europe/Oslo",
         ExpectedVersion = Guid.Parse("00000000-0000-0000-0000-0000000000aa"),
         ConfirmedDrops = new RecurrenceConfirmedDrops { Overrides = 1, Exclusions = 0 },
     };
@@ -186,8 +176,11 @@ public class CalendarRecurrenceApiClientTests
             """);
         var body = new NewCalendarEvent
         {
-            CalendarId = Id, Title = "Standup", StartDateTime = new DateTime(2026, 3, 29, 2, 30, 0),
-            EndDateTime = new DateTime(2026, 3, 29, 3, 30, 0), TimeZoneId = "Europe/Oslo",
+            CalendarId = Id,
+            Title = "Standup",
+            StartDateTime = new DateTime(2026, 3, 29, 2, 30, 0),
+            EndDateTime = new DateTime(2026, 3, 29, 3, 30, 0),
+            TimeZoneId = "Europe/Oslo",
         };
 
         var result = await client.UpdateEventWithResultAsync(Id, body);
@@ -208,7 +201,10 @@ public class CalendarRecurrenceApiClientTests
         var (events, eventHandler) = Create(HttpStatusCode.Created, $$"""{"calendarEventId":"{{Id}}","calendarId":"{{Id}}","title":"A","startDateTime":"2026-06-04T09:00:00"}""");
         var created = await events.CreateEventWithResultAsync(new NewCalendarEvent
         {
-            CalendarId = Id, Title = "A", StartDateTime = new DateTime(2026, 6, 4, 9, 0, 0), EndDateTime = new DateTime(2026, 6, 4, 10, 0, 0),
+            CalendarId = Id,
+            Title = "A",
+            StartDateTime = new DateTime(2026, 6, 4, 9, 0, 0),
+            EndDateTime = new DateTime(2026, 6, 4, 10, 0, 0),
         });
         Assert.Equal(HttpMethod.Post, eventHandler.LastRequest!.Method);
         Assert.Equal(Id, created.Value!.CalendarEventId);

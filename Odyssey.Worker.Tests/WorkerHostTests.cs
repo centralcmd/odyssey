@@ -9,6 +9,7 @@ using Odyssey.Core.SystemSettings;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Weather;
+using Odyssey.Testing;
 using Odyssey.Worker.Hosting;
 using Xunit;
 
@@ -49,7 +50,7 @@ public sealed class WorkerHostTests : IDisposable
     }
 
     [Fact]
-    public void The_graph_hosts_the_instrument_price_sync_with_no_production_source()
+    public void The_graph_hosts_the_instrument_price_sync_with_exactly_the_tiingo_source()
     {
         using var provider = Build();
 
@@ -58,9 +59,26 @@ public sealed class WorkerHostTests : IDisposable
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncService>());
 
-        // Phase 1 ships the framework only (issue #446): no source client is registered in a production host.
-        Assert.Empty(provider.GetServices<Odyssey.Core.Finance.Instruments.Sources.IInstrumentPriceSource>());
-        Assert.True(provider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sources.InstrumentPriceSourceCatalogue>().IsEmpty);
+        // Issue #447: Tiingo is the one production source, registered through the framework's transport.
+        var catalogue = provider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sources.InstrumentPriceSourceCatalogue>();
+        var source = Assert.Single(catalogue.All);
+        Assert.Equal(Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource.SourceKey, source.Key);
+        Assert.IsType<Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource>(source);
+        var client = provider.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(Odyssey.Core.Finance.Instruments.Sources.SourceHttpLimits.ClientName(source.Key));
+        Assert.Equal(new Uri("https://api.tiingo.com/"), client.BaseAddress);
+
+        // AC 7: the transport follows no redirect and carries no certificate callback that could weaken TLS.
+        var handler = provider.GetRequiredService<IHttpMessageHandlerFactory>()
+            .CreateHandler(Odyssey.Core.Finance.Instruments.Sources.SourceHttpLimits.ClientName(source.Key));
+        while (handler is DelegatingHandler delegating)
+        {
+            handler = delegating.InnerHandler!;
+        }
+
+        var sockets = Assert.IsType<System.Net.Http.SocketsHttpHandler>(handler);
+        Assert.False(sockets.AllowAutoRedirect);
+        Assert.Null(sockets.SslOptions.RemoteCertificateValidationCallback);
     }
 
     [Fact]
@@ -87,7 +105,7 @@ public sealed class WorkerHostTests : IDisposable
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Odyssey.Context.OdysseyContext>>());
     }
 
-    /// <summary>Issue #362: the thumbnail job, the real renderer and self-test, and the rename observer resolve here.</summary>
+    /// <summary>Issue #362: the thumbnail job, the real renderer and self-test, and the thumbnail service resolve here.</summary>
     [Fact]
     public void The_graph_resolves_and_hosts_the_photo_thumbnail_job()
     {
@@ -98,7 +116,6 @@ public sealed class WorkerHostTests : IDisposable
         Assert.IsType<Odyssey.Worker.Thumbnails.MagickDecoderSelfTest>(provider.GetRequiredService<Odyssey.Core.Journal.Thumbnails.IThumbnailDecoderSelfTest>());
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService>());
-        Assert.Contains(scope.ServiceProvider.GetServices<Odyssey.Core.Finance.IFileRenameObserver>(), o => o is Odyssey.Core.Journal.Thumbnails.PhotoThumbnailRenameObserver);
     }
 
     /// <summary>
@@ -130,7 +147,7 @@ public sealed class WorkerHostTests : IDisposable
         static Dictionary<string, string?> Section(string project)
         {
             var configuration = new ConfigurationBuilder()
-                .AddJsonFile(Path.Combine(RepositoryRoot(), project, "appsettings.json"), optional: false)
+                .AddJsonFile(SourceTree.File(project, "appsettings.json"), optional: false)
                 .Build();
             return configuration.GetSection("FileAnalysis").AsEnumerable(makePathsRelative: true)
                 .Where(pair => pair.Value is not null)
@@ -171,13 +188,30 @@ public sealed class WorkerHostTests : IDisposable
     }
 
     /// <summary>
+    /// The demo-file seeder is in the production graph — so ValidateOnBuild covers it — and its gate holds there: in
+    /// Production it returns at once, before the volume wait (which, with this graph's unreachable database, would
+    /// never end) and before touching the store.
+    /// </summary>
+    [Fact]
+    public async Task The_demo_file_seeder_is_hosted_and_does_nothing_in_production()
+    {
+        using var provider = Build();
+
+        var service = Assert.Single(provider.GetServices<IHostedService>().OfType<Odyssey.Worker.DemoData.DemoFileSeedingService>());
+        await service.StartAsync(CancellationToken.None);
+        await service.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(service.ExecuteTask.IsCompletedSuccessfully);
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    /// <summary>
     /// The maintenance job verifies the volumes itself, so a failing verdict holds that job alone; the host verifies
     /// nothing before it runs, which used to stop weather and exchange-rate sync along with it (A3.2 as amended).
     /// </summary>
     [Fact]
     public void File_storage_is_verified_by_its_job_not_by_the_host()
     {
-        var program = File.ReadAllText(Path.Combine(RepositoryRoot(), "Odyssey.Worker", "Program.cs"));
+        var program = File.ReadAllText(SourceTree.File("Odyssey.Worker", "Program.cs"));
         Assert.DoesNotContain("VerifyFileStorage", program, StringComparison.Ordinal);
 
         using var provider = Build();
@@ -307,19 +341,8 @@ public sealed class WorkerHostTests : IDisposable
     {
         foreach (var host in new[] { Path.Combine("Odyssey.Api", "Program.cs"), Path.Combine("Odyssey.Worker", "WorkerHost.cs") })
         {
-            var source = File.ReadAllText(Path.Combine(RepositoryRoot(), host));
+            var source = File.ReadAllText(SourceTree.File(host));
             Assert.Contains($".SetApplicationName({nameof(DataProtectionKeyRing)}.{nameof(DataProtectionKeyRing.ApplicationName)})", source.Replace("Odyssey.Core.SystemSettings.", ""), StringComparison.Ordinal);
         }
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Odyssey.sln not found above the test output.");
     }
 }

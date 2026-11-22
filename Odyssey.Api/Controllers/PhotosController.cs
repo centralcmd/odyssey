@@ -15,7 +15,6 @@ using Odyssey.Core.Journal.Thumbnails;
 using Microsoft.Net.Http.Headers;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
@@ -51,7 +50,7 @@ public sealed class PhotosController : ControllerBase
     [Authorize(Policy = PermissionClaims.PhotosRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<PhotoSummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List photos with search, tag/person/album/date-range filters, sort and paging.")]
+    [EndpointSummary("List photos with search, tag/person/album/date-range filters, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] PhotosQueryParams query,
         CancellationToken cancellationToken = default)
@@ -69,7 +68,7 @@ public sealed class PhotosController : ControllerBase
     [HttpGet("stats", Name = "GetPhotoStats")]
     [Authorize(Policy = PermissionClaims.PhotosRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PhotoLibraryStats))]
-    [SwaggerOperation(Summary = "Aggregate library counts (total, favourites, per-tag, per-person) for the Overview panel.")]
+    [EndpointSummary("Aggregate library counts (total, favourites, per-tag, per-person) for the Overview panel.")]
     public async Task<IActionResult> GetStats(CancellationToken cancellationToken = default)
     {
         var stats = await service.GetStatsAsync(cancellationToken);
@@ -91,8 +90,8 @@ public sealed class PhotosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Stream a photo's WebP thumbnail (Small 200 px or Medium 400 px).",
-        Description = @"404 photo-thumbnail-not-found for an unknown photo, a thumbnail not ready yet and a released one
+    [EndpointSummary("Stream a photo's WebP thumbnail (Small 200 px or Medium 400 px).")]
+    [EndpointDescription(@"404 photo-thumbnail-not-found for an unknown photo, a thumbnail not ready yet and a released one
 alike. Served inline with a strong ETag and private, no-cache, so revalidation costs one 304 with no body.")]
     public async Task<IActionResult> GetThumbnail(
         [FromRoute(Name = "id")] Guid id,
@@ -132,8 +131,8 @@ alike. Served inline with a strong ETag and private, no-cache, so revalidation c
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Stream a photo's original, from the object store or (not yet moved) its legacy file.",
-        Description = @"Served inline under photos.read with nosniff, CORP same-site, a strong ETag (the SHA-256) and range
+    [EndpointSummary("Stream a photo's original from the object store.")]
+    [EndpointDescription(@"Served inline under photos.read with nosniff, CORP same-site, a strong ETag (the SHA-256) and range
 processing; private, no-cache, so revalidation costs one 304 with no body (issue #428 §5.2).")]
     public async Task<IActionResult> GetContent(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
@@ -181,7 +180,7 @@ processing; private, no-cache, so revalidation costs one 304 with no body (issue
     [Authorize(Policy = PermissionClaims.PhotosRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingPhoto))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a photo with its tag/person/album link IDs and extracted metadata.")]
+    [EndpointSummary("Get a photo with its tag/person/album link IDs and extracted metadata.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -213,8 +212,8 @@ processing; private, no-cache, so revalidation costs one 304 with no body (issue
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status507InsufficientStorage, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Upload a photo: writes the original to the photo store and creates the library photo.",
-        Description = @"multipart/form-data: the image as part 'file', plus the optional NewPhotoUpload fields. Runs
+    [EndpointSummary("Upload a photo: writes the original to the photo store and creates the library photo.")]
+    [EndpointDescription(@"multipart/form-data: the image as part 'file', plus the optional NewPhotoUpload fields. Runs
 EXIF/IPTC/XMP extraction. 409 photo-duplicate when the same bytes are already a photo (issue #428 §5.1).")]
     public async Task<IActionResult> Post(
         IFormFile? file,
@@ -260,7 +259,7 @@ EXIF/IPTC/XMP extraction. 409 photo-duplicate when the same bytes are already a 
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a photo's metadata and replace its tag/person/album links; set/clear archive.")]
+    [EndpointSummary("Update a photo's metadata and replace its tag/person/album links; set/clear archive.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdatePhoto request, CancellationToken cancellationToken = default)
@@ -285,10 +284,8 @@ EXIF/IPTC/XMP extraction. 409 photo-duplicate when the same bytes are already a 
     [Authorize(Policy = PermissionClaims.PhotosDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Permanently delete a library photo; its original and thumbnails are released after "
-        + "the deletion grace. A legacy photo (not yet moved to the photo store) deletes the file it wraps, and returns "
-        + "409 when that file is also attached elsewhere, naming the other holders.")]
+    [EndpointSummary("Permanently delete a library photo; its original and thumbnails are released after "
+        + "the deletion grace.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

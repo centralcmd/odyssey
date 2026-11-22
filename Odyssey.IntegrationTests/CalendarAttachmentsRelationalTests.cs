@@ -26,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// batches, a disk refusal after a committed batch, a batch that fails outright, the reserve/attach split itself, an
 /// expired reservation, the in-lock re-check, the interactive link write's retries, and an import racing edits.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class CalendarAttachmentsRelationalTests(MariaDbFixture fixture)
 {
     private const string User = "user";
@@ -406,8 +406,10 @@ public class CalendarAttachmentsRelationalTests(MariaDbFixture fixture)
 
     private static NewCalendarEvent Event(Guid calendarId) => new()
     {
-        CalendarId = calendarId, Title = "Meeting",
-        StartDateTime = new DateTime(2030, 3, 2, 10, 0, 0), EndDateTime = new DateTime(2030, 3, 2, 11, 0, 0),
+        CalendarId = calendarId,
+        Title = "Meeting",
+        StartDateTime = new DateTime(2030, 3, 2, 10, 0, 0),
+        EndDateTime = new DateTime(2030, 3, 2, 11, 0, 0),
     };
 
     private static CalendarEventService Events(AsyncServiceScope scope) =>

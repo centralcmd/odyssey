@@ -6,7 +6,6 @@ using Odyssey.Api.Legal;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Legal;
 
 namespace Odyssey.Api.Controllers;
@@ -43,13 +42,13 @@ public sealed class LegalController : ControllerBase
     [HttpGet("license")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(LicenseDocument))]
-    [SwaggerOperation(Summary = "The repository LICENSE text and the SHA-256 digest acceptance is recorded against.")]
+    [EndpointSummary("The repository LICENSE text and the SHA-256 digest acceptance is recorded against.")]
     public ActionResult<LicenseDocument> GetLicense() => Ok(service.GetLicense());
 
     [HttpGet("terms-of-service/current")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TermsOfServiceDocument))]
-    [SwaggerOperation(Summary = "The current published Terms of Service version, or null if none has been published.")]
+    [EndpointSummary("The current published Terms of Service version, or null if none has been published.")]
     public async Task<IActionResult> GetCurrentTermsOfService(CancellationToken cancellationToken)
     {
         var document = await service.GetCurrentTermsOfServiceAsync(cancellationToken);
@@ -63,7 +62,7 @@ public sealed class LegalController : ControllerBase
     [HttpGet("status")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(LegalComplianceStatus))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [SwaggerOperation(Summary = "The calling user's own License/ToS compliance state.")]
+    [EndpointSummary("The calling user's own License/ToS compliance state.")]
     public async Task<IActionResult> GetStatus(CancellationToken cancellationToken)
     {
         if (User.ActingUserId() is not { } userId)
@@ -88,7 +87,7 @@ public sealed class LegalController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Accept or decline the License or the current Terms of Service.")]
+    [EndpointSummary("Accept or decline the License or the current Terms of Service.")]
     public async Task<IActionResult> Respond(
         [FromBody] LegalDocumentResponse request,
         CancellationToken cancellationToken)
@@ -122,7 +121,7 @@ public sealed class LegalController : ControllerBase
     [Authorize(Policy = PermissionClaims.UsersManage)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IReadOnlyList<ExistingTermsOfServiceVersion>))]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [SwaggerOperation(Summary = "Terms of Service version history (metadata only — never the content).")]
+    [EndpointSummary("Terms of Service version history (metadata only — never the content).")]
     public async Task<IActionResult> GetVersions(CancellationToken cancellationToken) =>
         Ok(await service.GetVersionsAsync(User, cancellationToken));
 
@@ -131,7 +130,7 @@ public sealed class LegalController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TermsOfServiceVersionDetail))]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One Terms of Service version including its full text.")]
+    [EndpointSummary("One Terms of Service version including its full text.")]
     public async Task<IActionResult> GetVersion(int id, CancellationToken cancellationToken)
     {
         var version = await service.GetVersionAsync(User, id, cancellationToken);
@@ -146,7 +145,7 @@ public sealed class LegalController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(TermsOfServiceVersionDetail))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [SwaggerOperation(Summary = "Publish a new current Terms of Service version; prior versions are retained untouched.")]
+    [EndpointSummary("Publish a new current Terms of Service version; prior versions are retained untouched.")]
     public async Task<IActionResult> PublishVersion(
         [FromBody] NewTermsOfServiceVersion request,
         CancellationToken cancellationToken)

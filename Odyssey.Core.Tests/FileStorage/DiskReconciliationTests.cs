@@ -96,8 +96,12 @@ public class DiskReconciliationTests : FileStorageTestBase
             var context = sp.GetRequiredService<OdysseyContext>();
             context.StoredObjects.Add(new StoredObject
             {
-                Id = Guid.NewGuid(), VolumeId = row.VolumeId, FeatureKey = "TestFiles", RelativePath = "test-files/aa/bb/owner/X.JPG",
-                State = StoredObjectState.Pending, CreatedAtUtc = Clock.GetUtcNow().UtcDateTime,
+                Id = Guid.NewGuid(),
+                VolumeId = row.VolumeId,
+                FeatureKey = "TestFiles",
+                RelativePath = "test-files/aa/bb/owner/X.JPG",
+                State = StoredObjectState.Pending,
+                CreatedAtUtc = Clock.GetUtcNow().UtcDateTime,
             });
             await context.SaveChangesAsync();
         });
@@ -132,8 +136,13 @@ public class DiskReconciliationTests : FileStorageTestBase
                 {
                     context.StoredObjects.Add(new StoredObject
                     {
-                        Id = Guid.NewGuid(), VolumeId = volumeId, FeatureKey = "TestFiles", RelativePath = relative,
-                        State = StoredObjectState.Committed, Sha256Hash = new string('0', 64), CreatedAtUtc = Clock.GetUtcNow().UtcDateTime,
+                        Id = Guid.NewGuid(),
+                        VolumeId = volumeId,
+                        FeatureKey = "TestFiles",
+                        RelativePath = relative,
+                        State = StoredObjectState.Committed,
+                        Sha256Hash = new string('0', 64),
+                        CreatedAtUtc = Clock.GetUtcNow().UtcDateTime,
                     });
                 }
             }
@@ -424,8 +433,13 @@ public class DiskReconciliationTests : FileStorageTestBase
 
     private static StoredObject Live(Guid volumeId, string path) => new()
     {
-        Id = Guid.NewGuid(), VolumeId = volumeId, FeatureKey = "TestSecrets", RelativePath = path,
-        State = StoredObjectState.Committed, Sha256Hash = new string('0', 64), CreatedAtUtc = DateTime.UtcNow,
+        Id = Guid.NewGuid(),
+        VolumeId = volumeId,
+        FeatureKey = "TestSecrets",
+        RelativePath = path,
+        State = StoredObjectState.Committed,
+        Sha256Hash = new string('0', 64),
+        CreatedAtUtc = DateTime.UtcNow,
     };
 
     private static async Task<List<FileStorageOrphanSighting>> SightingsAsync(FileStorageTestHost host)

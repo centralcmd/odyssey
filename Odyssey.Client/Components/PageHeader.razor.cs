@@ -161,13 +161,24 @@ public partial class PageHeader
         // When a page binds a region's open state, mirror it (the page — restoring a
         // saved layout — is authoritative). Unbound regions keep their internal state.
         if (ProblemsOpenChanged.HasDelegate)
+        {
             _showProblems = ProblemsOpen;
+        }
+
         if (OverviewOpenChanged.HasDelegate)
+        {
             _showOverview = OverviewOpen;
+        }
+
         if (SearchOpenChanged.HasDelegate)
+        {
             _showSearch = SearchOpen;
+        }
+
         if (InfoOpenChanged.HasDelegate)
+        {
             _showInfo = InfoOpen;
+        }
     }
 
     private Task ToggleProblems() => ToggleAsync(_showProblems = !_showProblems, ProblemsOpenChanged);

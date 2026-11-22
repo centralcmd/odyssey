@@ -194,7 +194,10 @@ public partial class LocationDialog
                 .ToList();
             // A stored id this browser does not know still displays, and says so.
             if (!string.IsNullOrEmpty(_timeZone) && !options.Any(o => o.Value == _timeZone))
+            {
                 options.Insert(0, new OdsOption(_timeZone, _timeZone) { Note = "not recognised here" });
+            }
+
             return options;
         }
     }
@@ -262,7 +265,9 @@ public partial class LocationDialog
         _timeZone = string.IsNullOrEmpty(value) ? null : value;
         _errors.Remove("timeZoneId");
         if (_timeZone is not null)
+        {
             _zoneOrigin = ZoneOrigin.Provider;
+        }
     }
 
     private void OnRegionChanged(LocationSearchRegion region)
@@ -277,7 +282,10 @@ public partial class LocationDialog
         // Create: the candidate names the place unless the user already typed their own name. Edit: the
         // name — and the description, always — are untouched.
         if (!IsEdit && (string.IsNullOrWhiteSpace(_name) || (_pick is not null && _name == _pick.Name)))
+        {
             _name = c.Name;
+        }
+
         _address = c.AddressText;
         // A Kartverket ADDRESS fills the Address group (issue #380 §5.5a); a place name or a locality leaves it.
         if (c.Kind == LocationCandidateKind.Address && !string.IsNullOrEmpty(c.Line1))
@@ -327,7 +335,10 @@ public partial class LocationDialog
         }
 
         if (!_focusPicked)
+        {
             return;
+        }
+
         _focusPicked = false;
         try
         { await Js.InvokeVoidAsync("odsFocusById", PickedId); }
@@ -349,15 +360,22 @@ public partial class LocationDialog
     private void SearchAgain()
     {
         if (IsEdit)
+        {
             _researching = true;
+        }
         else
+        {
             _step = Step.Search;
+        }
     }
 
     private void RestoreProviderCoordinates()
     {
         if (_pick is null)
+        {
             return;
+        }
+
         _lat = _pick.Latitude;
         _lng = _pick.Longitude;
         ClearCoordinateErrors();
@@ -378,35 +396,63 @@ public partial class LocationDialog
         _errors.Clear();
         var name = Blank(_name);
         if (name is null)
+        {
             _errors["name"] = "Give the place a name.";
+        }
         else if (name.Length > LocationRules.NameMaxLength)
+        {
             _errors["name"] = $"Keep the name to {LocationRules.NameMaxLength} characters or fewer.";
+        }
+
         if ((_address?.Length ?? 0) > LocationRules.AddressTextMaxLength)
+        {
             _errors["addressText"] = $"Keep the address to {LocationRules.AddressTextMaxLength} characters or fewer.";
+        }
+
         if (Blank(_countryCode) is { } country && !System.Text.RegularExpressions.Regex.IsMatch(country, LocationRules.CountryCodePattern))
+        {
             _errors["countryCode"] = "Two letters, e.g. NO.";
+        }
+
         if ((_description?.Length ?? 0) > LocationRules.DescriptionMaxLength)
+        {
             _errors["description"] = $"Keep the description to {LocationRules.DescriptionMaxLength} characters or fewer.";
+        }
         // Coordinates and time zone are optional since issue #380, but all-or-none — a partial pair is reported
         // here, on save, with the other validation, never on blur (issue #383 §3.6).
         if ((LatRounded is null) != (LngRounded is null))
+        {
             _errors["coordinates"] = "Enter both latitude and longitude, or neither.";
+        }
         else if (LatRounded is { } lat && LngRounded is { } lng && (lat is < -90 or > 90 || lng is < -180 or > 180))
+        {
             _errors["coordinates"] = "Latitude is −90 to 90 and longitude −180 to 180.";
+        }
+
         if (_altitude is { } alt && (alt < LocationRules.AltitudeMin || alt > LocationRules.AltitudeMax || alt != decimal.Truncate(alt)))
+        {
             _errors["altitudeMeters"] = string.Create(CultureInfo.InvariantCulture,
                 $"A whole number between {LocationRules.AltitudeMin} and {LocationRules.AltitudeMax:N0} m.");
+        }
+
         var hasCoordinates = LatRounded is not null && LngRounded is not null;
         if (hasCoordinates && string.IsNullOrEmpty(_timeZone))
+        {
             _errors["timeZoneId"] = _zoneOrigin == ZoneOrigin.Missing ? "Choose the time zone this place keeps." : "Choose a time zone.";
+        }
         else if (!hasCoordinates && !_errors.ContainsKey("coordinates") && !string.IsNullOrEmpty(_timeZone))
+        {
             _errors["timeZoneId"] = "A time zone goes with coordinates — add them, or clear the time zone.";
+        }
     }
 
     private async Task SubmitAsync()
     {
         if (_saving)
+        {
             return;
+        }
+
         Validate();
         if (_errors.Count > 0)
         {
@@ -425,20 +471,40 @@ public partial class LocationDialog
             ApiResult<ExistingLocation> result = IsEdit
                 ? await Locations.UpdateAsync(Location!.LocationId, new UpdateLocation
                 {
-                    Name = name, Description = Blank(_description), AddressText = Blank(_address),
-                    Line1 = Blank(_line1), Line2 = Blank(_line2), PostalCode = Blank(_postalCode),
-                    City = Blank(_city), Region = Blank(_region), CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
-                    Latitude = LatRounded, Longitude = LngRounded, AltitudeMeters = altitude,
-                    TimeZoneId = Blank(_timeZone), Source = Source, SourceReference = reference,
+                    Name = name,
+                    Description = Blank(_description),
+                    AddressText = Blank(_address),
+                    Line1 = Blank(_line1),
+                    Line2 = Blank(_line2),
+                    PostalCode = Blank(_postalCode),
+                    City = Blank(_city),
+                    Region = Blank(_region),
+                    CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
+                    Latitude = LatRounded,
+                    Longitude = LngRounded,
+                    AltitudeMeters = altitude,
+                    TimeZoneId = Blank(_timeZone),
+                    Source = Source,
+                    SourceReference = reference,
                     Archived = Location.Archived is not null,
                 })
                 : await Locations.CreateAsync(new NewLocation
                 {
-                    Name = name, Description = Blank(_description), AddressText = Blank(_address),
-                    Line1 = Blank(_line1), Line2 = Blank(_line2), PostalCode = Blank(_postalCode),
-                    City = Blank(_city), Region = Blank(_region), CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
-                    Latitude = LatRounded, Longitude = LngRounded, AltitudeMeters = altitude,
-                    TimeZoneId = Blank(_timeZone), Source = Source, SourceReference = reference,
+                    Name = name,
+                    Description = Blank(_description),
+                    AddressText = Blank(_address),
+                    Line1 = Blank(_line1),
+                    Line2 = Blank(_line2),
+                    PostalCode = Blank(_postalCode),
+                    City = Blank(_city),
+                    Region = Blank(_region),
+                    CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
+                    Latitude = LatRounded,
+                    Longitude = LngRounded,
+                    AltitudeMeters = altitude,
+                    TimeZoneId = Blank(_timeZone),
+                    Source = Source,
+                    SourceReference = reference,
                 });
 
             var outcome = result.IsSuccess ? ApiResult.Success(result.Status) : ApiResult.Failure(result.Status, result.Problem!);
@@ -452,7 +518,9 @@ public partial class LocationDialog
             // dialog open.
             await OpenChanged.InvokeAsync(false);
             if (result.Value is { } saved)
+            {
                 await OnSaved.InvokeAsync(saved);
+            }
         }
         finally
         {
@@ -471,7 +539,10 @@ public partial class LocationDialog
         ];
         var key = known.FirstOrDefault(k => string.Equals(k, leaf, StringComparison.OrdinalIgnoreCase));
         if (key is null)
+        {
             return false;
+        }
+
         _errors[key] = message;
         return true;
     }

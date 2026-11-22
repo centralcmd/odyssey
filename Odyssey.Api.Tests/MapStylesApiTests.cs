@@ -6,6 +6,7 @@ using Odyssey.Api.Map;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -15,7 +16,7 @@ namespace Odyssey.Api.Tests;
 /// 4–7). A failing configuration must stop the host naming the key and the rule — never the value, which
 /// could be a mistakenly pasted keyed URL.
 /// </summary>
-public class MapStylesApiTests
+public class MapStylesApiTests(MapStylesApiTests.Host host) : SharedApiHostTests<MapStylesApiTests.Host>(host)
 {
     private const string Path = "/api/map-styles";
 
@@ -26,7 +27,7 @@ public class MapStylesApiTests
     [Fact]
     public async Task Reader_gets_the_shipped_defaults_with_a_private_five_minute_cache()
     {
-        await using var factory = new OdysseyApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -45,7 +46,7 @@ public class MapStylesApiTests
     [Fact]
     public async Task The_allowed_origins_are_never_returned()
     {
-        await using var factory = new OdysseyApiFactory(Reader);
+        var factory = Factory.ForCaller(Reader);
         using var client = factory.CreateClient();
 
         using var body = JsonDocument.Parse(await client.GetStringAsync(Path));
@@ -92,7 +93,7 @@ public class MapStylesApiTests
     [Fact]
     public async Task Unauthenticated_is_401_without_a_cache_header()
     {
-        await using var factory = new OdysseyApiFactory(permissions: null);
+        var factory = Factory.ForCaller(null);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -104,7 +105,7 @@ public class MapStylesApiTests
     [Fact]
     public async Task Without_locations_read_is_403_without_a_cache_header()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(Path);
@@ -221,7 +222,7 @@ public class MapStylesApiTests
     [Fact]
     public void Every_shipped_style_declares_the_remote_origins_it_loads_from()
     {
-        var directory = System.IO.Path.Combine(RepositoryRoot.Path, "Odyssey.Client", "wwwroot", "maps");
+        var directory = System.IO.Path.Combine(SourceTree.Root, "Odyssey.Client", "wwwroot", "maps");
         var files = Directory.GetFiles(directory, "*.json");
         Assert.NotEmpty(files);
 
@@ -295,7 +296,7 @@ public class MapStylesApiTests
     [Fact]
     public void The_shipped_appsettings_section_validates()
     {
-        using var document = JsonDocument.Parse(RepositoryRoot.ReadAllText("Odyssey.Api/appsettings.json"));
+        using var document = JsonDocument.Parse(SourceTree.ReadAllText("Odyssey.Api/appsettings.json"));
         var map = document.RootElement.GetProperty("Map").Deserialize<MapOptions>()!;
 
         var result = Validate(map);
@@ -345,12 +346,16 @@ public class MapStylesApiTests
         if (exception is AggregateException aggregate)
         {
             foreach (var inner in aggregate.InnerExceptions.SelectMany(Flatten))
+            {
                 yield return inner;
+            }
         }
         else if (exception.InnerException is not null)
         {
             foreach (var inner in Flatten(exception.InnerException))
+            {
                 yield return inner;
+            }
         }
     }
 
@@ -365,6 +370,9 @@ public class MapStylesApiTests
         AttributionUrl = "https://www.openstreetmap.org/copyright",
         AllowedOrigins = "https://tiles.openfreemap.org",
     };
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }
 
 /// <summary>The rows of <c>TestShared/MapOriginVectors.json</c> (issue #370 AC 7).</summary>

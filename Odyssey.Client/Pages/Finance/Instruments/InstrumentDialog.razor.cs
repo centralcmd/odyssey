@@ -56,8 +56,12 @@ public partial class InstrumentDialog
 
     private static readonly Dictionary<string, string> FieldLabels = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["type"] = "Type", ["symbol"] = "Symbol", ["micCode"] = "Exchange code", ["isin"] = "ISIN",
-        ["name"] = "Name", ["currencyCode"] = "Currency",
+        ["type"] = "Type",
+        ["symbol"] = "Symbol",
+        ["micCode"] = "Exchange code",
+        ["isin"] = "ISIN",
+        ["name"] = "Name",
+        ["currencyCode"] = "Currency",
     };
 
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
@@ -134,11 +138,15 @@ public partial class InstrumentDialog
         }
 
         if (Locked)
+        {
             return;
+        }
 
         _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
         if (string.IsNullOrEmpty(_currency) && _currencyOptions.Count > 0)
+        {
             _currency = _currencyOptions[0].Value;
+        }
     }
 
     private void Set(string key, Action assign)
@@ -151,7 +159,10 @@ public partial class InstrumentDialog
     private void OnTypeChanged(string value)
     {
         if (Enum.TryParse<InstrumentType>(value, out var type))
+        {
             _type = type;
+        }
+
         _errors.Remove("micCode");
         _errors.Remove("isin");
         _errors.Remove("type");
@@ -172,36 +183,57 @@ public partial class InstrumentDialog
     {
         var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (string.IsNullOrWhiteSpace(name))
+        {
             errors["name"] = NameRequired;
+        }
+
         if (locked)
+        {
             return errors;
+        }
 
         var normalizedSymbol = InstrumentIdentifierRules.Normalize(symbol);
         if (normalizedSymbol is null)
+        {
             errors["symbol"] = SymbolRequired;
+        }
         else if (normalizedSymbol.Length > InstrumentIdentifierRules.SymbolMaxLength || !Symbol.IsMatch(normalizedSymbol))
+        {
             errors["symbol"] = SymbolFormat;
+        }
 
         var normalizedMic = InstrumentIdentifierRules.Normalize(mic);
         if (normalizedMic is null ? RequiresMic(type) : !Mic.IsMatch(normalizedMic))
+        {
             errors["micCode"] = MicFormat;
+        }
 
         var normalizedIsin = InstrumentIdentifierRules.Normalize(isin);
         if (normalizedIsin is null)
         {
             if (RequiresIsin(type))
+            {
                 errors["isin"] = IsinRequired;
+            }
         }
         else if (!Isin.IsMatch(normalizedIsin))
+        {
             errors["isin"] = IsinFormat;
+        }
         else if (!InstrumentIdentifierRules.IsValidIsinCheckDigit(normalizedIsin))
+        {
             errors["isin"] = IsinCheckDigit;
+        }
 
         if (normalizedMic is null && normalizedIsin is null && !errors.ContainsKey("micCode") && !errors.ContainsKey("isin"))
+        {
             errors["micCode"] = IdentifierRequired;
+        }
 
         if (string.IsNullOrWhiteSpace(currency))
+        {
             errors["currencyCode"] = CurrencyRequired;
+        }
 
         return errors;
     }
@@ -238,7 +270,9 @@ public partial class InstrumentDialog
         _existingId = null;
         _errors.Clear();
         foreach (var (key, message) in Validate(_type, _symbol, _mic, _isin, _name, _currency, Locked))
+        {
             _errors[key] = message;
+        }
 
         if (_errors.Count > 0)
         {
@@ -285,7 +319,10 @@ public partial class InstrumentDialog
         var leaf = field[(field.LastIndexOf('.') + 1)..];
         var key = FieldOrder.FirstOrDefault(k => string.Equals(k, leaf, StringComparison.OrdinalIgnoreCase));
         if (key is null)
+        {
             return false;
+        }
+
         _errors[key] = message;
         return true;
     }
@@ -299,9 +336,13 @@ public partial class InstrumentDialog
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!_focusSummary)
+        {
             return;
+        }
+
         _focusSummary = false;
-        try { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
         catch (JSException) { }
         catch (InvalidOperationException) { /* no JS runtime under bUnit */ }
     }

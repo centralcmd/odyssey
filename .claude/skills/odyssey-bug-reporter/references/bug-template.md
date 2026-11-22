@@ -45,8 +45,8 @@ The required triage fields, compact, right after the summary:
 **Version:** `main` @ <commit sha or branch>
 ```
 
-**Affected area** — pick exactly one from the official list:
-API · Client / Frontend · Finance · Auth · File Storage · User Preferences · Database / EF Core Migrations · Docker / Infrastructure · Other / Unknown
+**Affected area** — pick exactly one of the `affected_area` dropdown options in
+`.github/ISSUE_TEMPLATE/bug_report.yml` (the source of truth; read it rather than recalling the list).
 
 ---
 

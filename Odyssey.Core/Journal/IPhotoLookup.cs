@@ -15,14 +15,14 @@ public interface IPhotoLookup
     Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Each existing photo's label (title and effective file name) in one batched query, for render enrichment. Ids
+    /// Each existing photo's label (title and file name) in one batched query, for render enrichment. Ids
     /// that no longer resolve are absent from the map (the caller drops them).
     /// </summary>
     Task<IReadOnlyDictionary<Guid, PhotoLinkInfo>> ResolveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Resolves ICS <c>odyssey-photo:</c> reference ids (issue #428 §3.3): each id as a <c>PhotoId</c>, then as the
-    /// current <c>FileId</c> of a legacy photo, then as a backfilled photo's <c>LegacyFileId</c>. Unresolved ids are
+    /// <c>LegacyFileId</c> of a photo that wrapped that file before it was moved onto the store. Unresolved ids are
     /// absent. Never creates a photo.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, Guid>> ResolveReferencesAsync(IReadOnlyCollection<Guid> referenceIds, CancellationToken cancellationToken = default);

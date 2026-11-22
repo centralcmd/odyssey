@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Worker.Tests;
@@ -73,7 +74,7 @@ public sealed class ComposeNetworkTopologyTests
         Assert.Contains("stop_grace_period: 30s", Service(Lines(file), "worker").Select(l => l.Trim()));
     }
 
-    private static string[] Lines(string file) => File.ReadAllLines(Path.Combine(RepositoryRoot(), file));
+    private static string[] Lines(string file) => File.ReadAllLines(SourceTree.File(file));
 
     private static List<string> Service(string[] lines, string service) => Block(lines.ToList(), service, "  ");
 
@@ -120,16 +121,5 @@ public sealed class ComposeNetworkTopologyTests
             .Select(line => line.Trim()[2..].Trim())
             .Order(StringComparer.Ordinal)
             .ToList();
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Odyssey.sln not found above the test output.");
     }
 }

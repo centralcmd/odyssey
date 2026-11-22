@@ -129,7 +129,7 @@ public static class MigrationRunner
         }
 
         var newest = applied.Max(StringComparer.Ordinal)!;
-        throw new MigrationBaselineException(dbContext.GetType().Name, baseline, newest);
+        throw new MigrationBaselineException(baseline, newest);
     }
 
     /// <summary>One stage: the drift guard over <paramref name="stage"/>, then <paramref name="migrate"/>.</summary>
@@ -279,7 +279,7 @@ public static class MigrationRunner
         if (MigrationDriftDetector.Detect(pending, existing) is { } drift)
         {
             var superseded = await ReadSupersededIdsAsync(dbContext, baseline ?? MigrationBaseline.Current, cancellationToken);
-            throw new MigrationDriftException(dbContext.GetType().Name, drift, superseded);
+            throw new MigrationDriftException(drift, superseded);
         }
     }
 

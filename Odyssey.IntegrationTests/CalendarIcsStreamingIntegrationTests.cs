@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// The two memory checks need 100,000- and 50,000-event calendars, so they are perf-tier tests (<see cref="PerfTier"/>)
 /// that run on the Release PR; the per-PR run keeps the no-transaction assertion on a calendar small enough to seed in seconds.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
 {
     private const string User = "calendar-ics-streaming";
@@ -255,17 +255,31 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 var first = now.AddDays(-1).AddHours(-1);
                 var pattern = new RecurrencePattern
                 {
-                    CalendarId = calendarId, Title = "Gone", StartDateTime = first, EndDateTime = first.AddHours(1),
-                    Frequency = Odyssey.Context.RecurrenceFrequency.Daily, Interval = 1, OccurrenceCount = 3,
-                    ExternalUid = $"gone-{calendarId:N}@example.com", CreatedByUserId = User, CreatedAt = now, UpdatedAt = now,
+                    CalendarId = calendarId,
+                    Title = "Gone",
+                    StartDateTime = first,
+                    EndDateTime = first.AddHours(1),
+                    Frequency = Odyssey.Context.RecurrenceFrequency.Daily,
+                    Interval = 1,
+                    OccurrenceCount = 3,
+                    ExternalUid = $"gone-{calendarId:N}@example.com",
+                    CreatedByUserId = User,
+                    CreatedAt = now,
+                    UpdatedAt = now,
                 };
                 seeding.RecurrencePatterns.Add(pattern);
                 for (var o = 0; o < 3; o++)
                 {
                     seeding.CalendarEvents.Add(new CalendarEvent
                     {
-                        CalendarId = calendarId, Title = "Gone", StartDateTime = first.AddDays(o), EndDateTime = first.AddDays(o).AddHours(1),
-                        RecurrencePattern = pattern, CreatedByUserId = User, CreatedAt = now, UpdatedAt = now,
+                        CalendarId = calendarId,
+                        Title = "Gone",
+                        StartDateTime = first.AddDays(o),
+                        EndDateTime = first.AddDays(o).AddHours(1),
+                        RecurrencePattern = pattern,
+                        CreatedByUserId = User,
+                        CreatedAt = now,
+                        UpdatedAt = now,
                     });
                 }
 
@@ -311,8 +325,14 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 var at = new DateTime(2030, 1, 1, 9, 0, 0, DateTimeKind.Utc);
                 seeding.CalendarEvents.Add(new CalendarEvent
                 {
-                    CalendarId = calendarId, Title = "Before", StartDateTime = at, EndDateTime = at.AddHours(1),
-                    ExternalUid = stored, CreatedByUserId = User, CreatedAt = at, UpdatedAt = at,
+                    CalendarId = calendarId,
+                    Title = "Before",
+                    StartDateTime = at,
+                    EndDateTime = at.AddHours(1),
+                    ExternalUid = stored,
+                    CreatedByUserId = User,
+                    CreatedAt = at,
+                    UpdatedAt = at,
                 });
                 await seeding.SaveChangesAsync();
             }
@@ -390,18 +410,33 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
             var first = start.AddDays(s * 10);
             var pattern = new RecurrencePattern
             {
-                CalendarId = calendar.CalendarId, Title = $"Series {s}", StartDateTime = first, EndDateTime = first.AddHours(1),
-                Frequency = Odyssey.Context.RecurrenceFrequency.Daily, Interval = 1, OccurrenceCount = 3, CreatedByUserId = User,
-                CreatedAt = now, UpdatedAt = now, Version = Guid.NewGuid(), KeysBackfilledAt = now,
+                CalendarId = calendar.CalendarId,
+                Title = $"Series {s}",
+                StartDateTime = first,
+                EndDateTime = first.AddHours(1),
+                Frequency = Odyssey.Context.RecurrenceFrequency.Daily,
+                Interval = 1,
+                OccurrenceCount = 3,
+                CreatedByUserId = User,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Version = Guid.NewGuid(),
+                KeysBackfilledAt = now,
             };
             context.RecurrencePatterns.Add(pattern);
             for (var o = 0; o < 3; o++)
             {
                 context.CalendarEvents.Add(new CalendarEvent
                 {
-                    CalendarId = calendar.CalendarId, Title = pattern.Title, StartDateTime = first.AddDays(o),
-                    EndDateTime = first.AddDays(o).AddHours(1), RecurrencePattern = pattern, CreatedByUserId = User,
-                    CreatedAt = now, UpdatedAt = now, OccurrenceKey = DateTime.SpecifyKind(first.AddDays(o), DateTimeKind.Unspecified),
+                    CalendarId = calendar.CalendarId,
+                    Title = pattern.Title,
+                    StartDateTime = first.AddDays(o),
+                    EndDateTime = first.AddDays(o).AddHours(1),
+                    RecurrencePattern = pattern,
+                    CreatedByUserId = User,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    OccurrenceKey = DateTime.SpecifyKind(first.AddDays(o), DateTimeKind.Unspecified),
                 });
             }
         }
@@ -415,10 +450,14 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
             {
                 seeding.CalendarEvents.Add(new CalendarEvent
                 {
-                    CalendarId = calendar.CalendarId, Title = $"Row {calendar.CalendarId:N} {i}",
+                    CalendarId = calendar.CalendarId,
+                    Title = $"Row {calendar.CalendarId:N} {i}",
                     Description = "A description long enough to make the row worth streaming rather than buffering.",
-                    StartDateTime = start.AddMinutes(i), EndDateTime = start.AddMinutes(i + 30), CreatedByUserId = User,
-                    CreatedAt = now, UpdatedAt = now,
+                    StartDateTime = start.AddMinutes(i),
+                    EndDateTime = start.AddMinutes(i + 30),
+                    CreatedByUserId = User,
+                    CreatedAt = now,
+                    UpdatedAt = now,
                 });
             }
 

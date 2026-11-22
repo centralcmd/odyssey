@@ -61,14 +61,24 @@ public class AlbumIconColorSurfaceTests
 
     private static PhotoAlbumSummary Summary(string name, string? icon, string? color, Guid? cover) => new()
     {
-        PhotoAlbumId = Guid.NewGuid(), Name = name, PhotoCount = cover is null ? 0 : 1, Icon = icon, Color = color,
+        PhotoAlbumId = Guid.NewGuid(),
+        Name = name,
+        PhotoCount = cover is null ? 0 : 1,
+        Icon = icon,
+        Color = color,
         CoverPhotoId = cover,
     };
 
     private static ExistingPhotoAlbum Existing(Guid id, string? icon = "landscape", string? color = Teal) => new()
     {
-        PhotoAlbumId = id, Name = "Lofoten", Description = "North", PhotoIds = [Guid.NewGuid()], Icon = icon, Color = color,
-        CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        PhotoAlbumId = id,
+        Name = "Lofoten",
+        Description = "North",
+        PhotoIds = [Guid.NewGuid()],
+        Icon = icon,
+        Color = color,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow,
     };
 
     private static ApiResult Ok() => ApiResult.Success(HttpStatusCode.OK);
@@ -537,7 +547,9 @@ public class AlbumIconColorSurfaceTests
         var cells = cut.FindAll("#album-color [role=radio]");
         switch (selection)
         {
-            case "swatch": cells[1].Click(); break;
+            case "swatch":
+                cells[1].Click();
+                break;
             case "custom":
                 cells.Last().Click();
                 cut.WaitForState(() => cut.FindAll("input[placeholder='#RRGGBB']").Count == 1);

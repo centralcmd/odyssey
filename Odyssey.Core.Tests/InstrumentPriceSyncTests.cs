@@ -9,6 +9,7 @@ using Odyssey.Core.Finance.Instruments.Sources;
 using Odyssey.Core.Finance.Instruments.Sync;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Odyssey.TestShared.InstrumentPrices;
 using Xunit;
 
@@ -169,7 +170,11 @@ public class InstrumentPriceSyncTests
                 store.SaveChanges();
                 store.InstrumentPriceSourceBindings.Add(new InstrumentPriceSourceBinding
                 {
-                    InstrumentId = instrument, SourceKey = FakePrimarySource.DeclaredKey, SourceSymbol = "NEW", Priority = 1, Enabled = true,
+                    InstrumentId = instrument,
+                    SourceKey = FakePrimarySource.DeclaredKey,
+                    SourceSymbol = "NEW",
+                    Priority = 1,
+                    Enabled = true,
                     UpdatedAtUtc = Now,
                 });
                 store.SaveChanges();
@@ -441,7 +446,11 @@ public class InstrumentPriceSyncTests
         await harness.BindAsync(instrument, FakePrimarySource.DeclaredKey, 1);
         harness.Store.InstrumentPrices.Add(new InstrumentPrice
         {
-            InstrumentPriceId = Guid.NewGuid(), InstrumentId = instrument, TradingDate = Today, Close = 1m, CreatedAtUtc = Now,
+            InstrumentPriceId = Guid.NewGuid(),
+            InstrumentId = instrument,
+            TradingDate = Today,
+            Close = 1m,
+            CreatedAtUtc = Now,
         });
         await harness.Store.SaveChangesAsync();
 
@@ -477,8 +486,12 @@ public class InstrumentPriceSyncTests
 
         await harness.Sync.RunScheduledIfDueAsync();
 
-        Assert.NotEmpty(harness.Logs.Lines);
-        Assert.All(harness.Logs.Lines, line =>
+        // Every rendered line, its exception and every scope's state: what a sink could have written.
+        var lines = harness.Logs.Entries.Select(entry => entry.Message + " " + entry.Exception)
+            .Concat(harness.Logs.Scopes.Select(scope => scope.ToString() ?? string.Empty))
+            .ToList();
+        Assert.NotEmpty(lines);
+        Assert.All(lines, line =>
         {
             Assert.DoesNotContain(SyncHarness.Secret, line, StringComparison.Ordinal);
             Assert.DoesNotContain("SENTINELSYMBOL", line, StringComparison.Ordinal);
@@ -548,17 +561,38 @@ public class InstrumentPriceSyncTests
         return days;
     }
 
-    /// <summary>A clock fixed at a settable instant whose timers are real, so the transport's short retry delays elapse.</summary>
     /// <summary>
-    /// A wall clock the test sets. Its timers fire at once and record what they were asked to wait: the only timer
-    /// the sync takes from its <see cref="TimeProvider"/> is the transport's retry back-off, which a test asserts by
-    /// its requested length rather than by sleeping through it.
+    /// A wall clock the test sets. Its timers fire at once and record what they were asked to wait: the transport's
+    /// retry back-off is asserted by its requested length rather than slept through. When <see cref="Jumping"/> is set
+    /// (issue #447 A7), each timer also moves the clock forward by its due time, so a paced run takes no wall time and
+    /// the spacing it kept can be read off the clock.
     /// </summary>
     internal sealed class SettableClock(DateTime now) : TimeProvider
     {
+        private readonly object sync = new();
         private readonly System.Collections.Concurrent.ConcurrentQueue<TimeSpan> requestedDelays = new();
+        private DateTime current = now;
 
-        public DateTime Now { get; set; } = now;
+        public DateTime Now
+        {
+            get
+            {
+                lock (sync)
+                {
+                    return current;
+                }
+            }
+
+            set
+            {
+                lock (sync)
+                {
+                    current = value;
+                }
+            }
+        }
+
+        public bool Jumping { get; set; }
 
         public IReadOnlyList<TimeSpan> RequestedDelays => [.. requestedDelays];
 
@@ -567,34 +601,34 @@ public class InstrumentPriceSyncTests
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
             requestedDelays.Enqueue(dueTime);
-            return base.CreateTimer(callback, state, TimeSpan.Zero, period);
-        }
-    }
-
-    /// <summary>Captures every formatted log line, scopes and exception text included.</summary>
-    internal sealed class CapturingLoggerProvider : Microsoft.Extensions.Logging.ILoggerProvider
-    {
-        public System.Collections.Concurrent.ConcurrentQueue<string> Lines { get; } = new();
-
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new Logger(this);
-
-        public void Dispose()
-        {
-        }
-
-        private sealed class Logger(CapturingLoggerProvider owner) : Microsoft.Extensions.Logging.ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            if (dueTime == Timeout.InfiniteTimeSpan)
             {
-                owner.Lines.Enqueue(state.ToString() ?? string.Empty);
-                return null;
+                return base.CreateTimer(callback, state, dueTime, period);
             }
 
-            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+            if (!Jumping)
+            {
+                return base.CreateTimer(callback, state, TimeSpan.Zero, period);
+            }
 
-            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state,
-                Exception? exception, Func<TState, Exception?, string> formatter) =>
-                owner.Lines.Enqueue(formatter(state, exception) + " " + exception);
+            lock (sync)
+            {
+                current += dueTime;
+            }
+
+            ThreadPool.QueueUserWorkItem(_ => callback(state));
+            return new FiredTimer();
+        }
+
+        private sealed class FiredTimer : ITimer
+        {
+            public bool Change(TimeSpan dueTime, TimeSpan period) => false;
+
+            public void Dispose()
+            {
+            }
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }
     }
 
@@ -617,7 +651,7 @@ public class InstrumentPriceSyncTests
         private readonly ServiceProvider provider;
         private readonly AsyncServiceScope scope;
 
-        public SyncHarness(bool registerSources = true, int historyDays = 30, int intervalHours = 24)
+        public SyncHarness(bool registerSources = true, int historyDays = 30, int intervalHours = 24, bool tiingo = false)
         {
             var services = new ServiceCollection();
             var store = Guid.NewGuid().ToString();
@@ -625,12 +659,17 @@ public class InstrumentPriceSyncTests
             services.AddSingleton<TimeProvider>(Clock);
             services.AddSingleton<ISecretSettingsReader>(Secrets);
             services.AddSingleton<IInstrumentPriceSettingsLookup>(new FixedSettings(new InstrumentPriceSettings(5, intervalHours, historyDays, false)));
-            services.AddLogging(logging => logging.AddProvider(Logs));
+            services.AddLogging(logging => logging.AddProvider(Logs).SetMinimumLevel(LogLevel.Trace));
             if (registerSources)
             {
                 services.AddInstrumentPriceSource<FakePrimarySource>();
                 services.AddInstrumentPriceSource<FakeSecondarySource>();
-                foreach (var key in new[] { FakePrimarySource.DeclaredKey, FakeSecondarySource.DeclaredKey })
+                if (tiingo)
+                {
+                    services.AddInstrumentPriceSource<Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource>();
+                }
+
+                foreach (var key in new[] { FakePrimarySource.DeclaredKey, FakeSecondarySource.DeclaredKey, "tiingo" })
                 {
                     services.AddHttpClient(SourceHttpLimits.ClientName(key)).ConfigurePrimaryHttpMessageHandler(() => Handler);
                 }
@@ -648,17 +687,24 @@ public class InstrumentPriceSyncTests
 
         public SettableSecrets Secrets { get; } = new();
 
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         public ScriptedPriceHandler Handler { get; } = new();
 
         public FakePrimarySource Primary => provider.GetRequiredService<FakePrimarySource>();
 
+        public FakeSecondarySource Secondary => provider.GetRequiredService<FakeSecondarySource>();
+
+        public Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource Tiingo =>
+            provider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource>();
+
+        public InstrumentPriceSourceAdminService Admin => scope.ServiceProvider.GetRequiredService<InstrumentPriceSourceAdminService>();
+
         public OdysseyContext Store => scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
         public InstrumentPriceSyncService Sync => scope.ServiceProvider.GetRequiredService<InstrumentPriceSyncService>();
 
-        public async Task<Guid> AddInstrumentAsync(string symbol, bool archived = false)
+        public async Task<Guid> AddInstrumentAsync(string symbol, bool archived = false, string currency = "NOK")
         {
             var id = Guid.NewGuid();
             Store.Instruments.Add(new Instrument
@@ -668,7 +714,7 @@ public class InstrumentPriceSyncTests
                 MicCode = "XOSL",
                 Name = symbol,
                 Type = InstrumentType.Stock,
-                CurrencyCode = "NOK",
+                CurrencyCode = currency,
                 ListingKey = $"{symbol}@XOSL",
                 Archived = archived ? Now : null,
                 CreatedAtUtc = Now,

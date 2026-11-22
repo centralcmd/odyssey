@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage;
+using Odyssey.Testing;
 using Odyssey.Testing.FileStorage;
 using Xunit;
 
@@ -175,13 +176,7 @@ public class ObjectStoreTests : FileStorageTestBase
     [Fact]
     public void No_file_storage_log_line_carries_an_exception_object()
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (!File.Exists(Path.Combine(root.FullName, "Odyssey.sln")))
-        {
-            root = root.Parent!;
-        }
-
-        var offenders = Directory.EnumerateFiles(Path.Combine(root.FullName, "Odyssey.Core", "FileStorage"), "*.cs")
+        var offenders = Directory.EnumerateFiles(SourceTree.File("Odyssey.Core", "FileStorage"), "*.cs")
             .SelectMany(file => File.ReadLines(file).Select((line, i) => (file, line, i)))
             .Where(x => System.Text.RegularExpressions.Regex.IsMatch(x.line, @"logger\.Log\w*\(\s*(ex|cause|exception|failure|probeFailure)\s*,"))
             .Select(x => $"{Path.GetFileName(x.file)}:{x.i + 1}")
@@ -521,7 +516,12 @@ public class ObjectStoreTests : FileStorageTestBase
 
     private static StoredObject Committed(Guid volumeId, string path) => new()
     {
-        Id = Guid.NewGuid(), VolumeId = volumeId, FeatureKey = "TestFiles", RelativePath = path, State = StoredObjectState.Committed,
-        Sha256Hash = new string('0', 64), CreatedAtUtc = DateTime.UtcNow,
+        Id = Guid.NewGuid(),
+        VolumeId = volumeId,
+        FeatureKey = "TestFiles",
+        RelativePath = path,
+        State = StoredObjectState.Committed,
+        Sha256Hash = new string('0', 64),
+        CreatedAtUtc = DateTime.UtcNow,
     };
 }

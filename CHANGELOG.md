@@ -5,6 +5,57 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Entries start at 0.16.0; releases before it are recorded only in the
+[GitHub tags](https://github.com/centralcmd/odyssey/tags).
+
+## [0.50.1](https://github.com/centralcmd/odyssey/compare/v0.50.0...v0.50.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **infra:** raise the client nginx request-header buffers to 32k ([#584](https://github.com/centralcmd/odyssey/issues/584)) ([f4d7702](https://github.com/centralcmd/odyssey/commit/f4d77026e382fa84da5eef3c918bf9f7899a0a69))
+
+## [0.50.0](https://github.com/centralcmd/odyssey/compare/v0.49.0...v0.50.0) (2026-11-22)
+
+
+### Features
+
+* add recipes ([#573](https://github.com/centralcmd/odyssey/issues/573)) ([4e94156](https://github.com/centralcmd/odyssey/commit/4e94156f04eaf528a888e8e0615248c623f6ee3f))
+* add the books catalogue ([#577](https://github.com/centralcmd/odyssey/issues/577)) ([8e3740a](https://github.com/centralcmd/odyssey/commit/8e3740aa62f067ca7b71157aebc6072acccf83f9))
+* add the tiingo price source, the phase 1 amendments and their UI ([#471](https://github.com/centralcmd/odyssey/issues/471)) ([023fd4b](https://github.com/centralcmd/odyssey/commit/023fd4b17b070b13a87cde33f0a860a7b1082148))
+* podcasts in the news reader ([#575](https://github.com/centralcmd/odyssey/issues/575)) ([cf0077f](https://github.com/centralcmd/odyssey/commit/cf0077fc25d2b9bb2165c16da8629b61e2fc6d19))
+
+
+### CI/CD
+
+* check whitespace formatting and pr titles ([#579](https://github.com/centralcmd/odyssey/issues/579)) ([8656c35](https://github.com/centralcmd/odyssey/commit/8656c35d2f2182f8cef0e5355bd03e70efc5bb95))
+
+## [0.49.0](https://github.com/centralcmd/odyssey/compare/v0.48.0...v0.49.0) (2026-11-21)
+
+
+### Features
+
+* **migrations:** make journal and task tag names unique ([#574](https://github.com/centralcmd/odyssey/issues/574)) ([b73ae90](https://github.com/centralcmd/odyssey/commit/b73ae90758f6ed5fd9df0164f44afc76b9ca3011))
+* sync the client with the design system at 1795262817-2dbb ([#570](https://github.com/centralcmd/odyssey/issues/570)) ([5ed3c0a](https://github.com/centralcmd/odyssey/commit/5ed3c0a71757dd9d707a9a4350040669a790ce6a))
+
+
+### Refactoring
+
+* apply the november 2026 maintainability review ([#555](https://github.com/centralcmd/odyssey/issues/555)) ([977f175](https://github.com/centralcmd/odyssey/commit/977f17509e72a673ae2df651aa9b19a128a5b92b))
+* **client:** maintainability clean-up from the frontend review ([#542](https://github.com/centralcmd/odyssey/issues/542)) ([484999c](https://github.com/centralcmd/odyssey/commit/484999c4263c104ed9264315cf7793f1c7bc4a4b))
+* **migrations:** drop the legacy file blob storage ([#550](https://github.com/centralcmd/odyssey/issues/550)) ([5b224ff](https://github.com/centralcmd/odyssey/commit/5b224ff66d173caef8910c435bce8429f8ca6a66))
+* remove dead code found by the maintainability review ([#540](https://github.com/centralcmd/odyssey/issues/540)) ([cb7c211](https://github.com/centralcmd/odyssey/commit/cb7c211b33941f842dd3094ace6e3f577fd8883f))
+
+
+### Documentation
+
+* full documentation review — fixes, claude.md split and doc lint ([#572](https://github.com/centralcmd/odyssey/issues/572)) ([246fe04](https://github.com/centralcmd/odyssey/commit/246fe04f6e7fd296d046e920f28bef482a6692c6))
+
+
+### CI/CD
+
+* parse the release pr output in the perf dispatch script ([#553](https://github.com/centralcmd/odyssey/issues/553)) ([8832038](https://github.com/centralcmd/odyssey/commit/8832038245e87378c8acdc2b72c2185ab852d865))
+
 ## [0.48.0](https://github.com/centralcmd/odyssey/compare/v0.47.0...v0.48.0) (2026-11-19)
 
 

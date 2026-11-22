@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -15,11 +16,11 @@ namespace Odyssey.Api.Tests;
 /// Contract coverage for issue #106: the two finance file surfaces used to return a raw user id with
 /// no name attached, which — since Guest holds <c>transactions.read</c>, <c>accounts.read</c> and
 /// <c>files.read</c> — was a harvesting primitive for ids the application never names to that caller.
-/// These tests pin that both surfaces now carry a label resolved by <see cref="IUserDisplayNameResolver"/>
+/// These tests pin that both surfaces now carry a label resolved by <see cref="Odyssey.Core.Identity.IUserDisplayNameResolver"/>
 /// under the CALLER's own claims, that the id is still there (round-tripping needs it), and that a
 /// caller whose claims do not license the name gets the resolver's neutral label rather than an email.
 /// </summary>
-public sealed class FinanceFileAttributionApiTests
+public class FinanceFileAttributionApiTests(FinanceFileAttributionApiTests.Host host) : SharedApiHostTests<FinanceFileAttributionApiTests.Host>(host)
 {
     private const string UploaderUserId = "uploader-user-id";
     private const string UploaderEmail = "uploader@example.com";
@@ -27,7 +28,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task GetTransactionFiles_ResolvesAttacherAndUploaderNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.");
 
@@ -46,7 +47,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task GetTransaction_ResolvesAttachedFileNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.");
 
@@ -61,7 +62,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task ListTransactions_ResolvesAttachedFileNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         await SeedAsync(factory, displayName: "Ada L.");
 
@@ -75,7 +76,7 @@ public sealed class FinanceFileAttributionApiTests
     [Fact]
     public async Task GetAccountFiles_ResolvesAttacherAndUploaderNames()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.");
 
@@ -94,7 +95,7 @@ public sealed class FinanceFileAttributionApiTests
         // No profile at all, so the resolver's only remaining candidate is the email — which it
         // withholds from a caller without users.read. This is the claim-conditional behaviour the fix
         // inherits; it must add no disclosure over the bare id it replaces.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.TransactionsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.TransactionsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: null);
 
@@ -128,7 +129,7 @@ public sealed class FinanceFileAttributionApiTests
         // The attribution foreign keys null these columns out when the account is deleted, so a null id
         // means "the author is gone" rather than "there was no author" — hence NameForAuthor, not
         // NameForOptional.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead]);
+        var factory = Factory.ForCaller([PermissionClaims.AccountsRead]);
         using var client = factory.CreateClient();
         var seeded = await SeedAsync(factory, displayName: "Ada L.", attributeToUser: false);
 
@@ -173,8 +174,7 @@ public sealed class FinanceFileAttributionApiTests
 
         var attributedTo = attributeToUser ? UploaderUserId : null;
 
-        var accountBlob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(accountBlob);
+        byte[] accountBlobContent = [1, 2, 3];
         var accountFileMetadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -183,13 +183,12 @@ public sealed class FinanceFileAttributionApiTests
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash-account",
-            FileBlobId = accountBlob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, accountBlobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(accountFileMetadata);
 
-        var transactionBlob = new FileBlob { Id = Guid.NewGuid(), Content = [4, 5, 6] };
-        db.FileBlob.Add(transactionBlob);
+        byte[] transactionBlobContent = [4, 5, 6];
         var transactionFileMetadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -198,7 +197,7 @@ public sealed class FinanceFileAttributionApiTests
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash-transaction",
-            FileBlobId = transactionBlob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, transactionBlobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(transactionFileMetadata);
@@ -236,4 +235,7 @@ public sealed class FinanceFileAttributionApiTests
 
         return (account.AccountId, transaction.TransactionId);
     }
+
+    /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
+    public sealed class Host() : OdysseyApiFactory([]);
 }

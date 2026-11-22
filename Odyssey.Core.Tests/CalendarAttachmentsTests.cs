@@ -10,6 +10,7 @@ using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -70,7 +71,8 @@ public class CalendarAttachmentsTests
         await context.SaveChangesAsync();
         var service = new CalendarIcsService(
             context, NullLogger<CalendarIcsService>.Instance, new FakeImportExportLimitsLookup(),
-            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now)) { TempFreeSpace = _ => 1024 };
+            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now))
+        { TempFreeSpace = _ => 1024 };
         var ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nDTSTART:20260302T100000\r\nDTEND:20260302T110000\r\nSUMMARY:A\r\n"
             + "ATTACH;FMTTYPE=text/plain;ENCODING=BASE64;VALUE=BINARY:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("hello"))
             + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
@@ -119,7 +121,8 @@ public class CalendarAttachmentsTests
         await using var context = TestContextFactory.CreateJournal();
         var importer = new CalendarAttachmentImporter(
             context, new FileValidationService(), null, null, "user", 1024, Path.GetTempPath(), _ => long.MaxValue,
-            NullLogger.Instance) { Claims = new CalendarIcsImportClaims(FilesRead: true, FilesCreate: true, PhotosRead: false, PhotosCreate: false) };
+            NullLogger.Instance)
+        { Claims = new CalendarIcsImportClaims(FilesRead: true, FilesCreate: true, PhotosRead: false, PhotosCreate: false) };
         var photo = new SpooledAttachment { Reference = "r", IsPhoto = true, Problem = IcsAttachmentSpooler.DamagedProblem };
 
         var inline = await Assert.ThrowsAsync<CalendarAttachmentsException>(() =>
@@ -177,7 +180,8 @@ public class CalendarAttachmentsTests
         await context.SaveChangesAsync();
         var service = new CalendarIcsService(
             context, NullLogger<CalendarIcsService>.Instance, new FakeImportExportLimitsLookup(),
-            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now)) { TempFreeSpace = _ => 0 };
+            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now))
+        { TempFreeSpace = _ => 0 };
         var ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nDTSTART:20260302T100000\r\nDTEND:20260302T110000\r\nSUMMARY:A\r\n"
             + "BEGIN:VALARM\r\nACTION:AUDIO\r\nTRIGGER:-PT5M\r\nATTACH;ENCODING=BASE64;VALUE=BINARY:aGVsbG8=\r\nEND:VALARM\r\n"
             + "END:VEVENT\r\nEND:VCALENDAR\r\n";
@@ -236,7 +240,9 @@ public class CalendarAttachmentsTests
         await context.SaveChangesAsync();
         var rows = Enumerable.Range(0, 3).Select(_ => new Odyssey.Context.CalendarEvent
         {
-            CalendarEventId = Guid.NewGuid(), CalendarId = Guid.NewGuid(), Title = "x",
+            CalendarEventId = Guid.NewGuid(),
+            CalendarId = Guid.NewGuid(),
+            Title = "x",
         }).ToList();
 
         await CalendarLinkService.StageCopyToDetachedAsync(context, patternId, rows, default);
@@ -258,22 +264,12 @@ public class CalendarAttachmentsTests
     }
 
     [Fact]
-    public void Both_attachment_tables_file_their_content_under_journal_and_the_counter_discovers_them()
+    public void The_counter_discovers_both_attachment_tables()
     {
-        Assert.Equal(StoredFileArea.Journal, FileAreaClassifier.AreaOfReference[typeof(CalendarEventAttachment)]);
-        Assert.Equal(StoredFileArea.Journal, FileAreaClassifier.AreaOfReference[typeof(RecurrencePatternAttachment)]);
         using var context = TestContextFactory.CreateJournal();
         var discovered = FileReferenceCounter.Discover(context);
         Assert.Contains(new FileReference(typeof(CalendarEventAttachment), nameof(CalendarEventAttachment.FileId)), discovered);
         Assert.Contains(new FileReference(typeof(RecurrencePatternAttachment), nameof(RecurrencePatternAttachment.FileId)), discovered);
-    }
-
-    [Fact]
-    public void The_file_reference_guard_names_both_calendar_attachment_tables()
-    {
-        var source = File.ReadAllText(Path.Combine(SolutionRoot(), "Odyssey.Core", "Finance", "Lookups", "FileReferenceGuard.cs"));
-        Assert.Contains("context.CalendarEventAttachments", source, StringComparison.Ordinal);
-        Assert.Contains("context.RecurrencePatternAttachments", source, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -283,7 +279,7 @@ public class CalendarAttachmentsTests
     [Fact]
     public void Only_CalendarLinkService_writes_the_four_calendar_link_tables()
     {
-        var root = SolutionRoot();
+        var root = SourceTree.Root;
         // The DbSets' writers, the generic Set<T>() route to them, and any construction of a link row. A context-level
         // Remove(row) is caught where the row comes from: a row can only be had from these sets or by construction.
         var writer = new Regex(
@@ -295,14 +291,8 @@ public class CalendarAttachmentsTests
         var offenders = new List<string>();
         foreach (var project in new[] { "Odyssey.Core", "Odyssey.Api", "Odyssey.Worker" })
         {
-            foreach (var path in Directory.EnumerateFiles(Path.Combine(root, project), "*.cs", SearchOption.AllDirectories))
+            foreach (var path in SourceTree.Files(project))
             {
-                if (path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                    || path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
                 scanned++;
                 if (Path.GetFileName(path) != "CalendarLinkService.cs" && writer.IsMatch(File.ReadAllText(path)))
                 {
@@ -313,16 +303,5 @@ public class CalendarAttachmentsTests
 
         Assert.True(scanned > 100, "The lint scanned almost nothing: its paths are wrong.");
         Assert.True(offenders.Count == 0, "Write the calendar link tables through CalendarLinkService: " + string.Join(", ", offenders));
-    }
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Could not locate the solution root.");
     }
 }

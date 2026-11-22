@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Odyssey.Client.Auth;
 using Odyssey.Client.Pages;
 using Odyssey.Client.Pages.Auth;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -169,21 +170,24 @@ public class ReturnUrlCallSiteTests
         {
             var relative = ClientSource.Relative(file);
             if (relative.Replace('\\', '/') == "Auth/LocalReturnUrl.cs")
+            {
                 continue;
+            }
 
             var text = File.ReadAllText(file);
             if (!text.Contains("returnUrl", StringComparison.OrdinalIgnoreCase))
+            {
                 continue;
+            }
 
-            var lines = text.Split('\n');
+            var lines = SourceLint.StripComments(text).Split('\n');
             for (var i = 0; i < lines.Length; i++)
             {
                 var code = lines[i].TrimStart();
-                if (code.StartsWith("//", StringComparison.Ordinal) || code.StartsWith('*'))
-                    continue;
-
                 if (InlineValidation.IsMatch(code))
+                {
                     violations.Add($"{relative}:{i + 1} — {code.Trim()}");
+                }
             }
         }
 
