@@ -181,13 +181,16 @@ else
                                UploadExtensions="BookVisuals.FileExtensions"
                                AttachedIds="@([.. (book.Attachments ?? []).Select(a => a.FileId)])"
                                Attach="CollectFile"
+                               Announce="false"
                                OnAttached="AddFilesAsync" />
     }
 
     @if (_photoIndex is { } pi && _photoSummaries.Count > 0)
     {
         <PhotoDetailDialog Photos="_photoSummaries" Index="pi" IndexChanged="@(i => _photoIndex = i)"
-                           OnClose="@(() => _photoIndex = null)" CanUpdate="false" CanDelete="false" />
+                           OnClose="@(() => _photoIndex = null)" CanUpdate="false" CanDelete="false"
+                           TagName="PhotoTagName" TagIcon="PhotoTagIcon" TagColor="PhotoTagColor"
+                           PersonName="PhotoPersonName" AlbumChip="PhotoAlbumChip" />
     }
 }
 

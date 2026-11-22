@@ -656,23 +656,32 @@ public static partial class OdsTypeRegistries
 
     /// <summary>
     /// A stored file's kind, derived from its content type — the design system's <c>bkFileKind</c>, for a surface
-    /// whose files carry no document type (a book's files). EPUB is <i>E-book</i> and is never previewed; E-book and
-    /// PDF wear their book-format colours.
+    /// whose files carry no document type (a book's files). EPUB is <i>E-book</i>; E-book and PDF wear their
+    /// book-format colours. Whether a kind is previewed is the Files page's own allow-list, which leaves EPUB out.
     /// </summary>
     public static OdsFileKindInfo FileKindOf(string? contentType)
     {
         var ct = contentType?.ToLowerInvariant() ?? string.Empty;
         return ct switch
         {
-            "application/epub+zip" => new("E-book", "menu_book", BookFormats[4].Color, BookFormats[4].Soft, Previewable: false),
-            "application/pdf" => new("PDF", "picture_as_pdf", BookFormats[5].Color, BookFormats[5].Soft, Previewable: true),
-            _ when ct.StartsWith("image/", StringComparison.Ordinal) => new("Image", "image", NeutralKindColor, NeutralKindSoft, Previewable: true),
+            "application/epub+zip" => EbookKind,
+            "application/pdf" => FromFormat("PDF", "picture_as_pdf", nameof(BookFormat.Pdf)),
+            _ when ct.StartsWith("image/", StringComparison.Ordinal) => new("Image", "image", NeutralKindColor, NeutralKindSoft),
             _ when ct.Contains("wordprocessingml", StringComparison.Ordinal) || ct.Contains("msword", StringComparison.Ordinal)
-                => new("Word document", "description", NeutralKindColor, NeutralKindSoft, Previewable: false),
-            "application/zip" => new("ZIP archive", "folder_zip", NeutralKindColor, NeutralKindSoft, Previewable: false),
-            "text/plain" => new("Text", "notes", NeutralKindColor, NeutralKindSoft, Previewable: false),
-            _ => new("File", "draft", NeutralKindColor, NeutralKindSoft, Previewable: false),
+                => new("Word document", "description", NeutralKindColor, NeutralKindSoft),
+            "application/zip" => new("ZIP archive", "folder_zip", NeutralKindColor, NeutralKindSoft),
+            "text/plain" => new("Text", "notes", NeutralKindColor, NeutralKindSoft),
+            _ => new("File", "draft", NeutralKindColor, NeutralKindSoft),
         };
+    }
+
+    /// <summary>The E-book kind — one colour wherever an EPUB is listed (book files, the Files page, journal rows).</summary>
+    public static readonly OdsFileKindInfo EbookKind = FromFormat("E-book", "menu_book", nameof(BookFormat.Ebook));
+
+    private static OdsFileKindInfo FromFormat(string label, string icon, string formatKey)
+    {
+        var format = BookFormats.First(f => f.Key == formatKey);
+        return new(label, icon, format.Color, format.Soft);
     }
 
     private const string NeutralKindColor = "var(--mud-palette-text-secondary)";

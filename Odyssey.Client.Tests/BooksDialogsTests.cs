@@ -225,6 +225,8 @@ public class BooksDialogsTests
 
         Assert.Contains("Remove it from those books first; the contract links can then be detached here.", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Contract beneficiary", cut.Markup, StringComparison.Ordinal);
+        // The books come first: nothing here releases a credit, so the detach is not offered even with beneficiary links.
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Contains("Detach", StringComparison.Ordinal));
         var alert = cut.Find("[role=alert]");
         Assert.StartsWith("Nothing was deleted. This contact is also credited on books.", alert.TextContent.Trim(), StringComparison.Ordinal);
     }

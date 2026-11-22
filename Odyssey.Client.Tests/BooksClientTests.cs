@@ -52,7 +52,12 @@ public class BooksClientTests
     public void An_epub_with_no_useful_type_is_sent_as_epub(string name, string? declared) =>
         Assert.Equal("application/epub+zip", ApiInteropExtensions.UploadContentType(name, declared));
 
+    [Fact]
+    public void A_whitespace_type_is_no_useful_type() =>
+        Assert.Equal("application/epub+zip", ApiInteropExtensions.UploadContentType("book.epub", "   "));
+
     [Theory]
+    [InlineData("book.epub", "application/epub+zip")]
     [InlineData("x.epub.exe", "")]
     [InlineData("epub", "")]
     [InlineData("book.epub", "application/pdf")]
@@ -82,21 +87,97 @@ public class BooksClientTests
     }
 
     [Theory]
-    [InlineData("application/epub+zip", "E-book", false)]
-    [InlineData("application/pdf", "PDF", true)]
-    [InlineData("image/png", "Image", true)]
-    [InlineData("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Word document", false)]
-    [InlineData("application/zip", "ZIP archive", false)]
-    [InlineData("text/plain", "Text", false)]
-    [InlineData("application/octet-stream", "File", false)]
-    [InlineData(null, "File", false)]
-    public void A_file_kind_comes_from_its_content_type_and_epub_is_never_previewed(string? contentType, string label, bool previewable)
+    [InlineData("application/epub+zip", "E-book")]
+    [InlineData("application/pdf", "PDF")]
+    [InlineData("image/png", "Image")]
+    [InlineData("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Word document")]
+    [InlineData("application/zip", "ZIP archive")]
+    [InlineData("text/plain", "Text")]
+    [InlineData("application/octet-stream", "File")]
+    [InlineData(null, "File")]
+    public void A_file_kind_comes_from_its_content_type(string? contentType, string label) =>
+        Assert.Equal(label, OdsTypeRegistries.FileKindOf(contentType).Label);
+
+    [Fact]
+    public void An_e_book_wears_the_e_book_format_colour_on_every_surface()
     {
-        var kind = OdsTypeRegistries.FileKindOf(contentType);
-        Assert.Equal((label, previewable), (kind.Label, kind.Previewable));
+        var ebook = OdsTypeRegistries.BookFormatOf(BookFormat.Ebook);
+        Assert.Equal((ebook.Color, ebook.Soft), (OdsTypeRegistries.FileKindOf("application/epub+zip").Color, OdsTypeRegistries.EbookKind.Soft));
     }
 
+    [Fact]
+    public void Epub_is_never_previewed_and_pdf_still_is()
+    {
+        Assert.False(Odyssey.Client.Pages.Files.IsPreviewable("application/epub+zip"));
+        Assert.True(Odyssey.Client.Pages.Files.IsPreviewable("application/pdf"));
+    }
+
+    // ── The Files page (its own kind labels, not the shared registry) ───────────────────────────
+
+    [Theory]
+    [InlineData("application/epub+zip", "E-book")]
+    [InlineData("APPLICATION/EPUB+ZIP", "E-book")]
+    [InlineData("application/pdf", "PDF")]
+    [InlineData("image/png", "Image")]
+    [InlineData("application/zip", "File")]
+    public void The_files_page_labels_epub_as_an_e_book(string contentType, string label) =>
+        Assert.Equal(label, Odyssey.Client.Pages.Files.KindLabel(contentType));
+
+    // ── Contact delete refused (§3.10.1) ─────────────────────────────────────────────────────
+
+    private static Odyssey.ApiClient.ApiResult Refused(System.Net.HttpStatusCode status, string extensionsJson)
+    {
+        var extensions = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(extensionsJson)!;
+        return Odyssey.ApiClient.ApiResult.Failure(status, new Odyssey.ApiClient.ApiProblem { Status = (int)status, Extensions = extensions });
+    }
+
+    [Fact]
+    public void A_book_credit_alone_opens_the_blockers_dialog_in_its_books_state()
+    {
+        var blockers = Odyssey.Client.Pages.Finance.ContactsCard.BlockersOf(Refused(System.Net.HttpStatusCode.Conflict,
+            """{"bookCredits":{"totalCredits":3,"bookCount":2,"books":[{"bookId":"11111111-1111-1111-1111-111111111111","title":"Dune"}]}}"""));
+
+        Assert.NotNull(blockers);
+        Assert.True(blockers.BlockedByBooks);
+        Assert.False(blockers.BooksUnreadable);
+        Assert.Equal((3, 2, "Dune"), (blockers.Books!.TotalCredits, blockers.Books.BookCount, blockers.Books.Books.Single().Title));
+        Assert.Equal(0, blockers.Contracts.TotalLinks);
+    }
+
+    [Fact]
+    public void An_unreadable_book_member_still_opens_the_books_state_without_numbers()
+    {
+        var blockers = Odyssey.Client.Pages.Finance.ContactsCard.BlockersOf(Refused(System.Net.HttpStatusCode.Conflict,
+            """{"bookCredits":"not an object"}"""));
+
+        Assert.NotNull(blockers);
+        Assert.Null(blockers.Books);
+        Assert.True(blockers.BooksUnreadable);
+        Assert.True(blockers.BlockedByBooks);
+    }
+
+    [Fact]
+    public void Beneficiaries_alone_keep_the_detach_state()
+    {
+        var blockers = Odyssey.Client.Pages.Finance.ContactsCard.BlockersOf(Refused(System.Net.HttpStatusCode.Conflict,
+            """{"contractBeneficiaries":{"totalLinks":2,"contractCount":1,"contracts":[]}}"""));
+
+        Assert.NotNull(blockers);
+        Assert.False(blockers.BlockedByBooks);
+        Assert.Equal(2, blockers.Contracts.TotalLinks);
+    }
+
+    [Theory]
+    [InlineData(System.Net.HttpStatusCode.Conflict, """{"code":"something-else"}""")]
+    [InlineData(System.Net.HttpStatusCode.Conflict, """{"contractBeneficiaries":{"totalLinks":0}}""")]
+    [InlineData(System.Net.HttpStatusCode.BadRequest, """{"bookCredits":{"totalCredits":1,"bookCount":1,"books":[]}}""")]
+    public void Any_other_refusal_falls_through_to_the_toast(System.Net.HttpStatusCode status, string extensions) =>
+        Assert.Null(Odyssey.Client.Pages.Finance.ContactsCard.BlockersOf(Refused(status, extensions)));
+
     // ── Year and ISBN ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void The_year_field_fits_the_servers_widest_year() => Assert.Equal("-9999".Length, BookVisuals.YearMaxLength);
 
     [Theory]
     [InlineData(1965, "1965")]

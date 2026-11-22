@@ -546,27 +546,51 @@ public partial class ContactsCard
             return false;
         }
 
-        var contracts = result.Problem?.Extension<ContactContractBeneficiaryBlockers>("contractBeneficiaries");
-        // A book credit (issue #571 §3.10.1) blocks beside — or instead of — a beneficiary row. A member present but
-        // unreadable still opens the books state, without numbers, rather than falling through to a bare toast.
-        var booksPresent = result.Problem?.Extensions?.ContainsKey(BookCreditsKey) == true;
-        var books = result.Problem?.Extension<Odyssey.Dtos.Books.ContactBookCreditBlockers>(BookCreditsKey);
-
-        // The server omits a class entirely when it has no rows, so "present" is what decides —
-        // and a count, not a name list, since the names are claim-gated and may legitimately be empty.
-        if (contracts is not { TotalLinks: > 0 } && !booksPresent)
+        if (BlockersOf(result) is not { } blockers)
         {
             return false;
         }
 
         _blockedContact = contact;
-        _blockedContracts = contracts is { TotalLinks: > 0 } ? contracts : new();
-        _blockedBooks = books;
-        _blockedBooksUnreadable = booksPresent && books is null;
+        _blockedContracts = blockers.Contracts;
+        _blockedBooks = blockers.Books;
+        _blockedBooksUnreadable = blockers.BooksUnreadable;
         _detachRefused = false;
         _blockedKey = Guid.NewGuid();
         _blockedOpen = true;
         return true;
+    }
+
+    /// <summary>What blocked a contact delete: the beneficiary rows, and the book credits (issue #571 §3.10.1).</summary>
+    internal sealed record DeleteBlockers(
+        ContactContractBeneficiaryBlockers Contracts, Odyssey.Dtos.Books.ContactBookCreditBlockers? Books, bool BooksUnreadable)
+    {
+        /// <summary>A book credit blocks — read, or present but unreadable (the books state, without numbers).</summary>
+        public bool BlockedByBooks => Books is not null || BooksUnreadable;
+    }
+
+    /// <summary>
+    /// The blockers a refused delete carries, or <c>null</c> when it is not a link refusal. Keyed on the payload
+    /// EXTENSIONS, never on the status alone: a 409 from any other cause keeps falling through to the ordinary toast.
+    /// The server omits a class entirely when it has no rows, so "present" is what decides — a count, not a name list,
+    /// since the names are claim-gated. A <c>bookCredits</c> member that is present but unreadable still counts.
+    /// </summary>
+    internal static DeleteBlockers? BlockersOf(ApiClient.ApiResult result)
+    {
+        if (result.Status != System.Net.HttpStatusCode.Conflict || result.Problem is not { } problem)
+        {
+            return null;
+        }
+
+        var contracts = problem.Extension<ContactContractBeneficiaryBlockers>("contractBeneficiaries");
+        var booksPresent = problem.Extensions?.ContainsKey(BookCreditsKey) == true;
+        var books = problem.Extension<Odyssey.Dtos.Books.ContactBookCreditBlockers>(BookCreditsKey);
+        if (contracts is not { TotalLinks: > 0 } && !booksPresent)
+        {
+            return null;
+        }
+
+        return new DeleteBlockers(contracts is { TotalLinks: > 0 } ? contracts : new(), books, booksPresent && books is null);
     }
 
     /// <summary>The contact-delete 409's book-credit member (issue #527).</summary>
@@ -587,13 +611,12 @@ public partial class ContactsCard
         }
 
         var result = await Contacts.DeleteWithDetachAsync(contact.ContactId);
-        if (!result.IsSuccess && result.Status == System.Net.HttpStatusCode.Conflict
-            && result.Problem?.Extensions?.ContainsKey(BookCreditsKey) == true)
+        if (!result.IsSuccess && result.Problem is { } problem && BlockersOf(ApiClient.ApiResult.Failure(result.Status, problem)) is { BlockedByBooks: true } refused)
         {
             // A credit was added in between: the dialog re-renders in its books state, saying nothing was deleted,
             // with focus on Close (the focused Detach button no longer exists, so focus is placed, never lost).
-            _blockedBooks = result.Problem.Extension<Odyssey.Dtos.Books.ContactBookCreditBlockers>(BookCreditsKey);
-            _blockedBooksUnreadable = _blockedBooks is null;
+            _blockedBooks = refused.Books;
+            _blockedBooksUnreadable = refused.BooksUnreadable;
             _detachRefused = true;
             _blockedKey = Guid.NewGuid();
             StateHasChanged();

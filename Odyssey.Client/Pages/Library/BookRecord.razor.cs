@@ -21,6 +21,9 @@ public partial class BookRecord
     [Inject] private IBooksApiClient Books { get; set; } = default!;
     [Inject] private IFilesApiClient FilesApi { get; set; } = default!;
     [Inject] private IPhotosApiClient PhotosApi { get; set; } = default!;
+    [Inject] private IPhotoTagsApiClient PhotoTags { get; set; } = default!;
+    [Inject] private IAlbumsApiClient Albums { get; set; } = default!;
+    [Inject] private IReferenceDataCache ReferenceData { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
     [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
@@ -207,7 +210,7 @@ public partial class BookRecord
             return false;
         }
 
-        Snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
+        result.OrToast(Snackbar, failureLead);
         return false;
     }
 
@@ -370,8 +373,9 @@ public partial class BookRecord
         return PhotoMappers.Label(image?.Title, image?.FileName, $"Image {index + 1}");
     }
 
-    private void OpenImage(Guid photoId)
+    private async Task OpenImage(Guid photoId)
     {
+        await EnsurePhotoRefsAsync();
         var images = OrderedImages;
         _photoSummaries =
         [
@@ -387,6 +391,50 @@ public partial class BookRecord
         var index = images.ToList().FindIndex(i => i.PhotoId == photoId);
         _photoIndex = index < 0 ? 0 : index;
     }
+
+    // The viewer's detail rail names a photo's tags, people and albums; without these it would print raw ids.
+    // Loaded once, on the first Open; each read is the caller's own, so one it may not make leaves "—".
+    private bool _photoRefsLoaded;
+    private Dictionary<Guid, ExistingPhotoTag> _photoTagById = [];
+    private Dictionary<Guid, ExistingContact> _contactById = [];
+    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
+
+    private async Task EnsurePhotoRefsAsync()
+    {
+        if (_photoRefsLoaded)
+        {
+            return;
+        }
+
+        var tags = await PhotoTags.ListAllAsync();
+        if (tags.IsSuccess && tags.Value is { } tagRows)
+        {
+            _photoTagById = tagRows.ToDictionary(t => t.PhotoTagId);
+        }
+
+        var albums = await Albums.ListAllAsync();
+        if (albums.IsSuccess && albums.Value is { } albumRows)
+        {
+            _albumById = albumRows.ToDictionary(a => a.PhotoAlbumId);
+        }
+
+        if (CanReadContacts)
+        {
+            _contactById = (await ReferenceData.ContactsAsync()).ToDictionary(c => c.ContactId);
+        }
+
+        _photoRefsLoaded = true;
+    }
+
+    private string PhotoTagName(Guid id) => _photoTagById.GetValueOrDefault(id)?.Name ?? "—";
+
+    private string? PhotoTagIcon(Guid id) => _photoTagById.GetValueOrDefault(id)?.Icon;
+
+    private string? PhotoTagColor(Guid id) => _photoTagById.GetValueOrDefault(id)?.Color;
+
+    private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
+
+    private OdsTagChips.Tag? PhotoAlbumChip(Guid id) => Odyssey.Client.Pages.Photos.AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
 
     // ── Files ────────────────────────────────────────────────────────────────────────────────
 

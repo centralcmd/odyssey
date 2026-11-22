@@ -61,6 +61,66 @@ public class BooksApiClientTests
     }
 
     [Fact]
+    public async Task ListAllAsync_keeps_every_filter_and_owns_the_window()
+    {
+        var (client, handler) = Create(new RecordingHttpHandler("""{"items":[],"totalCount":0}"""));
+
+        await client.ListAllAsync(new BooksListFilter
+        {
+            Search = "dune",
+            Statuses = ["Owned"],
+            Formats = ["Ebook", "Pdf"],
+            TagIds = [Tag],
+            ContactId = Author,
+            HasCover = false,
+            HasAttachments = true,
+            SortBy = "Year",
+            SortDir = "asc",
+        });
+
+        Assert.Equal("/api/books", handler.LastPath);
+        var query = System.Web.HttpUtility.ParseQueryString(handler.LastRequest!.RequestUri!.Query);
+        Assert.Equal("0", query["offset"]);
+        Assert.Equal(PagedQuery.LimitAll.ToString(System.Globalization.CultureInfo.InvariantCulture), query["limit"]);
+        Assert.DoesNotContain("page", query.AllKeys);
+        Assert.DoesNotContain("pageSize", query.AllKeys);
+        Assert.Equal("dune", query["search"]);
+        Assert.Equal("Owned", query["status"]);
+        Assert.Equal(["Ebook", "Pdf"], query.GetValues("format")!);
+        Assert.Equal(Tag.ToString(), query["tagIds"]);
+        Assert.Equal(Author.ToString(), query["contactId"]);
+        Assert.Equal("false", query["hasCover"]);
+        Assert.Equal("true", query["hasAttachments"]);
+        Assert.Equal("Year", query["sortBy"]);
+        Assert.Equal("asc", query["sortDir"]);
+    }
+
+    [Fact]
+    public async Task ListAllAsync_without_a_filter_sends_only_the_full_window()
+    {
+        var (client, handler) = Create(new RecordingHttpHandler("""{"items":[],"totalCount":0}"""));
+
+        await client.ListAllAsync();
+
+        Assert.Equal($"?offset=0&limit={PagedQuery.LimitAll}", handler.LastRequest!.RequestUri!.Query);
+    }
+
+    /// <summary>The query extraction shared by both list calls left the paged window as it was.</summary>
+    [Fact]
+    public async Task ListAsync_still_sends_its_own_window_before_the_filters()
+    {
+        var (client, handler) = Create(new RecordingHttpHandler("""{"items":[],"totalCount":0}"""));
+
+        await client.ListAsync(3, 50, new BooksListFilter { Search = "dune" });
+
+        var query = System.Web.HttpUtility.ParseQueryString(handler.LastRequest!.RequestUri!.Query);
+        Assert.Equal("dune", query["search"]);
+        Assert.DoesNotContain(PagedQuery.LimitAll.ToString(System.Globalization.CultureInfo.InvariantCulture), query.GetValues("limit") ?? []);
+        Assert.True(query["offset"] is "100" || query["page"] is "3",
+            $"Expected the third 50-row window, got: {handler.LastRequest.RequestUri.Query}");
+    }
+
+    [Fact]
     public async Task UpdateAsync_puts_to_the_id_and_surfaces_the_version_conflict()
     {
         var (client, handler) = Create(new RecordingHttpHandler(

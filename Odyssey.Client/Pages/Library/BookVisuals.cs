@@ -49,6 +49,13 @@ public static class BookVisuals
     /// <summary>The file picker's extensions — a surface tightening; the server still decides (DS <c>BOOK_FILE_EXTENSIONS</c>).</summary>
     public static readonly IReadOnlyList<string> FileExtensions = [".epub", ".pdf", ".txt", ".doc", ".docx", ".zip"];
 
+    /// <summary>
+    /// The Year field's character cap, from the server's own bounds (<see cref="BookLimits.MinYear"/>): the longest
+    /// year the server accepts, with its minus sign.
+    /// </summary>
+    public static readonly int YearMaxLength =
+        Math.Max(BookLimits.MinYear.ToString(CultureInfo.InvariantCulture).Length, BookLimits.MaxYear.ToString(CultureInfo.InvariantCulture).Length);
+
     /// <summary>A year as shown: positive as itself, negative as <i>{abs} BC</i>.</summary>
     public static string Year(int year) =>
         year < 0

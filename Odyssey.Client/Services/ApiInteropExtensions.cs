@@ -34,7 +34,7 @@ public static class ApiInteropExtensions
     /// </summary>
     internal static string UploadContentType(string name, string? declared) =>
         name.EndsWith(".epub", StringComparison.OrdinalIgnoreCase)
-            && (string.IsNullOrEmpty(declared) || string.Equals(declared, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
+            && (string.IsNullOrWhiteSpace(declared) || string.Equals(declared, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
             ? EpubContentType
             : declared ?? string.Empty;
 

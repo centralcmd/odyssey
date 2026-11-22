@@ -82,7 +82,7 @@
     {
         "Image" => new OdsFileKindMeta("image", "var(--sea-400)", "var(--info-soft)"),
         "PDF" => new OdsFileKindMeta("picture_as_pdf", "var(--finance-expense)", "var(--finance-expense-soft)"),
-        "E-book" => new OdsFileKindMeta("menu_book", "var(--mud-palette-warning)", "color-mix(in srgb, var(--mud-palette-warning) 16%, transparent)"),
+        "E-book" => new OdsFileKindMeta(OdsTypeRegistries.EbookKind.Icon, OdsTypeRegistries.EbookKind.Color, OdsTypeRegistries.EbookKind.Soft),
         "Text" => new OdsFileKindMeta("description", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)"),
         _ => new OdsFileKindMeta("insert_drive_file", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)"),
     };

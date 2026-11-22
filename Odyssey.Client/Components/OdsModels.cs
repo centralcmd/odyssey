@@ -486,9 +486,9 @@ public sealed record OdsRowAction
 
 /// <summary>
 /// A stored file's kind derived from its content type (<see cref="OdsTypeRegistries.FileKindOf"/>): the label, the
-/// glyph, its colours, and whether the app may preview it inline (EPUB never).
+/// glyph and its colours.
 /// </summary>
-public sealed record OdsFileKindInfo(string Label, string Icon, string Color, string Soft, bool Previewable);
+public sealed record OdsFileKindInfo(string Label, string Icon, string Color, string Soft);
 
 /// <summary>A file-kind descriptor for <see cref="OdsFileUpload"/> (Statement / Document / Receipt / Tax).</summary>
 public sealed record OdsFileKind

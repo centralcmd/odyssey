@@ -37,7 +37,7 @@
     <OdsFormRow>
         <OdsField Label="Publisher" MaxLength="BookLimits.MaxPublisherLength"
                   Value="@_publisher" ValueChanged="@(v => { _publisher = v; Touch("publisher"); })" Error="@Err("publisher")" />
-        <OdsField Label="Year" MaxLength="5" Placeholder="e.g. 1965"
+        <OdsField Label="Year" MaxLength="BookVisuals.YearMaxLength" Placeholder="e.g. 1965"
                   Value="@_year" ValueChanged="@(v => { _year = v; Touch("year"); })"
                   Help="@YearHelp" Error="@(Err("year") ?? YearError)" />
     </OdsFormRow>

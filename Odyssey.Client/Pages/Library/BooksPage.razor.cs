@@ -607,16 +607,16 @@ public partial class BooksPage
         _deleteOpen = true;
     }
 
-    private async Task DeleteAsync(BookSummary b)
+    private async Task<bool> DeleteAsync(BookSummary b)
     {
         if (!_canDelete)
         {
-            return;
+            return false;
         }
 
         if (!(await Books.DeleteAsync(b.BookId)).Toast(Snackbar, "Unable to delete the book", "Book deleted"))
         {
-            return;
+            return false;
         }
 
         _books.RemoveAll(x => x.BookId == b.BookId);
@@ -631,6 +631,7 @@ public partial class BooksPage
         }
 
         Announce($"{b.Title} deleted.");
+        return true;
     }
 
     public void Dispose() => _listLoader.Dispose();

@@ -518,7 +518,7 @@ public partial class Files
     }
 
     // ── Helpers ──
-    private static bool IsPreviewable(string contentType) =>
+    internal static bool IsPreviewable(string contentType) =>
         PreviewableContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase);
 
     private static string FormatFileSize(long bytes)
@@ -537,7 +537,7 @@ public partial class Files
     }
 
     // The flat file has no document type, so its kind is derived from the MIME type.
-    private static string KindLabel(string contentType)
+    internal static string KindLabel(string contentType)
     {
         if (string.Equals(contentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
         {
@@ -563,7 +563,7 @@ public partial class Files
     private static OdsFileKindMeta KindMeta(string kindLabel) => kindLabel switch
     {
         "PDF" => new("picture_as_pdf", "var(--mud-palette-error)", "color-mix(in srgb, var(--mud-palette-error) 14%, transparent)"),
-        "E-book" => new("menu_book", "var(--mud-palette-warning)", "color-mix(in srgb, var(--mud-palette-warning) 16%, transparent)"),
+        "E-book" => new(OdsTypeRegistries.EbookKind.Icon, OdsTypeRegistries.EbookKind.Color, OdsTypeRegistries.EbookKind.Soft),
         "Image" => new("image", "var(--mud-palette-info)", "color-mix(in srgb, var(--mud-palette-info) 16%, transparent)"),
         _ => new("insert_drive_file", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-disabled-background)"),
     };

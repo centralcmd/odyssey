@@ -67,8 +67,8 @@
     /// <summary>The row menu's trigger: the item that opened this unmounts with its popover.</summary>
     [Parameter] public string? ReturnFocusToId { get; set; }
 
-    /// <summary>The host performs the delete; the dialog closes when it returns.</summary>
-    [Parameter] public EventCallback OnDelete { get; set; }
+    /// <summary>The host performs the delete and toasts a failure; the dialog closes only when it succeeded.</summary>
+    [Parameter, EditorRequired] public Func<Task<bool>> OnDelete { get; set; } = default!;
 
     private bool _busy;
 
@@ -89,8 +89,10 @@
         _busy = true;
         try
         {
-            await OnDelete.InvokeAsync();
-            await CloseAsync();
+            if (await OnDelete())
+            {
+                await CloseAsync();
+            }
         }
         finally
         {

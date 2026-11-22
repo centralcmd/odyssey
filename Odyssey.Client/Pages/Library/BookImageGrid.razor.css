@@ -27,3 +27,11 @@
     color: var(--mud-palette-white);
     font: var(--fw-semibold, 600) var(--fs-caption)/1.2 var(--font-sans);
 }
+
+/* The focus ring sits over an arbitrary photo, so the theme's ring cannot promise 3:1 there (WCAG 2.4.7, 1.4.11):
+   a white ring inside the scrim with a black edge outside it reads on any image, light or dark. */
+.bk-image-menu ::deep .mud-icon-button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--mud-palette-white);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+    box-shadow: 0 0 0 var(--focus-ring-width) var(--mud-palette-black);
+}
