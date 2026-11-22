@@ -1,0 +1,30 @@
+@page "/recipe-tags"
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Recipes
+@attribute [Authorize(Policy = PermissionClaims.RecipeTagsRead)]
+
+<PageTitle>Recipe Tags</PageTitle>
+
+@*
+    Recipe tags (issue #526; design system components-recipes.md · Recipe tags) — the shared OdsTagAdmin over the
+    api/recipe-tags contract, like the journal, task, photo and news tag pages. A delete of a tag in use is refused
+    (409 recipe-tag-in-use) and names the count only, never a recipe. Names are user text, rendered auto-encoded.
+*@
+
+<OdsTagAdmin TRow="ExistingRecipeTag"
+             Title="Recipe tags"
+             Noun="recipe tags"
+             PageStateKey="recipe-tags-page"
+             CreateClaim="@PermissionClaims.RecipeTagsCreate"
+             UpdateClaim="@PermissionClaims.RecipeTagsUpdate"
+             DeleteClaim="@PermissionClaims.RecipeTagsDelete"
+             NamePlaceholder="e.g. Weeknight"
+             ModalSubtitle="Tags group recipes by category."
+             EmptyDesc="Create your first tag to group recipes — Weeknight, Baking, Vegetarian."
+             Id="@(t => t.RecipeTagId)"
+             Name="@(t => t.Name)"
+             Description="@(t => t.Description)"
+             Archived="@(t => t.Archived)"
+             IconOf="@(t => t.Icon)"
+             ColorOf="@(t => t.Color)"
+             IconHelp="Shown for this tag and on every recipe carrying it. Default keeps the tag icon." />

@@ -1,0 +1,80 @@
+/* The open recipe card (design system recipes.css, rc- prefix; tokens only). */
+.rc-prose { white-space: pre-line; overflow-wrap: anywhere; max-width: 72ch; display: block; }
+
+/* Source is a normal-width tile: a long URL or book title wraps, never clips. */
+.rc-source { overflow-wrap: anywhere; }
+
+.rc-scale { margin-top: var(--space-4); }
+
+/* Ingredients and Method: two outlined cards, Ingredients ~1/3 beside Method from md (960 px), stacked below. */
+.rc-cook {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+    align-items: start;
+}
+
+@media (min-width: 960px) {
+    .rc-cook { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+}
+
+.rc-cook ::deep .rc-cook-card { min-width: 0; }
+
+.rc-card-h { margin: 0; font: var(--fw-medium) var(--fs-h6)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.rc-card-h-meta { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); margin-left: var(--space-2); }
+
+.rc-h4 {
+    margin: var(--space-4) 0 var(--space-2);
+    font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+
+.rc-group:first-child .rc-h4 { margin-top: 0; }
+
+.rc-ing-list, .rc-step-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.rc-ing-list { gap: var(--space-1); }
+
+.rc-ing-list li { padding: var(--space-1) 0; min-height: var(--space-6); }
+
+/* The label is the whole line; a long name wraps under the text, not the box. */
+.rc-ing-list ::deep .odc-check { align-items: flex-start; }
+
+.rc-ing-list ::deep .odc-check-box { flex: none; }
+
+::deep .rc-ing-text { font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); }
+
+::deep .rc-amt { font-variant-numeric: tabular-nums; font-weight: var(--fw-medium); }
+
+::deep .rc-ing-prep, ::deep .rc-ing-opt { color: var(--mud-palette-text-secondary); }
+
+/* A checked line is struck through AND muted — never colour alone. */
+.rc-ing-list li.done ::deep .rc-ing-text,
+.rc-step-list li.done .rc-step-text {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    color: var(--mud-palette-text-secondary);
+}
+
+.rc-ing-groups.busy ::deep .rc-amt { opacity: 0.45; }
+
+.rc-step-list { gap: var(--space-4); }
+
+.rc-step-list li { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+
+.rc-step-n { font: var(--fw-medium) var(--fs-label)/1.3 var(--font-mono); letter-spacing: 0.02em; color: var(--brand-text); }
+
+.rc-step-text {
+    margin: 0 0 0 calc(var(--space-6) + var(--space-1));
+    font: var(--fw-regular) var(--fs-body1)/1.6 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+    max-width: 72ch;
+}
+
+@media (max-width: 599px) {
+    .rc-step-text { margin-left: 0; }
+}

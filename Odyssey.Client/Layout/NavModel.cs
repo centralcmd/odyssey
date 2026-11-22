@@ -91,6 +91,20 @@ public static class NavModel
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),
             ]),
         ]),
+        // Library (issue #526; design system components-recipes.md · Navigation): the household's collections first,
+        // then the tag pages under Reference. recipes.read and recipes.tags.read gate the two pages, so a caller holding
+        // neither loses the whole module (VisibleModules). It sits between Journal and Internet.
+        new("library", "Library", "local_library",
+        [
+            new(null,
+            [
+                new("recipes", "Recipes", "restaurant_menu", "recipes", PermissionClaims.RecipesRead),
+            ]),
+            new("Reference",
+            [
+                new("recipe-tags", "Recipe Tags", "local_offer", "recipe-tags", PermissionClaims.RecipeTagsRead),
+            ]),
+        ]),
         // Internet (issue #473 §3.1): the news reader, plus Weather points (moved here from Journal). news.read
         // gates the four news pages (Podcasts, issue #559, sits between News and Feeds) and weather.points.read the weather page, so a caller holding neither loses
         // the whole module (VisibleModules). Reference stays last, as in Finance.

@@ -61,6 +61,9 @@ public class NavModelTests
     [InlineData("photos", "journal")]
     [InlineData("albums", "journal")]
     [InlineData("photo-tags", "journal")]
+    // The Library module (issue #526): Recipes and Recipe Tags.
+    [InlineData("recipes", "library")]
+    [InlineData("recipe-tags", "library")]
     [InlineData("", "dashboard")]
     public void ModuleOf_resolves_owning_module(string relative, string expectedModuleKey) =>
         Assert.Equal(expectedModuleKey, NavModel.ModuleOf(relative).Key);

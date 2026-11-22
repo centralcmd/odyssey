@@ -12,18 +12,24 @@
     spinner replaces the glyph, and the button keeps its accessible name and its focus, carries
     aria-disabled="true" and aria-busy="true", and swallows clicks. Never a native disabled, which would drop it
     from the tab order and lose focus mid-action.
+
+    AriaDisabled (issue #526) is the same focusable "unavailable" state for a button that cannot act right
+    now — Move up on the first row: aria-disabled="true", clicks swallowed, dimmed, still in the tab order.
+    DisabledReason is linked by aria-describedby to a visually hidden line beside the button, so the name
+    stays the action ("Move step 1 up") and the reason follows ("Step 1 is already first.").
 *@
 
 @* One element in both states, so the button keeps focus when it turns busy and back. *@
 <MudIconButton Icon="@(Busy ? null : Icon)"
                Size="@MudSize"
                Color="@(Danger ? Color.Error : Color.Default)"
-               Href="@(Busy ? null : Href)"
+               Href="@(Blocked ? null : Href)"
                ButtonType="@Type"
                Disabled="@Disabled"
                OnClick="HandleClickAsync"
                aria-label="@AriaLabel"
-               aria-disabled="@(Busy ? "true" : null)"
+               aria-disabled="@(Blocked ? "true" : null)"
+               aria-describedby="@(ShowsReason ? _reasonId : null)"
                aria-busy="@(Busy ? "true" : null)"
                Class="@ButtonClass"
                @attributes="UserAttributes">
@@ -32,6 +38,10 @@
         <span class="odc-iconbtn-spinner" aria-hidden="true"></span>
     }
 </MudIconButton>
+@if (ShowsReason)
+{
+    <span class="odc-sr-only" id="@_reasonId">@DisabledReason</span>
+}
 
 @code {
     /// <summary>An @Icons.Material.Filled.* SVG constant — a Material ligature ("edit") renders no glyph.</summary>
@@ -56,6 +66,12 @@
     /// <summary>An action in progress: spinner, aria-disabled and aria-busy, clicks ignored, focus and name kept.</summary>
     [Parameter] public bool Busy { get; set; }
 
+    /// <summary>Unavailable but focusable: aria-disabled, dimmed, clicks ignored (issue #526).</summary>
+    [Parameter] public bool AriaDisabled { get; set; }
+
+    /// <summary>Why the button cannot act, linked by aria-describedby while <see cref="AriaDisabled"/>.</summary>
+    [Parameter] public string? DisabledReason { get; set; }
+
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
     [Parameter] public string? Class { get; set; }
@@ -63,9 +79,17 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
-    private string? ButtonClass => Busy ? $"{Class} odc-iconbtn-busy".TrimStart() : Class;
+    private readonly string _reasonId = $"odc-iconbtn-why-{Guid.NewGuid():N}";
 
-    private Task HandleClickAsync(MouseEventArgs e) => Busy ? Task.CompletedTask : OnClick.InvokeAsync(e);
+    private bool Blocked => Busy || AriaDisabled;
+
+    private bool ShowsReason => AriaDisabled && !Busy && !string.IsNullOrEmpty(DisabledReason);
+
+    private string? ButtonClass => Busy ? $"{Class} odc-iconbtn-busy".TrimStart()
+        : AriaDisabled ? $"{Class} odc-iconbtn-aria-disabled".TrimStart()
+        : Class;
+
+    private Task HandleClickAsync(MouseEventArgs e) => Blocked ? Task.CompletedTask : OnClick.InvokeAsync(e);
 
     private Size MudSize => Size switch
     {

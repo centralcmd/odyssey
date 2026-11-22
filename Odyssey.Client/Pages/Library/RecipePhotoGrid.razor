@@ -1,0 +1,35 @@
+@inject IPhotosApiClient PhotosApi
+
+@*
+    RecipePhotoGrid — a recipe's linked photos (issue #526; design system components-recipes.md · Photos): the Books
+    image tile at the JournalPhotoGallery size, every photo drawn through OdsPhotoImage (thumbnail → original →
+    placeholder), the first labelled "Cover" in visible text. With recipes.update each tile carries a ⋯ menu on a scrim:
+    Make cover · Move earlier · Move later · — · Detach. An action a tile cannot take is absent, never dimmed. Every
+    change hands the whole ordered list up; the page saves it through the recipe PUT.
+*@
+
+<ul class="rc-images" aria-label="@RecipeFormat.Count(Photos.Count, "photo")">
+    @for (var i = 0; i < Photos.Count; i++)
+    {
+        var index = i;
+        var photo = Photos[index];
+        var name = NameOf(photo, index);
+        <li class="rc-image-cell" @key="photo.PhotoId">
+            <span class="rc-image">
+                <OdsPhotoImage Source="@PhotoImageSources.For(photo.PhotoId, photo.ThumbnailsReady, ThumbnailSize.Small, Access, PhotosApi)"
+                               Alt="@(index == 0 ? $"{name}, cover" : name)" Fill="true" Class="rc-image-img"
+                               PlaceholderClass="rc-image-ph" />
+                @if (index == 0)
+                {
+                    <span class="rc-image-badge" aria-hidden="true">Cover</span>
+                }
+            </span>
+            @if (CanUpdate)
+            {
+                <span class="rc-image-menu">
+                    <OdsMenu Items="@BuildTileActions(Photos, index, OnChange, this)" AriaLabel="@($"Actions for photo: {name}")" />
+                </span>
+            }
+        </li>
+    }
+</ul>

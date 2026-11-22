@@ -1,0 +1,88 @@
+@*
+    RecipeServingsDialog — Change servings… from a recipe's ⋯ menu (issue #526; design system components-recipes.md ·
+    Cooking actions). One StepperField from 1 to RecipeLimits.MaxScaleServings; Enter applies. Apply hands the number
+    to the page, which re-reads GET /api/recipes/{id}?servings=n — the server scales; nothing here touches an amount.
+    Reset puts the written yield back. Focus returns to the ⋯ trigger.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" ReturnFocusToId="@ReturnFocusToId"
+          Icon="groups" RequiredLegend="false" Class="rc-servings-dialog"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <form class="ods-modal-body" @onsubmit="ApplyAsync" @onsubmit:preventDefault="true">
+            <OdsStepperField Id="rc-servings-n" Label="@(HasLabel ? "Makes" : "Servings")" Value="_value" ValueChanged="OnValueChanged"
+                             Min="RecipeLimits.MinServings" Max="RecipeLimits.MaxScaleServings" AutoFocus="true"
+                             Unit="@(HasLabel ? Recipe.ServingsLabel!.Trim() : "serving")" UnitPlural="@(HasLabel ? Recipe.ServingsLabel!.Trim() : "servings")"
+                             Help="The amounts are recalculated for this number. Nothing is saved." Error="@_error" />
+        </form>
+    </ChildContent>
+    <Footer>
+        @if (Current != Recipe.Servings)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="ResetAsync">Reset to @Recipe.Servings</OdsButton>
+        }
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" OnClick="ApplyAsync">Apply</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The recipe as read; <see cref="ExistingRecipe.Servings"/> is the written yield.</summary>
+    [Parameter, EditorRequired] public ExistingRecipe Recipe { get; set; } = default!;
+
+    /// <summary>The servings the card shows now.</summary>
+    [Parameter] public int Current { get; set; }
+
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>The servings to re-read the recipe for.</summary>
+    [Parameter] public EventCallback<int> OnApply { get; set; }
+
+    private int? _value;
+    private string? _error;
+
+    private bool HasLabel => !string.IsNullOrWhiteSpace(Recipe.ServingsLabel);
+
+    private RenderFragment TitleFragment => @<text>Change servings</text>;
+
+    private RenderFragment SubtitleFragment =>
+        @<text>@Recipe.Title is written for @Recipe.Servings. Pinches and “to taste” stay as written.</text>;
+
+    protected override void OnInitialized() => _value = Current;
+
+    private void OnValueChanged(int? value)
+    {
+        _value = value;
+        _error = null;
+    }
+
+    /// <summary>The out-of-range message, or <c>null</c> for a whole number in range.</summary>
+    internal static string? Check(int? value) =>
+        value is { } n && n >= RecipeLimits.MinServings && n <= RecipeLimits.MaxScaleServings
+            ? null
+            : $"Enter a whole number from {RecipeLimits.MinServings} to {RecipeLimits.MaxScaleServings}.";
+
+    private async Task ApplyAsync()
+    {
+        _error = Check(_value);
+        if (_error is not null)
+        {
+            return;
+        }
+
+        await OnApply.InvokeAsync(_value!.Value);
+        await OpenChanged.InvokeAsync(false);
+    }
+
+    private async Task ResetAsync()
+    {
+        await OnApply.InvokeAsync(Recipe.Servings);
+        await OpenChanged.InvokeAsync(false);
+    }
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+}
