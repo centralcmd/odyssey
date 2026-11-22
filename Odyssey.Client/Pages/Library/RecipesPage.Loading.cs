@@ -173,7 +173,7 @@ public partial class RecipesPage
     /// Change servings… → <c>GET /api/recipes/{id}?servings=n</c>. The server scales; while the read runs the amounts
     /// stay and dim. A failure keeps the earlier amounts under a warning with Try again.
     /// </summary>
-    private async Task ScaleAsync(Guid id, int servings)
+    internal async Task ScaleAsync(Guid id, int servings)
     {
         var cook = Cook(id);
         if (cook.Detail is not { } before)

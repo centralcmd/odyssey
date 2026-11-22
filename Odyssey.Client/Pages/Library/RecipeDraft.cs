@@ -2,8 +2,14 @@ using Odyssey.Dtos.Recipes;
 
 namespace Odyssey.Client.Pages.Library;
 
+/// <summary>A dialog row with a stable key: its render key and the stem of its buttons' ids.</summary>
+public interface IRecipeRowDraft
+{
+    Guid Key { get; }
+}
+
 /// <summary>One ingredient row of the New / Edit recipe dialog.</summary>
-public sealed class RecipeIngredientDraft
+public sealed class RecipeIngredientDraft : IRecipeRowDraft
 {
     /// <summary>A stable render key, so a moved row keeps its fields.</summary>
     public Guid Key { get; } = Guid.NewGuid();
@@ -24,7 +30,7 @@ public sealed class RecipeIngredientDraft
 }
 
 /// <summary>One step row of the dialog.</summary>
-public sealed class RecipeStepDraft
+public sealed class RecipeStepDraft : IRecipeRowDraft
 {
     public Guid Key { get; } = Guid.NewGuid();
 

@@ -8,7 +8,7 @@
     change hands the whole ordered list up; the page saves it through the recipe PUT.
 *@
 
-<ul class="rc-images" aria-label="@RecipeFormat.Count(Photos.Count, "photo")">
+<ul class="rc-images" role="list" aria-label="@RecipeFormat.Count(Photos.Count, "photo")">
     @for (var i = 0; i < Photos.Count; i++)
     {
         var index = i;

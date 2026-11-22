@@ -186,12 +186,13 @@ public partial class RecipeDialog
         await OpenChanged.InvokeAsync(false);
     }
 
-    // Esc, the scrim and the close button: the modal has already closed itself, so with changes it reopens behind
-    // the discard question if the person keeps editing.
-    private async Task OnModalOpenChanged(bool open)
+    private void OnModalOpenChanged(bool open) => _modalOpen = open;
+
+    // Esc, the scrim and the close button (OdsModal raises OnClose after it has already hidden itself, so it cannot be
+    // vetoed): with changes, the discard question opens and "Keep editing" shows the dialog again.
+    private async Task OnModalClosed()
     {
-        _modalOpen = open;
-        if (open || _closing)
+        if (_closing)
         {
             return;
         }
@@ -203,10 +204,6 @@ public partial class RecipeDialog
         }
 
         await OpenChanged.InvokeAsync(false);
-    }
-
-    private void OnModalClosed()
-    {
     }
 
     private void OnDiscardOpenChanged(bool open)

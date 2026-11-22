@@ -41,10 +41,28 @@ public partial class RecipesPage
         var created = _dialogRecipe is null;
         if (created)
         {
-            _rows.Insert(0, SummaryOf(saved));
-            _totalCount = (_totalCount ?? 0) + 1;
             _activeCount = _activeCount is { } n ? n + 1 : null;
             await CollapseAsync();
+            var shown = true;
+            if (CreateNeedsRefetch(HasFilters, _sort))
+            {
+                // The new recipe's place depends on the filters and the sort, which only the server knows.
+                await ResetAsync();
+                shown = _rows.Any(x => x.RecipeId == saved.RecipeId);
+            }
+            else
+            {
+                _rows.Insert(0, SummaryOf(saved));
+                _totalCount = (_totalCount ?? 0) + 1;
+            }
+
+            if (!shown)
+            {
+                await Announce($"Recipe {saved.Title} created. It doesn’t match the current filters.");
+                FocusAfterRender(PageHeader.HeadingId);
+                return;
+            }
+
             _expandedId = saved.RecipeId;
             var cook = Cook(saved.RecipeId);
             cook.Detail = saved;
@@ -58,6 +76,13 @@ public partial class RecipesPage
         await Announce($"{saved.Title} saved.");
         FocusAfterRender(MenuId(saved.RecipeId));
     }
+
+    /// <summary>
+    /// Whether a new recipe needs a fresh first page rather than a local insert at the top: any active filter (it may
+    /// not match) and any sort but newest-first by Updated or Added (it belongs elsewhere).
+    /// </summary>
+    internal static bool CreateNeedsRefetch(bool hasFilters, OdsTableSort sort) =>
+        hasFilters || sort.Dir != OdsSortDirection.Desc || sort.Key is not ("updated" or "created");
 
     /// <summary>The list row as the saved read describes it.</summary>
     internal static RecipeSummary SummaryOf(ExistingRecipe d) => new()

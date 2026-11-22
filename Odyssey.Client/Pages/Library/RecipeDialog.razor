@@ -19,6 +19,7 @@
           Icon="@(IsEdit ? "edit" : "restaurant_menu")" Class="rc-dialog"
           Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
+        <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body">
             @if (_conflict)
             {
@@ -122,7 +123,7 @@
                         </div>
                     </fieldset>
                 }
-                <OdsAddRow Title="Add ingredient" Sub="Lines with the same Section are grouped under it."
+                <OdsAddRow Id="@AddRowId("ingredient")" Title="Add ingredient" Sub="Lines with the same Section are grouped under it."
                            AriaDisabled="@(_draft.Ingredients.Count >= RecipeLimits.MaxIngredients)"
                            DisabledReason="@($"A recipe holds at most {RecipeLimits.MaxIngredients} ingredients.")"
                            OnClick="AddIngredient" />
@@ -148,7 +149,7 @@
                         </div>
                     </fieldset>
                 }
-                <OdsAddRow Title="Add step" Sub="Steps number on across sections."
+                <OdsAddRow Id="@AddRowId("step")" Title="Add step" Sub="Steps number on across sections."
                            AriaDisabled="@(_draft.Steps.Count >= RecipeLimits.MaxSteps)"
                            DisabledReason="@($"A recipe holds at most {RecipeLimits.MaxSteps} steps.")"
                            OnClick="AddStep" />
@@ -194,15 +195,21 @@
 </OdsFormDialog>
 
 @code {
-    private RenderFragment RowButtons<T>(int index, int count, string noun, List<T> rows) =>
-        @<div class="rc-row-btns">
-            <OdsIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="OdsSize.Sm" AriaLabel="@($"Move {noun} {index + 1} up")"
+    private RenderFragment RowButtons<T>(int index, int count, string noun, List<T> rows) where T : IRecipeRowDraft
+    {
+        var key = rows[index].Key;
+        return @<div class="rc-row-btns">
+            <OdsIconButton id="@RowButtonId(noun, key, RowButton.Up)" Icon="@Icons.Material.Filled.ArrowUpward" Size="OdsSize.Sm"
+                           AriaLabel="@($"Move {noun} {index + 1} up")"
                            AriaDisabled="@(index == 0)" DisabledReason="@($"{Cap(noun)} {index + 1} is already first.")"
-                           OnClick="@(() => Move(rows, index, index - 1))" />
-            <OdsIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="OdsSize.Sm" AriaLabel="@($"Move {noun} {index + 1} down")"
+                           OnClick="@(() => Move(rows, noun, index, index - 1, RowButton.Up))" />
+            <OdsIconButton id="@RowButtonId(noun, key, RowButton.Down)" Icon="@Icons.Material.Filled.ArrowDownward" Size="OdsSize.Sm"
+                           AriaLabel="@($"Move {noun} {index + 1} down")"
                            AriaDisabled="@(index == count - 1)" DisabledReason="@($"{Cap(noun)} {index + 1} is already last.")"
-                           OnClick="@(() => Move(rows, index, index + 1))" />
-            <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true" AriaLabel="@($"Remove {noun} {index + 1}")"
-                           OnClick="@(() => Remove(rows, index))" />
+                           OnClick="@(() => Move(rows, noun, index, index + 1, RowButton.Down))" />
+            <OdsIconButton id="@RowButtonId(noun, key, RowButton.Remove)" Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
+                           AriaLabel="@($"Remove {noun} {index + 1}")"
+                           OnClick="@(() => Remove(rows, noun, index))" />
         </div>;
+    }
 }

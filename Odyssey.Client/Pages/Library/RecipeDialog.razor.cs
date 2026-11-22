@@ -144,25 +144,37 @@ public partial class RecipeDialog
         n >= (int)Math.Ceiling(cap * 0.8) ? $"{n} of {cap} {noun}s" : RecipeFormat.Count(n, unit);
 
     // ── Rows ─────────────────────────────────────────────────────────────────────────
-    private void AddIngredient()
+    private OdsLiveAnnouncer? _announcer;
+
+    private Task Announce(string message) => _announcer?.Announce(message) ?? Task.CompletedTask;
+
+    private async Task AddIngredient()
     {
         if (_draft.Ingredients.Count < RecipeLimits.MaxIngredients)
         {
             _draft.Ingredients.Add(new RecipeIngredientDraft());
             _focusId = F($"ingredients[{_draft.Ingredients.Count - 1}].amount");
+            if (CapMessage("ingredient", _draft.Ingredients.Count, RecipeLimits.MaxIngredients) is { } cap)
+            {
+                await Announce(cap);
+            }
         }
     }
 
-    private void AddStep()
+    private async Task AddStep()
     {
         if (_draft.Steps.Count < RecipeLimits.MaxSteps)
         {
             _draft.Steps.Add(new RecipeStepDraft());
             _focusId = F($"steps[{_draft.Steps.Count - 1}].section");
+            if (CapMessage("step", _draft.Steps.Count, RecipeLimits.MaxSteps) is { } cap)
+            {
+                await Announce(cap);
+            }
         }
     }
 
-    private void Move<T>(List<T> rows, int from, int to)
+    private async Task Move<T>(List<T> rows, string noun, int from, int to, RowButton pressed) where T : IRecipeRowDraft
     {
         if (to < 0 || to >= rows.Count)
         {
@@ -171,13 +183,56 @@ public partial class RecipeDialog
 
         (rows[from], rows[to]) = (rows[to], rows[from]);
         ClearRowErrors();
+        _focusId = MoveFocusTarget(noun, rows[to].Key, pressed, to, rows.Count);
+        await Announce(MovedMessage(noun, from, to, rows.Count));
     }
 
-    private void Remove<T>(List<T> rows, int index)
+    private async Task Remove<T>(List<T> rows, string noun, int index) where T : IRecipeRowDraft
     {
         rows.RemoveAt(index);
         ClearRowErrors();
+        _focusId = RemoveFocusTarget(noun, [.. rows.Select(r => r.Key)], index);
+        await Announce(RemovedMessage(noun, index, rows.Count));
     }
+
+    /// <summary>A row's Move up / Move down / Remove button.</summary>
+    internal enum RowButton { Up, Down, Remove }
+
+    /// <summary>A row button's id, stable across moves: it follows the row's key, not its position.</summary>
+    internal static string RowButtonId(string noun, Guid rowKey, RowButton button) =>
+        $"rc-{noun}-{rowKey:N}-{button.ToString().ToLowerInvariant()}";
+
+    /// <summary>The closing Add row's id.</summary>
+    internal static string AddRowId(string noun) => $"rc-{noun}-add";
+
+    /// <summary>
+    /// After a move, focus stays on the pressed button of the moved row; when that button is now aria-disabled (the
+    /// row reached the top or the bottom) it moves to the sibling move button instead (WCAG 2.4.3).
+    /// </summary>
+    internal static string MoveFocusTarget(string noun, Guid rowKey, RowButton pressed, int newIndex, int count)
+    {
+        var blocked = (pressed == RowButton.Up && newIndex == 0) || (pressed == RowButton.Down && newIndex == count - 1);
+        var target = !blocked ? pressed : pressed == RowButton.Up ? RowButton.Down : RowButton.Up;
+        return RowButtonId(noun, rowKey, target);
+    }
+
+    /// <summary>After a removal: the next row's Remove (now at the same index), else the previous row's, else the Add row.</summary>
+    internal static string RemoveFocusTarget(string noun, IReadOnlyList<Guid> remaining, int removedIndex) =>
+        removedIndex < remaining.Count ? RowButtonId(noun, remaining[removedIndex], RowButton.Remove)
+        : remaining.Count > 0 ? RowButtonId(noun, remaining[^1], RowButton.Remove)
+        : AddRowId(noun);
+
+    /// <summary>"Ingredient 3 moved to position 2 of 5."</summary>
+    internal static string MovedMessage(string noun, int from, int to, int count) =>
+        $"{Cap(noun)} {from + 1} moved to position {to + 1} of {count}.";
+
+    /// <summary>"Step 2 removed. 4 steps."</summary>
+    internal static string RemovedMessage(string noun, int index, int remaining) =>
+        $"{Cap(noun)} {index + 1} removed. {RecipeFormat.Count(remaining, noun)}.";
+
+    /// <summary>"A recipe holds at most 100 ingredients." once the list reaches its cap; otherwise nothing.</summary>
+    internal static string? CapMessage(string noun, int count, int cap) =>
+        count >= cap ? $"A recipe holds at most {cap} {noun}s." : null;
 
     // A row error is keyed by position, so a move or removal would leave it on the wrong row.
     private void ClearRowErrors()

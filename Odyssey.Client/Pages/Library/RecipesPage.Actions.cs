@@ -92,7 +92,7 @@ public partial class RecipesPage
         return items;
     }
 
-    private IReadOnlyList<OdsMenuItem> RowActions(RecipeSummary r)
+    internal IReadOnlyList<OdsMenuItem> RowActions(RecipeSummary r)
     {
         var cook = _cook.GetValueOrDefault(r.RecipeId);
         var state = new RecipeRowState(
@@ -219,6 +219,12 @@ public partial class RecipesPage
             }
         }
 
+        if (_pendingAnnouncement is { } pending && _announcer is not null)
+        {
+            _pendingAnnouncement = null;
+            _ = _announcer.Announce(pending);
+        }
+
         await FocusPendingAsync();
     }
 
@@ -234,7 +240,8 @@ public partial class RecipesPage
         var held = false;
         try
         {
-            held = _wakeModule is not null && await _wakeModule.InvokeAsync<bool>("request");
+            _wakeRef ??= DotNetObjectReference.Create(this);
+            held = _wakeModule is not null && await _wakeModule.InvokeAsync<bool>("request", _wakeRef);
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException)
         {
@@ -242,9 +249,31 @@ public partial class RecipesPage
         }
 
         _awakeId = held ? r.RecipeId : null;
-        await Announce(held ? "The screen stays awake while this recipe is open." : "The screen can’t be kept awake right now.");
+        await Announce(held ? "The screen stays awake while this recipe is open." : WakeLockRefused);
         StateHasChanged();
     }
+
+    private DotNetObjectReference<RecipesPage>? _wakeRef;
+
+    /// <summary>What the polite region says when the lock is refused, or lost and not taken back.</summary>
+    internal const string WakeLockRefused = "The screen can’t be kept awake right now.";
+
+    /// <summary>
+    /// The browser released the lock (the tab was hidden) and wake-lock.js could not take it back on return: the chip
+    /// goes and the region says so, so the page never shows a lock it no longer holds.
+    /// </summary>
+    [JSInvokable]
+    public Task OnWakeLockLost() => InvokeAsync(async () =>
+    {
+        if (_awakeId is null)
+        {
+            return;
+        }
+
+        _awakeId = null;
+        await Announce(WakeLockRefused);
+        StateHasChanged();
+    });
 
     private async Task ReleaseWakeLockAsync(bool announce)
     {

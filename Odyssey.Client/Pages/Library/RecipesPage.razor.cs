@@ -53,16 +53,18 @@ public partial class RecipesPage
     private IReadOnlyCollection<string> _statusFilter = [];
     private int _batch = OdsPageSizes.Batch[0];
 
-    // RecipeSortBy: Title (default, A→Z), UpdatedAt, CreatedAt, TotalMinutes (nulls last both ways); the server sorts.
+    // RecipeSortBy: Title (default, A→Z), UpdatedAt, CreatedAt, TotalMinutes (nulls last both ways). The SERVER sorts
+    // (RecipeFilters.SortByFor), so the fields carry no client SortValue: RecipeSummary has no CreatedAt to project, and a
+    // stand-in projection (the old UpdatedAt) would sort "Added" by the wrong date if anything ever sorted in memory.
     private static readonly OdsTableSort DefaultSort = new("title", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
 
-    private static readonly OdsSortField<RecipeSummary>[] SortFields =
+    internal static readonly OdsSortField<RecipeSummary>[] SortFields =
     [
-        new() { Key = "title", Label = "Title", Type = OdsSortType.Text, SortValue = r => r.Title.ToLowerInvariant() },
-        new() { Key = "updated", Label = "Updated", Type = OdsSortType.Date, SortValue = r => r.UpdatedAt },
-        new() { Key = "created", Label = "Added", Type = OdsSortType.Date, SortValue = r => r.UpdatedAt },
-        new() { Key = "total", Label = "Total time", Type = OdsSortType.Number, SortValue = r => r.TotalMinutes ?? 0 },
+        new() { Key = "title", Label = "Title", Type = OdsSortType.Text },
+        new() { Key = "updated", Label = "Updated", Type = OdsSortType.Date },
+        new() { Key = "created", Label = "Added", Type = OdsSortType.Date },
+        new() { Key = "total", Label = "Total time", Type = OdsSortType.Number },
     ];
 
     internal sealed class RecipesPageState
@@ -218,7 +220,19 @@ public partial class RecipesPage
 
     private IReadOnlyList<OdsRecordCount> CountsFor(RecipeSummary r) => CountsFor(r, _canFiles);
 
-    private Task Announce(string message) => _announcer?.Announce(message) ?? Task.CompletedTask;
+    // The first load finishes before the first render has set the announcer's @ref, so its message waits for it.
+    private string? _pendingAnnouncement;
+
+    private Task Announce(string message)
+    {
+        if (_announcer is null)
+        {
+            _pendingAnnouncement = message;
+            return Task.CompletedTask;
+        }
+
+        return _announcer.Announce(message);
+    }
 
     private Task CopyAsync(string text, string toast) => Clipboard.CopyAsync(text, toast);
 
@@ -227,6 +241,7 @@ public partial class RecipesPage
         _listLoader.Dispose();
         _moreCts?.Cancel();
         await ReleaseWakeLockAsync(announce: false);
+        _wakeRef?.Dispose();
         if (_wakeModule is not null)
         {
             try

@@ -90,7 +90,7 @@
                         {
                             <h4 class="rc-h4">@group.Section</h4>
                         }
-                        <ul class="rc-ing-list">
+                        <ul class="rc-ing-list" role="list">
                             @foreach (var (line, index) in group.Rows)
                             {
                                 var done = Cook.CheckedIngredients.Contains(index);
@@ -128,7 +128,7 @@
                             <h4 class="rc-h4">@group.Section</h4>
                         }
                         @* Numbering runs on across sections: each group's list starts where the last ended. *@
-                        <ol class="rc-step-list" start="@(group.Rows[0].Index + 1)">
+                        <ol class="rc-step-list" role="list" start="@(group.Rows[0].Index + 1)">
                             @foreach (var (step, index) in group.Rows)
                             {
                                 var done = Cook.CheckedSteps.Contains(index);

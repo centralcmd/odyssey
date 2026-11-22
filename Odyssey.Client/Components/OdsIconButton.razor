@@ -40,6 +40,7 @@
 </MudIconButton>
 @if (ShowsReason)
 {
+    @* .odc-sr-only is position: absolute, so this sibling is out of flow and takes no slot (or gap) in a flex parent. *@
     <span class="odc-sr-only" id="@_reasonId">@DisabledReason</span>
 }
 

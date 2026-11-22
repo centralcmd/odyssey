@@ -12,7 +12,7 @@
     so the name stays the verb and the reason is read after it. Native Disabled drops focus to <body>.
 *@
 
-<button type="button" class="@RowClass" @onclick="HandleClickAsync" disabled="@Disabled"
+<button type="button" id="@Id" class="@RowClass" @onclick="HandleClickAsync" disabled="@Disabled"
         aria-disabled="@(AriaDisabled ? "true" : null)"
         aria-describedby="@(ShowsReason ? _reasonId : null)">
     <span class="odc-add-row-ic">
@@ -52,6 +52,9 @@
     [Parameter] public string? DisabledReason { get; set; }
 
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>The button's id — a focus target, e.g. after the last row above it is removed.</summary>
+    [Parameter] public string? Id { get; set; }
 
     private readonly string _reasonId = $"odc-add-row-why-{Guid.NewGuid():N}";
 
