@@ -93,6 +93,34 @@ public class OpenApiParityTests(OpenApiParityTests.Host host) : SharedApiHostTes
             + string.Join('\n', failures));
     }
 
+    /// <summary>
+    /// A regenerated fixture must not quietly shrink the guarantee (AC 10): it carries at least the documentation
+    /// the Swashbuckle baseline carried, and so does the live document. Floors, not exact counts, so a new endpoint
+    /// never fails this.
+    /// </summary>
+    [Fact]
+    public async Task TheFixtureAndTheDocument_CarryAtLeastTheBaselinesDocumentation()
+    {
+        var fixture = OpenApiInventory.Deserialize(SourceTree.ReadAllText(FixturePath)).Operations;
+        var live = OpenApiInventory.FromDocument(await FetchDocumentAsync());
+
+        foreach (var (name, operations) in new[] { ("fixture", fixture), ("document", live) })
+        {
+            Assert.True(operations.Count >= 405, $"The {name} has {operations.Count} operations.");
+            Assert.True(operations.Values.Count(operation => !string.IsNullOrEmpty(operation.Summary)) >= 349, $"The {name} lost summaries.");
+            Assert.True(operations.Values.Count(operation => !string.IsNullOrEmpty(operation.Description)) >= 109, $"The {name} lost descriptions.");
+            Assert.True(operations.Values.Sum(operation => operation.Parameters.Count(parameter => !string.IsNullOrEmpty(parameter.Description))) >= 38,
+                $"The {name} lost parameter descriptions.");
+        }
+
+        // Every swapped [Description] reaches the live document: 40 on parameters and 17 on [FromBody] request
+        // bodies, which Swashbuckle dropped.
+        var described = live.Values.Sum(operation =>
+            operation.Parameters.Count(parameter => !string.IsNullOrEmpty(parameter.Description))
+            + (string.IsNullOrEmpty(operation.RequestDescription) ? 0 : 1));
+        Assert.True(described >= 57, $"The document carries {described} parameter and body descriptions.");
+    }
+
     [Fact]
     public void EveryAllowListEntry_NamesAnInventoriedParameter()
     {

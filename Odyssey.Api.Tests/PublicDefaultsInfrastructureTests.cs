@@ -71,6 +71,40 @@ public class PublicDefaultsInfrastructureTests
     }
 
     /// <summary>
+    /// The shipped <c>appsettings.json</c> uses the new section (issue #569 AC 24). A leftover <c>Swagger</c> section
+    /// would make the retired-key warning fire on every start of every deployment.
+    /// </summary>
+    [Fact]
+    public void TheShippedAppSettings_NameApiDocs_AndNoSwaggerSection()
+    {
+        using var settings = System.Text.Json.JsonDocument.Parse(SourceTree.ReadAllText("Odyssey.Api", "appsettings.json"));
+        var root = settings.RootElement;
+
+        Assert.False(root.TryGetProperty("Swagger", out _));
+        var docs = root.GetProperty("ApiDocs");
+        Assert.False(docs.GetProperty("Enabled").GetBoolean());
+        Assert.True(docs.GetProperty("RequireLogin").GetBoolean());
+    }
+
+    /// <summary>
+    /// A Scalar bump arrives as its own Dependabot PR and is never suppressed or delayed (issue #569 AC 22, §7.2.5–6):
+    /// the integrity test is what forces its re-inspection, and an ignore rule would also hide security updates.
+    /// </summary>
+    [Fact]
+    public void Dependabot_GivesScalarItsOwnGroup_WithNoIgnoreOrCooldown()
+    {
+        var dependabot = SourceTree.ReadAllText(".github", "dependabot.yml");
+        var lines = dependabot.Split('\n').Select(line => line.Trim()).ToList();
+
+        Assert.Contains("scalar:", lines);
+        Assert.Contains("- \"Scalar.*\"", lines);
+        Assert.DoesNotContain("swashbuckle", dependabot, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(lines, line => line.StartsWith("cooldown:", StringComparison.Ordinal));
+        Assert.DoesNotContain(lines, line => line.StartsWith("- dependency-name:", StringComparison.Ordinal)
+            && line.Contains("Scalar", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// The base file falls back to <c>root_password</c> / <c>odyssey_password</c> so a laptop needs no
     /// env file; the overlay has to refuse those fallbacks rather than inherit them. <c>:?</c> covers
     /// unset and empty — a placeholder value is covered by

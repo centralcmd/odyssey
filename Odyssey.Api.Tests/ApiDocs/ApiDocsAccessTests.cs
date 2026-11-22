@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -112,6 +113,7 @@ public partial class ApiDocsAccessTests
     [Theory]
     [InlineData("/scalar/v1/", "../v1")]
     [InlineData("/scalar/v1/?x=1", "../v1?x=1")]
+    [InlineData("/scalar/v1%3Fx%23y/", "../v1%3Fx%23y")]
     public async Task TheTrailingSlashPage_RedirectsRelatively(string path, string location)
     {
         // Scalar's script tags are relative, so /scalar/v1/ would load them from /scalar/v1/ and never render. The
@@ -150,11 +152,16 @@ public partial class ApiDocsAccessTests
 
             var csp = Assert.Single(response.Headers.GetValues("Content-Security-Policy"));
             var nonce = Assert.Single(CspNonce().Matches(csp)).Groups["nonce"].Value;
+            // Pinned as a literal, not rebuilt from the production format string: a loosened directive (connect-src *,
+            // a CDN in script-src) must fail here.
             Assert.Equal(
-                string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                    ApiDocsHeaders.ContentSecurityPolicyFormat, $"'self' 'nonce-{nonce}'"),
+                $"default-src 'none'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; "
+                + "font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'none'; "
+                + "form-action 'none'; frame-ancestors 'none'; object-src 'none'",
                 csp);
-            Assert.All(ScriptTag().Matches(html), tag => Assert.Contains($"nonce=\"{nonce}\"", tag.Value, StringComparison.Ordinal));
+            var tags = ScriptTag().Matches(html);
+            Assert.NotEmpty(tags);
+            Assert.All(tags, tag => Assert.Contains($"nonce=\"{nonce}\"", tag.Value, StringComparison.Ordinal));
             Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
             Assert.Equal("no-referrer", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
             Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
@@ -170,10 +177,31 @@ public partial class ApiDocsAccessTests
         await using var factory = DocsFactory("false");
         using var client = Anonymous(factory);
 
-        var document = await client.GetAsync("/openapi/v1.json");
+        foreach (var path in (string[])["/openapi/v1.json", "/scalar/scalar.js", "/scalar/scalar.aspnetcore.js"])
+        {
+            var response = await client.GetAsync(path);
 
-        Assert.Equal("nosniff", Assert.Single(document.Headers.GetValues("X-Content-Type-Options")));
-        Assert.False(document.Headers.Contains("Content-Security-Policy"));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+            Assert.False(response.Headers.Contains("Content-Security-Policy"), $"{path} carries the page policy.");
+            Assert.NotEqual(true, response.Headers.CacheControl?.NoStore);
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("true")]
+    public async Task LoginRequired_ASignedInUserLoadsThePageItsAssetsAndItsDocument(string? requireLogin)
+    {
+        // The risky path: Scalar's own [AllowAnonymous] is stripped from its assets when a login is required, so a
+        // signed-in user must still get every one of them.
+        await using var factory = DocsFactory(requireLogin, RolePermissions.GuestClaims);
+        using var client = factory.CreateClient();
+
+        foreach (var path in (string[])["/scalar/v1", "/scalar/scalar.js", "/scalar/scalar.aspnetcore.js", "/scalar/favicon.svg", "/openapi/v1.json"])
+        {
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(path)).StatusCode);
+        }
     }
 
     [Fact]
@@ -219,6 +247,42 @@ public partial class ApiDocsAccessTests
             var response = await client.GetAsync(path);
             Assert.Equal(reference.StatusCode, response.StatusCode);
             Assert.Equal(referenceBody, await response.Content.ReadAsStringAsync());
+        }
+    }
+
+    [Fact]
+    public async Task LoginRequired_ACallerHeldByTheLegalGate_IsHeldHereToo()
+    {
+        await using var factory = new OdysseyApiFactory(
+            permissions: RolePermissions.AdminClaims,
+            configuration: new Dictionary<string, string?> { [ApiDocsConfiguration.EnabledKey] = "true" },
+            configureServices: services => services.AddTransient<IClaimsTransformation, PendingAcceptance>());
+        using var client = factory.CreateClient();
+
+        var reference = await client.GetAsync("/api/accounts");
+        Assert.Equal(HttpStatusCode.UnavailableForLegalReasons, reference.StatusCode);
+        var referenceBody = await reference.Content.ReadAsStringAsync();
+
+        foreach (var path in DocsPaths)
+        {
+            var response = await client.GetAsync(path);
+            Assert.Equal(reference.StatusCode, response.StatusCode);
+            Assert.Equal(referenceBody, await response.Content.ReadAsStringAsync());
+        }
+    }
+
+    /// <summary>Gives the test principal a pending legal acceptance, as the sign-in claims factory would.</summary>
+    private sealed class PendingAcceptance : IClaimsTransformation
+    {
+        public Task<System.Security.Claims.ClaimsPrincipal> TransformAsync(System.Security.Claims.ClaimsPrincipal principal)
+        {
+            if (principal.Identity is System.Security.Claims.ClaimsIdentity { IsAuthenticated: true } identity
+                && !identity.HasClaim(claim => claim.Type == Odyssey.Dtos.Authorization.LegalClaims.PendingAcceptanceType))
+            {
+                identity.AddClaim(new(Odyssey.Dtos.Authorization.LegalClaims.PendingAcceptanceType, "license"));
+            }
+
+            return Task.FromResult(principal);
         }
     }
 

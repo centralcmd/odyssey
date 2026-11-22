@@ -42,7 +42,8 @@ public static class ApiDocsHeaders
                 && tail.IndexOf('/', 1) == tail.Length - 1)
             {
                 context.Response.StatusCode = StatusCodes.Status301MovedPermanently;
-                context.Response.Headers.Location = "../" + tail[1..^1] + context.Request.QueryString;
+                // The segment arrives decoded; re-encode it so a %3F or %23 in it cannot become a query or a fragment.
+                context.Response.Headers.Location = "../" + Uri.EscapeDataString(tail[1..^1]) + context.Request.QueryString;
                 return;
             }
 

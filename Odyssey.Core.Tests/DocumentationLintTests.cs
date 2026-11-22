@@ -168,8 +168,8 @@ public sealed partial class DocumentationLintTests
     }
 
     /// <summary>
-    /// A package is named when the notices carry its id, a dotted family id it belongs to (<c>Swashbuckle.AspNetCore</c>
-    /// names <c>Swashbuckle.AspNetCore.SwaggerGen</c>) or a <c>Prefix.*</c> wildcard over it.
+    /// A package is named when the notices carry its id, a dotted family id it belongs to (<c>Aspire.Hosting</c>
+    /// names <c>Aspire.Hosting.AppHost</c>) or a <c>Prefix.*</c> wildcard over it.
     /// </summary>
     private static bool IsNamed(string package, HashSet<string> named) =>
         named.Any(name =>

@@ -115,15 +115,22 @@ public sealed class ApiDocsEgressTests(StackFixture fixture) : IAsyncLifetime
 
         Assert.True(traffic.Aborted.Count == 0, "Requests to foreign origins: " + string.Join(", ", traffic.Aborted));
         Assert.True(traffic.DocumentRequests.Count > 0, "The page never fetched its OpenAPI document.");
-        Assert.All(traffic.DocumentRequests, url => Assert.StartsWith(apiBase + "/openapi/", url, StringComparison.Ordinal));
+        Assert.All(traffic.DocumentRequests, request => Assert.Equal($"{apiBase}/openapi/v1.json 200", request));
         Assert.Empty(traffic.CspViolations);
 
-        // No AI chat entry point, and no visible way out to scalar.com.
-        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { NameRegex = new("ask ai|agent", System.Text.RegularExpressions.RegexOptions.IgnoreCase) }).CountAsync());
+        // No AI chat entry point, by role or by text.
+        var aiChat = new System.Text.RegularExpressions.Regex("ask ai|agent scalar|ai chat", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { NameRegex = aiChat }).CountAsync());
+        Assert.DoesNotMatch(aiChat, await page.InnerTextAsync("body"));
+
+        // The one link to scalar.com is the footer's "Powered by Scalar", which has no option and is hidden by the
+        // lockdown's CSS (an amendment to AC 12 recorded on #569); any other, and any visible one, fails.
         var outbound = page.Locator("a[href*='scalar.com']");
         for (var index = 0; index < await outbound.CountAsync(); index++)
         {
-            Assert.False(await outbound.Nth(index).IsVisibleAsync(), "A visible link to scalar.com is on the page.");
+            var link = outbound.Nth(index);
+            Assert.StartsWith("https://scalar.com/?utm_source=powered-by", await link.GetAttributeAsync("href"), StringComparison.Ordinal);
+            Assert.False(await link.IsVisibleAsync(), "A visible link to scalar.com is on the page.");
         }
     }
 
@@ -146,13 +153,19 @@ public sealed class ApiDocsEgressTests(StackFixture fixture) : IAsyncLifetime
                 return;
             }
 
-            if (url.AbsolutePath.EndsWith("/openapi/v1.json", StringComparison.Ordinal))
-            {
-                traffic.DocumentRequests.Add(url.GetLeftPart(UriPartial.Path));
-            }
-
             await route.ContinueAsync();
         });
+
+        // Statuses come from response events, not route.FetchAsync: that refetches through Playwright's own network
+        // stack, which never sees --host-resolver-rules, so the non-local run could not resolve its host.
+        context.Response += (_, response) =>
+        {
+            var url = new Uri(response.Url);
+            if (url.AbsolutePath.EndsWith("/openapi/v1.json", StringComparison.Ordinal))
+            {
+                traffic.DocumentRequests.Add($"{url.GetLeftPart(UriPartial.Path)} {response.Status}");
+            }
+        };
 
         return traffic;
     }

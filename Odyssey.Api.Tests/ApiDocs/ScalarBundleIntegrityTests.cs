@@ -20,13 +20,18 @@ namespace Odyssey.Api.Tests.ApiDocs;
 /// </remarks>
 public partial class ScalarBundleIntegrityTests
 {
-    private const string BundleResource = "ScalarStaticAssets.scalar.js";
-
-    /// <summary>SHA-256 of the decompressed browser bundle in Scalar.AspNetCore 3.1.1.</summary>
-    private const string BundleSha256 = "68fb59b2835e3e9aaec45e7dc863ddb55ae78656365486eb96d73b98096ed7d8";
+    /// <summary>
+    /// SHA-256 of each decompressed script Scalar.AspNetCore 3.1.1 embeds and the page loads: the bundle, and the
+    /// small loader that reads the page configuration and calls it.
+    /// </summary>
+    private static readonly Dictionary<string, string> ScriptSha256 = new(StringComparer.Ordinal)
+    {
+        ["ScalarStaticAssets.scalar.js"] = "68fb59b2835e3e9aaec45e7dc863ddb55ae78656365486eb96d73b98096ed7d8",
+        ["ScalarStaticAssets.scalar.aspnetcore.js"] = "33728da79ad3d2f92dd75d85e0cfc45c364bf412ad8b62a9737088b159492427",
+    };
 
     /// <summary>
-    /// Every host the 3.1.1 bundle names, and why naming it is harmless. "CSP" means the docs page's
+    /// Every host the 3.1.1 scripts name, and why naming it is harmless. "CSP" means the docs page's
     /// <c>connect-src</c>/<c>img-src 'self'</c> refuses any request to it and <c>Referrer-Policy: no-referrer</c>
     /// strips a navigation; "inert" means documentation text, a link in Scalar's own help, or example data.
     /// </summary>
@@ -108,18 +113,27 @@ public partial class ScalarBundleIntegrityTests
     ];
 
     [Fact]
-    public void TheBundle_IsThePinnedOne()
+    public void EveryEmbeddedScript_IsPinned_AndUnchanged()
     {
-        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(ReadBundle())));
+        var scripts = typeof(ScalarOptions).Assembly.GetManifestResourceNames()
+            .Where(name => name.EndsWith(".js", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToList();
 
-        Assert.True(hash == BundleSha256,
-            $"Scalar's bundle changed (sha256 {hash}). Re-inspect it per issue #569 §7.2 before updating the pin.");
+        // A new embedded script is unreviewed code the page could load.
+        Assert.Equal(ScriptSha256.Keys.Order(StringComparer.Ordinal), scripts);
+        foreach (var (resource, pinned) in ScriptSha256)
+        {
+            var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(ReadScript(resource))));
+            Assert.True(hash == pinned,
+                $"Scalar's {resource} changed (sha256 {hash}). Re-inspect it per issue #569 §7.2 before updating the pin.");
+        }
     }
 
     [Fact]
     public void EveryHostTheBundleNames_IsReviewed()
     {
-        var bundle = ReadBundle();
+        var bundle = string.Concat(ScriptSha256.Keys.Select(ReadScript));
         var hosts = AbsoluteUrlHost().Matches(bundle).Select(match => match.Groups["host"].Value)
             .Concat(ProtocolRelativeHost().Matches(bundle).Select(match => match.Groups["host"].Value))
             .Concat(BareScalarHost().Matches(bundle).Select(match => match.Value))
@@ -148,10 +162,10 @@ public partial class ScalarBundleIntegrityTests
         Assert.Equal(KnownAssemblyReferences.Order(StringComparer.Ordinal), references);
     }
 
-    private static string ReadBundle()
+    private static string ReadScript(string name)
     {
-        using var resource = typeof(ScalarOptions).Assembly.GetManifestResourceStream(BundleResource)
-            ?? throw new InvalidOperationException($"{BundleResource} is not embedded in Scalar.AspNetCore.");
+        using var resource = typeof(ScalarOptions).Assembly.GetManifestResourceStream(name)
+            ?? throw new InvalidOperationException($"{name} is not embedded in Scalar.AspNetCore.");
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var reader = new StreamReader(gzip, Encoding.UTF8);
         return reader.ReadToEnd();
