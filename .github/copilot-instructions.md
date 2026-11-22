@@ -84,7 +84,7 @@ Then:
 
 - Frontend: `http://localhost:5199`
 - API: `http://localhost:5188`
-- Swagger: `http://localhost:5188/swagger`
+- API reference (Scalar): `http://localhost:5188/scalar/v1` — sign in to the client first
 
 To stop/clean:
 

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 
 using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
@@ -41,9 +41,8 @@ public sealed class CurrenciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingCurrency>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List currencies.",
-        Description = @"List currencies with search, sorting and pagination. Every row carries its derived
+    [EndpointSummary("List currencies.")]
+    [EndpointDescription(@"List currencies with search, sorting and pagination. Every row carries its derived
                         status (Synced, FetchingHistory, NoLongerPublished, SyncingOff, NotPublished,
                         Archived), which statuses= filters and sortBy=status orders, for every caller.
                         A caller holding system-settings.read also gets each non-archived row's
@@ -73,8 +72,7 @@ public sealed class CurrenciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "code")] [SwaggerParameter("Code", Required = true,
-            Description = @"The code for the currency to get.")] string code, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "code")][Description(@"The code for the currency to get.")] string code, CancellationToken cancellationToken = default)
     {
         var currency = await currencyService.Get(code, cancellationToken);
         if (currency is null)
@@ -92,8 +90,7 @@ public sealed class CurrenciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewCurrency", Required = true,
-            Description = @"The new currency to create.")] NewCurrency newCurrency, CancellationToken cancellationToken = default)
+        [FromBody][Description(@"The new currency to create.")] NewCurrency newCurrency, CancellationToken cancellationToken = default)
     {
         var currency = await currencyService.Create(newCurrency, cancellationToken);
         return CreatedAtRoute("GetCurrency", new { code = currency.CurrencyCode }, currency);
@@ -107,17 +104,14 @@ public sealed class CurrenciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update the details for a currency.",
-        Description = @"Update the details for a currency. Not an upsert: an unknown code is a 404 and
+    [EndpointSummary("Update the details for a currency.")]
+    [EndpointDescription(@"Update the details for a currency. Not an upsert: an unknown code is a 404 and
                         nothing is created. Use POST to create. Archiving a currency switches its
                         exchange-rate sync off, and restoring it does not switch it back on. Archiving
                         the sync's base currency while any currency is synced is a 422.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "code")] [SwaggerParameter("Code", Required = true,
-            Description = @"The code for the currency to update.")] string code,
-        [FromBody] [SwaggerParameter("NewCurrency", Required = true,
-            Description = @"The currency with the updated values.")] NewCurrency newCurrency, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "code")][Description(@"The code for the currency to update.")] string code,
+        [FromBody][Description(@"The currency with the updated values.")] NewCurrency newCurrency, CancellationToken cancellationToken = default)
     {
         var updated = await currencyService.Update(code, newCurrency, User.ActingUserId(), cancellationToken);
         if (updated is null)
@@ -139,14 +133,12 @@ public sealed class CurrenciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete a currency based on its code.",
-        Description = @"Delete a currency based on its code. A currency still used by an account, transaction,
+    [EndpointSummary("Delete a currency based on its code.")]
+    [EndpointDescription(@"Delete a currency based on its code. A currency still used by an account, transaction,
                         budget, tax statement, property, estimate, contract term or exchange rate is refused
                         with a 409 naming how many of each reference it.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "code")] [SwaggerParameter("Code", Required = true,
-            Description = @"The code for the currency to delete.")] string code, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "code")][Description(@"The code for the currency to delete.")] string code, CancellationToken cancellationToken = default)
     {
         await currencyService.Delete(code, cancellationToken);
         return NoContent();

@@ -25,7 +25,8 @@ var mariadbContainerPort = GetRequiredInt("Aspire:MariaDb:ContainerPort");
 var mariadbServer = GetRequiredValue("Aspire:MariaDb:Server");
 
 var apiEnvironment = GetRequiredValue("Aspire:Api:Environment");
-var apiSwaggerEnabled = GetRequiredBool("Aspire:Api:SwaggerEnabled").ToString().ToLowerInvariant();
+var apiDocsEnabled = GetRequiredBool("Aspire:Api:ApiDocsEnabled").ToString().ToLowerInvariant();
+var apiDocsRequireLogin = GetRequiredBool("Aspire:Api:ApiDocsRequireLogin").ToString().ToLowerInvariant();
 // One database for the whole application: identity, finance and journal are a single context with
 // real foreign keys between them, so they cannot be pointed at separate schemas.
 var odysseyDatabase = GetRequiredValue("Aspire:Api:Databases:Odyssey");
@@ -115,7 +116,8 @@ var api = builder
     .WithEnvironment("DataProtection__KeysPath", dataProtectionKeysPath)
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", apiEnvironment)
-    .WithEnvironment("Swagger__Enabled", apiSwaggerEnabled)
+    .WithEnvironment("ApiDocs__Enabled", apiDocsEnabled)
+    .WithEnvironment("ApiDocs__RequireLogin", apiDocsRequireLogin)
     // Headroom for the E2E suites, which drive this stack from one loopback address — one rate-limit
     // partition key. The shipped default is 30 requests per minute per IP and stays 30 in production;
     // it is not sized for a browser-driven test stack. The identity policy covers the WHOLE

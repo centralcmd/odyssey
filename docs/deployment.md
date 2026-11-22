@@ -254,7 +254,7 @@ anywhere**. Terminating TLS removes that failure mode instead of depending on it
 private deployment a faithful rehearsal of the public one.
 
 The alternative — running `Development` locally to dodge the cookie flag — is the wrong trade and
-worth naming explicitly: it also turns on Swagger, permits demo seeding, and substitutes
+worth naming explicitly: it also turns on the API documentation, permits demo seeding, and substitutes
 `LegalOptions.DevelopmentPseudonymizationSecret` for the real pseudonymisation key
 (`Odyssey.Api/Legal/LegalPseudonymizer.cs`). Use `Production` on both deployments.
 
@@ -263,7 +263,7 @@ worth naming explicitly: it also turns on Swagger, permits demo seeding, and sub
 The `Caddyfile` sends `Strict-Transport-Security: max-age=31536000; includeSubDomains`, and
 **browsers key HSTS by hostname and ignore the port.** Setting `ODYSSEY_DOMAIN=localhost` would
 therefore pin *every* `http://localhost:<port>` URL in that browser to HTTPS for a year — breaking
-the dev stack on :5199 and Swagger on :5188, recoverable only via `chrome://net-internals/#hsts`.
+the dev stack on :5199 and the API docs on :5188, recoverable only via `chrome://net-internals/#hsts`.
 
 Scoped to `odyssey.localhost` the pin is harmless, browsers resolve `*.localhost` to loopback with
 no hosts-file entry, and Caddy recognises the name as non-public and issues from its internal CA
@@ -934,7 +934,10 @@ then fails closed (a `503`, a failed run or a skipped send), and nothing falls b
 
 Image pulls from GHCR are made by the Docker host at deploy time, not by a container. Nothing else is
 contacted: the client's Content Security Policy admits only its own origin plus `MAP_ALLOWED_ORIGINS`, and
-no instrument-price source ships in this build (the sync framework registers none).
+no instrument-price source ships in this build (the sync framework registers none). The API documentation page
+(Scalar at `/scalar/v1`, never served in Production) contacts nothing either: every Scalar feature that
+would reach a third party — fonts, AI chat, MCP, telemetry, the request proxy — is off in code, and the page
+carries its own policy admitting only the API's origin (issue #569).
 
 ## Household locations: what leaves the deployment, and how to erase one
 
@@ -2036,7 +2039,7 @@ download or since the rule last changed, whichever is later. Audio never downloa
 
 ## Security checklist
 
-- [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**
+- [ ] `ASPNETCORE_ENVIRONMENT=Production` (API docs off; set in the overlay) — and **not**
       `Testing`, which the API refuses to start under; see the section above.
 - [ ] No demo data: if this host ever ran the base `docker compose up`, its `mariadb_data`
       volume was destroyed with `docker compose down -v` before the production overlay came up.

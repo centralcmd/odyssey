@@ -2,13 +2,13 @@
 #  DEVELOPMENT STACK — NOT SAFE TO EXPOSE TO A NETWORK
 #
 #  This file is tuned for a laptop, and its defaults say so: weak fallback database
-#  passwords, ASPNETCORE_ENVIRONMENT=Development, Swagger on, demo data seeded, and
+#  passwords, ASPNETCORE_ENVIRONMENT=Development, API docs on, demo data seeded, and
 #  MariaDB published on port 3307. Every published port binds 127.0.0.1 only, so none of
 #  that is reachable from the network — do not remove those prefixes to "test from another
 #  machine". The demo accounts share a password published in this repository's README.
 #
 #  To deploy for real, layer the production overlay on top — it resets the published
-#  ports, pins Production, turns Swagger off and disables demo seeding:
+#  ports, pins Production, turns the API docs off and disables demo seeding:
 #
 #    docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 #      --env-file .env.prod up -d
@@ -112,7 +112,11 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:8080
       UseInMemoryDatabase: ${USE_IN_MEMORY_DATABASE:-false}
-      Swagger__Enabled: ${SWAGGER_ENABLED:-true}
+      # API docs (/openapi/v1.json, /scalar/v1; issue #569). Development serves them whatever this says, so the
+      # default is OFF: a stack run as Staging or similar shows docs only when API_DOCS_ENABLED=true says so.
+      # Production never serves them. RequireLogin defaults to true: sign in to the client, then open the docs.
+      ApiDocs__Enabled: ${API_DOCS_ENABLED:-false}
+      ApiDocs__RequireLogin: ${API_DOCS_REQUIRE_LOGIN:-true}
       ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
       # There is NO Email__* here any more (issue #8). The relay credential moved to the encrypted
       # secret store in #445; the transport around it — host, port, STARTTLS — and the public link

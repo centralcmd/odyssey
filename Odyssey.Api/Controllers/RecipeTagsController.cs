@@ -5,7 +5,6 @@ using Odyssey.Core.Recipes;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Recipes;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -18,7 +17,7 @@ public sealed class RecipeTagsController(RecipeTagService service) : ControllerB
     [Authorize(Policy = PermissionClaims.RecipeTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingRecipeTag>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List recipe tags; an omitted status returns active and archived tags.")]
+    [EndpointSummary("List recipe tags; an omitted status returns active and archived tags.")]
     public async Task<IActionResult> Get([FromQuery] RecipeTagsQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await service.ListAsync(query, cancellationToken));
 
@@ -26,7 +25,7 @@ public sealed class RecipeTagsController(RecipeTagService service) : ControllerB
     [Authorize(Policy = PermissionClaims.RecipeTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingRecipeTag))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a recipe tag.")]
+    [EndpointSummary("Get a recipe tag.")]
     public async Task<IActionResult> Get([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var tag = await service.GetAsync(id, cancellationToken);
@@ -38,7 +37,7 @@ public sealed class RecipeTagsController(RecipeTagService service) : ControllerB
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingRecipeTag))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a recipe tag; a name colliding with any existing tag (incl. archived) returns 409.")]
+    [EndpointSummary("Create a recipe tag; a name colliding with any existing tag (incl. archived) returns 409.")]
     public async Task<IActionResult> Post([FromBody] NewRecipeTag request, CancellationToken cancellationToken = default)
     {
         var created = await service.CreateAsync(request, cancellationToken);
@@ -51,7 +50,7 @@ public sealed class RecipeTagsController(RecipeTagService service) : ControllerB
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a recipe tag and toggle its archived state.")]
+    [EndpointSummary("Update a recipe tag and toggle its archived state.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateRecipeTag request,
@@ -66,7 +65,7 @@ public sealed class RecipeTagsController(RecipeTagService service) : ControllerB
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an unused recipe tag; a tag any recipe carries returns 409 (archive it instead).")]
+    [EndpointSummary("Delete an unused recipe tag; a tag any recipe carries returns 409 (archive it instead).")]
     public async Task<IActionResult> Delete([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
         await service.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound(id);
 

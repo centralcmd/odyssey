@@ -6,7 +6,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -29,7 +28,7 @@ public sealed class JournalTagsController : ControllerBase
     [Authorize(Policy = PermissionClaims.JournalTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingJournalTag>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List journal tags with search, archival-status filter, sort and paging.")]
+    [EndpointSummary("List journal tags with search, archival-status filter, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] JournalTagsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -41,7 +40,7 @@ public sealed class JournalTagsController : ControllerBase
     [Authorize(Policy = PermissionClaims.JournalTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingJournalTag))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a journal tag.")]
+    [EndpointSummary("Get a journal tag.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -54,7 +53,7 @@ public sealed class JournalTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingJournalTag))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a journal tag.")]
+    [EndpointSummary("Create a journal tag.")]
     public async Task<IActionResult> Post(
         [FromBody] NewJournalTag request, CancellationToken cancellationToken = default)
     {
@@ -68,7 +67,7 @@ public sealed class JournalTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a journal tag and toggle its archival state.")]
+    [EndpointSummary("Update a journal tag and toggle its archival state.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateJournalTag request, CancellationToken cancellationToken = default)
@@ -82,7 +81,7 @@ public sealed class JournalTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an unused journal tag; a tag in use returns 409 (archive it instead).")]
+    [EndpointSummary("Delete an unused journal tag; a tag in use returns 409 (archive it instead).")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

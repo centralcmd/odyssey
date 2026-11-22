@@ -46,11 +46,12 @@ docker compose up --build
 Two runtime flags in `.env` are worth knowing:
 
 - `ASPNETCORE_ENVIRONMENT=Development` runs the API in development mode.
-- `SWAGGER_ENABLED=true` exposes Swagger/OpenAPI outside Development (never in Production — see
-  [API and Swagger](#api-and-swagger)).
+- `API_DOCS_ENABLED=true` serves the API documentation outside Development (never in Production — see
+  [API and API documentation](#api-and-api-documentation)), and `API_DOCS_REQUIRE_LOGIN` (default `true`)
+  decides whether reading it needs a signed-in user.
 
 The default `docker-compose.yml` is a **development** stack: weak fallback database passwords,
-Swagger on, demo data seeded, MariaDB published to the host. To deploy, layer
+API docs on, demo data seeded, MariaDB published to the host. To deploy, layer
 `docker-compose.prod.yml` on top and start from `.env.prod.example` instead — see
 [`deployment.md`](deployment.md).
 
@@ -142,17 +143,28 @@ the WASM runtime, so that file is the only place to set it. Left blank (the defa
 build calls `/api/` on the current origin — which NGINX proxies under Compose — while a Debug build
 falls back to `http://localhost:5188`. The logic is in `Odyssey.Client/Program.cs`.
 
-## API and Swagger
+## API and API documentation
 
 | | Address |
 |---|---|
 | API | `http://localhost:5188` |
-| Swagger UI | `http://localhost:5188/swagger` |
-| OpenAPI JSON | `http://localhost:5188/swagger/v1/swagger.json` |
+| API reference (Scalar) | `http://localhost:5188/scalar/v1` |
+| OpenAPI document (3.1) | `http://localhost:5188/openapi/v1.json` |
 
-Swagger is served when `ASPNETCORE_ENVIRONMENT=Development`, or when `SWAGGER_ENABLED=true` in any
-environment other than `Production`; it is never served in Production (issue #451). CORS allowed
-origins are `Cors:AllowedOrigins` in `Odyssey.Api/appsettings.json`.
+Through the client's nginx proxy the same pages are at `/api/scalar/v1` and `/api/openapi/v1.json`.
+
+The documentation is served when `ASPNETCORE_ENVIRONMENT=Development`, or when `API_DOCS_ENABLED=true`
+(`ApiDocs:Enabled`) in any environment other than `Production`; it is never served in Production
+(issue #451). By default it needs a signed-in user (`API_DOCS_REQUIRE_LOGIN`, `ApiDocs:RequireLogin`,
+default `true`): sign in to the client first, then open the reference. The browser reuses that session
+cookie, across ports on `localhost` too. Without a session the docs answer `401`; there is no login page
+on the API. Set it to `false` to serve the docs to anyone who can reach the API.
+
+The reference is [Scalar](https://scalar.com), served from the API with every feature that would contact
+a third party switched off in code (fonts, AI chat, MCP, telemetry, the request proxy, the "open in client"
+button) and a strict Content-Security-Policy on the page (issue #569). "Try it" sends requests to the API
+itself with your session cookie; paste the token from `GET /api/antiforgery/token` into the antiforgery
+header for a write. CORS allowed origins are `Cors:AllowedOrigins` in `Odyssey.Api/appsettings.json`.
 
 ## Demo data
 

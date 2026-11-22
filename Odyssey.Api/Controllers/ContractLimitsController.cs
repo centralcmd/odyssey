@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odyssey.Dtos.Application;
 using Odyssey.Core.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -43,7 +42,7 @@ public sealed class ContractLimitsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ContractLimitsDto))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The effective per-contract limits for the Contracts page.")]
+    [EndpointSummary("The effective per-contract limits for the Contracts page.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var limits = await lookup.GetAsync(cancellationToken);

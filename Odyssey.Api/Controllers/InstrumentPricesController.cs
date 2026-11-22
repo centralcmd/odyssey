@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Finance.Instruments;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -35,7 +34,7 @@ public sealed class InstrumentPricesController(InstrumentPriceService prices) : 
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Add a manual closing price.")]
+    [EndpointSummary("Add a manual closing price.")]
     public async Task<IActionResult> Post([FromBody] NewInstrumentPrice request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -54,7 +53,7 @@ public sealed class InstrumentPricesController(InstrumentPriceService prices) : 
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Correct a manual price's date and close. A fetched row is refused with 422 keyed source.")]
+    [EndpointSummary("Correct a manual price's date and close. A fetched row is refused with 422 keyed source.")]
     public async Task<IActionResult> Put(Guid id, [FromBody] UpdateInstrumentPrice request, CancellationToken cancellationToken = default) =>
         await prices.UpdateAsync(id, request, User.ActingUserId(), cancellationToken) is { } updated
             ? Ok(updated)

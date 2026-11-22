@@ -11,7 +11,6 @@ using Odyssey.Core.Weather;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -36,7 +35,7 @@ public sealed class LocationsController : ControllerBase
     [Authorize(Policy = PermissionClaims.LocationsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingLocation>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List locations with search, status filter, sort and paging.")]
+    [EndpointSummary("List locations with search, status filter, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] LocationsQueryParams query, CancellationToken cancellationToken = default)
     {
@@ -47,7 +46,7 @@ public sealed class LocationsController : ControllerBase
     [Authorize(Policy = PermissionClaims.LocationsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingLocation))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a location, archived or not.")]
+    [EndpointSummary("Get a location, archived or not.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -61,7 +60,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a location.")]
+    [EndpointSummary("Create a location.")]
     public async Task<IActionResult> Post(
         [FromBody] NewLocation request, CancellationToken cancellationToken = default)
     {
@@ -81,7 +80,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace a location; archived: true archives it, false restores it. Not an upsert.")]
+    [EndpointSummary("Replace a location; archived: true archives it, false restores it. Not an upsert.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateLocation request, CancellationToken cancellationToken = default)
@@ -107,7 +106,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Link a location to a weather point, or clear the link with null.")]
+    [EndpointSummary("Link a location to a weather point, or clear the link with null.")]
     public async Task<IActionResult> PutWeatherPoint(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] SetLocationWeatherPoint request,
@@ -136,7 +135,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Merge a location into another; returns the surviving target.")]
+    [EndpointSummary("Merge a location into another; returns the surviving target.")]
     public async Task<IActionResult> Merge(
         [FromRoute(Name = "sourceId")] Guid sourceId,
         [FromBody] MergeLocationRequest request, CancellationToken cancellationToken = default)
@@ -159,7 +158,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a location nothing uses.")]
+    [EndpointSummary("Delete a location nothing uses.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -186,7 +185,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Search an address or place name: Kartverket for Norway, Open-Meteo for the rest of the world.")]
+    [EndpointSummary("Search an address or place name: Kartverket for Norway, Open-Meteo for the rest of the world.")]
     public async Task<IActionResult> Search(
         [FromBody] LocationSearchRequest request,
         [FromServices] LocationSearchService search,

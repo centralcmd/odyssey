@@ -324,12 +324,12 @@ public class ContactConversionApiTests(ContactConversionApiTests.Host host) : Sh
     // ── Contract and role guards ────────────────────────────────────────────────
 
     [Fact]
-    public async Task Swagger_PutContact_DeclaresConflictAndUnprocessable()
+    public async Task OpenApi_PutContact_DeclaresConflictAndUnprocessable()
     {
         using var factory = new OdysseyApiFactory(
-            configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+            configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 
-        var response = await factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var responses = document.RootElement.GetProperty("paths").GetProperty("/api/contacts/{id}")
             .GetProperty("put").GetProperty("responses");

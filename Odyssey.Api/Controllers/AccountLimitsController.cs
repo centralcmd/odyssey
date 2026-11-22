@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odyssey.Dtos.Application;
 using Odyssey.Core.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -44,7 +43,7 @@ public sealed class AccountLimitsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AccountLimitsDto))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The effective per-account limits for the Accounts page.")]
+    [EndpointSummary("The effective per-account limits for the Accounts page.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var limits = await lookup.GetAsync(cancellationToken);

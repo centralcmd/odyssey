@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Odyssey.Core.FileStorage;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -19,9 +18,8 @@ public sealed class FileStorageController(FileStorageStatusService status) : Con
 {
     [HttpGet("volumes")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IReadOnlyList<FileStorageVolumeStatus>))]
-    [SwaggerOperation(
-        Summary = "Each file volume's state, usage and bindings, as this API process sees them.",
-        Description = "A volume degraded only in the worker shows in the worker's log, not here. The maintenance fields are "
+    [EndpointSummary("Each file volume's state, usage and bindings, as this API process sees them.")]
+    [EndpointDescription("A volume degraded only in the worker shows in the worker's log, not here. The maintenance fields are "
             + "instance-wide and repeated on every entry. Empty when file storage is not set up. Never returns a path, a file "
             + "name or an object id.")]
     public async Task<ActionResult<IReadOnlyList<FileStorageVolumeStatus>>> GetVolumes(CancellationToken cancellationToken) =>

@@ -3,7 +3,6 @@ using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Core.Finance;
 
@@ -29,9 +28,8 @@ public sealed class AccountEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingAccountEstimate>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the estimated-value history for an account.",
-        Description = @"Lists the full estimate history for the account, newest effective date first.
+    [EndpointSummary("Get the estimated-value history for an account.")]
+    [EndpointDescription(@"Lists the full estimate history for the account, newest effective date first.
                         Optionally filtered by an as-of date.")]
     public async Task<IActionResult> GetAccountEstimates(
         [FromRoute(Name = "accountId")] Guid accountId,
@@ -51,9 +49,8 @@ public sealed class AccountEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CurrentAccountEstimate))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the currently-effective estimated value for an account.",
-        Description = @"Returns the in-force estimate as of now or the supplied as-of date, or an empty
+    [EndpointSummary("Get the currently-effective estimated value for an account.")]
+    [EndpointDescription(@"Returns the in-force estimate as of now or the supplied as-of date, or an empty
                         body when the account has no estimate in force.")]
     public async Task<IActionResult> GetCurrentAccountEstimate(
         [FromRoute(Name = "accountId")] Guid accountId,
@@ -78,7 +75,7 @@ public sealed class AccountEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a new estimated-value entry on an account.")]
+    [EndpointSummary("Create a new estimated-value entry on an account.")]
     public async Task<IActionResult> PostAccountEstimate(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromBody] NewAccountEstimate newEstimate, CancellationToken cancellationToken = default)
@@ -94,7 +91,7 @@ public sealed class AccountEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update an estimated-value entry on an account.")]
+    [EndpointSummary("Update an estimated-value entry on an account.")]
     public async Task<IActionResult> PutAccountEstimate(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "estimateId")] Guid estimateId,
@@ -114,7 +111,7 @@ public sealed class AccountEstimatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an estimated-value entry from an account.")]
+    [EndpointSummary("Delete an estimated-value entry from an account.")]
     public async Task<IActionResult> DeleteAccountEstimate(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "estimateId")] Guid estimateId, CancellationToken cancellationToken = default)

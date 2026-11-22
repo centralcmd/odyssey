@@ -61,10 +61,7 @@
     <PackageVersion Include="MudBlazor" Version="9.14.0" />
     <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
     <PackageVersion Include="QRCoder" Version="1.9.0" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.1" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.Swagger" Version="10.3.1" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.3.1" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.1" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="3.1.1" />
     <PackageVersion Include="coverlet.collector" Version="10.1.1" />
     <!-- The Blazor component renderer for Odyssey.Client.Tests (issue #444 §13 step 4a). That project
          had no renderer at all, so a component could ship unable to render and still "pass" — the

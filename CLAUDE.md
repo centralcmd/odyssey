@@ -63,9 +63,9 @@ daemon and restores the solution. It **detects rather than assumes** the SDK loc
 when Docker is unreachable, so without it `dotnet test` reports success having never run that tier.
 Rationale and the TLS-interception override: [`docs/claude-code-environment.md`](docs/claude-code-environment.md).
 
-**Local endpoints:** Frontend `http://localhost:5199`, API `http://localhost:5188`, Swagger
-`http://localhost:5188/swagger`, MariaDB host port **3307** (not 3306). Compose binds all of them to
-`127.0.0.1`. Aspire pins the API to 5188 and MariaDB to 3307; the client takes 5199 from its launch profile.
+**Local endpoints:** Frontend `http://localhost:5199`, API `http://localhost:5188`, API reference
+`http://localhost:5188/scalar/v1` (sign in to the client first), MariaDB host port **3307** (not 3306).
+Compose binds all of them to `127.0.0.1`. Aspire pins the API to 5188 and MariaDB to 3307; the client takes 5199 from its launch profile.
 
 **Running alongside a stack a teammate already has up:** Compose and Aspire use the same ports, so the
 second stack collides. Bring yours up with a port-remap override and **never** `docker compose down -v`

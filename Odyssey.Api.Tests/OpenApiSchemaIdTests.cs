@@ -6,17 +6,18 @@ using Xunit;
 namespace Odyssey.Api.Tests;
 
 /// <summary>
-/// Swashbuckle keys schemas on the short type name, so two Odyssey types sharing one name threw while
-/// generating <c>/swagger/v1/swagger.json</c> — failing the entire document, not just those schemas
-/// (found while implementing issue #382 point 4; Swagger UI was unusable until this was fixed). The
-/// generator now qualifies only the ambiguous names with their namespace.
+/// Component names are keyed on the short type name, so two Odyssey types sharing one name would collide.
+/// Under Swashbuckle that threw while generating the document — failing all of it, not just those schemas
+/// (found while implementing issue #382 point 4). The generator qualifies only the ambiguous names with their
+/// namespace, and these ids are the published names: issue #569 kept them stable across the move to the
+/// built-in generator.
 /// </summary>
 public class OpenApiSchemaIdTests(OpenApiSchemaIdTests.Host host) : SharedApiHostTests<OpenApiSchemaIdTests.Host>(host)
 {
     [Fact]
     public async Task TheDocument_GeneratesWithCollidingTypeNamesDisambiguated()
     {
-        var response = await Factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await Factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -63,7 +64,7 @@ public class OpenApiSchemaIdTests(OpenApiSchemaIdTests.Host host) : SharedApiHos
 
     private async Task<IReadOnlyList<string>> SchemaIdsAsync()
     {
-        var response = await Factory.CreateClient().GetAsync("/swagger/v1/swagger.json");
+        var response = await Factory.CreateClient().GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -72,5 +73,5 @@ public class OpenApiSchemaIdTests(OpenApiSchemaIdTests.Host host) : SharedApiHos
     }
 
     /// <summary>The class's shared host: the document is anonymous, so only the configuration differs.</summary>
-    public sealed class Host() : OdysseyApiFactory(configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+    public sealed class Host() : OdysseyApiFactory(configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
 }

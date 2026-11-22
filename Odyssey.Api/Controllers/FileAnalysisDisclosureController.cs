@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odyssey.Dtos.Application;
 using Odyssey.Core.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -27,7 +26,7 @@ public sealed class FileAnalysisDisclosureController(
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileAnalysisDisclosureDto))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The processor disclosure shown in the analyze-file consent gate.")]
+    [EndpointSummary("The processor disclosure shown in the analyze-file consent gate.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var settings = await lookup.GetAsync(cancellationToken);

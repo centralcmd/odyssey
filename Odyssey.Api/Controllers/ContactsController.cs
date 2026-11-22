@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -47,7 +47,8 @@ public sealed class ContactsController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContactsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingContact>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List contacts.", Description = @"List contacts with search, filtering, sorting and pagination.")]
+    [EndpointSummary("List contacts.")]
+    [EndpointDescription(@"List contacts with search, filtering, sorting and pagination.")]
     public async Task<IActionResult> Get(
         [FromQuery] ContactsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -62,8 +63,7 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the contact to get.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the contact to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var contact = await contactService.Get(id, cancellationToken, User.LocationClaims());
         if (contact is null)
@@ -80,8 +80,7 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewContact", Required = true,
-            Description = @"The new contact to create.")] NewContact newContact, CancellationToken cancellationToken = default)
+        [FromBody][Description(@"The new contact to create.")] NewContact newContact, CancellationToken cancellationToken = default)
     {
         var contact = await contactService.Create(newContact, cancellationToken);
         if (contact.PersonDetails?.DateOfDeath is not null)
@@ -100,19 +99,16 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update the details for a contact.",
-        Description = @"Update the details for a contact. Not an upsert: an unknown ID is a 404 and
+    [EndpointSummary("Update the details for a contact.")]
+    [EndpointDescription(@"Update the details for a contact. Not an upsert: an unknown ID is a 404 and
                         nothing is created. Use POST to create. A changed Type converts the contact
                         with the supplied details; 409 (code contact-type-change-blocked) while the
                         contact is tagged as a person on a photo (to Organization) or is a property's
                         homeowner association (to Person). 422 when a contact-method label is out of
                         scope for the type.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the contact to update.")] Guid id,
-        [FromBody] [SwaggerParameter("NewContact", Required = true,
-            Description = @"The contact with the updated values.")] NewContact newContact, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the contact to update.")] Guid id,
+        [FromBody][Description(@"The contact with the updated values.")] NewContact newContact, CancellationToken cancellationToken = default)
     {
         // Read BEFORE the write: the audit event distinguishes recording a death from clearing one,
         // and only the prior value can say which happened (§10.9). Value-free either way — the event
@@ -156,8 +152,8 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Preview converting a contact between Person and Organization.",
-        Description = @"A read-only dry run (issue #335): the derived target details, the fields that
+    [EndpointSummary("Preview converting a contact between Person and Organization.")]
+    [EndpointDescription(@"A read-only dry run (issue #335): the derived target details, the fields that
 would be lost or carried over, the contact-method labels that would clamp to Other, and any blockers.
 Writes nothing. Echo updatedAt as expectedUpdatedAt on the conversion. Needs contacts.read and
 contacts.update; blocker photo ids need photos.read and property names properties.read.")]
@@ -184,8 +180,8 @@ contacts.update; blocker photo ids need photos.read and property names propertie
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Convert a contact between Person and Organization.",
-        Description = @"Converts the contact in one transaction, deriving the target details from the
+    [EndpointSummary("Convert a contact between Person and Organization.")]
+    [EndpointDescription(@"Converts the contact in one transaction, deriving the target details from the
 stored row (issue #335); its id and its links are kept. 409 with code contact-conversion-stale when
 expectedUpdatedAt no longer matches, or contact-type-change-blocked while a photo person tag (to
 Organization) or a homeowner-association link (to Person) exists. 422 for the current type, or for a
@@ -250,15 +246,14 @@ derived name that needs an override.")]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a contact.",
-        Description = @"409 when the contact is named as a Beneficiary party on any contract. With
+    [EndpointSummary("Delete a contact.")]
+    [EndpointDescription(@"409 when the contact is named as a Beneficiary party on any contract. With
 detachBlockingLinks=true those link rows are removed and the contact deleted in ONE transaction; that
 needs contracts.update — when that class is actually present — in addition to contacts.delete, and the
 response is then 200 with a summary of what was destroyed.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the contact to delete.")] Guid id,
-        [FromQuery][SwaggerParameter(Description = @"Remove the contact's blocking link rows —
+        [FromRoute(Name = "id")][Description(@"The ID for the contact to delete.")] Guid id,
+        [FromQuery][Description(@"Remove the contact's blocking link rows —
 Beneficiary contract parties — and delete it in one transaction, instead of refusing with a 409.
 Requires contracts.update when that class is actually present.")] bool detachBlockingLinks = false,
         CancellationToken cancellationToken = default)

@@ -26,9 +26,13 @@ updates:
         # test stack, where a runner change is reviewed against the suites it runs.
         exclude-patterns:
           - "Microsoft.NET.Test.Sdk"
-      swashbuckle:
+      # Its own PR, never folded into another group: every Scalar bump fails ScalarBundleIntegrityTests
+      # until the new bundle and assembly references are re-inspected for outbound calls (issue #569 §7.2).
+      # Deliberately no `ignore` (it would also suppress security updates) and no `cooldown` (an owner
+      # decision; the re-inspection is the control).
+      scalar:
         patterns:
-          - "Swashbuckle.*"
+          - "Scalar.*"
       test:
         patterns:
           - "xunit*"

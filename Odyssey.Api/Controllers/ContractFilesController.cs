@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Identity;
@@ -49,7 +48,7 @@ public sealed class ContractFilesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Attach an already-uploaded document to a contract (requires contracts.update + files.read).")]
+    [EndpointSummary("Attach an already-uploaded document to a contract (requires contracts.update + files.read).")]
     public async Task<IActionResult> AttachFile(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] AttachContractFileRequest request, CancellationToken cancellationToken = default)
@@ -86,9 +85,8 @@ public sealed class ContractFilesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingContractFile>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List the documents attached to a contract.",
-        Description = "Unpaged and bounded by the per-contract file cap. A contract with no documents " +
+    [EndpointSummary("List the documents attached to a contract.")]
+    [EndpointDescription("Unpaged and bounded by the per-contract file cap. A contract with no documents " +
                       "returns an empty array, never a 404.")]
     public async Task<IActionResult> GetFiles(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
@@ -108,9 +106,8 @@ public sealed class ContractFilesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update an attached document's type and validity metadata.",
-        Description = "A full replacement: an omitted date or issuer clears the stored value. " +
+    [EndpointSummary("Update an attached document's type and validity metadata.")]
+    [EndpointDescription("A full replacement: an omitted date or issuer clears the stored value. " +
                       "fileType may not be omitted. files.read is deliberately not required — this " +
                       "verb reads no file metadata and takes no file id the caller had not already " +
                       "attached.")]
@@ -128,7 +125,7 @@ public sealed class ContractFilesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Download a document attached to a contract.")]
+    [EndpointSummary("Download a document attached to a contract.")]
     public async Task<IActionResult> DownloadFile(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)
@@ -145,7 +142,7 @@ public sealed class ContractFilesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Detach a document from a contract (the underlying file is left intact).")]
+    [EndpointSummary("Detach a document from a contract (the underlying file is left intact).")]
     public async Task<IActionResult> DetachFile(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)

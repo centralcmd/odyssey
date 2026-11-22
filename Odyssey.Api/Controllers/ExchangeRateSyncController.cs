@@ -5,7 +5,6 @@ using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -25,7 +24,7 @@ public sealed class ExchangeRateSyncController(
     [HttpGet("currencies")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingExchangeRateSyncCurrency>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Every currency with its sync configuration.")]
+    [EndpointSummary("Every currency with its sync configuration.")]
     public async Task<IActionResult> ListCurrencies(
         [FromQuery] ExchangeRateSyncCurrenciesQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await currencies.ListAsync(query, cancellationToken));
@@ -37,7 +36,7 @@ public sealed class ExchangeRateSyncController(
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Turn sync on or off for one currency and set its start-date override.")]
+    [EndpointSummary("Turn sync on or off for one currency and set its start-date override.")]
     public async Task<IActionResult> PutCurrency(
         [FromRoute] string currencyCode,
         [FromBody] ExchangeRateSyncCurrencyUpdate update,
@@ -59,7 +58,7 @@ public sealed class ExchangeRateSyncController(
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete every fetched rate of one disabled currency.")]
+    [EndpointSummary("Delete every fetched rate of one disabled currency.")]
     public async Task<IActionResult> PurgeCurrency(
         [FromRoute] string currencyCode, CancellationToken cancellationToken = default)
     {
@@ -73,7 +72,7 @@ public sealed class ExchangeRateSyncController(
 
     [HttpGet("status")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExchangeRateSyncStatus))]
-    [SwaggerOperation(Summary = "The sync's state, schedule and last run.")]
+    [EndpointSummary("The sync's state, schedule and last run.")]
     public async Task<IActionResult> GetStatus(CancellationToken cancellationToken = default) =>
         Ok(await sync.GetStatusAsync(cancellationToken));
 
@@ -84,14 +83,14 @@ public sealed class ExchangeRateSyncController(
     /// </remarks>
     [HttpPost("status/refresh")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExchangeRateSyncStatus))]
-    [SwaggerOperation(Summary = "Fetch the provider's currency list, then read the status.")]
+    [EndpointSummary("Fetch the provider's currency list, then read the status.")]
     public async Task<IActionResult> RefreshStatus(CancellationToken cancellationToken = default) =>
         Ok(await sync.RefreshStatusAsync(cancellationToken));
 
     [HttpGet("runs")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingExchangeRateSyncRun>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The run log, newest first.")]
+    [EndpointSummary("The run log, newest first.")]
     public async Task<IActionResult> ListRuns(
         [FromQuery] ExchangeRateSyncRunsQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await sync.ListRunsAsync(query, cancellationToken));
@@ -101,7 +100,7 @@ public sealed class ExchangeRateSyncController(
     [ProducesResponseType(StatusCodes.Status202Accepted, Type = typeof(ExchangeRateSyncRunStarted))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Run the sync now.")]
+    [EndpointSummary("Run the sync now.")]
     public async Task<IActionResult> PostRun(CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

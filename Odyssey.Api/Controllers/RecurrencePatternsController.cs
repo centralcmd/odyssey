@@ -9,7 +9,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -35,7 +34,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingRecurrencePattern>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List recurrence patterns, optionally filtered by calendar.")]
+    [EndpointSummary("List recurrence patterns, optionally filtered by calendar.")]
     public async Task<IActionResult> Get(
         [FromQuery] RecurrencePatternsQueryParams query, CancellationToken cancellationToken = default)
     {
@@ -48,7 +47,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingRecurrencePattern))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a recurrence pattern.")]
+    [EndpointSummary("Get a recurrence pattern.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -61,7 +60,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingCalendarEvent>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List all generated events (past and future) for a recurrence pattern, paged.")]
+    [EndpointSummary("List all generated events (past and future) for a recurrence pattern, paged.")]
     public async Task<IActionResult> GetEvents(
         [FromRoute(Name = "id")] Guid id,
         [FromQuery][Range(0, int.MaxValue)] int offset = 0,
@@ -87,7 +86,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export a recurring series as one RRULE VEVENT (or its per-occurrence fallback).")]
+    [EndpointSummary("Export a recurring series as one RRULE VEVENT (or its per-occurrence fallback).")]
     public Task<IActionResult> ExportIcs(
         [FromRoute(Name = "id")] Guid id,
         [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
@@ -103,7 +102,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Summarize what a recurring series' .ics export would contain.")]
+    [EndpointSummary("Summarize what a recurring series' .ics export would contain.")]
     public Task<ActionResult<CalendarIcsExportSummary>> SummarizeIcsExport(
         [FromRoute(Name = "id")] Guid id,
         [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
@@ -116,7 +115,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingRecurrencePattern))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a recurring event series; eagerly generates its bounded set of CalendarEvent occurrences in one transaction.")]
+    [EndpointSummary("Create a recurring event series; eagerly generates its bounded set of CalendarEvent occurrences in one transaction.")]
     public async Task<IActionResult> Post(
         [FromBody] NewRecurrencePattern request, CancellationToken cancellationToken = default)
     {
@@ -136,7 +135,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a series' template, rule and zone; reconciles its future rows in place by occurrence key, keeping every override and exclusion whose key survives, and reports what it dropped.")]
+    [EndpointSummary("Update a series' template, rule and zone; reconciles its future rows in place by occurrence key, keeping every override and exclusion whose key survives, and reports what it dropped.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewRecurrencePattern request, CancellationToken cancellationToken = default)
@@ -160,7 +159,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Preview a series edit: the overrides and exclusions it would drop, without saving.")]
+    [EndpointSummary("Preview a series edit: the overrides and exclusions it would drop, without saving.")]
     public async Task<IActionResult> Preview(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewRecurrencePattern request, CancellationToken cancellationToken = default)
@@ -174,7 +173,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a series: hard-deletes its future generated events, detaches past/current ones and removes its exclusions.")]
+    [EndpointSummary("Delete a series: hard-deletes its future generated events, detaches past/current ones and removes its exclusions.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

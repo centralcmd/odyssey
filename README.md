@@ -143,7 +143,7 @@ it in Debug (never `-c Release`):
 dotnet run --project Odyssey.AppHost
 ```
 
-Either way the API is on `http://localhost:5188` (Swagger at `/swagger`) and MariaDB on host port
+Either way the API is on `http://localhost:5188` (API reference at `/scalar/v1`, after signing in) and MariaDB on host port
 `3307`. Under Compose the client is on `http://localhost:5199`; under Aspire it gets a port shown
 on the dashboard. Prerequisites, configuration and everything past the first sign-in are in
 [`docs/getting-started.md`](docs/getting-started.md).
@@ -160,7 +160,7 @@ they share the password `Odyssey!Demo1`:
 | `user@demo.example.com` | User |
 | `guest@demo.example.com` | Guest |
 
-> The default `docker-compose.yml` is a **development** stack: weak database passwords, Swagger
+> The default `docker-compose.yml` is a **development** stack: weak database passwords, API docs
 > on, demo data seeded, MariaDB published to the host. To deploy for real, layer
 > `docker-compose.prod.yml` on top and copy `.env.prod.example` instead — see
 > [`docs/deployment.md`](docs/deployment.md).
@@ -202,7 +202,7 @@ the full strategy is [`docs/test-environment-and-e2e-spec.md`](docs/test-environ
 
 | Guide | Covers |
 |---|---|
-| [`docs/getting-started.md`](docs/getting-started.md) | Running it yourself: Compose and Aspire in detail, the first administrator, registration approval, mail (Gmail included), Swagger, the demo data |
+| [`docs/getting-started.md`](docs/getting-started.md) | Running it yourself: Compose and Aspire in detail, the first administrator, registration approval, mail (Gmail included), the API documentation, the demo data |
 | [`docs/deployment.md`](docs/deployment.md) | Production on a single host: the overlay, TLS, backups, the key ring, file storage, what leaves the deployment, the security checklist |
 | [`docs/upgrade-notes.md`](docs/upgrade-notes.md) | What to do when upgrading across a release: data migrations, retired configuration, deploy order |
 | [`docs/running-locally-alongside-a-live-stack.md`](docs/running-locally-alongside-a-live-stack.md) | Running your own copy while another stack holds ports 3307 / 5188 / 5199 |
