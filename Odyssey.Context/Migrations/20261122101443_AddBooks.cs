@@ -13,6 +13,7 @@ namespace Odyssey.Context.Migrations
     /// Schema-only. Re-adding the check re-validates every <c>FileMetadata</c> row, which rebuilds the table under a
     /// lock on MariaDB — time it on a production-sized copy. <c>Down()</c> restores schema, not rows: once any file has
     /// been uploaded with <c>area: Library</c>, dropping the column would orphan it, so roll back by restoring a backup.
+    /// Ordered after <c>AddPodcastFeeds</c>: the two touch disjoint objects.
     /// </remarks>
     public partial class AddBooks : Migration
     {
