@@ -320,34 +320,57 @@ public sealed class MapBasemapValidationTests : IDisposable
     {
         switch (shape)
         {
-            case "empty": return string.Empty;
-            case "relative": return "basemap/basemap.pmtiles";
-            case "missing": return Path.Combine(directory, "absent.pmtiles");
-            case "directory": return Directory.CreateDirectory(Path.Combine(directory, "dir.pmtiles")).FullName;
+            case "empty":
+                return string.Empty;
+            case "relative":
+                return "basemap/basemap.pmtiles";
+            case "missing":
+                return Path.Combine(directory, "absent.pmtiles");
+            case "directory":
+                return Directory.CreateDirectory(Path.Combine(directory, "dir.pmtiles")).FullName;
             case "symlink":
                 var target = Write(Archive(), "real.pmtiles");
                 var link = Path.Combine(directory, "basemap.pmtiles");
                 File.CreateSymbolicLink(link, target);
                 return link;
-            case "short": return Write(Archive()[..100]);
-            case "header-minus-one": return Write(Archive()[..126]);
-            case "root-beyond-eof": return Write(Archive(a => U64(a, 16, 2_000)));
-            case "magic": return Write(Archive(a => a[0] = (byte)'X'));
-            case "version2": return Write(Archive(a => a[7] = 2));
-            case "cut-in-tile-data": return Write(Archive()[..400]);
-            case "metadata-beyond-eof": return Write(Archive(a => U64(a, 32, 10_000)));
-            case "leaves-beyond-eof": return Write(Archive(a => { U64(a, 40, 300); U64(a, 48, 10_000); }));
-            case "overflow": return Write(Archive(a => { U64(a, 56, ulong.MaxValue - 1); U64(a, 64, 10); }));
-            case "raster": return Write(Archive(a => a[99] = 2));
-            case "brotli-tiles": return Write(Archive(a => a[98] = 3));
-            case "zstd-internal": return Write(Archive(a => a[97] = 4));
-            case "bounds": return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(114), 890_000_000)));
-            case "zoom": return Write(Archive(a => { a[100] = 15; a[101] = 14; }));
-            case "zoom-above-24": return Write(Archive(a => a[101] = 25));
-            case "longitude": return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(110), 1_800_000_010)));
-            case "min-above-max": return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(102), 103_000_000)));
-            case "unknown-compression": return Write(Archive(a => a[98] = 0));
-            default: throw new ArgumentOutOfRangeException(nameof(shape));
+            case "short":
+                return Write(Archive()[..100]);
+            case "header-minus-one":
+                return Write(Archive()[..126]);
+            case "root-beyond-eof":
+                return Write(Archive(a => U64(a, 16, 2_000)));
+            case "magic":
+                return Write(Archive(a => a[0] = (byte)'X'));
+            case "version2":
+                return Write(Archive(a => a[7] = 2));
+            case "cut-in-tile-data":
+                return Write(Archive()[..400]);
+            case "metadata-beyond-eof":
+                return Write(Archive(a => U64(a, 32, 10_000)));
+            case "leaves-beyond-eof":
+                return Write(Archive(a => { U64(a, 40, 300); U64(a, 48, 10_000); }));
+            case "overflow":
+                return Write(Archive(a => { U64(a, 56, ulong.MaxValue - 1); U64(a, 64, 10); }));
+            case "raster":
+                return Write(Archive(a => a[99] = 2));
+            case "brotli-tiles":
+                return Write(Archive(a => a[98] = 3));
+            case "zstd-internal":
+                return Write(Archive(a => a[97] = 4));
+            case "bounds":
+                return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(114), 890_000_000)));
+            case "zoom":
+                return Write(Archive(a => { a[100] = 15; a[101] = 14; }));
+            case "zoom-above-24":
+                return Write(Archive(a => a[101] = 25));
+            case "longitude":
+                return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(110), 1_800_000_010)));
+            case "min-above-max":
+                return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(102), 103_000_000)));
+            case "unknown-compression":
+                return Write(Archive(a => a[98] = 0));
+            default:
+                throw new ArgumentOutOfRangeException(nameof(shape));
         }
     }
 
@@ -360,12 +383,19 @@ public sealed class MapBasemapValidationTests : IDisposable
         var a = new byte[1024];
         "PMTiles"u8.CopyTo(a);
         a[7] = 3;
-        U64(a, 8, 127); U64(a, 16, 100);     // root directory
-        U64(a, 24, 227); U64(a, 32, 50);     // metadata
-        U64(a, 40, 277); U64(a, 48, 0);      // leaf directories
-        U64(a, 56, 277); U64(a, 64, 747);    // tile data, to the end of the file
-        a[97] = 2; a[98] = 2; a[99] = 1;     // gzip, gzip, MVT
-        a[100] = 0; a[101] = 14;
+        U64(a, 8, 127);
+        U64(a, 16, 100);     // root directory
+        U64(a, 24, 227);
+        U64(a, 32, 50);     // metadata
+        U64(a, 40, 277);
+        U64(a, 48, 0);      // leaf directories
+        U64(a, 56, 277);
+        U64(a, 64, 747);    // tile data, to the end of the file
+        a[97] = 2;
+        a[98] = 2;
+        a[99] = 1;     // gzip, gzip, MVT
+        a[100] = 0;
+        a[101] = 14;
         BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(102), 101_000_000);
         BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(106), 615_000_000);
         BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(110), 102_000_000);

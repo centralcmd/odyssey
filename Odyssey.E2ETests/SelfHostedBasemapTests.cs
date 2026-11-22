@@ -105,7 +105,9 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
         var gate = new object();
         page.Request += (_, r) => { lock (gate) { requests.Add(r); } };
         page.Response += (_, r) => { lock (gate) { statuses.Add((r.Url, r.Status)); } };
-        int StyleRequests() { lock (gate)
+        int StyleRequests()
+        {
+            lock (gate)
             {
                 return requests.Count(r => r.Url.Contains("/maps/self-hosted-", StringComparison.Ordinal));
             }
