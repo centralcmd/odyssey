@@ -13,7 +13,7 @@
     transition: border-color var(--duration-base) var(--ease-standard), background var(--duration-base) var(--ease-standard);
 }
 
-.odc-add-row:hover:not(:disabled) {
+.odc-add-row:hover:not(:disabled):not(.aria-disabled) {
     background: var(--mud-palette-action-default-hover);
     border-color: var(--mud-palette-primary);
 }
@@ -21,6 +21,16 @@
 .odc-add-row:disabled {
     cursor: not-allowed;
     opacity: 0.6;
+}
+
+/* At its cap (AriaDisabled): still focusable, so no opacity on the focus ring — the title dims instead. */
+.odc-add-row.aria-disabled {
+    cursor: not-allowed;
+    border-color: var(--mud-palette-divider);
+}
+
+.odc-add-row.aria-disabled .odc-add-row-title {
+    color: var(--mud-palette-text-disabled);
 }
 
 /* Square glyph tile — neutral well, matching the closed-list ghost affordance. */

@@ -15,6 +15,8 @@
   override flag and zone; a series' zone, version and keying date), and the four link tables that attach files and
   library photos to a standalone event or a series (issue #521: every key `CASCADE`, each pair unique, no attribution
   column; `Down()` of `CalendarEventAttachments` drops the links, never the files or photos).
+- **Recipes** — recipes, their ingredients and steps, the photo, file and tag links, and recipe tags (issue #525:
+  every link `CASCADE`s from the recipe; a file link also from its `FileMetadata`, a photo link from its photo).
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.
 - **Identity and auth** — the ASP.NET Identity schema plus `UserProfile`, `UserPreference`,

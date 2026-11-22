@@ -1263,8 +1263,8 @@ user's id.
 
 Issue #346 added a **filesystem object store**: files kept on one or more deploy-time *volumes* instead of
 as `LONGBLOB` rows in MariaDB. **Every file and photo is on it now**; the database holds no file bytes. The
-production build has six *storage features*, each bound to a volume: `PhotoOriginals`, `PhotoThumbnails`,
-`FinanceFiles`, `JournalFiles`, `ContactAvatars` and `NewsArticles` (see
+production build has seven *storage features*, each bound to a volume: `PhotoOriginals`, `PhotoThumbnails`,
+`FinanceFiles`, `JournalFiles`, `ContactAvatars`, `LibraryFiles` and `NewsArticles` (see
 [Photo thumbnails](#photo-thumbnails), [Photo originals](#photo-originals),
 [Files on the object store](#files-on-the-object-store) and
 [News reader](#news-reader-feeds-what-leaves-the-deployment-and-the-workers-network)). For an operator, two
@@ -1695,7 +1695,8 @@ and the disk check's breaker halts clean-up rather than quarantine the volume.
 
 ## Files on the object store
 
-Since issue #448 every other file lives on three file-storage features, one per area. Placement is not an
+Since issue #448 every other file lives on file-storage features, one per area (four since issue #525 added
+`LibraryFiles`). Placement is not an
 access boundary: who may read a file is still decided by the claim of the record it is attached to.
 
 | Area | Feature | Root on the volume | What lands there |
@@ -1703,15 +1704,16 @@ access boundary: who may read a file is still decided by the claim of the record
 | Finance | `FinanceFiles` | `finance-files/` | Account, transaction, contract, tax-statement and property documents; file-analysis uploads; anything not linked to a journal record |
 | Journal | `JournalFiles` | `journal-files/` | Journal-entry and task attachments |
 | Contacts | `ContactAvatars` | `contact-avatars/` | Contact images |
-| Library | `LibraryFiles` | `library-files/` | Book attachments: e-books, PDFs and papers (added with Books, #527) |
+| Library | `LibraryFiles` | `library-files/` | Library-module files: book attachments (e-books, PDFs, papers; #527) and recipe files (#525) |
 
 Each file sits at `<root>/<upload year>/<bucket>/<sanitized original name>.<extension>`. The area is chosen once,
 at upload: the upload form sends `area` (`Finance`, `Journal` or `Library`), the avatar path always writes `ContactAvatars`.
 A file later attached somewhere else stays where it was put.
 
-- **All three features must be bound** (`FileStorage__Bindings__FinanceFiles`, `__JournalFiles`,
-  `__ContactAvatars`) on **both** `api` and `worker`; the base compose file and the AppHost bind them to `primary`.
-  Without them both refuse to start (check B1). `FileStorageDeploymentParityTests` keeps the shipped files identical.
+- **All four features must be bound** (`FileStorage__Bindings__FinanceFiles`, `__JournalFiles`,
+  `__ContactAvatars`, `__LibraryFiles`) on **both** `api` and `worker`; the base compose file and the AppHost bind them
+  to `primary`. Without them both refuse to start (check B1). `FileStorageDeploymentParityTests` keeps the shipped
+  files identical.
 - **`POST /api/files`** takes a required `area` form field, validates `description` at 256 characters, and is
   rate-limited per user by `RateLimiting:FileUpload` (120 per 10 minutes by default); the contact-avatar upload
   shares that limit. An upload refuses with `507` when the volume is below the reserve (the store's 1 GB floor

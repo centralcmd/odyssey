@@ -475,6 +475,10 @@ builder.Services.AddScoped<Odyssey.Core.Journal.IPhotoLookup, Odyssey.Core.Journ
 builder.Services.AddScoped<Odyssey.Core.Books.BookService>();
 builder.Services.AddScoped<Odyssey.Core.Books.BookTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.IContactBookCredits, Odyssey.Core.Books.ContactBookCredits>();
+// Recipes (issue #525). No feature toggle — gated by the recipes.* claims only; links library photos through
+// IPhotoLookup above.
+builder.Services.AddScoped<Odyssey.Core.Recipes.RecipeService>();
+builder.Services.AddScoped<Odyssey.Core.Recipes.RecipeTagService>();
 
 // Calendar module (issue #323). No feature toggle — capability is gated by claims only.
 builder.Services.AddScoped<Odyssey.Core.Journal.CalendarService>();

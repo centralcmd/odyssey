@@ -31,13 +31,14 @@ public class BooksClientTests
             g =>
             {
                 Assert.Null(g.Label);
-                var books = Assert.Single(g.Items);
+                // Books first; Recipes (issue #526) follows it in the same group.
+                var books = g.Items[0];
                 Assert.Equal(("books", "auto_stories", PermissionClaims.BooksRead), (books.Href, books.Icon, books.Claim));
             },
             g =>
             {
                 Assert.Equal("Reference", g.Label);
-                var tags = Assert.Single(g.Items);
+                var tags = g.Items[0];
                 Assert.Equal(("book-tags", PermissionClaims.BookTagsRead), (tags.Href, tags.Claim));
             });
     }

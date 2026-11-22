@@ -22,6 +22,8 @@ public class PhotoThumbnailSurfaceTests
         "Pages/Attachments/AttachmentLinkFields.razor",
         "Components/OdsPhotoTile.razor",
         "Components/JournalPhotoGallery.razor",
+        "Pages/Library/RecipePhotoGrid.razor", "Pages/Library/RecipePhotoGrid.razor.cs",
+        "Pages/Library/RecipesPage.razor.cs",
     ];
 
     /// <summary>The viewer, "Open original" and the edit banner always show the original (§2 non-goals).</summary>

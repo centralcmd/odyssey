@@ -39,6 +39,7 @@ public class ListPageContractTests
         "Pages/Journal/JournalCard.razor",
         "Pages/Journal/TasksPage.razor",
         "Pages/Journal/LocationsPage.razor",
+        "Pages/Library/RecipesPage.razor",
         "Components/OdsTagAdmin.razor",
         "Pages/Calendar/CalendarPage.razor",
         "Pages/Photos/PhotosCard.razor",

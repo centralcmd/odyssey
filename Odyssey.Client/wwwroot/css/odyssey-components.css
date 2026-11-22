@@ -5089,6 +5089,9 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
    spinner in place of the glyph; aria-disabled, never :disabled, so focus stays. ── */
 .odc-iconbtn-busy { cursor: progress; }
 .odc-iconbtn-busy:hover { background: transparent; }
+/* AriaDisabled (issue #526): focusable but unavailable — Move up on the first row. */
+.odc-iconbtn-aria-disabled { color: var(--mud-palette-action-disabled) !important; cursor: not-allowed; }
+.odc-iconbtn-aria-disabled:hover { background: transparent; }
 .odc-iconbtn-spinner {
   display: inline-block; box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%;
   border: 2px solid var(--mud-palette-action-default-hover); border-top-color: var(--mud-palette-primary);

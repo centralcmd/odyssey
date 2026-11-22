@@ -1,0 +1,215 @@
+@inject IRecipesApiClient Recipes
+@inject ITagQuickCreate<ExistingRecipeTag> TagCreator
+@inject IJSRuntime Js
+
+@*
+    RecipeDialog — New recipe / Edit recipe (issue #526; design system components-recipes.md · The dialog). One modal
+    at the standard width; sections under OdsSectionDivider: Details, Ingredients, Method and (recipes.tags.read)
+    Tags. Ingredient and step rows are fieldsets ("Ingredient 3") with Move up / Move down / Remove. Caps never hide a
+    control: at RecipeLimits.MaxIngredients the Add row turns aria-disabled with its reason as the second line, and
+    the first row's Move up / the last row's Move down are aria-disabled with a reason.
+
+    Validation runs on submit: errors under each field, the footer ErrorSummary listing them, focus on the first. The
+    server's 422 keys (ingredients[2].name) land on the same fields. A 409 recipe-version-conflict shows the error
+    alert with Reload, which confirms before it replaces the draft; there is no overwrite path. Closing with
+    changes asks first. Photos and files are never edited here: they are record actions in the ⋯ menu.
+*@
+
+<OdsModal Open="_modalOpen" OpenChanged="OnModalOpenChanged" OnClose="OnModalClosed" ReturnFocusToId="@ReturnFocusToId"
+          Icon="@(IsEdit ? "edit" : "restaurant_menu")" Class="rc-dialog"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <OdsLiveAnnouncer @ref="_announcer" />
+        <div class="ods-modal-body">
+            @if (_conflict)
+            {
+                <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                    <span class="rc-alert-line">
+                        <span>Someone else changed this recipe while you were editing. Your changes are still here.</span>
+                        <OdsButton id="@ReloadId" Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh"
+                                   Loading="_reloading" AriaDisabled="_reloading" OnClick="AskReload">Reload</OdsButton>
+                    </span>
+                </OdsAlert>
+            }
+            @if (_formAlert is { } alert)
+            {
+                <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@alert</OdsAlert>
+            }
+
+            <OdsSectionDivider Label="Details" />
+            <div class="rc-dlg-grid">
+                <div class="rc-span">
+                    <OdsField id="@F("title")" Label="Title" Required="true" Value="@_draft.Title"
+                              ValueChanged="@(v => Set(() => _draft.Title = v ?? string.Empty, "title"))"
+                              MaxLength="RecipeLimits.MaxTitleLength" Placeholder="e.g. Roasted tomato soup" Error="@Err("title")" />
+                </div>
+                <div class="rc-span">
+                    <OdsNoteField Id="@F("description")" Label="Description" Rows="2" Value="@_draft.Description"
+                                  ValueChanged="@(v => Set(() => _draft.Description = v ?? string.Empty, "description"))"
+                                  MaxLength="RecipeLimits.MaxDescriptionLength" Placeholder="One or two lines about the dish" Error="@Err("description")" />
+                </div>
+                <OdsStepperField Id="@F("servings")" Label="Servings" Required="true" Value="_draft.Servings"
+                                 ValueChanged="@(v => Set(() => _draft.Servings = v, "servings"))"
+                                 Min="RecipeLimits.MinServings" Max="RecipeLimits.MaxServings"
+                                 Unit="@ServingsUnit" UnitPlural="@ServingsUnitPlural"
+                                 Help="How many the amounts below are written for." Error="@Err("servings")" />
+                <OdsTextInputField Id="@F("servingslabel")" Label="Servings label" Value="@_draft.ServingsLabel"
+                                   ValueChanged="@(v => Set(() => _draft.ServingsLabel = v ?? string.Empty, "servingslabel"))"
+                                   MaxLength="RecipeLimits.MaxServingsLabelLength" Placeholder="e.g. pieces, loaf"
+                                   Help="Empty reads “Serves 4”; a label reads “Makes 12 pieces”." Error="@Err("servingslabel")" />
+                <OdsNumberField Id="@F("prepminutes")" Label="Prep" Unit="min" Value="_draft.PrepMinutes"
+                                ValueChanged="@(v => Set(() => _draft.PrepMinutes = v, "prepminutes"))"
+                                Min="0" Max="RecipeLimits.MaxMinutes" Step="1" Error="@Err("prepminutes")" />
+                <OdsNumberField Id="@F("cookminutes")" Label="Cook" Unit="min" Value="_draft.CookMinutes"
+                                ValueChanged="@(v => Set(() => _draft.CookMinutes = v, "cookminutes"))"
+                                Min="0" Max="RecipeLimits.MaxMinutes" Step="1" Error="@Err("cookminutes")" />
+                <div class="rc-span">
+                    <OdsTextInputField Id="@F("source")" Label="Source" InputMode="url" Value="@_draft.Source"
+                                       ValueChanged="@(v => Set(() => _draft.Source = v ?? string.Empty, "source"))"
+                                       MaxLength="RecipeLimits.MaxSourceLength" Placeholder="A web address, a book, or who taught you"
+                                       Help="A web address becomes a link; anything else shows as text." Error="@Err("source")" />
+                </div>
+                <div class="rc-span">
+                    <OdsNoteField Id="@F("notes")" Label="Notes" Rows="3" Value="@_draft.Notes"
+                                  ValueChanged="@(v => Set(() => _draft.Notes = v ?? string.Empty, "notes"))"
+                                  MaxLength="RecipeLimits.MaxNotesLength" Placeholder="Tips, substitutions, what to do differently next time"
+                                  Error="@Err("notes")" />
+                </div>
+            </div>
+
+            <OdsSectionDivider Label="Ingredients"
+                               Meta="@RowsMeta(_draft.Ingredients.Count, RecipeLimits.MaxIngredients, "ingredient", "line")" />
+            <div class="rc-rows">
+                @for (var i = 0; i < _draft.Ingredients.Count; i++)
+                {
+                    var index = i;
+                    var row = _draft.Ingredients[index];
+                    var key = $"ingredients[{index}]";
+                    <fieldset class="rc-row rc-row-ing" @key="row.Key">
+                        <legend class="rc-row-legend">Ingredient @(index + 1)</legend>
+                        <div class="rc-c2">
+                            <OdsNumberField Id="@F($"{key}.amount")" Label="Amount" Value="row.Amount"
+                                            ValueChanged="@(v => Set(() => row.Amount = v, $"{key}.amount"))"
+                                            Min="AmountMin" Max="AmountMax" Step="0.001" Error="@Err($"{key}.amount")" />
+                        </div>
+                        <div class="rc-c2">
+                            <OdsNumberField Id="@F($"{key}.amountmax")" Label="To" Value="row.AmountMax"
+                                            ValueChanged="@(v => Set(() => row.AmountMax = v, $"{key}.amountmax"))"
+                                            Min="AmountMin" Max="AmountMax" Step="0.001" Error="@Err($"{key}.amountmax")" />
+                        </div>
+                        <div class="rc-c2">
+                            <OdsSelect id="@F($"{key}.unit")" Label="Unit" Value="@row.Unit.ToString()" Options="UnitOptions"
+                                       ValueChanged="@(v => Set(() => row.Unit = Enum.TryParse<IngredientUnit>(v, out var u) ? u : IngredientUnit.None, $"{key}.unit"))"
+                                       Error="@Err($"{key}.unit")" />
+                        </div>
+                        <div class="rc-c6">
+                            <OdsTextInputField Id="@F($"{key}.name")" Label="Ingredient" Required="true" Value="@row.Name"
+                                               ValueChanged="@(v => Set(() => row.Name = v ?? string.Empty, $"{key}.name"))"
+                                               MaxLength="RecipeLimits.MaxIngredientNameLength" Placeholder="e.g. wheat flour" Error="@Err($"{key}.name")" />
+                        </div>
+                        <div class="rc-c3">
+                            <OdsTextInputField Id="@F($"{key}.preparation")" Label="Preparation" Value="@row.Preparation"
+                                               ValueChanged="@(v => Set(() => row.Preparation = v ?? string.Empty, $"{key}.preparation"))"
+                                               MaxLength="RecipeLimits.MaxPreparationLength" Placeholder="e.g. sifted" Error="@Err($"{key}.preparation")" />
+                        </div>
+                        <div class="rc-c3">
+                            <OdsTextInputField Id="@F($"{key}.section")" Label="Section" Value="@row.Section"
+                                               ValueChanged="@(v => Set(() => row.Section = v ?? string.Empty, $"{key}.section"))"
+                                               MaxLength="RecipeLimits.MaxSectionLength" Placeholder="e.g. Filling" Error="@Err($"{key}.section")" />
+                        </div>
+                        <div class="rc-row-foot">
+                            <OdsCheckbox Label="Optional" Checked="row.Optional" CheckedChanged="@(v => Set(() => row.Optional = v, null))" />
+                            @RowButtons(index, _draft.Ingredients.Count, "ingredient", _draft.Ingredients)
+                        </div>
+                    </fieldset>
+                }
+                <OdsAddRow Id="@AddRowId("ingredient")" Title="Add ingredient" Sub="Lines with the same Section are grouped under it."
+                           AriaDisabled="@(_draft.Ingredients.Count >= RecipeLimits.MaxIngredients)"
+                           DisabledReason="@($"A recipe holds at most {RecipeLimits.MaxIngredients} ingredients.")"
+                           OnClick="AddIngredient" />
+            </div>
+
+            <OdsSectionDivider Label="Method" Meta="@RowsMeta(_draft.Steps.Count, RecipeLimits.MaxSteps, "step", "step")" />
+            <div class="rc-rows">
+                @for (var i = 0; i < _draft.Steps.Count; i++)
+                {
+                    var index = i;
+                    var row = _draft.Steps[index];
+                    var key = $"steps[{index}]";
+                    <fieldset class="rc-row rc-row-step" @key="row.Key">
+                        <legend class="rc-row-legend">Step @(index + 1)</legend>
+                        <OdsTextInputField Id="@F($"{key}.section")" Label="Section" Value="@row.Section"
+                                           ValueChanged="@(v => Set(() => row.Section = v ?? string.Empty, $"{key}.section"))"
+                                           MaxLength="RecipeLimits.MaxSectionLength" Placeholder="e.g. Shaping and baking" Error="@Err($"{key}.section")" />
+                        <OdsNoteField Id="@F($"{key}.text")" Label="Step text" Required="true" Rows="2" Value="@row.Text"
+                                      ValueChanged="@(v => Set(() => row.Text = v ?? string.Empty, $"{key}.text"))"
+                                      MaxLength="RecipeLimits.MaxStepTextLength" Error="@Err($"{key}.text")" />
+                        <div class="rc-row-foot end">
+                            @RowButtons(index, _draft.Steps.Count, "step", _draft.Steps)
+                        </div>
+                    </fieldset>
+                }
+                <OdsAddRow Id="@AddRowId("step")" Title="Add step" Sub="Steps number on across sections."
+                           AriaDisabled="@(_draft.Steps.Count >= RecipeLimits.MaxSteps)"
+                           DisabledReason="@($"A recipe holds at most {RecipeLimits.MaxSteps} steps.")"
+                           OnClick="AddStep" />
+            </div>
+
+            @if (CanReadTags)
+            {
+                <OdsSectionDivider Label="Tags" Meta="@TagsMeta" />
+                <OdsTagMultiSelect Id="@F("tagids")" Label="Tags" Value="_draft.TagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
+                                   Placeholder="No tags" AddLabel="Add tag" Noun="recipe tag" NounPlural="recipe tags"
+                                   OnCreate="@(CanCreateTags ? CreateTagOption : null)" CreateKinds="OdsTypeRegistries.TagCreateKinds.Recipe"
+                                   CreateBlocked="BlockedTagName" Error="@Err("tagids")" />
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @if (Problems.Count > 0)
+        {
+            <OdsErrorSummary Problems="Problems" OnJump="JumpAsync" />
+        }
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="RequestCloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")" Loading="_saving" AriaDisabled="_saving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save" : "Create recipe")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+<OdsFormDialog Open="_discardOpen" OpenChanged="OnDiscardOpenChanged"
+               Icon="warning" IconTone="OdsModalTone.Warning" Title="Discard changes to this recipe?"
+               RequiredLegend="false" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+               CancelLabel="Keep editing" SubmitLabel="Discard changes" SubmitIcon="delete" SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="DiscardAsync">
+    <p class="rc-confirm-p">Photos you uploaded from the photo picker stay in your library, unlinked.</p>
+</OdsFormDialog>
+
+<OdsFormDialog Open="_reloadOpen" OpenChanged="v => _reloadOpen = v"
+               Icon="sync_problem" IconTone="OdsModalTone.Warning" Title="Replace your changes with the latest version?"
+               RequiredLegend="false" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+               ReturnFocusToId="@ReloadId"
+               CancelLabel="Keep editing" SubmitLabel="Reload" SubmitIcon="refresh" SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="ReloadAsync">
+    <p class="rc-confirm-p">Reloading shows what was saved most recently. The edits you made here are discarded.</p>
+</OdsFormDialog>
+
+@code {
+    private RenderFragment RowButtons<T>(int index, int count, string noun, List<T> rows) where T : IRecipeRowDraft
+    {
+        var key = rows[index].Key;
+        return @<div class="rc-row-btns">
+            <OdsIconButton id="@RowButtonId(noun, key, RowButton.Up)" Icon="@Icons.Material.Filled.ArrowUpward" Size="OdsSize.Sm"
+                           AriaLabel="@($"Move {noun} {index + 1} up")"
+                           AriaDisabled="@(index == 0)" DisabledReason="@($"{Cap(noun)} {index + 1} is already first.")"
+                           OnClick="@(() => Move(rows, noun, index, index - 1, RowButton.Up))" />
+            <OdsIconButton id="@RowButtonId(noun, key, RowButton.Down)" Icon="@Icons.Material.Filled.ArrowDownward" Size="OdsSize.Sm"
+                           AriaLabel="@($"Move {noun} {index + 1} down")"
+                           AriaDisabled="@(index == count - 1)" DisabledReason="@($"{Cap(noun)} {index + 1} is already last.")"
+                           OnClick="@(() => Move(rows, noun, index, index + 1, RowButton.Down))" />
+            <OdsIconButton id="@RowButtonId(noun, key, RowButton.Remove)" Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
+                           AriaLabel="@($"Remove {noun} {index + 1}")"
+                           OnClick="@(() => Remove(rows, noun, index))" />
+        </div>;
+    }
+}

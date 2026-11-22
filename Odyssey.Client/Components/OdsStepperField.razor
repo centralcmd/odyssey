@@ -58,6 +58,22 @@ else
 
     protected override void OnInitialized() => FieldId = Id ?? $"odc-stepper-{Guid.NewGuid():N}";
 
+    // The help and the error, as OdsFieldShell ids them: the error has its own id only beside a help line (issue #526).
+    private string? DescribedBy
+    {
+        get
+        {
+            var hasHelp = !string.IsNullOrEmpty(Help);
+            var hasError = !string.IsNullOrEmpty(Error);
+            if (!hasHelp && !hasError)
+            {
+                return null;
+            }
+
+            return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
+        }
+    }
+
     private string? UnitLabel =>
         string.IsNullOrEmpty(Unit) ? null : (Value == 1 ? Unit : (UnitPlural ?? Unit + "s"));
 
@@ -69,6 +85,7 @@ else
                    min="@Min" max="@Max" step="@Step" disabled="@Disabled" autofocus="@AutoFocus"
                    aria-required="@(Required ? "true" : null)"
                    aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+                   aria-describedby="@DescribedBy"
                    @oninput="OnInput" />
             @if (UnitLabel is not null)
             {
