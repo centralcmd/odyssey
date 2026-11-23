@@ -8,6 +8,17 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 Entries start at 0.16.0; releases before it are recorded only in the
 [GitHub tags](https://github.com/centralcmd/odyssey/tags).
 
+## [0.53.0](https://github.com/centralcmd/odyssey/compare/v0.52.0...v0.53.0) (2026-11-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **migrations:** a database older than v0.51.0 is refused by the migrations job, which names v0.51.0 as the release to upgrade through. Upgrade to v0.51.0 and let its migrations job complete first. A data problem after this deploy is undone by restoring the pre-deploy dump.
+
+### Features
+
+* **migrations:** rebaseline the migration chain at v0.51.0 ([#591](https://github.com/centralcmd/odyssey/issues/591)) ([9dc644f](https://github.com/centralcmd/odyssey/commit/9dc644f8f0863b83e55ad29ead84104f7e151aff))
+
 ## [0.52.0](https://github.com/centralcmd/odyssey/compare/v0.51.0...v0.52.0) (2026-11-22)
 
 
