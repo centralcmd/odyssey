@@ -27,7 +27,9 @@ keeps that id (issue #581, [`migration-rebaseline.md`](migration-rebaseline.md))
   through. Deploy v0.51.0, let its migrations job complete, then deploy this release. Nothing is changed by the
   refusal.
 - **Before deploying**, take a dump and run `--schema-fingerprint` against each database (the runbook's step 4);
-  after deploying, run it again. Both diffs should be empty.
+  after deploying, run it again. Both diffs should be empty. Run the mode from **this release's** build or migrations
+  image: v0.51.0 has no fingerprint mode, and a build from before this release prints its output in a different
+  normalisation that does not diff against the committed file.
 - Gone with the old chain: the one-time location conversion, the non-positive exchange-rate pre-check and the
   property/vehicle account retirement report. All three ran during upgrades that every supported database has
   already completed.

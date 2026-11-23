@@ -82,6 +82,46 @@ public class MigrationBaselineGuardIntegrationTests(MariaDbFixture fixture)
         }
     }
 
+    /// <summary>
+    /// The shape every production database has after the rebaseline: the cut's row AND the 94 rows of the migrations
+    /// the baseline replaced, none of which this build ships. The job must treat that as up to date — nothing
+    /// pending, no baseline refusal, no drift, no history row written or removed.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_database_holding_the_retired_chains_history_is_up_to_date()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateMigratedDatabaseAsync(Database);
+        try
+        {
+            var retired = Enumerable.Range(1, 94)
+                .Select(i => $"2026082{(i % 9) + 1}0{i:D5}_RetiredMigration{i:D2}")
+                .ToList();
+            Assert.All(retired, id => Assert.True(
+                string.CompareOrdinal(id, MigrationBaseline.Current.BaselineMigrationId) < 0, id));
+            await ExecuteAsync(string.Concat(retired.Select(id =>
+                $"INSERT INTO `__EFMigrationsHistory` (MigrationId, ProductVersion) VALUES ('{id}', '9.0.0'); ")));
+
+            var before = await HistoryAsync();
+            Assert.Equal(95, before.Count);
+            var tablesBefore = await TableCountAsync();
+
+            await using (var context = Context())
+            {
+                Assert.Empty(await context.Database.GetPendingMigrationsAsync());
+                Assert.Empty(await MigrationRunner.ReadSupersededIdsAsync(context, MigrationBaseline.Current, CancellationToken.None));
+                await MigrationRunner.MigrateAsync(context, CancellationToken.None);
+            }
+
+            Assert.Equal(before, await HistoryAsync());
+            Assert.Equal(tablesBefore, await TableCountAsync());
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
     /// <summary>AC 5 — the converse: one id short of the cut, the squashed build refuses before touching anything.</summary>
     [SkippableFact]
     public async Task A_database_one_migration_short_of_the_cut_is_refused_by_the_squashed_build()

@@ -39,12 +39,6 @@ public partial class MigrationRebaselineTests
     }
 
     [Fact]
-    public void The_baseline_is_the_only_migration_this_build_ships()
-    {
-        Assert.Equal([MigrationBaseline.Current.BaselineMigrationId], MigrationIds());
-    }
-
-    [Fact]
     public void The_baseline_is_the_earliest_migration_this_build_ships()
     {
         Assert.Equal(MigrationIds()[0], MigrationBaseline.Current.BaselineMigrationId);

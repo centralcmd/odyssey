@@ -19,8 +19,7 @@ namespace Odyssey.IntegrationTests;
 [Collection(MariaDbCollection.Name)]
 public class DriftGuardNarrownessTests(MariaDbFixture fixture)
 {
-    private const string Database = "odyssey_term_rename";
-
+    private const string Database = "odyssey_drift_guard_narrowness";
 
     /// <summary>
     /// AC 47 — the guard stays NARROW. A clean database with every migration pending, and a fully
@@ -38,15 +37,19 @@ public class DriftGuardNarrownessTests(MariaDbFixture fixture)
             await using (var context = NewContext())
             {
                 // Everything pending, nothing present — an ordinary first run.
+                Assert.NotEmpty(await context.Database.GetPendingMigrationsAsync());
                 await MigrationRunner.GuardAgainstDriftAsync(context, CancellationToken.None);
                 await MigrationRunner.MigrateAsync(context, CancellationToken.None);
+                Assert.Empty(await context.Database.GetPendingMigrationsAsync());
             }
 
             await using (var context = NewContext())
             {
                 // Nothing pending, everything present — an ordinary restart.
+                Assert.Empty(await context.Database.GetPendingMigrationsAsync());
                 await MigrationRunner.GuardAgainstDriftAsync(context, CancellationToken.None);
                 await MigrationRunner.MigrateAsync(context, CancellationToken.None);
+                Assert.Equal(context.Database.GetMigrations(), await context.Database.GetAppliedMigrationsAsync());
             }
         }
         finally
@@ -56,13 +59,6 @@ public class DriftGuardNarrownessTests(MariaDbFixture fixture)
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private static async Task<bool> TableExistsAsync(OdysseyContext context, string table) =>
-        await context.Database
-            .SqlQueryRaw<int>(
-                "SELECT COUNT(*) AS `Value` FROM information_schema.TABLES " +
-                $"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}'")
-            .SingleAsync() > 0;
 
     private OdysseyContext NewContext() =>
         new(new DbContextOptionsBuilder<OdysseyContext>()

@@ -3,12 +3,8 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Odyssey.Context;
-using Odyssey.MigrationService;
-using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.IntegrationTests;
@@ -26,7 +22,6 @@ namespace Odyssey.IntegrationTests;
 public class AccountTypeNotRetiredCheckTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_retire_account_types";
-
 
     private const string Check = "CK_Accounts_AccountTypeNotRetired";
 
@@ -61,19 +56,11 @@ public class AccountTypeNotRetiredCheckTests(MariaDbFixture fixture)
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
 
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = fixture.CreateOdysseyContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
-
     private async Task DropAsync()
     {
         await using var server = fixture.CreateOdysseyContext();
         await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
     }
-
 }
 
 #pragma warning restore EF1002

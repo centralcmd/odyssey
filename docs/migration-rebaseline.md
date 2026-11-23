@@ -63,6 +63,10 @@ can never be produced from production.
 
 ## Running the fingerprint mode
 
+Run it from the build that carries the committed fingerprint, which is the rebaseline's own branch or release.
+The output's normalisation is part of the build, so an older build's output does not diff cleanly against a
+newer file, and the release before a rebaseline may have no fingerprint mode at all.
+
 ```bash
 ConnectionStrings__OdysseyConnection='Server=…;Port=3306;Database=odyssey;User=…;Password=…' \
   dotnet run --project Odyssey.MigrationService -- --schema-fingerprint > production.fingerprint.txt
@@ -190,6 +194,11 @@ a database lacking it is by definition not at the cut, and the row would claim a
 have.
 
 ## Accepted limits
+
+- **Column order differs for good between upgraded and new installs.** A database that crossed the
+  rebaseline keeps its columns in the order the old migrations appended them; a new install has them in
+  model order (40 tables differed at the November 2026 cut). EF addresses columns by name and the
+  fingerprint discounts the order, but a `SHOW CREATE TABLE` compared by hand will show it.
 
 - **The guard decides by id order alone.** A database from an unrelated set whose ids are all earlier
   than the baseline gets the "upgrade to the bridge" text. Upgrading through the bridge would then stop

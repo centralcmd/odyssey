@@ -100,8 +100,8 @@ test**, `MigrationDriftIntegrationTests`, `DriftGuardNarrownessTests`, `Migratio
 `SchemaFingerprintParityTests` and the other fresh-database tests that drive `MigrationRunner` or the migrations
 job, which need an empty database a copy cannot give them.
 
-`MigratedSchemaTemplateTests` compares a copy with a database migrated the slow way, at head and at one
-intermediate migration: every column, index, constraint, foreign key and table option, and every row
+`MigratedSchemaTemplateTests` compares a copy with a database migrated the slow way, at head (since the
+rebaseline the chain has no intermediate migration to sample): every column, index, constraint, foreign key and table option, and every row
 (`CHECKSUM TABLE`). A copy comes from `SHOW CREATE TABLE`, so the template refuses to build if a
 migration ever creates an object that does not reproduce: a view, trigger, routine, event or sequence.
 
