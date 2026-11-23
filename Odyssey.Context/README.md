@@ -174,7 +174,7 @@ page's provenance line reads. `SystemSettingSecret` carries no seed at all: an a
 is a secret's correct initial state.
 
 Issue #8 added four such rows — `EmailSmtpHost`, `EmailSmtpPort`, `EmailUseStartTls` and
-`EmailClientBaseUrl` — in the `AddEmailTransportSettings` migration, seeded with `587` and `true` for
+`EmailClientBaseUrl` — in the *AddEmailTransportSettings* migration (folded into the v0.51.0 baseline), seeded with `587` and `true` for
 the two typed keys and the **empty string** for the two string ones. The empty values are the real
 ones, not placeholders awaiting an adoption step: there is no path from configuration or the
 environment into this store, so a fresh deployment starts with mail switched off until an

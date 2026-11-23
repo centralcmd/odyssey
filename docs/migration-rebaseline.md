@@ -45,7 +45,7 @@ defaults) and are never compared.
 
 | Section | Contents | Written by |
 |---|---|---|
-| `[schema]` | Every table's `SHOW CREATE TABLE`. Only `AUTO_INCREMENT=n` is removed; engine, charset, collation, `ROW_FORMAT`, defaults and literals are kept. Also a line saying there are no views, triggers, routines or events | the mode and the tests |
+| `[schema]` | Every table's `SHOW CREATE TABLE`, normalised in three ways only: `AUTO_INCREMENT=n` is removed; the column lines and the key lines are each sorted, because a rebaseline cannot reproduce the order a later migration appended a column in; and a table's charset and collation are written as "database default" when they equal the database's, because those come from the server's configuration. Every line is otherwise kept verbatim: types, defaults, engine, `ROW_FORMAT`, an explicit collation and every literal. Also a line saying there are no views, triggers, routines or events | the mode and the tests |
 | `[seed-rows]` | Full rows of the seeded tables classified `Rows`, which is `AspNetRoles` only | the mode and the tests |
 | `[seed-keys]` | Primary keys only of the seeded tables classified `Keys`, such as `SystemSettings` and the singleton leases and counters | the mode and the tests |
 | `[parity-rows]` | **Every row of every table** | the integration tier only, over a database it created |
@@ -62,6 +62,10 @@ an account, or whose history holds an id this build does not ship. That is why t
 can never be produced from production.
 
 ## Running the fingerprint mode
+
+Run it from the build that carries the committed fingerprint, which is the rebaseline's own branch or release.
+The output's normalisation is part of the build, so an older build's output does not diff cleanly against a
+newer file, and the release before a rebaseline may have no fingerprint mode at all.
 
 ```bash
 ConnectionStrings__OdysseyConnection='Server=…;Port=3306;Database=odyssey;User=…;Password=…' \
@@ -90,7 +94,9 @@ f=Odyssey.Context/Migrations/Baseline/<cut-id>.fingerprint.txt
 diff <(sed '/^\[parity-rows\]$/,$d' "$f" | grep -v '^#') <(grep -v '^#' production.fingerprint.txt)
 ```
 
-The diff should be empty.
+The diff should be empty. Compare the two `# server:` header lines by eye as well: the diff skips them,
+and a different default collation means the database's text columns compare differently, which is the
+server's configuration rather than anything a rebaseline changed.
 
 ## The procedure
 
@@ -130,13 +136,17 @@ The diff should be empty.
    interruption.
 
 5. **Squash.** Delete every migration and `OdysseyContextModelSnapshot.cs`, then scaffold a new
-   `InitialCreate` (CLAUDE.md → *EF Core Migrations* has the command). Rename its class, its two files
-   and its `[Migration]` attribute to the **cut id, verbatim**.
+   `InitialCreate` (CLAUDE.md → *EF Core Migrations* has the command). Rename its two files and its
+   `[Migration]` attribute to the **cut id, verbatim**. Keep the class name `InitialCreate` and say in its
+   doc comment which chain it replaces: EF reads the id from the attribute alone.
 
 6. **Port what the model cannot regenerate.** Today the migrations create no view, trigger, routine,
-   event or sequence, so expect this to be limited to reference rows inserted by raw SQL rather than
-   `HasData`. Drop the data rewrites; on an empty database they have nothing to do. The parity test
-   tells you what you missed, because it compares every row.
+   event or sequence. What the November 2026 rebaseline had to port was **column defaults**: a migration
+   that adds a `NOT NULL` column with `defaultValue: 0` leaves that `DEFAULT` on the column, though the
+   model declares none, so the regenerated baseline loses it. Put each one back as `defaultValue:` on its
+   column in the baseline's `CreateTable`, never in the model. Expect reference rows inserted by raw SQL
+   too. Drop the data rewrites; on an empty database they have nothing to do. The parity test tells you
+   what you missed, because it compares every line and every row.
 
 7. **Update the declaration.** Set `MigrationBaseline.Current` to `(cut id, "vX")` and remove the old
    fingerprint file, leaving only `<cut-id>.fingerprint.txt`.
@@ -184,6 +194,11 @@ a database lacking it is by definition not at the cut, and the row would claim a
 have.
 
 ## Accepted limits
+
+- **Column order differs for good between upgraded and new installs.** A database that crossed the
+  rebaseline keeps its columns in the order the old migrations appended them; a new install has them in
+  model order (40 tables differed at the November 2026 cut). EF addresses columns by name and the
+  fingerprint discounts the order, but a `SHOW CREATE TABLE` compared by hand will show it.
 
 - **The guard decides by id order alone.** A database from an unrelated set whose ids are all earlier
   than the baseline gets the "upgrade to the bridge" text. Upgrading through the bridge would then stop

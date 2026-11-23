@@ -11,53 +11,15 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The <c>AddPodcastFeeds</c> migration on a database that already holds news data (issue #556 §11, AC 1, 35): existing
-/// feeds and articles read as articles, the podcast keys carry the on-delete behaviour §4 specifies, the CHECKs refuse
-/// what they should, and <c>Down()</c> runs after the podcast jobs have recorded runs.
+/// The podcast schema on real MariaDB (issue #556 §11): the podcast keys carry the on-delete behaviour §4 specifies, and
+/// the CHECKs refuse what they should. The <c>AddPodcastFeeds</c> data path and its <c>Down()</c> were folded into the
+/// November 2026 rebaseline.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
-public class PodcastMigrationTests(MariaDbFixture fixture)
+public class PodcastSchemaTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_podcast_migration";
-    private const string Migration = "_AddPodcastFeeds";
-    private const string Baseline = "_UniqueJournalAndTaskTagNames";
     private const int CheckViolation = 4025;
-
-    [SkippableFact]
-    public async Task Existing_news_data_survives_the_migration_and_reads_as_articles()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-        try
-        {
-            await using var context = NewContext();
-            await MigrationSeam.MigrateToAsync(context, Baseline);
-            var feedId = Guid.NewGuid();
-            var articleId = Guid.NewGuid();
-            await context.Database.ExecuteSqlRawAsync(
-                $"""
-                INSERT INTO `NewsFeeds` (`NewsFeedId`, `Url`, `UrlKeyHash`, `IsActive`, `DownloadImages`, `CreatedAtUtc`, `SettingsVersion`)
-                VALUES ('{feedId}', 'https://news.example.com/rss', UNHEX(SHA2('{feedId}', 256)), 1, 0, '2026-11-01', UUID());
-                INSERT INTO `NewsArticles` (`NewsArticleId`, `NewsFeedId`, `Bucket`, `Title`, `Excerpt`, `ContentHash`, `IdentityHash`,
-                    `FirstSeenAtUtc`, `LastSeenAtUtc`, `SortAtUtc`, `IsRead`, `BodyLength`, `RevisionCount`, `FeedVisible`)
-                VALUES ('{articleId}', '{feedId}', 1, 'Story', 'Excerpt', UNHEX(SHA2('c', 256)), UNHEX(SHA2('i', 256)),
-                    '2026-11-01', '2026-11-01', '2026-11-01', 0, 0, 0, 1);
-                """);
-
-            await MigrationRunner.MigrateAsync(context, CancellationToken.None);
-
-            Assert.True(await MigrationSeam.HasRunAsync(context, Migration));
-            Assert.Equal(0L, await MigrationSeam.CountAsync(context, $"SELECT `Kind` FROM `NewsFeeds` WHERE `NewsFeedId` = '{feedId}'"));
-            Assert.Equal(0L, await MigrationSeam.CountAsync(context, $"SELECT `FeedKind` FROM `NewsArticles` WHERE `NewsArticleId` = '{articleId}'"));
-            Assert.Equal(30L, await MigrationSeam.CountAsync(context, $"SELECT `AutoDeleteAfterDays` FROM `NewsFeeds` WHERE `NewsFeedId` = '{feedId}'"));
-            var totals = await MigrationSeam.RowAsync(context, "SELECT `AudioBytes`, `ArtworkBytes` FROM `NewsStorageTotals`");
-            Assert.Equal((0L, 0L), (Convert.ToInt64(totals!["AudioBytes"]), Convert.ToInt64(totals["ArtworkBytes"])));
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
 
     public static TheoryData<string, string, string> Keys => new()
     {
@@ -100,28 +62,6 @@ public class PodcastMigrationTests(MariaDbFixture fixture)
         var refused = await Assert.ThrowsAsync<MySqlException>(() => context.Database.ExecuteSqlRawAsync(update));
 
         Assert.Equal(CheckViolation, refused.Number);
-    }
-
-    [SkippableFact]
-    public async Task Down_runs_after_the_podcast_jobs_have_recorded_runs()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await using var context = await MigratedAsync();
-        await context.Database.ExecuteSqlRawAsync(
-            """
-            INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`,
-                `DownloadsStored`, `DownloadsFailed`, `DownloadsDeferred`, `DownloadsRecovered`, `ReservationsRefused`, `AudioBytesStored`)
-            VALUES (UUID(), 11, 0, 0, '2026-11-21', '2026-11-21', UUID(), 1, 0, 0, 0, 0, 10);
-            INSERT INTO `JobHeartbeats` (`JobType`, `WorkerId`, `LastTickAtUtc`)
-            VALUES (12, UUID(), '2026-11-21');
-            """);
-
-        await MigrationSeam.MigrateToAsync(context, Baseline);
-
-        Assert.False(await MigrationSeam.HasRunAsync(context, Migration));
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "PodcastEpisodes"));
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `JobRuns` WHERE `JobType` IN (11, 12)"));
-        await DropAsync();
     }
 
     private static Task SeedFeedAndArticleAsync(OdysseyContext context)

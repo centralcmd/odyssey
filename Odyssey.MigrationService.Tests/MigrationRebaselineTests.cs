@@ -32,10 +32,10 @@ public partial class MigrationRebaselineTests
     // AC 1
 
     [Fact]
-    public void The_current_baseline_is_InitialCreate_with_no_bridge_release()
+    public void The_current_baseline_is_the_v0_51_0_cut_with_that_release_as_its_bridge()
     {
-        Assert.Equal("20260829095318_InitialCreate", MigrationBaseline.Current.BaselineMigrationId);
-        Assert.Null(MigrationBaseline.Current.BridgeRelease);
+        Assert.Equal("20261122104734_AddRecipes", MigrationBaseline.Current.BaselineMigrationId);
+        Assert.Equal("v0.51.0", MigrationBaseline.Current.BridgeRelease);
     }
 
     [Fact]
@@ -246,10 +246,39 @@ public partial class MigrationRebaselineTests
         var normalized = SchemaFingerprint.NormalizeCreateTable(create);
 
         Assert.Contains("'two  spaces'", normalized);
-        Assert.Contains("`A` int NOT NULL AUTO_INCREMENT,", normalized);
+        Assert.Contains("`A` int NOT NULL AUTO_INCREMENT,\n", normalized);
         Assert.DoesNotContain("AUTO_INCREMENT=42", normalized);
         Assert.Contains("ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", normalized);
         Assert.DoesNotContain("\r", normalized);
+    }
+
+    [Fact]
+    public void Column_and_key_order_is_discounted_but_every_line_is_compared()
+    {
+        const string appended = "CREATE TABLE `T` (\n  `Id` int NOT NULL,\n  `Name` varchar(8) NOT NULL,\n" +
+            "  `Late` int NOT NULL DEFAULT 0,\n  PRIMARY KEY (`Id`),\n  KEY `IX_T_Name` (`Name`),\n  KEY `IX_T_Late` (`Late`)\n) ENGINE=InnoDB";
+        const string modelOrder = "CREATE TABLE `T` (\n  `Id` int NOT NULL,\n  `Late` int NOT NULL DEFAULT 0,\n" +
+            "  `Name` varchar(8) NOT NULL,\n  PRIMARY KEY (`Id`),\n  KEY `IX_T_Late` (`Late`),\n  KEY `IX_T_Name` (`Name`)\n) ENGINE=InnoDB";
+        const string lostDefault = "CREATE TABLE `T` (\n  `Id` int NOT NULL,\n  `Late` int NOT NULL,\n" +
+            "  `Name` varchar(8) NOT NULL,\n  PRIMARY KEY (`Id`),\n  KEY `IX_T_Late` (`Late`),\n  KEY `IX_T_Name` (`Name`)\n) ENGINE=InnoDB";
+
+        Assert.Equal(SchemaFingerprint.NormalizeCreateTable(appended), SchemaFingerprint.NormalizeCreateTable(modelOrder));
+        Assert.NotEqual(SchemaFingerprint.NormalizeCreateTable(appended), SchemaFingerprint.NormalizeCreateTable(lostDefault));
+        Assert.StartsWith("CREATE TABLE `T` (\n  `Id` int NOT NULL,\n  `Late`", SchemaFingerprint.NormalizeCreateTable(appended));
+    }
+
+    [Fact]
+    public void A_table_inheriting_the_database_defaults_says_so_and_one_that_differs_keeps_its_options()
+    {
+        const string inherited = "CREATE TABLE `T` (\n  `Id` int NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci";
+        const string explicitBin = "CREATE TABLE `T` (\n  `Id` int NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin";
+
+        Assert.Equal(
+            SchemaFingerprint.NormalizeCreateTable(inherited, "utf8mb4", "utf8mb4_uca1400_ai_ci"),
+            SchemaFingerprint.NormalizeCreateTable(inherited.Replace("uca1400_ai", "general", StringComparison.Ordinal), "utf8mb4", "utf8mb4_general_ci"));
+        Assert.EndsWith($"ENGINE=InnoDB {SchemaFingerprint.InheritedDefaults}\n",
+            SchemaFingerprint.NormalizeCreateTable(inherited, "utf8mb4", "utf8mb4_uca1400_ai_ci"));
+        Assert.EndsWith("COLLATE=utf8mb4_bin\n", SchemaFingerprint.NormalizeCreateTable(explicitBin, "utf8mb4", "utf8mb4_uca1400_ai_ci"));
     }
 
     [Fact]
@@ -353,7 +382,16 @@ public partial class MigrationRebaselineTests
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(1));
-        await process.WaitForExitAsync(timeout.Token);
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A host that started instead would keep running; never leave it behind.
+            process.Kill(entireProcessTree: true);
+            throw;
+        }
 
         Assert.Equal(SchemaFingerprintCommand.Refused, process.ExitCode);
         Assert.Equal("", await output);

@@ -1,0 +1,3338 @@
+# odyssey schema fingerprint v1 — header lines start with '#' and are never compared
+# server: 11.4.13-MariaDB-ubu2404; default charset: utf8mb4; default collation: utf8mb4_general_ci
+[schema]
+other objects: none
+table `AccountEstimates`
+CREATE TABLE `AccountEstimates` (
+  `AccountEstimateId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CurrencyCode` varchar(3) DEFAULT NULL,
+  `EffectiveFrom` datetime(6) NOT NULL,
+  `Note` varchar(512) DEFAULT NULL,
+  `Value` decimal(18,6) NOT NULL,
+  CONSTRAINT `FK_AccountEstimates_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_AccountEstimates_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_AccountEstimates_AccountId_EffectiveFrom` (`AccountId`,`EffectiveFrom`),
+  KEY `IX_AccountEstimates_CurrencyCode` (`CurrencyCode`),
+  PRIMARY KEY (`AccountEstimateId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AccountFiles`
+CREATE TABLE `AccountFiles` (
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileType` int(11) NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `IssuedAt` datetime(6) DEFAULT NULL,
+  `IssuedBy` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ValidFrom` datetime(6) DEFAULT NULL,
+  `ValidTo` datetime(6) DEFAULT NULL,
+  CONSTRAINT `FK_AccountFiles_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_AccountFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_AccountFiles_Contacts_IssuedBy` FOREIGN KEY (`IssuedBy`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_AccountFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  KEY `IX_AccountFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_AccountFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_AccountFiles_FileMetadataId` (`FileMetadataId`),
+  KEY `IX_AccountFiles_IssuedBy` (`IssuedBy`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_AccountFiles_AccountId_FileMetadataId` (`AccountId`,`FileMetadataId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Accounts`
+CREATE TABLE `Accounts` (
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AccountNumber` varchar(64) DEFAULT NULL,
+  `AccountType` int(11) NOT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `Closed` datetime(6) DEFAULT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `CustodianId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Description` varchar(256) NOT NULL,
+  `Name` varchar(256) NOT NULL,
+  `Opened` datetime(6) NOT NULL,
+  CONSTRAINT `CK_Accounts_AccountTypeNotRetired` CHECK (`AccountType` not in (6,7)),
+  CONSTRAINT `FK_Accounts_Contacts_CustodianId` FOREIGN KEY (`CustodianId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Accounts_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_Accounts_Archived` (`Archived`),
+  KEY `IX_Accounts_CurrencyCode` (`CurrencyCode`),
+  KEY `IX_Accounts_CustodianId` (`CustodianId`),
+  KEY `IX_Accounts_Name` (`Name`),
+  PRIMARY KEY (`AccountId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AccountSmartTags`
+CREATE TABLE `AccountSmartTags` (
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AddedAt` datetime(6) NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_AccountSmartTags_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_AccountSmartTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`),
+  KEY `IX_AccountSmartTags_AddedAt` (`AddedAt`),
+  KEY `IX_AccountSmartTags_TransactionTagId` (`TransactionTagId`),
+  PRIMARY KEY (`AccountId`,`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Addresses`
+CREATE TABLE `Addresses` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `IsPrimary` tinyint(1) NOT NULL,
+  `Label` int(11) NOT NULL,
+  `LocationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_Addresses_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_Addresses_Locations_LocationId` FOREIGN KEY (`LocationId`) REFERENCES `Locations` (`LocationId`),
+  KEY `IX_Addresses_LocationId` (`LocationId`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_Addresses_ContactId_LocationId` (`ContactId`,`LocationId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AspNetRoleClaims`
+CREATE TABLE `AspNetRoleClaims` (
+  `ClaimType` longtext DEFAULT NULL,
+  `ClaimValue` longtext DEFAULT NULL,
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `RoleId` varchar(255) NOT NULL,
+  CONSTRAINT `FK_AspNetRoleClaims_AspNetRoles_RoleId` FOREIGN KEY (`RoleId`) REFERENCES `AspNetRoles` (`Id`) ON DELETE CASCADE,
+  KEY `IX_AspNetRoleClaims_RoleId` (`RoleId`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AspNetRoles`
+CREATE TABLE `AspNetRoles` (
+  `ConcurrencyStamp` longtext DEFAULT NULL,
+  `Id` varchar(255) NOT NULL,
+  `Name` varchar(256) DEFAULT NULL,
+  `NormalizedName` varchar(256) DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `RoleNameIndex` (`NormalizedName`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AspNetUserClaims`
+CREATE TABLE `AspNetUserClaims` (
+  `ClaimType` longtext DEFAULT NULL,
+  `ClaimValue` longtext DEFAULT NULL,
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `UserId` varchar(255) NOT NULL,
+  CONSTRAINT `FK_AspNetUserClaims_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE,
+  KEY `IX_AspNetUserClaims_UserId` (`UserId`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AspNetUserLogins`
+CREATE TABLE `AspNetUserLogins` (
+  `LoginProvider` varchar(255) NOT NULL,
+  `ProviderDisplayName` longtext DEFAULT NULL,
+  `ProviderKey` varchar(255) NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  CONSTRAINT `FK_AspNetUserLogins_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE,
+  KEY `IX_AspNetUserLogins_UserId` (`UserId`),
+  PRIMARY KEY (`LoginProvider`,`ProviderKey`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AspNetUserRoles`
+CREATE TABLE `AspNetUserRoles` (
+  `RoleId` varchar(255) NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  CONSTRAINT `FK_AspNetUserRoles_AspNetRoles_RoleId` FOREIGN KEY (`RoleId`) REFERENCES `AspNetRoles` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_AspNetUserRoles_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE,
+  KEY `IX_AspNetUserRoles_RoleId` (`RoleId`),
+  PRIMARY KEY (`UserId`,`RoleId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AspNetUsers`
+CREATE TABLE `AspNetUsers` (
+  `AccessFailedCount` int(11) NOT NULL,
+  `ConcurrencyStamp` longtext DEFAULT NULL,
+  `EmailConfirmed` tinyint(1) NOT NULL,
+  `Email` varchar(256) DEFAULT NULL,
+  `Id` varchar(255) NOT NULL,
+  `LockoutEnabled` tinyint(1) NOT NULL,
+  `LockoutEnd` datetime(6) DEFAULT NULL,
+  `MustChangePassword` tinyint(1) NOT NULL,
+  `NormalizedEmail` varchar(256) DEFAULT NULL,
+  `NormalizedUserName` varchar(256) DEFAULT NULL,
+  `PasswordHash` longtext DEFAULT NULL,
+  `PhoneNumberConfirmed` tinyint(1) NOT NULL,
+  `PhoneNumber` longtext DEFAULT NULL,
+  `SecurityStamp` longtext DEFAULT NULL,
+  `TwoFactorEnabled` tinyint(1) NOT NULL,
+  `UserName` varchar(256) DEFAULT NULL,
+  KEY `EmailIndex` (`NormalizedEmail`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `UserNameIndex` (`NormalizedUserName`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `AspNetUserTokens`
+CREATE TABLE `AspNetUserTokens` (
+  `LoginProvider` varchar(255) NOT NULL,
+  `Name` varchar(255) NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  `Value` longtext DEFAULT NULL,
+  CONSTRAINT `FK_AspNetUserTokens_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE,
+  PRIMARY KEY (`UserId`,`LoginProvider`,`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `BookAttachments`
+CREATE TABLE `BookAttachments` (
+  `BookAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BookId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_BookAttachments_Books_BookId` FOREIGN KEY (`BookId`) REFERENCES `Books` (`BookId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_BookAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  KEY `IX_BookAttachments_FileId` (`FileId`),
+  PRIMARY KEY (`BookAttachmentId`),
+  UNIQUE KEY `IX_BookAttachments_BookId_FileId` (`BookId`,`FileId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `BookContributors`
+CREATE TABLE `BookContributors` (
+  `BookContributorId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BookId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  `Role` varchar(64) DEFAULT NULL,
+  CONSTRAINT `FK_BookContributors_Books_BookId` FOREIGN KEY (`BookId`) REFERENCES `Books` (`BookId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_BookContributors_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`),
+  KEY `IX_BookContributors_ContactId` (`ContactId`),
+  PRIMARY KEY (`BookContributorId`),
+  UNIQUE KEY `IX_BookContributors_BookId_ContactId` (`BookId`,`ContactId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `BookImages`
+CREATE TABLE `BookImages` (
+  `BookId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BookImageId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `IsCover` tinyint(1) NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_BookImages_Books_BookId` FOREIGN KEY (`BookId`) REFERENCES `Books` (`BookId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_BookImages_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  KEY `IX_BookImages_PhotoId` (`PhotoId`),
+  PRIMARY KEY (`BookImageId`),
+  UNIQUE KEY `IX_BookImages_BookId_PhotoId` (`BookId`,`PhotoId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Books`
+CREATE TABLE `Books` (
+  `BookId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(4000) DEFAULT NULL,
+  `Format` int(11) NOT NULL,
+  `Isbn` varchar(13) DEFAULT NULL,
+  `MainAuthorContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Notes` varchar(8000) DEFAULT NULL,
+  `Publisher` varchar(200) DEFAULT NULL,
+  `Status` int(11) NOT NULL,
+  `Title` varchar(500) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `Version` int(11) NOT NULL,
+  `Year` int(11) DEFAULT NULL,
+  CONSTRAINT `FK_Books_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Books_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Books_Contacts_MainAuthorContactId` FOREIGN KEY (`MainAuthorContactId`) REFERENCES `Contacts` (`ContactId`),
+  KEY `IX_Books_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Books_Isbn` (`Isbn`),
+  KEY `IX_Books_MainAuthorContactId` (`MainAuthorContactId`),
+  KEY `IX_Books_Status` (`Status`),
+  KEY `IX_Books_Title` (`Title`),
+  KEY `IX_Books_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`BookId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `BookTagLinks`
+CREATE TABLE `BookTagLinks` (
+  `BookId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BookTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BookTagLinkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_BookTagLinks_BookTags_BookTagId` FOREIGN KEY (`BookTagId`) REFERENCES `BookTags` (`BookTagId`),
+  CONSTRAINT `FK_BookTagLinks_Books_BookId` FOREIGN KEY (`BookId`) REFERENCES `Books` (`BookId`) ON DELETE CASCADE,
+  KEY `IX_BookTagLinks_BookTagId` (`BookTagId`),
+  PRIMARY KEY (`BookTagLinkId`),
+  UNIQUE KEY `IX_BookTagLinks_BookId_BookTagId` (`BookId`,`BookTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `BookTags`
+CREATE TABLE `BookTags` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `BookTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `Name` varchar(64) NOT NULL,
+  KEY `IX_BookTags_Archived` (`Archived`),
+  PRIMARY KEY (`BookTagId`),
+  UNIQUE KEY `IX_BookTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `BudgetItems`
+CREATE TABLE `BudgetItems` (
+  `BudgetId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BudgetItemId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CategoryType` int(11) NOT NULL,
+  `PlannedAmount` decimal(18,6) NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_BudgetItems_Budgets_BudgetId` FOREIGN KEY (`BudgetId`) REFERENCES `Budgets` (`BudgetId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_BudgetItems_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`),
+  KEY `IX_BudgetItems_TransactionTagId` (`TransactionTagId`),
+  PRIMARY KEY (`BudgetItemId`),
+  UNIQUE KEY `IX_BudgetItems_BudgetId_TransactionTagId` (`BudgetId`,`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Budgets`
+CREATE TABLE `Budgets` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `BaseCurrencyCode` varchar(3) NOT NULL,
+  `BudgetId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `EndDate` datetime(6) NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `StartDate` datetime(6) NOT NULL,
+  CONSTRAINT `FK_Budgets_Currencies_BaseCurrencyCode` FOREIGN KEY (`BaseCurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_Budgets_Archived` (`Archived`),
+  KEY `IX_Budgets_BaseCurrencyCode` (`BaseCurrencyCode`),
+  PRIMARY KEY (`BudgetId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `CalendarEventAttachments`
+CREATE TABLE `CalendarEventAttachments` (
+  `CalendarEventAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CalendarEventId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_CalendarEventAttachments_CalendarEvents_CalendarEventId` FOREIGN KEY (`CalendarEventId`) REFERENCES `CalendarEvents` (`CalendarEventId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_CalendarEventAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  KEY `IX_CalendarEventAttachments_FileId` (`FileId`),
+  PRIMARY KEY (`CalendarEventAttachmentId`),
+  UNIQUE KEY `IX_CalendarEventAttachments_CalendarEventId_FileId` (`CalendarEventId`,`FileId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `CalendarEventPhotos`
+CREATE TABLE `CalendarEventPhotos` (
+  `CalendarEventId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CalendarEventPhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  CONSTRAINT `FK_CalendarEventPhotos_CalendarEvents_CalendarEventId` FOREIGN KEY (`CalendarEventId`) REFERENCES `CalendarEvents` (`CalendarEventId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_CalendarEventPhotos_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  KEY `IX_CalendarEventPhotos_PhotoId` (`PhotoId`),
+  PRIMARY KEY (`CalendarEventPhotoId`),
+  UNIQUE KEY `IX_CalendarEventPhotos_CalendarEventId_PhotoId` (`CalendarEventId`,`PhotoId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `CalendarEvents`
+CREATE TABLE `CalendarEvents` (
+  `CalendarEventId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CalendarId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(2000) DEFAULT NULL,
+  `EndDateTime` datetime(6) NOT NULL,
+  `ExternalUid` varchar(255) DEFAULT NULL,
+  `ImportSourceUid` varchar(255) DEFAULT NULL,
+  `IsAllDay` tinyint(1) NOT NULL,
+  `IsOverride` tinyint(1) NOT NULL DEFAULT 0,
+  `LocationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Location` varchar(300) DEFAULT NULL,
+  `OccurrenceKey` datetime(6) DEFAULT NULL,
+  `RecurrencePatternId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `StartDateTime` datetime(6) NOT NULL,
+  `TimeZoneId` varchar(64) DEFAULT NULL,
+  `Title` varchar(200) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `CK_CalendarEvents_AllDayHasNoZone` CHECK (`IsAllDay` = 0 or `TimeZoneId` is null),
+  CONSTRAINT `FK_CalendarEvents_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_CalendarEvents_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_CalendarEvents_Calendars_CalendarId` FOREIGN KEY (`CalendarId`) REFERENCES `Calendars` (`CalendarId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_CalendarEvents_Locations_LocationId` FOREIGN KEY (`LocationId`) REFERENCES `Locations` (`LocationId`),
+  CONSTRAINT `FK_CalendarEvents_RecurrencePatterns_RecurrencePatternId` FOREIGN KEY (`RecurrencePatternId`) REFERENCES `RecurrencePatterns` (`RecurrencePatternId`) ON DELETE SET NULL,
+  KEY `IX_CalendarEvents_CalendarId_ExternalUid` (`CalendarId`,`ExternalUid`),
+  KEY `IX_CalendarEvents_CalendarId_ImportSourceUid` (`CalendarId`,`ImportSourceUid`),
+  KEY `IX_CalendarEvents_CalendarId_StartDateTime` (`CalendarId`,`StartDateTime`),
+  KEY `IX_CalendarEvents_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_CalendarEvents_LocationId` (`LocationId`),
+  KEY `IX_CalendarEvents_RecurrencePatternId` (`RecurrencePatternId`),
+  KEY `IX_CalendarEvents_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`CalendarEventId`),
+  UNIQUE KEY `IX_CalendarEvents_RecurrencePatternId_OccurrenceKey` (`RecurrencePatternId`,`OccurrenceKey`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Calendars`
+CREATE TABLE `Calendars` (
+  `CalendarId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Color` varchar(7) NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(1000) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `Name` varchar(150) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `FK_Calendars_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Calendars_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_Calendars_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Calendars_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`CalendarId`),
+  UNIQUE KEY `IX_Calendars_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `ContactAliases`
+CREATE TABLE `ContactAliases` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Label` varchar(64) DEFAULT NULL,
+  `Value` varchar(128) NOT NULL,
+  CONSTRAINT `FK_ContactAliases_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_ContactAliases_ContactId_Value` (`ContactId`,`Value`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Contacts`
+CREATE TABLE `Contacts` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `AvatarFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `DisplayName` varchar(128) DEFAULT NULL,
+  `ExternalUid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `NormalizedName` varchar(256) NOT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `Type` int(11) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  CONSTRAINT `FK_Contacts_FileMetadata_AvatarFileId` FOREIGN KEY (`AvatarFileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE SET NULL,
+  KEY `IX_Contacts_NormalizedName` (`NormalizedName`),
+  KEY `IX_Contacts_Type_Archived` (`Type`,`Archived`),
+  PRIMARY KEY (`ContactId`),
+  UNIQUE KEY `IX_Contacts_AvatarFileId` (`AvatarFileId`),
+  UNIQUE KEY `IX_Contacts_ExternalUid` (`ExternalUid`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `ContractFiles`
+CREATE TABLE `ContractFiles` (
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `ContractFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileType` int(11) NOT NULL DEFAULT 3,
+  `IssuedAt` datetime(6) DEFAULT NULL,
+  `IssuedBy` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ValidFrom` datetime(6) DEFAULT NULL,
+  `ValidTo` datetime(6) DEFAULT NULL,
+  CONSTRAINT `FK_ContractFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_ContractFiles_Contacts_IssuedBy` FOREIGN KEY (`IssuedBy`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_ContractFiles_Contracts_ContractId` FOREIGN KEY (`ContractId`) REFERENCES `Contracts` (`ContractId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  KEY `IX_ContractFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_ContractFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_ContractFiles_FileMetadataId` (`FileMetadataId`),
+  KEY `IX_ContractFiles_IssuedBy` (`IssuedBy`),
+  PRIMARY KEY (`ContractFileId`),
+  UNIQUE KEY `IX_ContractFiles_ContractId_FileMetadataId` (`ContractId`,`FileMetadataId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `ContractParties`
+CREATE TABLE `ContractParties` (
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContractPartyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FromDate` datetime(6) DEFAULT NULL,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Role` int(11) NOT NULL DEFAULT 0,
+  `ToDate` datetime(6) DEFAULT NULL,
+  CONSTRAINT `CK_ContractParties_ExactlyOneTarget` CHECK ((`AccountId` is not null) + (`ContactId` is not null) + (`PropertyId` is not null) = 1),
+  CONSTRAINT `FK_ContractParties_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractParties_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractParties_Contracts_ContractId` FOREIGN KEY (`ContractId`) REFERENCES `Contracts` (`ContractId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractParties_Properties_PropertyId` FOREIGN KEY (`PropertyId`) REFERENCES `Properties` (`PropertyId`) ON DELETE CASCADE,
+  KEY `IX_ContractParties_AccountId` (`AccountId`),
+  KEY `IX_ContractParties_ContactId` (`ContactId`),
+  KEY `IX_ContractParties_ContractId` (`ContractId`),
+  KEY `IX_ContractParties_PropertyId` (`PropertyId`),
+  PRIMARY KEY (`ContractPartyId`),
+  UNIQUE KEY `IX_ContractParties_ContractId_AccountId_Role` (`ContractId`,`AccountId`,`Role`),
+  UNIQUE KEY `IX_ContractParties_ContractId_ContactId_Role` (`ContractId`,`ContactId`,`Role`),
+  UNIQUE KEY `IX_ContractParties_ContractId_PropertyId_Role` (`ContractId`,`PropertyId`,`Role`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Contracts`
+CREATE TABLE `Contracts` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `CompletionDate` datetime(6) DEFAULT NULL,
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(1024) DEFAULT NULL,
+  `EndDate` datetime(6) DEFAULT NULL,
+  `Name` varchar(256) NOT NULL,
+  `Paused` datetime(6) DEFAULT NULL,
+  `Ready` datetime(6) DEFAULT NULL,
+  `ReferenceNumber` varchar(64) DEFAULT NULL,
+  `Signed` datetime(6) DEFAULT NULL,
+  `SmartTagScopeEnd` datetime(6) DEFAULT NULL,
+  `SmartTagScopeStart` datetime(6) DEFAULT NULL,
+  `StartDate` datetime(6) DEFAULT NULL,
+  `Type` int(11) NOT NULL DEFAULT 3,
+  CONSTRAINT `CK_Contracts_SmartTagScopeOrder` CHECK (`SmartTagScopeStart` is null or `SmartTagScopeEnd` is null or `SmartTagScopeStart` <= `SmartTagScopeEnd`),
+  CONSTRAINT `FK_Contracts_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_Contracts_Archived` (`Archived`),
+  KEY `IX_Contracts_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Contracts_Type_Archived` (`Type`,`Archived`),
+  PRIMARY KEY (`ContractId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `ContractSmartTags`
+CREATE TABLE `ContractSmartTags` (
+  `AddedAt` datetime(6) NOT NULL,
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_ContractSmartTags_Contracts_ContractId` FOREIGN KEY (`ContractId`) REFERENCES `Contracts` (`ContractId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_ContractSmartTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`),
+  KEY `IX_ContractSmartTags_AddedAt` (`AddedAt`),
+  KEY `IX_ContractSmartTags_TransactionTagId` (`TransactionTagId`),
+  PRIMARY KEY (`ContractId`,`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Currencies`
+CREATE TABLE `Currencies` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `MinorUnits` int(11) NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Symbol` varchar(8) DEFAULT NULL,
+  KEY `IX_Currencies_Archived` (`Archived`),
+  PRIMARY KEY (`CurrencyCode`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `EmailAddresses`
+CREATE TABLE `EmailAddresses` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `IsPrimary` tinyint(1) NOT NULL,
+  `Label` int(11) NOT NULL,
+  `Value` varchar(256) NOT NULL,
+  CONSTRAINT `FK_EmailAddresses_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  KEY `IX_EmailAddresses_ContactId` (`ContactId`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Events`
+CREATE TABLE `Events` (
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(1024) DEFAULT NULL,
+  `EventId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `OccurredAt` datetime(6) NOT NULL,
+  `OwnerKind` int(11) NOT NULL DEFAULT 0,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Source` int(11) NOT NULL DEFAULT 0,
+  `Title` varchar(256) NOT NULL,
+  `Type` int(11) DEFAULT 8,
+  CONSTRAINT `CK_Events_ExactlyOneOwner` CHECK (`OwnerKind` = 0 and `ContractId` is not null and `PropertyId` is null or `OwnerKind` = 1 and `PropertyId` is not null and `ContractId` is null),
+  CONSTRAINT `CK_Events_TypeMatchesOwner` CHECK (`Type` is not null and (`OwnerKind` = 0 and `Type` between 0 and 99 or `OwnerKind` = 1 and `Type` between 100 and 199)),
+  CONSTRAINT `FK_Events_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Events_Contracts_ContractId` FOREIGN KEY (`ContractId`) REFERENCES `Contracts` (`ContractId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_Events_Properties_PropertyId` FOREIGN KEY (`PropertyId`) REFERENCES `Properties` (`PropertyId`) ON DELETE CASCADE,
+  KEY `IX_Events_ContractId_OccurredAt` (`ContractId`,`OccurredAt`),
+  KEY `IX_Events_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Events_PropertyId_OccurredAt` (`PropertyId`,`OccurredAt`),
+  PRIMARY KEY (`EventId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `ExchangeRateProviderSeries`
+CREATE TABLE `ExchangeRateProviderSeries` (
+  `CurrencyCode` varchar(3) NOT NULL,
+  `FetchedAtUtc` datetime(6) NOT NULL,
+  `FirstObservation` date DEFAULT NULL,
+  `NewestObservation` date NOT NULL,
+  `Provider` int(11) NOT NULL,
+  PRIMARY KEY (`Provider`,`CurrencyCode`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `ExchangeRates`
+CREATE TABLE `ExchangeRates` (
+  `AsOf` datetime(6) NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `ExchangeRateId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FromCurrencyCode` varchar(3) NOT NULL,
+  `Provider` int(11) DEFAULT NULL,
+  `Rate` decimal(18,8) NOT NULL,
+  `ToCurrencyCode` varchar(3) NOT NULL,
+  `UpdatedAt` datetime(6) DEFAULT NULL,
+  CONSTRAINT `CK_ExchangeRates_Provider` CHECK (`Provider` is null or `Provider` = 1),
+  CONSTRAINT `CK_ExchangeRates_RatePositive` CHECK (`Rate` > 0),
+  CONSTRAINT `FK_ExchangeRates_Currencies_FromCurrencyCode` FOREIGN KEY (`FromCurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  CONSTRAINT `FK_ExchangeRates_Currencies_ToCurrencyCode` FOREIGN KEY (`ToCurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_ExchangeRates_AsOf` (`AsOf`),
+  KEY `IX_ExchangeRates_FromCurrencyCode_ToCurrencyCode_Provider_AsOf` (`FromCurrencyCode`,`ToCurrencyCode`,`Provider`,`AsOf`),
+  KEY `IX_ExchangeRates_ToCurrencyCode` (`ToCurrencyCode`),
+  PRIMARY KEY (`ExchangeRateId`),
+  UNIQUE KEY `IX_ExchangeRates_FromCurrencyCode_ToCurrencyCode_AsOf_Provider` (`FromCurrencyCode`,`ToCurrencyCode`,`AsOf`,`Provider`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `ExchangeRateSyncCurrencies`
+CREATE TABLE `ExchangeRateSyncCurrencies` (
+  `BackfilledFrom` date DEFAULT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL,
+  `HistoryStartDate` date DEFAULT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `FK_ExchangeRateSyncCurrencies_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_ExchangeRateSyncCurrencies_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`) ON DELETE CASCADE,
+  KEY `IX_ExchangeRateSyncCurrencies_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`CurrencyCode`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileAnalysisCandidateTags`
+CREATE TABLE `FileAnalysisCandidateTags` (
+  `CandidateTransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_FileAnalysisCandidateTags_FileAnalysisCandidateTransactions_~` FOREIGN KEY (`CandidateTransactionId`) REFERENCES `FileAnalysisCandidateTransactions` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_FileAnalysisCandidateTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`) ON DELETE CASCADE,
+  KEY `IX_FileAnalysisCandidateTags_TransactionTagId` (`TransactionTagId`),
+  PRIMARY KEY (`CandidateTransactionId`,`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileAnalysisCandidateTransactions`
+CREATE TABLE `FileAnalysisCandidateTransactions` (
+  `Amount` decimal(18,6) NOT NULL,
+  `AnalysisJobId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `BookingDate` datetime(6) DEFAULT NULL,
+  `CategoryHint` varchar(256) DEFAULT NULL,
+  `CategoryMatchConfidence` decimal(5,4) DEFAULT NULL,
+  `Currency` varchar(3) NOT NULL,
+  `Description` varchar(1024) NOT NULL,
+  `ExternalId` varchar(256) DEFAULT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `InternalId` varchar(256) DEFAULT NULL,
+  `LlmConfidence` decimal(5,4) DEFAULT NULL,
+  `LlmModel` varchar(256) DEFAULT NULL,
+  `LlmProviderResponseId` varchar(256) DEFAULT NULL,
+  `LlmRawJson` longtext DEFAULT NULL,
+  `MatchMethod` int(11) NOT NULL DEFAULT 0,
+  `MatchedContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `MerchantMatchConfidence` decimal(5,4) DEFAULT NULL,
+  `Merchant` varchar(512) DEFAULT NULL,
+  `ReferenceNumber` varchar(256) DEFAULT NULL,
+  `ReviewStatus` int(11) NOT NULL DEFAULT 0,
+  `ReviewedAt` datetime(6) DEFAULT NULL,
+  `ReviewedByUserId` varchar(255) DEFAULT NULL,
+  `TransactionDate` datetime(6) NOT NULL,
+  CONSTRAINT `FK_FileAnalysisCandidateTransactions_AspNetUsers_ReviewedByUser~` FOREIGN KEY (`ReviewedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_FileAnalysisCandidateTransactions_Contacts_MatchedContactId` FOREIGN KEY (`MatchedContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_FileAnalysisCandidateTransactions_FileAnalysisJobs_AnalysisJ~` FOREIGN KEY (`AnalysisJobId`) REFERENCES `FileAnalysisJobs` (`Id`) ON DELETE CASCADE,
+  KEY `IX_FileAnalysisCandidateTransactions_AnalysisJobId` (`AnalysisJobId`),
+  KEY `IX_FileAnalysisCandidateTransactions_MatchedContactId` (`MatchedContactId`),
+  KEY `IX_FileAnalysisCandidateTransactions_ReviewStatus` (`ReviewStatus`),
+  KEY `IX_FileAnalysisCandidateTransactions_ReviewedByUserId` (`ReviewedByUserId`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileAnalysisJobs`
+CREATE TABLE `FileAnalysisJobs` (
+  `AccountFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `AliasCount` int(11) DEFAULT NULL,
+  `AnalyzerBaseUrlHost` varchar(256) DEFAULT NULL,
+  `AnalyzerBaseUrlOrigin` varchar(256) DEFAULT NULL,
+  `AnalyzerModel` varchar(256) DEFAULT NULL,
+  `AnalyzerProvider` int(11) NOT NULL DEFAULT 0,
+  `AutoLinkThresholdInForce` decimal(5,4) DEFAULT NULL,
+  `ClaimedAt` datetime(6) DEFAULT NULL,
+  `CompletedAt` datetime(6) DEFAULT NULL,
+  `ConsentMethod` varchar(128) DEFAULT NULL,
+  `ConsentRecorded` tinyint(1) NOT NULL,
+  `ConsentText` varchar(1024) DEFAULT NULL,
+  `ContactCount` int(11) DEFAULT NULL,
+  `DisclosureVersionInForce` varchar(16) DEFAULT NULL,
+  `ExtractionGeneration` int(11) NOT NULL DEFAULT 0,
+  `ExtractionPromptAdditionInForce` text DEFAULT NULL,
+  `FailureCode` varchar(128) DEFAULT NULL,
+  `FailureMessage` varchar(1024) DEFAULT NULL,
+  `FileSha256` varchar(64) DEFAULT NULL,
+  `FileTypeDetected` varchar(256) DEFAULT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `LawfulBasis` varchar(128) DEFAULT NULL,
+  `LeaseUntilUtc` datetime(6) DEFAULT NULL,
+  `MatchDisclosureVersionInForce` varchar(16) DEFAULT NULL,
+  `MatchFailureMessage` varchar(1024) DEFAULT NULL,
+  `MatchGeneration` int(11) NOT NULL DEFAULT 0,
+  `MatchPromptAdditionInForce` text DEFAULT NULL,
+  `MatchPromptVersion` varchar(32) DEFAULT NULL,
+  `MatchStatus` int(11) NOT NULL DEFAULT 0,
+  `MatchTimeoutSecondsInForce` int(11) DEFAULT NULL,
+  `MatchVocabularyScope` int(11) DEFAULT NULL,
+  `MaxTokensInForce` int(11) DEFAULT NULL,
+  `ProcessorInForce` varchar(128) DEFAULT NULL,
+  `ProcessorRegionInForce` varchar(128) DEFAULT NULL,
+  `PromptTemplateHash` varchar(64) DEFAULT NULL,
+  `PromptVersion` varchar(128) DEFAULT NULL,
+  `QueuedAt` datetime(6) DEFAULT NULL,
+  `RequestedByUserId` varchar(255) DEFAULT NULL,
+  `RunId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `StartedAt` datetime(6) DEFAULT NULL,
+  `Status` int(11) NOT NULL DEFAULT 0,
+  `TagCount` int(11) DEFAULT NULL,
+  `TagDescriptionCount` int(11) DEFAULT NULL,
+  `TransferStartedAt` datetime(6) DEFAULT NULL,
+  `VocabularyCount` int(11) DEFAULT NULL,
+  `VocabularyReduction` int(11) DEFAULT NULL,
+  CONSTRAINT `FK_FileAnalysisJobs_AccountFiles_AccountFileId` FOREIGN KEY (`AccountFileId`) REFERENCES `AccountFiles` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_FileAnalysisJobs_AspNetUsers_RequestedByUserId` FOREIGN KEY (`RequestedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_FileAnalysisJobs_AccountFileId_Status` (`AccountFileId`,`Status`),
+  KEY `IX_FileAnalysisJobs_RequestedByUserId` (`RequestedByUserId`),
+  KEY `IX_FileAnalysisJobs_Status_QueuedAt` (`Status`,`QueuedAt`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileMetadata`
+CREATE TABLE `FileMetadata` (
+  `ContactAvatarStoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ContentType` varchar(256) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `FileName` varchar(256) NOT NULL,
+  `FinanceStoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalStoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `LibraryStoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Sha256Hash` varchar(64) NOT NULL,
+  `SizeBytes` bigint(20) NOT NULL,
+  `UploadedAtUtc` datetime(6) NOT NULL,
+  `UploadedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `CK_FileMetadata_ExactlyOneSource` CHECK ((`FinanceStoredObjectId` is not null) + (`JournalStoredObjectId` is not null) + (`ContactAvatarStoredObjectId` is not null) + (`LibraryStoredObjectId` is not null) = 1),
+  CONSTRAINT `FK_FileMetadata_AspNetUsers_UploadedByUserId` FOREIGN KEY (`UploadedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_FileMetadata_StoredObjects_ContactAvatarStoredObjectId` FOREIGN KEY (`ContactAvatarStoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  CONSTRAINT `FK_FileMetadata_StoredObjects_FinanceStoredObjectId` FOREIGN KEY (`FinanceStoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  CONSTRAINT `FK_FileMetadata_StoredObjects_JournalStoredObjectId` FOREIGN KEY (`JournalStoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  CONSTRAINT `FK_FileMetadata_StoredObjects_LibraryStoredObjectId` FOREIGN KEY (`LibraryStoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  KEY `IX_FileMetadata_Sha256Hash` (`Sha256Hash`),
+  KEY `IX_FileMetadata_UploadedAtUtc` (`UploadedAtUtc`),
+  KEY `IX_FileMetadata_UploadedByUserId_Sha256Hash_SizeBytes` (`UploadedByUserId`,`Sha256Hash`,`SizeBytes`),
+  KEY `IX_FileMetadata_UploadedByUserId` (`UploadedByUserId`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_FileMetadata_ContactAvatarStoredObjectId` (`ContactAvatarStoredObjectId`),
+  UNIQUE KEY `IX_FileMetadata_FinanceStoredObjectId` (`FinanceStoredObjectId`),
+  UNIQUE KEY `IX_FileMetadata_JournalStoredObjectId` (`JournalStoredObjectId`),
+  UNIQUE KEY `IX_FileMetadata_LibraryStoredObjectId` (`LibraryStoredObjectId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileStorageMaintenanceLeases`
+CREATE TABLE `FileStorageMaintenanceLeases` (
+  `HolderId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Id` tinyint(3) unsigned NOT NULL,
+  `LastCompletedAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseUntilUtc` datetime(6) DEFAULT NULL,
+  `Version` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_FileStorageMaintenanceLeases_Singleton` CHECK (`Id` = 1),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileStorageOrphanSightings`
+CREATE TABLE `FileStorageOrphanSightings` (
+  `FirstSeenAtUtc` datetime(6) NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `LastSeenPass` int(11) NOT NULL,
+  `RelativePath` varchar(512) NOT NULL,
+  `VolumeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_FileStorageOrphanSightings_FileStorageVolumes_VolumeId` FOREIGN KEY (`VolumeId`) REFERENCES `FileStorageVolumes` (`Id`) ON DELETE CASCADE,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_FileStorageOrphanSightings_VolumeId_RelativePath` (`VolumeId`,`RelativePath`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileStorageVolumes`
+CREATE TABLE `FileStorageVolumes` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `InitializedAtUtc` datetime(6) DEFAULT NULL,
+  `LastPassOrphanCount` int(11) DEFAULT NULL,
+  `LastSeenAtUtc` datetime(6) NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `QuarantinedFileCount` int(11) NOT NULL,
+  `ReconciliationCursor` varchar(512) DEFAULT NULL,
+  `ReconciliationHaltedAtUtc` datetime(6) DEFAULT NULL,
+  `ReconciliationPass` int(11) NOT NULL,
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_FileStorageVolumes_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `FileStorageWorkerVerdicts`
+CREATE TABLE `FileStorageWorkerVerdicts` (
+  `FailedAtUtc` datetime(6) NOT NULL,
+  `FailedCheck` varchar(64) NOT NULL,
+  `LastReportedAtUtc` datetime(6) NOT NULL,
+  `WorkerId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  KEY `IX_FileStorageWorkerVerdicts_LastReportedAtUtc` (`LastReportedAtUtc`),
+  PRIMARY KEY (`WorkerId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `InstrumentPrices`
+CREATE TABLE `InstrumentPrices` (
+  `Close` decimal(18,8) NOT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `InstrumentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `InstrumentPriceId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `SourceKeyGuard` varchar(32) GENERATED ALWAYS AS (coalesce(`SourceKey`,'')) STORED,
+  `SourceKey` varchar(32) DEFAULT NULL,
+  `TradingDate` date NOT NULL,
+  `UpdatedAtUtc` datetime(6) DEFAULT NULL,
+  CONSTRAINT `CK_InstrumentPrices_ClosePositive` CHECK (`Close` > 0),
+  CONSTRAINT `CK_InstrumentPrices_SourceKeyFormat` CHECK (`SourceKey` is null or `SourceKey` regexp '^[a-z0-9-]{1,32}\\z'),
+  CONSTRAINT `FK_InstrumentPrices_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_InstrumentPrices_Instruments_InstrumentId` FOREIGN KEY (`InstrumentId`) REFERENCES `Instruments` (`InstrumentId`),
+  KEY `IX_InstrumentPrices_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_InstrumentPrices_TradingDate` (`TradingDate`),
+  PRIMARY KEY (`InstrumentPriceId`),
+  UNIQUE KEY `IX_InstrumentPrices_InstrumentId_TradingDate_SourceKeyGuard` (`InstrumentId`,`TradingDate`,`SourceKeyGuard`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `InstrumentPriceSourceBindings`
+CREATE TABLE `InstrumentPriceSourceBindings` (
+  `BackfilledFrom` date DEFAULT NULL,
+  `ConsecutiveFailures` int(11) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL,
+  `HistoryStartDate` date DEFAULT NULL,
+  `InstrumentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `LastFailureUtc` datetime(6) DEFAULT NULL,
+  `LastFailure` tinyint(3) unsigned DEFAULT NULL,
+  `LastSuccessUtc` datetime(6) DEFAULT NULL,
+  `NewestFetched` date DEFAULT NULL,
+  `Priority` int(11) NOT NULL,
+  `SourceKey` varchar(32) NOT NULL,
+  `SourceSymbol` varchar(64) NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `CK_InstrumentPriceSourceBindings_ConsecutiveFailures` CHECK (`ConsecutiveFailures` >= 0),
+  CONSTRAINT `CK_InstrumentPriceSourceBindings_Priority` CHECK (`Priority` between 1 and 9),
+  CONSTRAINT `CK_InstrumentPriceSourceBindings_SourceKeyFormat` CHECK (`SourceKey` regexp '^[a-z0-9-]{1,32}\\z'),
+  CONSTRAINT `FK_InstrumentPriceSourceBindings_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_InstrumentPriceSourceBindings_Instruments_InstrumentId` FOREIGN KEY (`InstrumentId`) REFERENCES `Instruments` (`InstrumentId`) ON DELETE CASCADE,
+  KEY `IX_InstrumentPriceSourceBindings_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`InstrumentId`,`SourceKey`),
+  UNIQUE KEY `IX_InstrumentPriceSourceBindings_InstrumentId_Priority` (`InstrumentId`,`Priority`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `InstrumentPriceSourceStates`
+CREATE TABLE `InstrumentPriceSourceStates` (
+  `BackOffReason` tinyint(3) unsigned DEFAULT NULL,
+  `BackOffUntilUtc` datetime(6) DEFAULT NULL,
+  `RequestCount` int(11) NOT NULL,
+  `RequestDay` date DEFAULT NULL,
+  `RequestHourCount` int(11) NOT NULL DEFAULT 0,
+  `RequestHourUtc` datetime(6) DEFAULT NULL,
+  `SourceKey` varchar(32) NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `Version` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_InstrumentPriceSourceStates_RequestCount` CHECK (`RequestCount` >= 0),
+  CONSTRAINT `CK_InstrumentPriceSourceStates_RequestHourCount` CHECK (`RequestHourCount` >= 0),
+  PRIMARY KEY (`SourceKey`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Instruments`
+CREATE TABLE `Instruments` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `InstrumentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Isin` varchar(12) DEFAULT NULL,
+  `ListingKey` varchar(64) NOT NULL,
+  `MicCode` varchar(4) DEFAULT NULL,
+  `Name` varchar(256) NOT NULL,
+  `ShowOnDashboard` tinyint(1) NOT NULL,
+  `Symbol` varchar(32) NOT NULL,
+  `Type` int(11) NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `CK_Instruments_Type` CHECK (`Type` in (1,2,3,9)),
+  CONSTRAINT `FK_Instruments_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Instruments_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Instruments_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_Instruments_Archived` (`Archived`),
+  KEY `IX_Instruments_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Instruments_CurrencyCode` (`CurrencyCode`),
+  KEY `IX_Instruments_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`InstrumentId`),
+  UNIQUE KEY `IX_Instruments_ListingKey` (`ListingKey`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JobHeartbeats`
+CREATE TABLE `JobHeartbeats` (
+  `JobType` tinyint(3) unsigned NOT NULL,
+  `LastTickAtUtc` datetime(6) NOT NULL,
+  `WorkerId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_JobHeartbeats_JobType` CHECK (`JobType` in (1,2,3,4,6,8,9,10,11,12)),
+  PRIMARY KEY (`JobType`,`WorkerId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JobRuns`
+CREATE TABLE `JobRuns` (
+  `AbandonedWritesSwept` int(11) DEFAULT NULL,
+  `AnalysesCompleted` int(11) DEFAULT NULL,
+  `AnalysesFailed` int(11) DEFAULT NULL,
+  `AnalysesRefused` int(11) DEFAULT NULL,
+  `ArtworkFailed` int(11) DEFAULT NULL,
+  `ArtworkStored` int(11) DEFAULT NULL,
+  `AudioBytesReleased` bigint(20) DEFAULT NULL,
+  `AudioBytesStored` bigint(20) DEFAULT NULL,
+  `AudioReleased` int(11) DEFAULT NULL,
+  `ChaptersFetched` int(11) DEFAULT NULL,
+  `ClaimedAtUtc` datetime(6) DEFAULT NULL,
+  `Crashes` int(11) DEFAULT NULL,
+  `CurrencyCodes` varchar(256) DEFAULT NULL,
+  `DownloadsDeferred` int(11) DEFAULT NULL,
+  `DownloadsFailed` int(11) DEFAULT NULL,
+  `DownloadsRecovered` int(11) DEFAULT NULL,
+  `DownloadsStored` int(11) DEFAULT NULL,
+  `DurationMs` bigint(20) DEFAULT NULL,
+  `ErrorKind` int(11) DEFAULT NULL,
+  `ExclusiveGuard` int(11) GENERATED ALWAYS AS (if(`Status` = 0 and (`JobType` in (1,3,8) or `Trigger` = 1),`JobType`,NULL)) VIRTUAL,
+  `FailureCategory` tinyint(3) unsigned DEFAULT NULL,
+  `FailureKind` int(11) DEFAULT NULL,
+  `FallbacksUsed` int(11) DEFAULT NULL,
+  `FeedsFetched` int(11) DEFAULT NULL,
+  `FeedsMarked` int(11) DEFAULT NULL,
+  `FeedsQuarantined` int(11) DEFAULT NULL,
+  `FilesErased` int(11) DEFAULT NULL,
+  `FinishedAtUtc` datetime(6) DEFAULT NULL,
+  `ForecastsStored` int(11) DEFAULT NULL,
+  `Generation` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Hangs` int(11) DEFAULT NULL,
+  `HeldByCheck` varchar(64) DEFAULT NULL,
+  `HeldReason` tinyint(3) unsigned DEFAULT NULL,
+  `ImagesStored` int(11) DEFAULT NULL,
+  `InstrumentsAttempted` int(11) DEFAULT NULL,
+  `InstrumentsDeferred` int(11) DEFAULT NULL,
+  `InstrumentsFailed` int(11) DEFAULT NULL,
+  `InstrumentsSucceeded` int(11) DEFAULT NULL,
+  `IntegrityFailures` int(11) DEFAULT NULL,
+  `ItemsFailed` int(11) DEFAULT NULL,
+  `ItemsProcessed` int(11) DEFAULT NULL,
+  `ItemsRevised` int(11) DEFAULT NULL,
+  `ItemsStored` int(11) DEFAULT NULL,
+  `JobRunId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JobType` tinyint(3) unsigned NOT NULL,
+  `KeyRowsDetached` int(11) DEFAULT NULL,
+  `LastActivityAtUtc` datetime(6) NOT NULL,
+  `ObjectsScrubbed` int(11) DEFAULT NULL,
+  `ObservationDaysStored` int(11) DEFAULT NULL,
+  `OpenHeldGuard` int(11) GENERATED ALWAYS AS (if(`Status` = 5 and `FinishedAtUtc` is null,1,NULL)) VIRTUAL,
+  `OrphansFound` int(11) DEFAULT NULL,
+  `PhotosFailed` int(11) DEFAULT NULL,
+  `PhotosRendered` int(11) DEFAULT NULL,
+  `PhotosRequeued` int(11) DEFAULT NULL,
+  `PointsAttempted` int(11) DEFAULT NULL,
+  `PointsFailed` int(11) DEFAULT NULL,
+  `PointsSkippedNotExpired` int(11) DEFAULT NULL,
+  `PricesDeleted` int(11) DEFAULT NULL,
+  `PricesInserted` int(11) DEFAULT NULL,
+  `Provider` int(11) DEFAULT NULL,
+  `RequestedByUserId` varchar(255) DEFAULT NULL,
+  `RequestsMade` int(11) DEFAULT NULL,
+  `ReservationsRefused` int(11) DEFAULT NULL,
+  `RowsDeleted` int(11) DEFAULT NULL,
+  `RowsInserted` int(11) DEFAULT NULL,
+  `RowsRejected` int(11) DEFAULT NULL,
+  `RowsSkipped` int(11) DEFAULT NULL,
+  `SeriesKeyFailures` int(11) DEFAULT NULL,
+  `SeriesKeyed` int(11) DEFAULT NULL,
+  `SpanFrom` date DEFAULT NULL,
+  `SpanTo` date DEFAULT NULL,
+  `StartedAtUtc` datetime(6) NOT NULL,
+  `Status` tinyint(3) unsigned NOT NULL,
+  `Trigger` tinyint(3) unsigned NOT NULL,
+  `WorkerId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  CONSTRAINT `CK_JobRuns_CountersNonNegative` CHECK (coalesce(`ItemsProcessed`,0) >= 0 and coalesce(`ItemsFailed`,0) >= 0 and coalesce(`DurationMs`,0) >= 0 and coalesce(`RowsInserted`,0) >= 0 and coalesce(`RowsSkipped`,0) >= 0 and coalesce(`RowsRejected`,0) >= 0 and coalesce(`RowsDeleted`,0) >= 0 and coalesce(`PointsAttempted`,0) >= 0 and coalesce(`PointsSkippedNotExpired`,0) >= 0 and coalesce(`PointsFailed`,0) >= 0 and coalesce(`ForecastsStored`,0) >= 0 and coalesce(`ObservationDaysStored`,0) >= 0 and coalesce(`FilesErased`,0) >= 0 and coalesce(`AbandonedWritesSwept`,0) >= 0 and coalesce(`ObjectsScrubbed`,0) >= 0 and coalesce(`IntegrityFailures`,0) >= 0 and coalesce(`OrphansFound`,0) >= 0 and coalesce(`PhotosRendered`,0) >= 0 and coalesce(`PhotosFailed`,0) >= 0 and coalesce(`PhotosRequeued`,0) >= 0 and coalesce(`Crashes`,0) >= 0 and coalesce(`Hangs`,0) >= 0 and coalesce(`AnalysesCompleted`,0) >= 0 and coalesce(`AnalysesFailed`,0) >= 0 and coalesce(`AnalysesRefused`,0) >= 0 and coalesce(`InstrumentsAttempted`,0) >= 0 and coalesce(`InstrumentsSucceeded`,0) >= 0 and coalesce(`InstrumentsFailed`,0) >= 0 and coalesce(`PricesInserted`,0) >= 0 and coalesce(`FallbacksUsed`,0) >= 0 and coalesce(`RequestsMade`,0) >= 0 and coalesce(`PricesDeleted`,0) >= 0 and coalesce(`InstrumentsDeferred`,0) >= 0 and coalesce(`FeedsFetched`,0) >= 0 and coalesce(`ItemsStored`,0) >= 0 and coalesce(`ItemsRevised`,0) >= 0 and coalesce(`ImagesStored`,0) >= 0 and coalesce(`FeedsQuarantined`,0) >= 0 and coalesce(`FeedsMarked`,0) >= 0 and coalesce(`SeriesKeyed`,0) >= 0 and coalesce(`SeriesKeyFailures`,0) >= 0 and coalesce(`KeyRowsDetached`,0) >= 0 and coalesce(`ArtworkStored`,0) >= 0 and coalesce(`ArtworkFailed`,0) >= 0 and coalesce(`ChaptersFetched`,0) >= 0 and coalesce(`DownloadsStored`,0) >= 0 and coalesce(`DownloadsFailed`,0) >= 0 and coalesce(`DownloadsDeferred`,0) >= 0 and coalesce(`DownloadsRecovered`,0) >= 0 and coalesce(`ReservationsRefused`,0) >= 0 and coalesce(`AudioBytesStored`,0) >= 0 and coalesce(`AudioReleased`,0) >= 0 and coalesce(`AudioBytesReleased`,0) >= 0),
+  CONSTRAINT `CK_JobRuns_ErrorKind` CHECK (`ErrorKind` is null or `ErrorKind` between 1 and 9),
+  CONSTRAINT `CK_JobRuns_FailureCategory` CHECK (`FailureCategory` is null or `FailureCategory` between 1 and 10),
+  CONSTRAINT `CK_JobRuns_FinishedMatchesStatus` CHECK (`Status` = 0 and `FinishedAtUtc` is null or `Status` = 5 or `Status` in (1,2,3,4) and `FinishedAtUtc` is not null),
+  CONSTRAINT `CK_JobRuns_HeldHasWorkerAndReason` CHECK (`Status` <> 5 or `WorkerId` is not null and `HeldReason` is not null),
+  CONSTRAINT `CK_JobRuns_HeldReasonOnlyOnHeld` CHECK (`HeldReason` is null or `Status` = 5),
+  CONSTRAINT `CK_JobRuns_HeldReason` CHECK (`HeldReason` is null or `HeldReason` between 1 and 5),
+  CONSTRAINT `CK_JobRuns_JobType` CHECK (`JobType` in (1,2,3,4,6,8,9,10,11,12)),
+  CONSTRAINT `CK_JobRuns_Provider` CHECK (`Provider` is null or `Provider` = 1),
+  CONSTRAINT `CK_JobRuns_Status` CHECK (`Status` in (0,1,2,3,4,5)),
+  CONSTRAINT `CK_JobRuns_Trigger` CHECK (`Trigger` in (0,1,2)),
+  CONSTRAINT `FK_JobRuns_AspNetUsers_RequestedByUserId` FOREIGN KEY (`RequestedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_JobRuns_DurationMs` (`DurationMs`),
+  KEY `IX_JobRuns_JobType_StartedAtUtc` (`JobType`,`StartedAtUtc`),
+  KEY `IX_JobRuns_RequestedByUserId` (`RequestedByUserId`),
+  KEY `IX_JobRuns_StartedAtUtc` (`StartedAtUtc`),
+  KEY `IX_JobRuns_Status_StartedAtUtc` (`Status`,`StartedAtUtc`),
+  PRIMARY KEY (`JobRunId`),
+  UNIQUE KEY `IX_JobRuns_ExclusiveGuard` (`ExclusiveGuard`),
+  UNIQUE KEY `IX_JobRuns_JobType_WorkerId_OpenHeldGuard` (`JobType`,`WorkerId`,`OpenHeldGuard`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalEntries`
+CREATE TABLE `JournalEntries` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Content` varchar(4096) NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `EntryDate` datetime(6) NOT NULL,
+  `ExternalUid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `LocationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Location` varchar(300) DEFAULT NULL,
+  `Title` varchar(200) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `FK_JournalEntries_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_JournalEntries_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_JournalEntries_Locations_LocationId` FOREIGN KEY (`LocationId`) REFERENCES `Locations` (`LocationId`),
+  KEY `IX_JournalEntries_Archived_EntryDate` (`Archived`,`EntryDate`),
+  KEY `IX_JournalEntries_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_JournalEntries_LocationId` (`LocationId`),
+  KEY `IX_JournalEntries_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`JournalEntryId`),
+  UNIQUE KEY `IX_JournalEntries_ExternalUid` (`ExternalUid`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalEntryAttachments`
+CREATE TABLE `JournalEntryAttachments` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_JournalEntryAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryAttachments_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE,
+  KEY `IX_JournalEntryAttachments_FileId` (`FileId`),
+  PRIMARY KEY (`JournalEntryAttachmentId`),
+  UNIQUE KEY `IX_JournalEntryAttachments_JournalEntryId_FileId` (`JournalEntryId`,`FileId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalEntryContacts`
+CREATE TABLE `JournalEntryContacts` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_JournalEntryContacts_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryContacts_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE,
+  KEY `IX_JournalEntryContacts_ContactId` (`ContactId`),
+  PRIMARY KEY (`JournalEntryContactId`),
+  UNIQUE KEY `IX_JournalEntryContacts_JournalEntryId_ContactId` (`JournalEntryId`,`ContactId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalEntryPhotos`
+CREATE TABLE `JournalEntryPhotos` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryPhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  CONSTRAINT `FK_JournalEntryPhotos_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryPhotos_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  KEY `IX_JournalEntryPhotos_PhotoId` (`PhotoId`),
+  PRIMARY KEY (`JournalEntryPhotoId`),
+  UNIQUE KEY `IX_JournalEntryPhotos_JournalEntryId_PhotoId` (`JournalEntryId`,`PhotoId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalEntryTags`
+CREATE TABLE `JournalEntryTags` (
+  `JournalEntryId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalEntryTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_JournalEntryTags_JournalEntries_JournalEntryId` FOREIGN KEY (`JournalEntryId`) REFERENCES `JournalEntries` (`JournalEntryId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalEntryTags_JournalTags_JournalTagId` FOREIGN KEY (`JournalTagId`) REFERENCES `JournalTags` (`JournalTagId`),
+  KEY `IX_JournalEntryTags_JournalTagId` (`JournalTagId`),
+  PRIMARY KEY (`JournalEntryTagId`),
+  UNIQUE KEY `IX_JournalEntryTags_JournalEntryId_JournalTagId` (`JournalEntryId`,`JournalTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalTags`
+CREATE TABLE `JournalTags` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `JournalTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  KEY `IX_JournalTags_Archived` (`Archived`),
+  PRIMARY KEY (`JournalTagId`),
+  UNIQUE KEY `IX_JournalTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalTaskAttachments`
+CREATE TABLE `JournalTaskAttachments` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTaskAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTaskId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_JournalTaskAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_JournalTaskAttachments_JournalTasks_JournalTaskId` FOREIGN KEY (`JournalTaskId`) REFERENCES `JournalTasks` (`JournalTaskId`) ON DELETE CASCADE,
+  KEY `IX_JournalTaskAttachments_FileId` (`FileId`),
+  PRIMARY KEY (`JournalTaskAttachmentId`),
+  UNIQUE KEY `IX_JournalTaskAttachments_JournalTaskId_FileId` (`JournalTaskId`,`FileId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalTasks`
+CREATE TABLE `JournalTasks` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `CompletedAt` datetime(6) DEFAULT NULL,
+  `Content` varchar(4096) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Deadline` date DEFAULT NULL,
+  `ExternalUid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `JournalTaskId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  `StartedAt` datetime(6) DEFAULT NULL,
+  `Title` varchar(200) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `FK_JournalTasks_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_JournalTasks_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_JournalTasks_Archived_Position` (`Archived`,`Position`),
+  KEY `IX_JournalTasks_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_JournalTasks_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`JournalTaskId`),
+  UNIQUE KEY `IX_JournalTasks_ExternalUid` (`ExternalUid`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalTaskTagLinks`
+CREATE TABLE `JournalTaskTagLinks` (
+  `JournalTaskId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTaskTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `JournalTaskTagLinkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_JournalTaskTagLinks_JournalTaskTags_JournalTaskTagId` FOREIGN KEY (`JournalTaskTagId`) REFERENCES `JournalTaskTags` (`JournalTaskTagId`),
+  CONSTRAINT `FK_JournalTaskTagLinks_JournalTasks_JournalTaskId` FOREIGN KEY (`JournalTaskId`) REFERENCES `JournalTasks` (`JournalTaskId`) ON DELETE CASCADE,
+  KEY `IX_JournalTaskTagLinks_JournalTaskTagId` (`JournalTaskTagId`),
+  PRIMARY KEY (`JournalTaskTagLinkId`),
+  UNIQUE KEY `IX_JournalTaskTagLinks_JournalTaskId_JournalTaskTagId` (`JournalTaskId`,`JournalTaskTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `JournalTaskTags`
+CREATE TABLE `JournalTaskTags` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `JournalTaskTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  KEY `IX_JournalTaskTags_Archived` (`Archived`),
+  PRIMARY KEY (`JournalTaskTagId`),
+  UNIQUE KEY `IX_JournalTaskTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `LicenseAcceptances`
+CREATE TABLE `LicenseAcceptances` (
+  `Accepted` tinyint(1) NOT NULL,
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `LicenseHash` varchar(64) NOT NULL,
+  `RespondedAt` datetime(6) NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  KEY `IX_LicenseAcceptances_UserId_LicenseHash_RespondedAt` (`UserId`,`LicenseHash`,`RespondedAt`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Locations`
+CREATE TABLE `Locations` (
+  `AddressKey` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `AddressText` varchar(300) DEFAULT NULL,
+  `AltitudeMeters` int(11) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `City` varchar(128) DEFAULT NULL,
+  `CountryCode` char(2) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(1000) DEFAULT NULL,
+  `Latitude` decimal(7,5) DEFAULT NULL,
+  `Line1` varchar(256) DEFAULT NULL,
+  `Line2` varchar(256) DEFAULT NULL,
+  `LocationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Longitude` decimal(8,5) DEFAULT NULL,
+  `MergedIntoLocationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Name` varchar(100) NOT NULL,
+  `PostalCode` varchar(32) DEFAULT NULL,
+  `Region` varchar(128) DEFAULT NULL,
+  `SourceReference` varchar(64) DEFAULT NULL,
+  `Source` int(11) NOT NULL,
+  `TimeZoneId` varchar(64) DEFAULT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  CONSTRAINT `CK_Locations_AltitudeRange` CHECK (`AltitudeMeters` is null or `AltitudeMeters` between -500 and 9000),
+  CONSTRAINT `CK_Locations_CoordinatesAllOrNone` CHECK (`Latitude` is null and `Longitude` is null and `TimeZoneId` is null or `Latitude` is not null and `Longitude` is not null and `TimeZoneId` is not null),
+  CONSTRAINT `CK_Locations_LatitudeRange` CHECK (`Latitude` between -90 and 90),
+  CONSTRAINT `CK_Locations_LongitudeRange` CHECK (`Longitude` between -180 and 180),
+  CONSTRAINT `CK_Locations_ManualHasNoReference` CHECK (`Source` <> 1 or `SourceReference` is null),
+  CONSTRAINT `CK_Locations_SourceKnown` CHECK (`Source` in (1,2,3,4,5,6,7)),
+  CONSTRAINT `FK_Locations_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Locations_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Locations_Locations_MergedIntoLocationId` FOREIGN KEY (`MergedIntoLocationId`) REFERENCES `Locations` (`LocationId`),
+  CONSTRAINT `FK_Locations_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`) ON DELETE SET NULL,
+  KEY `IX_Locations_Archived_Name` (`Archived`,`Name`),
+  KEY `IX_Locations_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Locations_MergedIntoLocationId` (`MergedIntoLocationId`),
+  KEY `IX_Locations_UpdatedByUserId` (`UpdatedByUserId`),
+  KEY `IX_Locations_WeatherPointId` (`WeatherPointId`),
+  PRIMARY KEY (`LocationId`),
+  UNIQUE KEY `IX_Locations_AddressKey` (`AddressKey`),
+  UNIQUE KEY `IX_Locations_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsArticleFiles`
+CREATE TABLE `NewsArticleFiles` (
+  `ContentType` varchar(64) NOT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `Kind` tinyint(3) unsigned NOT NULL,
+  `NewsArticleFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsArticleRevisionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Sha256` binary(32) NOT NULL,
+  `SizeBytes` bigint(20) NOT NULL,
+  `StoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_NewsArticleFiles_RevisionKind` CHECK (`NewsArticleRevisionId` is null or `Kind` in (1,2)),
+  CONSTRAINT `FK_NewsArticleFiles_NewsArticleRevisions_NewsArticleRevisionId` FOREIGN KEY (`NewsArticleRevisionId`) REFERENCES `NewsArticleRevisions` (`NewsArticleRevisionId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_NewsArticleFiles_NewsArticles_NewsArticleId` FOREIGN KEY (`NewsArticleId`) REFERENCES `NewsArticles` (`NewsArticleId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_NewsArticleFiles_StoredObjects_StoredObjectId` FOREIGN KEY (`StoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  KEY `IX_NewsArticleFiles_NewsArticleId_NewsArticleRevisionId_Kind` (`NewsArticleId`,`NewsArticleRevisionId`,`Kind`),
+  KEY `IX_NewsArticleFiles_NewsArticleRevisionId` (`NewsArticleRevisionId`),
+  PRIMARY KEY (`NewsArticleFileId`),
+  UNIQUE KEY `IX_NewsArticleFiles_StoredObjectId` (`StoredObjectId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsArticleIdentities`
+CREATE TABLE `NewsArticleIdentities` (
+  `FirstSeenAtUtc` datetime(6) NOT NULL,
+  `IdentityKeyHash` binary(32) NOT NULL,
+  `IdentityKey` varchar(2100) NOT NULL,
+  `Kind` tinyint(3) unsigned NOT NULL,
+  `LastSeenAtUtc` datetime(6) NOT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsArticleIdentityId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_NewsArticleIdentities_NewsArticles_NewsArticleId_NewsFeedId` FOREIGN KEY (`NewsArticleId`, `NewsFeedId`) REFERENCES `NewsArticles` (`NewsArticleId`, `NewsFeedId`) ON DELETE CASCADE,
+  KEY `IX_NewsArticleIdentities_NewsArticleId_NewsFeedId` (`NewsArticleId`,`NewsFeedId`),
+  PRIMARY KEY (`NewsArticleIdentityId`),
+  UNIQUE KEY `IX_NewsArticleIdentities_NewsFeedId_IdentityKeyHash` (`NewsFeedId`,`IdentityKeyHash`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsArticleImages`
+CREATE TABLE `NewsArticleImages` (
+  `AltText` varchar(512) DEFAULT NULL,
+  `Attempts` tinyint(3) unsigned NOT NULL,
+  `DeferredReason` tinyint(3) unsigned DEFAULT NULL,
+  `DisplayOrder` int(11) NOT NULL,
+  `Height` int(11) DEFAULT NULL,
+  `LastRequeuedAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseExpiresAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseOwner` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `NewsArticleFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsArticleImageId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NextAttemptAtUtc` datetime(6) DEFAULT NULL,
+  `Origin` tinyint(3) unsigned NOT NULL,
+  `Position` int(11) NOT NULL,
+  `SourceUrl` varchar(2048) NOT NULL,
+  `State` tinyint(3) unsigned NOT NULL,
+  `VerifiedAtUtc` datetime(6) DEFAULT NULL,
+  `Width` int(11) DEFAULT NULL,
+  CONSTRAINT `FK_NewsArticleImages_NewsArticleFiles_NewsArticleFileId` FOREIGN KEY (`NewsArticleFileId`) REFERENCES `NewsArticleFiles` (`NewsArticleFileId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_NewsArticleImages_NewsArticles_NewsArticleId` FOREIGN KEY (`NewsArticleId`) REFERENCES `NewsArticles` (`NewsArticleId`) ON DELETE CASCADE,
+  KEY `IX_NewsArticleImages_NewsArticleId_DisplayOrder` (`NewsArticleId`,`DisplayOrder`),
+  KEY `IX_NewsArticleImages_State_NextAttemptAtUtc` (`State`,`NextAttemptAtUtc`),
+  PRIMARY KEY (`NewsArticleImageId`),
+  UNIQUE KEY `IX_NewsArticleImages_NewsArticleFileId` (`NewsArticleFileId`),
+  UNIQUE KEY `IX_NewsArticleImages_NewsArticleId_Position` (`NewsArticleId`,`Position`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsArticleRevisions`
+CREATE TABLE `NewsArticleRevisions` (
+  `Author` varchar(256) DEFAULT NULL,
+  `BodyLength` int(11) NOT NULL,
+  `BodyOmittedReason` tinyint(3) unsigned DEFAULT NULL,
+  `ContentHash` binary(32) NOT NULL,
+  `IdentityHash` binary(32) NOT NULL,
+  `Link` varchar(2048) DEFAULT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsArticleRevisionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ReplacedAtUtc` datetime(6) NOT NULL,
+  `RevisionNumber` int(11) NOT NULL,
+  `Title` varchar(1024) NOT NULL,
+  `ValidFromUtc` datetime(6) NOT NULL,
+  CONSTRAINT `CK_NewsArticleRevisions_BodyOmittedReason` CHECK (`BodyOmittedReason` is null or `BodyOmittedReason` in (1,2)),
+  CONSTRAINT `FK_NewsArticleRevisions_NewsArticles_NewsArticleId` FOREIGN KEY (`NewsArticleId`) REFERENCES `NewsArticles` (`NewsArticleId`) ON DELETE CASCADE,
+  PRIMARY KEY (`NewsArticleRevisionId`),
+  UNIQUE KEY `IX_NewsArticleRevisions_NewsArticleId_RevisionNumber` (`NewsArticleId`,`RevisionNumber`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsArticles`
+CREATE TABLE `NewsArticles` (
+  `Author` varchar(256) DEFAULT NULL,
+  `BodyLength` int(11) NOT NULL,
+  `BodyOmittedReason` tinyint(3) unsigned DEFAULT NULL,
+  `Bucket` int(11) NOT NULL,
+  `ContentChangedAtUtc` datetime(6) DEFAULT NULL,
+  `ContentHash` binary(32) NOT NULL,
+  `Excerpt` varchar(300) NOT NULL,
+  `FeedKind` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `FeedUpdatedAtUtc` datetime(6) DEFAULT NULL,
+  `FeedVisible` tinyint(1) NOT NULL,
+  `FirstSeenAtUtc` datetime(6) NOT NULL,
+  `IdentityHash` binary(32) NOT NULL,
+  `IsRead` tinyint(1) NOT NULL,
+  `Language` varchar(35) DEFAULT NULL,
+  `LastSeenAtUtc` datetime(6) NOT NULL,
+  `LinkKeyHash` binary(32) DEFAULT NULL,
+  `Link` varchar(2048) DEFAULT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PublishedAtUtc` datetime(6) DEFAULT NULL,
+  `ReadAtUtc` datetime(6) DEFAULT NULL,
+  `RevisionCount` int(11) NOT NULL,
+  `SortAtUtc` datetime(6) NOT NULL,
+  `Title` varchar(1024) NOT NULL,
+  CONSTRAINT `CK_NewsArticles_BodyOmittedReason` CHECK (`BodyOmittedReason` is null or `BodyOmittedReason` in (1,2)),
+  CONSTRAINT `CK_NewsArticles_FeedKind` CHECK (`FeedKind` in (0,1)),
+  CONSTRAINT `CK_NewsArticles_ReadState` CHECK (`IsRead` = 0 and `ReadAtUtc` is null or `IsRead` = 1 and `ReadAtUtc` is not null),
+  CONSTRAINT `FK_NewsArticles_NewsFeeds_NewsFeedId` FOREIGN KEY (`NewsFeedId`) REFERENCES `NewsFeeds` (`NewsFeedId`) ON DELETE CASCADE,
+  FULLTEXT KEY `FT_NewsArticles_Title_Author_Excerpt` (`Title`,`Author`,`Excerpt`),
+  KEY `IX_NewsArticles_Feed_Read_FirstSeen` (`NewsFeedId`,`IsRead`,`FirstSeenAtUtc`),
+  KEY `IX_NewsArticles_Feed_Read_Sort` (`NewsFeedId`,`IsRead`,`SortAtUtc` DESC,`NewsArticleId`),
+  KEY `IX_NewsArticles_Kind_Sort` (`FeedKind`,`SortAtUtc` DESC,`NewsArticleId`),
+  KEY `IX_NewsArticles_Read_Visible_Sort` (`IsRead`,`FeedVisible`,`SortAtUtc` DESC,`NewsArticleId`),
+  KEY `IX_NewsArticles_Sort` (`SortAtUtc` DESC,`NewsArticleId`),
+  PRIMARY KEY (`NewsArticleId`),
+  UNIQUE KEY `AK_NewsArticles_NewsArticleId_NewsFeedId` (`NewsArticleId`,`NewsFeedId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsArticleTags`
+CREATE TABLE `NewsArticleTags` (
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsArticleTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `SortAtUtc` datetime(6) NOT NULL,
+  CONSTRAINT `FK_NewsArticleTags_NewsArticles_NewsArticleId` FOREIGN KEY (`NewsArticleId`) REFERENCES `NewsArticles` (`NewsArticleId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_NewsArticleTags_NewsTags_NewsTagId` FOREIGN KEY (`NewsTagId`) REFERENCES `NewsTags` (`NewsTagId`),
+  KEY `IX_NewsArticleTags_NewsTagId_NewsArticleId` (`NewsTagId`,`NewsArticleId`),
+  KEY `IX_NewsArticleTags_Tag_Sort` (`NewsTagId`,`SortAtUtc` DESC,`NewsArticleId`),
+  PRIMARY KEY (`NewsArticleTagId`),
+  UNIQUE KEY `IX_NewsArticleTags_NewsArticleId_NewsTagId` (`NewsArticleId`,`NewsTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsFeedBuckets`
+CREATE TABLE `NewsFeedBuckets` (
+  `ArticlesInBucket` int(11) NOT NULL,
+  `CurrentBucket` int(11) NOT NULL,
+  `NewsFeedBucketId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  CONSTRAINT `FK_NewsFeedBuckets_NewsFeeds_NewsFeedId` FOREIGN KEY (`NewsFeedId`) REFERENCES `NewsFeeds` (`NewsFeedId`) ON DELETE CASCADE,
+  PRIMARY KEY (`NewsFeedBucketId`),
+  UNIQUE KEY `IX_NewsFeedBuckets_NewsFeedId` (`NewsFeedId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsFeedCounters`
+CREATE TABLE `NewsFeedCounters` (
+  `ArticleCount` int(11) NOT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UnreadCount` int(11) NOT NULL,
+  CONSTRAINT `FK_NewsFeedCounters_NewsFeeds_NewsFeedId` FOREIGN KEY (`NewsFeedId`) REFERENCES `NewsFeeds` (`NewsFeedId`) ON DELETE CASCADE,
+  PRIMARY KEY (`NewsFeedId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsFeedCrashEvents`
+CREATE TABLE `NewsFeedCrashEvents` (
+  `DetectedAtUtc` datetime(6) NOT NULL,
+  `FeedsInFlight` int(11) NOT NULL,
+  `LeaseOwner` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsFeedCrashEventId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  KEY `IX_NewsFeedCrashEvents_DetectedAtUtc` (`DetectedAtUtc`),
+  PRIMARY KEY (`NewsFeedCrashEventId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsFeedFetchStates`
+CREATE TABLE `NewsFeedFetchStates` (
+  `ArticlesToday` int(11) NOT NULL,
+  `ConsecutiveFailures` int(11) NOT NULL,
+  `CrashSuspectCount` tinyint(3) unsigned NOT NULL,
+  `DailyQuotaDate` date DEFAULT NULL,
+  `Description` varchar(1024) DEFAULT NULL,
+  `ETag` varchar(256) DEFAULT NULL,
+  `FeedKindRewrittenAtUtc` datetime(6) DEFAULT NULL,
+  `FeedTtlMinutes` int(11) DEFAULT NULL,
+  `FetchFence` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Format` tinyint(3) unsigned NOT NULL,
+  `ImageBytesToday` bigint(20) NOT NULL,
+  `Language` varchar(35) DEFAULT NULL,
+  `LastBodySha256` binary(32) DEFAULT NULL,
+  `LastErrorAtUtc` datetime(6) DEFAULT NULL,
+  `LastErrorKind` tinyint(3) unsigned NOT NULL,
+  `LastErrorMessage` varchar(512) DEFAULT NULL,
+  `LastFetchAttemptAtUtc` datetime(6) DEFAULT NULL,
+  `LastHttpStatus` int(11) DEFAULT NULL,
+  `LastModified` varchar(64) DEFAULT NULL,
+  `LastSuccessAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseExpiresAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseOwner` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NextFetchAtUtc` datetime(6) NOT NULL,
+  `QuarantinedAtUtc` datetime(6) DEFAULT NULL,
+  `QuotaReachedAtUtc` datetime(6) DEFAULT NULL,
+  `QuotaReason` tinyint(3) unsigned DEFAULT NULL,
+  `RedirectedFromHttps` tinyint(1) NOT NULL,
+  `RefreshRequestedAtUtc` datetime(6) DEFAULT NULL,
+  `SiteUrl` varchar(2048) DEFAULT NULL,
+  `SuggestedUrl` varchar(2048) DEFAULT NULL,
+  `Title` varchar(256) DEFAULT NULL,
+  `ValidatorsResetRequestedAtUtc` datetime(6) DEFAULT NULL,
+  CONSTRAINT `CK_NewsFeedFetchStates_QuotaReason` CHECK (`QuotaReachedAtUtc` is null = (`QuotaReason` is null) and (`QuotaReason` is null or `QuotaReason` in (1,2))),
+  CONSTRAINT `FK_NewsFeedFetchStates_NewsFeeds_NewsFeedId` FOREIGN KEY (`NewsFeedId`) REFERENCES `NewsFeeds` (`NewsFeedId`) ON DELETE CASCADE,
+  KEY `IX_NewsFeedFetchStates_LeaseExpiresAtUtc` (`LeaseExpiresAtUtc`),
+  KEY `IX_NewsFeedFetchStates_QuarantinedAtUtc_NextFetchAtUtc` (`QuarantinedAtUtc`,`NextFetchAtUtc`),
+  KEY `IX_NewsFeedFetchStates_RefreshRequestedAtUtc` (`RefreshRequestedAtUtc`),
+  PRIMARY KEY (`NewsFeedId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsFeeds`
+CREATE TABLE `NewsFeeds` (
+  `ArchivedAtUtc` datetime(6) DEFAULT NULL,
+  `AutoDeleteAfterDays` int(11) NOT NULL DEFAULT 30,
+  `AutoDeleteChangedAtUtc` datetime(6) DEFAULT NULL,
+  `AutoDeleteEnabled` tinyint(1) NOT NULL DEFAULT 0,
+  `AutoDownload` tinyint(1) NOT NULL DEFAULT 0,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CustomTitle` varchar(256) DEFAULT NULL,
+  `DeletionRequestedAtUtc` datetime(6) DEFAULT NULL,
+  `DownloadImages` tinyint(1) NOT NULL,
+  `FetchIntervalMinutes` int(11) DEFAULT NULL,
+  `IsActive` tinyint(1) NOT NULL,
+  `KindChangedAtUtc` datetime(6) DEFAULT NULL,
+  `Kind` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `SettingsVersion` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UrlKeyHash` binary(32) NOT NULL,
+  `Url` varchar(2048) NOT NULL,
+  CONSTRAINT `CK_NewsFeeds_AutoDeleteDays` CHECK (`AutoDeleteAfterDays` between 1 and 3650),
+  CONSTRAINT `CK_NewsFeeds_Kind` CHECK (`Kind` in (0,1)),
+  PRIMARY KEY (`NewsFeedId`),
+  UNIQUE KEY `IX_NewsFeeds_UrlKeyHash` (`UrlKeyHash`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsFeedTags`
+CREATE TABLE `NewsFeedTags` (
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsFeedTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_NewsFeedTags_NewsFeeds_NewsFeedId` FOREIGN KEY (`NewsFeedId`) REFERENCES `NewsFeeds` (`NewsFeedId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_NewsFeedTags_NewsTags_NewsTagId` FOREIGN KEY (`NewsTagId`) REFERENCES `NewsTags` (`NewsTagId`),
+  KEY `IX_NewsFeedTags_NewsTagId_NewsFeedId` (`NewsTagId`,`NewsFeedId`),
+  PRIMARY KEY (`NewsFeedTagId`),
+  UNIQUE KEY `IX_NewsFeedTags_NewsFeedId_NewsTagId` (`NewsFeedId`,`NewsTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsHostThrottle`
+CREATE TABLE `NewsHostThrottle` (
+  `HostKeyHash` binary(32) NOT NULL,
+  `NextAllowedAtUtc` datetime(6) NOT NULL,
+  PRIMARY KEY (`HostKeyHash`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsStorageTotals`
+CREATE TABLE `NewsStorageTotals` (
+  `ArtworkBytes` bigint(20) NOT NULL DEFAULT 0,
+  `AudioBytes` bigint(20) NOT NULL DEFAULT 0,
+  `AudioPendingReleaseBytes` bigint(20) NOT NULL DEFAULT 0,
+  `AudioReservedBytes` bigint(20) NOT NULL DEFAULT 0,
+  `Id` tinyint(3) unsigned NOT NULL,
+  `ImageBytes` bigint(20) NOT NULL,
+  `TextAndSourceBytes` bigint(20) NOT NULL,
+  CONSTRAINT `CK_NewsStorageTotals_PodcastBytesNonNegative` CHECK (`AudioBytes` >= 0 and `AudioPendingReleaseBytes` >= 0 and `AudioReservedBytes` >= 0 and `ArtworkBytes` >= 0),
+  CONSTRAINT `CK_NewsStorageTotals_SingleRow` CHECK (`Id` = 1),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `NewsTags`
+CREATE TABLE `NewsTags` (
+  `ArchivedAtUtc` datetime(6) DEFAULT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `NameKey` varchar(64) NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `NewsTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  KEY `IX_NewsTags_ArchivedAtUtc` (`ArchivedAtUtc`),
+  PRIMARY KEY (`NewsTagId`),
+  UNIQUE KEY `IX_NewsTags_NameKey` (`NameKey`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `OrganizationDetails`
+CREATE TABLE `OrganizationDetails` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `DissolvedDate` date DEFAULT NULL,
+  `EstablishedDate` date DEFAULT NULL,
+  `LegalName` varchar(256) NOT NULL,
+  `OrganizationNumber` varchar(64) DEFAULT NULL,
+  `Website` varchar(2048) DEFAULT NULL,
+  CONSTRAINT `FK_OrganizationDetails_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  PRIMARY KEY (`ContactId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PersonDetails`
+CREATE TABLE `PersonDetails` (
+  `Company` varchar(256) DEFAULT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `DateOfBirth` date DEFAULT NULL,
+  `DateOfDeath` date DEFAULT NULL,
+  `FirstName` varchar(128) NOT NULL,
+  `LastName` varchar(128) NOT NULL,
+  `MiddleName` varchar(128) DEFAULT NULL,
+  `Sex` int(11) DEFAULT NULL,
+  `Title` varchar(128) DEFAULT NULL,
+  CONSTRAINT `FK_PersonDetails_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  PRIMARY KEY (`ContactId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhoneNumbers`
+CREATE TABLE `PhoneNumbers` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `IsPrimary` tinyint(1) NOT NULL,
+  `Label` int(11) NOT NULL,
+  `Value` varchar(32) NOT NULL,
+  CONSTRAINT `FK_PhoneNumbers_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  KEY `IX_PhoneNumbers_ContactId` (`ContactId`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoAlbumItems`
+CREATE TABLE `PhotoAlbumItems` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `PhotoAlbumId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoAlbumItemId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  CONSTRAINT `FK_PhotoAlbumItems_PhotoAlbums_PhotoAlbumId` FOREIGN KEY (`PhotoAlbumId`) REFERENCES `PhotoAlbums` (`PhotoAlbumId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PhotoAlbumItems_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  KEY `IX_PhotoAlbumItems_PhotoId` (`PhotoId`),
+  PRIMARY KEY (`PhotoAlbumItemId`),
+  UNIQUE KEY `IX_PhotoAlbumItems_PhotoAlbumId_PhotoId` (`PhotoAlbumId`,`PhotoId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoAlbums`
+CREATE TABLE `PhotoAlbums` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `CoverPhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(1024) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `Name` varchar(128) NOT NULL,
+  `PhotoAlbumId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `FK_PhotoAlbums_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_PhotoAlbums_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_PhotoAlbums_Photos_CoverPhotoId` FOREIGN KEY (`CoverPhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE SET NULL,
+  KEY `IX_PhotoAlbums_Archived` (`Archived`),
+  KEY `IX_PhotoAlbums_CoverPhotoId` (`CoverPhotoId`),
+  KEY `IX_PhotoAlbums_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_PhotoAlbums_Name` (`Name`),
+  KEY `IX_PhotoAlbums_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`PhotoAlbumId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoOriginalBuckets`
+CREATE TABLE `PhotoOriginalBuckets` (
+  `CurrentBucket` int(11) NOT NULL,
+  `PhotosWritten` int(11) NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `Year` int(11) NOT NULL,
+  CONSTRAINT `CK_PhotoOriginalBuckets_CurrentBucketPositive` CHECK (`CurrentBucket` >= 1),
+  CONSTRAINT `CK_PhotoOriginalBuckets_PhotosWrittenRange` CHECK (`PhotosWritten` between 0 and 10000),
+  PRIMARY KEY (`Year`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoPeople`
+CREATE TABLE `PhotoPeople` (
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoPersonId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_PhotoPeople_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PhotoPeople_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  KEY `IX_PhotoPeople_ContactId` (`ContactId`),
+  PRIMARY KEY (`PhotoPersonId`),
+  UNIQUE KEY `IX_PhotoPeople_PhotoId_ContactId` (`PhotoId`,`ContactId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Photos`
+CREATE TABLE `Photos` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Caption` varchar(2000) DEFAULT NULL,
+  `CapturedLatitude` double DEFAULT NULL,
+  `CapturedLongitude` double DEFAULT NULL,
+  `ContentType` varchar(256) NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Favourited` datetime(6) DEFAULT NULL,
+  `FileName` varchar(256) NOT NULL,
+  `LegacyFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `LocationName` varchar(256) DEFAULT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PixelHeight` int(11) DEFAULT NULL,
+  `PixelWidth` int(11) DEFAULT NULL,
+  `Sha256Hash` char(64) NOT NULL,
+  `SizeBytes` bigint(20) NOT NULL DEFAULT 0,
+  `StoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
+  `TakenAt` datetime(6) DEFAULT NULL,
+  `Title` varchar(200) DEFAULT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `FK_Photos_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Photos_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Photos_StoredObjects_StoredObjectId` FOREIGN KEY (`StoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  KEY `IX_Photos_Archived_TakenAt` (`Archived`,`TakenAt`),
+  KEY `IX_Photos_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Photos_Favourited` (`Favourited`),
+  KEY `IX_Photos_Sha256Hash_SizeBytes` (`Sha256Hash`,`SizeBytes`),
+  KEY `IX_Photos_TakenAt` (`TakenAt`),
+  KEY `IX_Photos_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`PhotoId`),
+  UNIQUE KEY `IX_Photos_LegacyFileId` (`LegacyFileId`),
+  UNIQUE KEY `IX_Photos_StoredObjectId` (`StoredObjectId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoTagLinks`
+CREATE TABLE `PhotoTagLinks` (
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoTagLinkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_PhotoTagLinks_PhotoTags_PhotoTagId` FOREIGN KEY (`PhotoTagId`) REFERENCES `PhotoTags` (`PhotoTagId`),
+  CONSTRAINT `FK_PhotoTagLinks_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  KEY `IX_PhotoTagLinks_PhotoTagId` (`PhotoTagId`),
+  PRIMARY KEY (`PhotoTagLinkId`),
+  UNIQUE KEY `IX_PhotoTagLinks_PhotoId_PhotoTagId` (`PhotoId`,`PhotoTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoTags`
+CREATE TABLE `PhotoTags` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `Name` varchar(64) NOT NULL,
+  `PhotoTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  KEY `IX_PhotoTags_Archived` (`Archived`),
+  PRIMARY KEY (`PhotoTagId`),
+  UNIQUE KEY `IX_PhotoTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoThumbnailBuckets`
+CREATE TABLE `PhotoThumbnailBuckets` (
+  `CurrentBucket` int(11) NOT NULL,
+  `Id` tinyint(3) unsigned NOT NULL,
+  `PhotosWritten` int(11) NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  CONSTRAINT `CK_PhotoThumbnailBuckets_CurrentBucketPositive` CHECK (`CurrentBucket` >= 1),
+  CONSTRAINT `CK_PhotoThumbnailBuckets_PhotosWrittenRange` CHECK (`PhotosWritten` between 0 and 10000),
+  CONSTRAINT `CK_PhotoThumbnailBuckets_Singleton` CHECK (`Id` = 1),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoThumbnailIncidents`
+CREATE TABLE `PhotoThumbnailIncidents` (
+  `Id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `Kind` tinyint(3) unsigned NOT NULL,
+  `OccurredAtUtc` datetime(6) NOT NULL,
+  `WorkerName` varchar(64) DEFAULT NULL,
+  CONSTRAINT `CK_PhotoThumbnailIncidents_KindRange` CHECK (`Kind` in (1,2,3)),
+  KEY `IX_PhotoThumbnailIncidents_OccurredAtUtc` (`OccurredAtUtc`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoThumbnailJobs`
+CREATE TABLE `PhotoThumbnailJobs` (
+  `AttemptedRecipeVersion` int(11) NOT NULL,
+  `Attempts` int(11) NOT NULL,
+  `FailureCode` varchar(32) DEFAULT NULL,
+  `Generation` int(11) NOT NULL,
+  `LastClaimedAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseExpiries` int(11) NOT NULL,
+  `LeaseUntilUtc` datetime(6) DEFAULT NULL,
+  `ManualRequeues` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `NextAttemptAtUtc` datetime(6) NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Priority` tinyint(3) unsigned NOT NULL,
+  `ReclaimIncidentId` bigint(20) DEFAULT NULL,
+  `ReclaimedRunId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `RerunRequested` tinyint(1) NOT NULL,
+  `RunId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `State` tinyint(3) unsigned NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  CONSTRAINT `CK_PhotoThumbnailJobs_AttemptsNonNegative` CHECK (`Attempts` >= 0),
+  CONSTRAINT `CK_PhotoThumbnailJobs_LeaseExpiriesNonNegative` CHECK (`LeaseExpiries` >= 0),
+  CONSTRAINT `CK_PhotoThumbnailJobs_LeaseWhenRunning` CHECK (`State` <> 1 or `LeaseUntilUtc` is not null),
+  CONSTRAINT `CK_PhotoThumbnailJobs_ManualRequeuesRange` CHECK (`ManualRequeues` in (0,1)),
+  CONSTRAINT `CK_PhotoThumbnailJobs_PriorityRange` CHECK (`Priority` in (0,1)),
+  CONSTRAINT `CK_PhotoThumbnailJobs_RunOnlyWhenRunning` CHECK (`State` = 1 or `RunId` is null and `RerunRequested` = 0),
+  CONSTRAINT `CK_PhotoThumbnailJobs_StateRange` CHECK (`State` in (0,1,2,3,4)),
+  CONSTRAINT `FK_PhotoThumbnailJobs_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  KEY `IX_PhotoThumbnailJobs_State_AttemptedRecipeVersion` (`State`,`AttemptedRecipeVersion`),
+  KEY `IX_PhotoThumbnailJobs_State_Priority_NextAttemptAtUtc` (`State`,`Priority`,`NextAttemptAtUtc`),
+  PRIMARY KEY (`PhotoId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoThumbnails`
+CREATE TABLE `PhotoThumbnails` (
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PhotoThumbnailId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PixelHeight` int(11) NOT NULL,
+  `PixelWidth` int(11) NOT NULL,
+  `RecipeVersion` int(11) NOT NULL,
+  `Size` tinyint(3) unsigned NOT NULL,
+  `StoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_PhotoThumbnails_PixelsPositive` CHECK (`PixelWidth` > 0 and `PixelHeight` > 0),
+  CONSTRAINT `CK_PhotoThumbnails_SizeRange` CHECK (`Size` in (1,2)),
+  CONSTRAINT `FK_PhotoThumbnails_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PhotoThumbnails_StoredObjects_StoredObjectId` FOREIGN KEY (`StoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  PRIMARY KEY (`PhotoThumbnailId`),
+  UNIQUE KEY `IX_PhotoThumbnails_PhotoId_Size` (`PhotoId`,`Size`),
+  UNIQUE KEY `IX_PhotoThumbnails_StoredObjectId` (`StoredObjectId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PhotoThumbnailWorkerHeartbeats`
+CREATE TABLE `PhotoThumbnailWorkerHeartbeats` (
+  `State` tinyint(3) unsigned NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `WorkerName` varchar(64) NOT NULL,
+  CONSTRAINT `CK_PhotoThumbnailWorkerHeartbeats_StateRange` CHECK (`State` in (0,1,2,3,4)),
+  KEY `IX_PhotoThumbnailWorkerHeartbeats_UpdatedAtUtc` (`UpdatedAtUtc`),
+  PRIMARY KEY (`WorkerName`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PodcastArtwork`
+CREATE TABLE `PodcastArtwork` (
+  `Attempts` tinyint(3) unsigned NOT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `DeferredReason` tinyint(3) unsigned DEFAULT NULL,
+  `Height` int(11) DEFAULT NULL,
+  `LeaseExpiresAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseOwner` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NextAttemptAtUtc` datetime(6) DEFAULT NULL,
+  `PodcastArtworkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RejectedReason` tinyint(3) unsigned DEFAULT NULL,
+  `RenderStartedAtUtc` datetime(6) DEFAULT NULL,
+  `SourceUrlKeyHash` binary(32) NOT NULL,
+  `SourceUrl` varchar(2048) NOT NULL,
+  `State` tinyint(3) unsigned NOT NULL,
+  `Width` int(11) DEFAULT NULL,
+  CONSTRAINT `CK_PodcastArtwork_DeferredReason` CHECK (`DeferredReason` is null or `DeferredReason` = 1),
+  CONSTRAINT `CK_PodcastArtwork_RejectedReason` CHECK (`RejectedReason` is null or `RejectedReason` in (1,2,3)),
+  CONSTRAINT `CK_PodcastArtwork_State` CHECK (`State` in (0,1,2,3,4)),
+  CONSTRAINT `FK_PodcastArtwork_NewsFeeds_NewsFeedId` FOREIGN KEY (`NewsFeedId`) REFERENCES `NewsFeeds` (`NewsFeedId`) ON DELETE CASCADE,
+  KEY `IX_PodcastArtwork_Queue` (`State`,`NextAttemptAtUtc`),
+  PRIMARY KEY (`PodcastArtworkId`),
+  UNIQUE KEY `UX_PodcastArtwork_Feed_Url` (`NewsFeedId`,`SourceUrlKeyHash`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PodcastArtworkFiles`
+CREATE TABLE `PodcastArtworkFiles` (
+  `ContentType` varchar(64) NOT NULL,
+  `Kind` tinyint(3) unsigned NOT NULL,
+  `PodcastArtworkFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PodcastArtworkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Sha256` binary(32) NOT NULL,
+  `SizeBytes` bigint(20) NOT NULL,
+  `StoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_PodcastArtworkFiles_Kind` CHECK (`Kind` in (1,2,3)),
+  CONSTRAINT `FK_PodcastArtworkFiles_PodcastArtwork_PodcastArtworkId` FOREIGN KEY (`PodcastArtworkId`) REFERENCES `PodcastArtwork` (`PodcastArtworkId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PodcastArtworkFiles_StoredObjects_StoredObjectId` FOREIGN KEY (`StoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  PRIMARY KEY (`PodcastArtworkFileId`),
+  UNIQUE KEY `IX_PodcastArtworkFiles_PodcastArtworkId_Kind` (`PodcastArtworkId`,`Kind`),
+  UNIQUE KEY `IX_PodcastArtworkFiles_StoredObjectId` (`StoredObjectId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PodcastArtworkIncidents`
+CREATE TABLE `PodcastArtworkIncidents` (
+  `DetectedAtUtc` datetime(6) NOT NULL,
+  `Kind` tinyint(3) unsigned NOT NULL,
+  `PodcastArtworkIncidentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_PodcastArtworkIncidents_Kind` CHECK (`Kind` in (1,2)),
+  KEY `IX_PodcastArtworkIncidents_DetectedAtUtc` (`DetectedAtUtc`),
+  PRIMARY KEY (`PodcastArtworkIncidentId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PodcastChapters`
+CREATE TABLE `PodcastChapters` (
+  `EndMs` bigint(20) DEFAULT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PodcastChapterId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  `Source` tinyint(3) unsigned NOT NULL,
+  `StartMs` bigint(20) NOT NULL,
+  `Title` varchar(256) NOT NULL,
+  `Url` varchar(2048) DEFAULT NULL,
+  CONSTRAINT `CK_PodcastChapters_Source` CHECK (`Source` in (1,2,3)),
+  CONSTRAINT `CK_PodcastChapters_Times` CHECK (`StartMs` between 0 and 604800000 and (`EndMs` is null or `EndMs` >= `StartMs` and `EndMs` <= 604800000)),
+  CONSTRAINT `FK_PodcastChapters_PodcastEpisodes_NewsArticleId` FOREIGN KEY (`NewsArticleId`) REFERENCES `PodcastEpisodes` (`NewsArticleId`) ON DELETE CASCADE,
+  PRIMARY KEY (`PodcastChapterId`),
+  UNIQUE KEY `UX_PodcastChapters_Episode_Source_Position` (`NewsArticleId`,`Source`,`Position`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PodcastEpisodeAudio`
+CREATE TABLE `PodcastEpisodeAudio` (
+  `Attempts` tinyint(3) unsigned NOT NULL,
+  `AudioFence` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ContentType` varchar(32) DEFAULT NULL,
+  `DeferredReason` tinyint(3) unsigned DEFAULT NULL,
+  `EnclosureHostKeyHash` binary(32) NOT NULL,
+  `FailureKind` tinyint(3) unsigned DEFAULT NULL,
+  `FeedDownloadGuard` varchar(36) CHARACTER SET ascii COLLATE ascii_general_ci GENERATED ALWAYS AS (if(`State` = 2,rtrim(`NewsFeedId`),NULL)) VIRTUAL,
+  `HostDownloadGuard` binary(32) GENERATED ALWAYS AS (if(`State` = 2,`EnclosureHostKeyHash`,NULL)) VIRTUAL,
+  `LastUserRequestAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseExpiresAtUtc` datetime(6) DEFAULT NULL,
+  `LeaseOwner` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NextAttemptAtUtc` datetime(6) DEFAULT NULL,
+  `RequestedAtUtc` datetime(6) DEFAULT NULL,
+  `RequestedBy` tinyint(3) unsigned DEFAULT NULL,
+  `ReservedBytes` bigint(20) NOT NULL,
+  `Sha256` binary(32) DEFAULT NULL,
+  `SizeBytes` bigint(20) DEFAULT NULL,
+  `State` tinyint(3) unsigned NOT NULL,
+  `StoredAtUtc` datetime(6) DEFAULT NULL,
+  `StoredObjectId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  CONSTRAINT `CK_PodcastEpisodeAudio_DeferredReason` CHECK (`DeferredReason` is null or `DeferredReason` in (1,2)),
+  CONSTRAINT `CK_PodcastEpisodeAudio_FailureKind` CHECK (`FailureKind` is null or `FailureKind` between 1 and 6),
+  CONSTRAINT `CK_PodcastEpisodeAudio_RequestedBy` CHECK (`RequestedBy` is null or `RequestedBy` in (1,2)),
+  CONSTRAINT `CK_PodcastEpisodeAudio_Sizes` CHECK (`ReservedBytes` >= 0 and (`SizeBytes` is null or `SizeBytes` >= 0)),
+  CONSTRAINT `CK_PodcastEpisodeAudio_State` CHECK (`State` in (0,1,2,3,4,5)),
+  CONSTRAINT `CK_PodcastEpisodeAudio_StoredHasObject` CHECK (`State` = 3 = (`StoredObjectId` is not null)),
+  CONSTRAINT `FK_PodcastEpisodeAudio_PodcastEpisodes_NewsArticleId` FOREIGN KEY (`NewsArticleId`) REFERENCES `PodcastEpisodes` (`NewsArticleId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PodcastEpisodeAudio_StoredObjects_StoredObjectId` FOREIGN KEY (`StoredObjectId`) REFERENCES `StoredObjects` (`Id`),
+  KEY `IX_PodcastEpisodeAudio_Feed_State` (`NewsFeedId`,`State`),
+  KEY `IX_PodcastEpisodeAudio_Lease` (`LeaseExpiresAtUtc`),
+  KEY `IX_PodcastEpisodeAudio_Queue` (`State`,`NextAttemptAtUtc`),
+  KEY `IX_PodcastEpisodeAudio_Stored` (`State`,`StoredAtUtc`),
+  PRIMARY KEY (`NewsArticleId`),
+  UNIQUE KEY `IX_PodcastEpisodeAudio_StoredObjectId` (`StoredObjectId`),
+  UNIQUE KEY `UX_PodcastEpisodeAudio_FeedDownloadGuard` (`FeedDownloadGuard`),
+  UNIQUE KEY `UX_PodcastEpisodeAudio_HostDownloadGuard` (`HostDownloadGuard`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PodcastEpisodes`
+CREATE TABLE `PodcastEpisodes` (
+  `ArtworkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ChaptersAttempts` tinyint(3) unsigned NOT NULL,
+  `ChaptersFetchState` tinyint(3) unsigned NOT NULL,
+  `ChaptersLeaseExpiresAtUtc` datetime(6) DEFAULT NULL,
+  `ChaptersLeaseOwner` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ChaptersNextAttemptAtUtc` datetime(6) DEFAULT NULL,
+  `ChaptersUrlKeyHash` binary(32) DEFAULT NULL,
+  `ChaptersUrl` varchar(2048) DEFAULT NULL,
+  `Description` varchar(4000) DEFAULT NULL,
+  `DurationSeconds` int(11) DEFAULT NULL,
+  `EnclosureDeclaredLength` bigint(20) DEFAULT NULL,
+  `EnclosureDeclaredType` varchar(64) DEFAULT NULL,
+  `EnclosureUrl` varchar(2048) NOT NULL,
+  `EpisodeHash` binary(32) NOT NULL,
+  `EpisodeNumber` int(11) DEFAULT NULL,
+  `EpisodeType` tinyint(3) unsigned NOT NULL,
+  `Explicit` tinyint(1) DEFAULT NULL,
+  `LastPlayedAtUtc` datetime(6) DEFAULT NULL,
+  `NewsArticleId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PlaybackPositionSeconds` int(11) DEFAULT NULL,
+  `SeasonNumber` int(11) DEFAULT NULL,
+  `SortAtUtc` datetime(6) NOT NULL,
+  CONSTRAINT `CK_PodcastEpisodes_ChaptersFetchState` CHECK (`ChaptersFetchState` in (0,1,2,3)),
+  CONSTRAINT `CK_PodcastEpisodes_EpisodeType` CHECK (`EpisodeType` in (0,1,2)),
+  CONSTRAINT `CK_PodcastEpisodes_Ranges` CHECK ((`DurationSeconds` is null or `DurationSeconds` between 0 and 604800) and (`SeasonNumber` is null or `SeasonNumber` between 0 and 100000) and (`EpisodeNumber` is null or `EpisodeNumber` between 0 and 100000) and (`EnclosureDeclaredLength` is null or `EnclosureDeclaredLength` >= 0) and (`PlaybackPositionSeconds` is null or `PlaybackPositionSeconds` >= 0)),
+  CONSTRAINT `FK_PodcastEpisodes_NewsArticles_NewsArticleId_NewsFeedId` FOREIGN KEY (`NewsArticleId`, `NewsFeedId`) REFERENCES `NewsArticles` (`NewsArticleId`, `NewsFeedId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PodcastEpisodes_PodcastArtwork_ArtworkId` FOREIGN KEY (`ArtworkId`) REFERENCES `PodcastArtwork` (`PodcastArtworkId`) ON DELETE SET NULL,
+  KEY `IX_PodcastEpisodes_ArtworkId` (`ArtworkId`),
+  KEY `IX_PodcastEpisodes_ChaptersQueue` (`ChaptersFetchState`,`ChaptersNextAttemptAtUtc`),
+  KEY `IX_PodcastEpisodes_Feed_Sort` (`NewsFeedId`,`SortAtUtc` DESC,`NewsArticleId`),
+  PRIMARY KEY (`NewsArticleId`),
+  UNIQUE KEY `IX_PodcastEpisodes_NewsArticleId_NewsFeedId` (`NewsArticleId`,`NewsFeedId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PodcastFeedDetails`
+CREATE TABLE `PodcastFeedDetails` (
+  `ArtworkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `ArtworkIncidentAtUtc` datetime(6) DEFAULT NULL,
+  `ArtworkIncidentCount` int(11) NOT NULL,
+  `Author` varchar(256) DEFAULT NULL,
+  `AutoDownloadDate` date DEFAULT NULL,
+  `AutoDownloadsToday` int(11) NOT NULL,
+  `BaselineAtUtc` datetime(6) DEFAULT NULL,
+  `Explicit` tinyint(1) DEFAULT NULL,
+  `NewsFeedId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PodcastType` tinyint(3) unsigned DEFAULT NULL,
+  CONSTRAINT `CK_PodcastFeedDetails_CountersNonNegative` CHECK (`AutoDownloadsToday` >= 0 and `ArtworkIncidentCount` >= 0),
+  CONSTRAINT `CK_PodcastFeedDetails_PodcastType` CHECK (`PodcastType` is null or `PodcastType` in (1,2)),
+  CONSTRAINT `FK_PodcastFeedDetails_NewsFeeds_NewsFeedId` FOREIGN KEY (`NewsFeedId`) REFERENCES `NewsFeeds` (`NewsFeedId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PodcastFeedDetails_PodcastArtwork_ArtworkId` FOREIGN KEY (`ArtworkId`) REFERENCES `PodcastArtwork` (`PodcastArtworkId`) ON DELETE SET NULL,
+  KEY `IX_PodcastFeedDetails_ArtworkId` (`ArtworkId`),
+  PRIMARY KEY (`NewsFeedId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Properties`
+CREATE TABLE `Properties` (
+  `AcquiredDate` datetime(6) DEFAULT NULL,
+  `Archived` datetime(6) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `Description` varchar(256) NOT NULL,
+  `DisposedDate` datetime(6) DEFAULT NULL,
+  `Name` varchar(256) NOT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Type` int(11) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  CONSTRAINT `FK_Properties_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_Properties_Archived` (`Archived`),
+  KEY `IX_Properties_CurrencyCode` (`CurrencyCode`),
+  KEY `IX_Properties_Type_Archived` (`Type`,`Archived`),
+  PRIMARY KEY (`PropertyId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PropertyEstimates`
+CREATE TABLE `PropertyEstimates` (
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CurrencyCode` varchar(3) DEFAULT NULL,
+  `EffectiveFrom` datetime(6) NOT NULL,
+  `Note` varchar(512) DEFAULT NULL,
+  `PropertyEstimateId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Value` decimal(18,6) NOT NULL,
+  CONSTRAINT `FK_PropertyEstimates_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  CONSTRAINT `FK_PropertyEstimates_Properties_PropertyId` FOREIGN KEY (`PropertyId`) REFERENCES `Properties` (`PropertyId`) ON DELETE CASCADE,
+  KEY `IX_PropertyEstimates_CurrencyCode` (`CurrencyCode`),
+  KEY `IX_PropertyEstimates_PropertyId_EffectiveFrom` (`PropertyId`,`EffectiveFrom`),
+  PRIMARY KEY (`PropertyEstimateId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PropertyFiles`
+CREATE TABLE `PropertyFiles` (
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileType` int(11) NOT NULL DEFAULT 0,
+  `IssuedAt` datetime(6) DEFAULT NULL,
+  `IssuedBy` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `PropertyFileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ValidFrom` datetime(6) DEFAULT NULL,
+  `ValidTo` datetime(6) DEFAULT NULL,
+  CONSTRAINT `FK_PropertyFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_PropertyFiles_Contacts_IssuedBy` FOREIGN KEY (`IssuedBy`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_PropertyFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PropertyFiles_Properties_PropertyId` FOREIGN KEY (`PropertyId`) REFERENCES `Properties` (`PropertyId`) ON DELETE CASCADE,
+  KEY `IX_PropertyFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_PropertyFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_PropertyFiles_FileMetadataId` (`FileMetadataId`),
+  KEY `IX_PropertyFiles_IssuedBy` (`IssuedBy`),
+  PRIMARY KEY (`PropertyFileId`),
+  UNIQUE KEY `IX_PropertyFiles_PropertyId_FileMetadataId` (`PropertyId`,`FileMetadataId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `PropertySmartTags`
+CREATE TABLE `PropertySmartTags` (
+  `AddedAt` datetime(6) NOT NULL,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_PropertySmartTags_Properties_PropertyId` FOREIGN KEY (`PropertyId`) REFERENCES `Properties` (`PropertyId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_PropertySmartTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`),
+  KEY `IX_PropertySmartTags_AddedAt` (`AddedAt`),
+  KEY `IX_PropertySmartTags_TransactionTagId` (`TransactionTagId`),
+  PRIMARY KEY (`PropertyId`,`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RealEstateDetails`
+CREATE TABLE `RealEstateDetails` (
+  `BuildYear` int(11) DEFAULT NULL,
+  `CadastralNumber` varchar(64) DEFAULT NULL,
+  `HomeownerAssociationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Kind` int(11) NOT NULL,
+  `LivingAreaSqm` decimal(18,2) DEFAULT NULL,
+  `LocationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `PlotAreaSqm` decimal(18,2) DEFAULT NULL,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_RealEstateDetails_Contacts_HomeownerAssociationId` FOREIGN KEY (`HomeownerAssociationId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_RealEstateDetails_Locations_LocationId` FOREIGN KEY (`LocationId`) REFERENCES `Locations` (`LocationId`),
+  CONSTRAINT `FK_RealEstateDetails_Properties_PropertyId` FOREIGN KEY (`PropertyId`) REFERENCES `Properties` (`PropertyId`) ON DELETE CASCADE,
+  KEY `IX_RealEstateDetails_HomeownerAssociationId` (`HomeownerAssociationId`),
+  KEY `IX_RealEstateDetails_LocationId` (`LocationId`),
+  PRIMARY KEY (`PropertyId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecipeAttachments`
+CREATE TABLE `RecipeAttachments` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecipeAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecipeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_RecipeAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_RecipeAttachments_Recipes_RecipeId` FOREIGN KEY (`RecipeId`) REFERENCES `Recipes` (`RecipeId`) ON DELETE CASCADE,
+  KEY `IX_RecipeAttachments_FileId` (`FileId`),
+  PRIMARY KEY (`RecipeAttachmentId`),
+  UNIQUE KEY `IX_RecipeAttachments_RecipeId_FileId` (`RecipeId`,`FileId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecipeIngredients`
+CREATE TABLE `RecipeIngredients` (
+  `AmountMax` decimal(12,3) DEFAULT NULL,
+  `Amount` decimal(12,3) DEFAULT NULL,
+  `Name` varchar(200) NOT NULL,
+  `Optional` tinyint(1) NOT NULL,
+  `Position` int(11) NOT NULL,
+  `Preparation` varchar(200) DEFAULT NULL,
+  `RecipeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecipeIngredientId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Section` varchar(64) DEFAULT NULL,
+  `Unit` int(11) NOT NULL,
+  CONSTRAINT `FK_RecipeIngredients_Recipes_RecipeId` FOREIGN KEY (`RecipeId`) REFERENCES `Recipes` (`RecipeId`) ON DELETE CASCADE,
+  KEY `IX_RecipeIngredients_RecipeId_Position` (`RecipeId`,`Position`),
+  PRIMARY KEY (`RecipeIngredientId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecipePhotos`
+CREATE TABLE `RecipePhotos` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  `RecipeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecipePhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_RecipePhotos_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_RecipePhotos_Recipes_RecipeId` FOREIGN KEY (`RecipeId`) REFERENCES `Recipes` (`RecipeId`) ON DELETE CASCADE,
+  KEY `IX_RecipePhotos_PhotoId` (`PhotoId`),
+  KEY `IX_RecipePhotos_RecipeId_Position` (`RecipeId`,`Position`),
+  PRIMARY KEY (`RecipePhotoId`),
+  UNIQUE KEY `IX_RecipePhotos_RecipeId_PhotoId` (`RecipeId`,`PhotoId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Recipes`
+CREATE TABLE `Recipes` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `CookMinutes` int(11) DEFAULT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `Description` varchar(1000) DEFAULT NULL,
+  `Notes` varchar(8000) DEFAULT NULL,
+  `PrepMinutes` int(11) DEFAULT NULL,
+  `RecipeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `ServingsLabel` varchar(32) DEFAULT NULL,
+  `Servings` int(11) NOT NULL,
+  `Source` varchar(500) DEFAULT NULL,
+  `Title` varchar(200) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `Version` int(11) NOT NULL,
+  CONSTRAINT `FK_Recipes_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Recipes_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_Recipes_Archived` (`Archived`),
+  KEY `IX_Recipes_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_Recipes_Title` (`Title`),
+  KEY `IX_Recipes_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`RecipeId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecipeSteps`
+CREATE TABLE `RecipeSteps` (
+  `Position` int(11) NOT NULL,
+  `RecipeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecipeStepId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Section` varchar(64) DEFAULT NULL,
+  `Text` varchar(4000) NOT NULL,
+  CONSTRAINT `FK_RecipeSteps_Recipes_RecipeId` FOREIGN KEY (`RecipeId`) REFERENCES `Recipes` (`RecipeId`) ON DELETE CASCADE,
+  KEY `IX_RecipeSteps_RecipeId_Position` (`RecipeId`,`Position`),
+  PRIMARY KEY (`RecipeStepId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecipeTagLinks`
+CREATE TABLE `RecipeTagLinks` (
+  `RecipeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecipeTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecipeTagLinkId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_RecipeTagLinks_RecipeTags_RecipeTagId` FOREIGN KEY (`RecipeTagId`) REFERENCES `RecipeTags` (`RecipeTagId`),
+  CONSTRAINT `FK_RecipeTagLinks_Recipes_RecipeId` FOREIGN KEY (`RecipeId`) REFERENCES `Recipes` (`RecipeId`) ON DELETE CASCADE,
+  KEY `IX_RecipeTagLinks_RecipeTagId` (`RecipeTagId`),
+  PRIMARY KEY (`RecipeTagLinkId`),
+  UNIQUE KEY `IX_RecipeTagLinks_RecipeId_RecipeTagId` (`RecipeId`,`RecipeTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecipeTags`
+CREATE TABLE `RecipeTags` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `Name` varchar(64) NOT NULL,
+  `RecipeTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  KEY `IX_RecipeTags_Archived` (`Archived`),
+  PRIMARY KEY (`RecipeTagId`),
+  UNIQUE KEY `IX_RecipeTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecurrenceExclusions`
+CREATE TABLE `RecurrenceExclusions` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `OccurrenceKey` datetime(6) NOT NULL,
+  `RecurrenceExclusionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecurrencePatternId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_RecurrenceExclusions_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_RecurrenceExclusions_RecurrencePatterns_RecurrencePatternId` FOREIGN KEY (`RecurrencePatternId`) REFERENCES `RecurrencePatterns` (`RecurrencePatternId`) ON DELETE CASCADE,
+  KEY `IX_RecurrenceExclusions_CreatedByUserId` (`CreatedByUserId`),
+  PRIMARY KEY (`RecurrenceExclusionId`),
+  UNIQUE KEY `IX_RecurrenceExclusions_RecurrencePatternId_OccurrenceKey` (`RecurrencePatternId`,`OccurrenceKey`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecurrencePatternAttachments`
+CREATE TABLE `RecurrencePatternAttachments` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `FileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecurrencePatternAttachmentId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecurrencePatternId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_RecurrencePatternAttachments_FileMetadata_FileId` FOREIGN KEY (`FileId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_RecurrencePatternAttachments_RecurrencePatterns_RecurrencePa~` FOREIGN KEY (`RecurrencePatternId`) REFERENCES `RecurrencePatterns` (`RecurrencePatternId`) ON DELETE CASCADE,
+  KEY `IX_RecurrencePatternAttachments_FileId` (`FileId`),
+  PRIMARY KEY (`RecurrencePatternAttachmentId`),
+  UNIQUE KEY `IX_RecurrencePatternAttachments_RecurrencePatternId_FileId` (`RecurrencePatternId`,`FileId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecurrencePatternPhotos`
+CREATE TABLE `RecurrencePatternPhotos` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `PhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Position` int(11) NOT NULL,
+  `RecurrencePatternId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RecurrencePatternPhotoId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_RecurrencePatternPhotos_Photos_PhotoId` FOREIGN KEY (`PhotoId`) REFERENCES `Photos` (`PhotoId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_RecurrencePatternPhotos_RecurrencePatterns_RecurrencePattern~` FOREIGN KEY (`RecurrencePatternId`) REFERENCES `RecurrencePatterns` (`RecurrencePatternId`) ON DELETE CASCADE,
+  KEY `IX_RecurrencePatternPhotos_PhotoId` (`PhotoId`),
+  PRIMARY KEY (`RecurrencePatternPhotoId`),
+  UNIQUE KEY `IX_RecurrencePatternPhotos_RecurrencePatternId_PhotoId` (`RecurrencePatternId`,`PhotoId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `RecurrencePatterns`
+CREATE TABLE `RecurrencePatterns` (
+  `CalendarId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `DayOfMonth` int(11) DEFAULT NULL,
+  `DaysOfWeek` int(11) DEFAULT NULL,
+  `Description` varchar(2000) DEFAULT NULL,
+  `EndDateTime` datetime(6) NOT NULL,
+  `ExternalUid` varchar(255) DEFAULT NULL,
+  `Frequency` int(11) NOT NULL,
+  `ImportSourceUid` varchar(255) DEFAULT NULL,
+  `Interval` int(11) NOT NULL,
+  `IsAllDay` tinyint(1) NOT NULL,
+  `KeysBackfilledAt` datetime(6) DEFAULT NULL,
+  `LocationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `Location` varchar(300) DEFAULT NULL,
+  `MonthOfYear` int(11) DEFAULT NULL,
+  `OccurrenceCount` int(11) DEFAULT NULL,
+  `RecurrenceEndDate` datetime(6) DEFAULT NULL,
+  `RecurrencePatternId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `StartDateTime` datetime(6) NOT NULL,
+  `TimeZoneId` varchar(64) DEFAULT NULL,
+  `Title` varchar(200) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `Version` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
+  CONSTRAINT `CK_RecurrencePatterns_AllDayHasNoZone` CHECK (`IsAllDay` = 0 or `TimeZoneId` is null),
+  CONSTRAINT `FK_RecurrencePatterns_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_RecurrencePatterns_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_RecurrencePatterns_Calendars_CalendarId` FOREIGN KEY (`CalendarId`) REFERENCES `Calendars` (`CalendarId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_RecurrencePatterns_Locations_LocationId` FOREIGN KEY (`LocationId`) REFERENCES `Locations` (`LocationId`),
+  KEY `IX_RecurrencePatterns_CalendarId_ExternalUid` (`CalendarId`,`ExternalUid`),
+  KEY `IX_RecurrencePatterns_CalendarId_ImportSourceUid` (`CalendarId`,`ImportSourceUid`),
+  KEY `IX_RecurrencePatterns_CalendarId` (`CalendarId`),
+  KEY `IX_RecurrencePatterns_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_RecurrencePatterns_LocationId` (`LocationId`),
+  KEY `IX_RecurrencePatterns_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`RecurrencePatternId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `StoredFileBuckets`
+CREATE TABLE `StoredFileBuckets` (
+  `CurrentBucket` int(11) NOT NULL,
+  `FeatureKey` varchar(64) NOT NULL,
+  `ObjectsWritten` int(11) NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `Year` int(11) NOT NULL,
+  CONSTRAINT `CK_StoredFileBuckets_CurrentBucketPositive` CHECK (`CurrentBucket` >= 1),
+  CONSTRAINT `CK_StoredFileBuckets_ObjectsWrittenRange` CHECK (`ObjectsWritten` between 0 and 10000),
+  PRIMARY KEY (`FeatureKey`,`Year`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `StoredObjects`
+CREATE TABLE `StoredObjects` (
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `DeleteImmediately` tinyint(1) NOT NULL,
+  `DeleteRequestedAtUtc` datetime(6) DEFAULT NULL,
+  `FeatureKey` varchar(64) NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `IntegrityFaultAtUtc` datetime(6) DEFAULT NULL,
+  `LastVerifiedAtUtc` datetime(6) DEFAULT NULL,
+  `RelativePath` varchar(512) NOT NULL,
+  `Sha256Hash` varchar(64) DEFAULT NULL,
+  `SizeBytes` bigint(20) NOT NULL,
+  `State` tinyint(3) unsigned NOT NULL,
+  `VolumeId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_StoredObjects_DeleteRequestedWhenPendingDelete` CHECK (`State` <> 2 or `DeleteRequestedAtUtc` is not null),
+  CONSTRAINT `CK_StoredObjects_HashUnlessPending` CHECK (`State` = 0 or `Sha256Hash` is not null),
+  CONSTRAINT `CK_StoredObjects_SizeNonNegative` CHECK (`SizeBytes` >= 0),
+  CONSTRAINT `CK_StoredObjects_StateRange` CHECK (`State` in (0,1,2)),
+  CONSTRAINT `FK_StoredObjects_FileStorageVolumes_VolumeId` FOREIGN KEY (`VolumeId`) REFERENCES `FileStorageVolumes` (`Id`),
+  KEY `IX_StoredObjects_State_CreatedAtUtc` (`State`,`CreatedAtUtc`),
+  KEY `IX_StoredObjects_State_DeleteRequestedAtUtc` (`State`,`DeleteRequestedAtUtc`),
+  KEY `IX_StoredObjects_State_LastVerifiedAtUtc` (`State`,`LastVerifiedAtUtc`),
+  KEY `IX_StoredObjects_VolumeId_FeatureKey_State_SizeBytes` (`VolumeId`,`FeatureKey`,`State`,`SizeBytes`),
+  KEY `IX_StoredObjects_VolumeId_IntegrityFaultAtUtc` (`VolumeId`,`IntegrityFaultAtUtc`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_StoredObjects_VolumeId_RelativePath` (`VolumeId`,`RelativePath`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `SystemSettings`
+CREATE TABLE `SystemSettings` (
+  `Key` varchar(100) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedBy` varchar(255) DEFAULT NULL,
+  `Value` varchar(4000) NOT NULL,
+  PRIMARY KEY (`Key`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `SystemSettingSecrets`
+CREATE TABLE `SystemSettingSecrets` (
+  `Ciphertext` varchar(6000) NOT NULL,
+  `Key` varchar(100) NOT NULL,
+  `ProtectionScheme` varchar(32) NOT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedBy` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Key`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TaxStatementFiles`
+CREATE TABLE `TaxStatementFiles` (
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `FileType` int(11) NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TaxStatementId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_TaxStatementFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_TaxStatementFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_TaxStatementFiles_TaxStatements_TaxStatementId` FOREIGN KEY (`TaxStatementId`) REFERENCES `TaxStatements` (`TaxStatementId`) ON DELETE CASCADE,
+  KEY `IX_TaxStatementFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_TaxStatementFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_TaxStatementFiles_FileMetadataId` (`FileMetadataId`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TaxStatementFiles_TaxStatementId_FileMetadataId` (`TaxStatementId`,`FileMetadataId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TaxStatements`
+CREATE TABLE `TaxStatements` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `AssessedTax` decimal(18,6) DEFAULT NULL,
+  `BaseCurrencyCode` varchar(3) NOT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `DeclaredNetWorth` decimal(18,6) DEFAULT NULL,
+  `DeclaredTotalAssets` decimal(18,6) DEFAULT NULL,
+  `DeclaredTotalIncome` decimal(18,6) DEFAULT NULL,
+  `DeclaredTotalLiabilities` decimal(18,6) DEFAULT NULL,
+  `EndDate` datetime(6) NOT NULL,
+  `FiledAtUtc` datetime(6) DEFAULT NULL,
+  `FiscalYear` int(11) NOT NULL,
+  `Name` varchar(64) NOT NULL,
+  `Notes` varchar(1024) DEFAULT NULL,
+  `SettledAtUtc` datetime(6) DEFAULT NULL,
+  `SettlementAmount` decimal(18,6) DEFAULT NULL,
+  `SettlementEndDate` datetime(6) DEFAULT NULL,
+  `SettlementStartDate` datetime(6) DEFAULT NULL,
+  `StartDate` datetime(6) NOT NULL,
+  `StatusChangedAt` datetime(6) NOT NULL,
+  `StatusComment` varchar(256) DEFAULT NULL,
+  `Status` int(11) NOT NULL DEFAULT 0,
+  `TaxOfficeApprovedAtUtc` datetime(6) DEFAULT NULL,
+  `TaxStatementId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_TaxStatements_Currencies_BaseCurrencyCode` FOREIGN KEY (`BaseCurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_TaxStatements_Archived` (`Archived`),
+  KEY `IX_TaxStatements_BaseCurrencyCode` (`BaseCurrencyCode`),
+  KEY `IX_TaxStatements_FiscalYear` (`FiscalYear`),
+  PRIMARY KEY (`TaxStatementId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TaxStatementTags`
+CREATE TABLE `TaxStatementTags` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Role` int(11) NOT NULL,
+  `TaxStatementId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_TaxStatementTags_TaxStatements_TaxStatementId` FOREIGN KEY (`TaxStatementId`) REFERENCES `TaxStatements` (`TaxStatementId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_TaxStatementTags_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`),
+  KEY `IX_TaxStatementTags_TransactionTagId` (`TransactionTagId`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TaxStatementTags_TaxStatementId_TransactionTagId_Role` (`TaxStatementId`,`TransactionTagId`,`Role`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Terms`
+CREATE TABLE `Terms` (
+  `AnchorDate` datetime(6) DEFAULT NULL,
+  `ContractId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `CreatedAtUtc` datetime(6) NOT NULL,
+  `CurrencyCode` varchar(3) DEFAULT NULL,
+  `DateTimeValue` datetime(6) DEFAULT NULL,
+  `Direction` int(11) NOT NULL DEFAULT 0,
+  `EffectiveFrom` datetime(6) NOT NULL,
+  `IntervalCount` int(11) DEFAULT NULL,
+  `Interval` int(11) DEFAULT NULL,
+  `LabelKey` varchar(64) DEFAULT NULL,
+  `Label` varchar(64) DEFAULT NULL,
+  `Note` varchar(512) DEFAULT NULL,
+  `TermId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TextValue` varchar(256) DEFAULT NULL,
+  `ValueUnit` int(11) NOT NULL,
+  `Value` decimal(18,6) DEFAULT NULL,
+  CONSTRAINT `CK_Terms_ValueMatchesUnit` CHECK (`ValueUnit` in (0,1) and `Value` is not null and `TextValue` is null and `DateTimeValue` is null or `ValueUnit` = 2 and `Value` is null and `TextValue` is not null and `DateTimeValue` is null or `ValueUnit` = 3 and `Value` is null and `TextValue` is null and `DateTimeValue` is not null),
+  CONSTRAINT `FK_Terms_Contracts_ContractId` FOREIGN KEY (`ContractId`) REFERENCES `Contracts` (`ContractId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_Terms_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_Terms_ContractId_LabelKey_EffectiveFrom` (`ContractId`,`LabelKey`,`EffectiveFrom`),
+  KEY `IX_Terms_CurrencyCode` (`CurrencyCode`),
+  PRIMARY KEY (`TermId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TermsOfServiceAcceptances`
+CREATE TABLE `TermsOfServiceAcceptances` (
+  `Accepted` tinyint(1) NOT NULL,
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `RespondedAt` datetime(6) NOT NULL,
+  `TermsOfServiceVersionId` int(11) NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  CONSTRAINT `FK_TermsOfServiceAcceptances_TermsOfServiceVersions_TermsOfServ~` FOREIGN KEY (`TermsOfServiceVersionId`) REFERENCES `TermsOfServiceVersions` (`Id`),
+  KEY `IX_TermsOfServiceAcceptances_TermsOfServiceVersionId` (`TermsOfServiceVersionId`),
+  KEY `IX_TermsOfServiceAcceptances_UserId_TermsOfServiceVersionId_Res~` (`UserId`,`TermsOfServiceVersionId`,`RespondedAt`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TermsOfServiceVersions`
+CREATE TABLE `TermsOfServiceVersions` (
+  `Content` longtext NOT NULL,
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `PublishedAt` datetime(6) NOT NULL,
+  `PublishedByUserId` varchar(255) DEFAULT NULL,
+  CONSTRAINT `FK_TermsOfServiceVersions_AspNetUsers_PublishedByUserId` FOREIGN KEY (`PublishedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_TermsOfServiceVersions_PublishedByUserId` (`PublishedByUserId`),
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TransactionFiles`
+CREATE TABLE `TransactionFiles` (
+  `AttachedAtUtc` datetime(6) NOT NULL,
+  `AttachedByUserId` varchar(255) DEFAULT NULL,
+  `FileMetadataId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Type` int(11) NOT NULL DEFAULT 2,
+  CONSTRAINT `CK_TransactionFiles_Type_AllowedValues` CHECK (`Type` in (0,1,2,3,4,5,6)),
+  CONSTRAINT `FK_TransactionFiles_AspNetUsers_AttachedByUserId` FOREIGN KEY (`AttachedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_TransactionFiles_FileMetadata_FileMetadataId` FOREIGN KEY (`FileMetadataId`) REFERENCES `FileMetadata` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_TransactionFiles_Transactions_TransactionId` FOREIGN KEY (`TransactionId`) REFERENCES `Transactions` (`TransactionId`) ON DELETE CASCADE,
+  KEY `IX_TransactionFiles_AttachedAtUtc` (`AttachedAtUtc`),
+  KEY `IX_TransactionFiles_AttachedByUserId` (`AttachedByUserId`),
+  KEY `IX_TransactionFiles_FileMetadataId` (`FileMetadataId`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TransactionFiles_TransactionId_FileMetadataId` (`TransactionId`,`FileMetadataId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `Transactions`
+CREATE TABLE `Transactions` (
+  `AccountId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Amount` decimal(18,6) NOT NULL,
+  `ContactId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `CurrencyCode` varchar(3) NOT NULL,
+  `Description` varchar(256) NOT NULL,
+  `ExternalId` varchar(64) DEFAULT NULL,
+  `ExtraData` varchar(1024) DEFAULT NULL,
+  `InternalId` varchar(64) DEFAULT NULL,
+  `StatusChangedAt` datetime(6) NOT NULL,
+  `StatusComment` varchar(256) DEFAULT NULL,
+  `Status` int(11) NOT NULL,
+  `TimeStamp` datetime(6) NOT NULL,
+  `TransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_Transactions_Accounts_AccountId` FOREIGN KEY (`AccountId`) REFERENCES `Accounts` (`AccountId`) ON DELETE CASCADE,
+  CONSTRAINT `FK_Transactions_Contacts_ContactId` FOREIGN KEY (`ContactId`) REFERENCES `Contacts` (`ContactId`) ON DELETE SET NULL,
+  CONSTRAINT `FK_Transactions_Currencies_CurrencyCode` FOREIGN KEY (`CurrencyCode`) REFERENCES `Currencies` (`CurrencyCode`),
+  KEY `IX_Transactions_AccountId_TimeStamp_Amount` (`AccountId`,`TimeStamp`,`Amount`),
+  KEY `IX_Transactions_ContactId_TimeStamp` (`ContactId`,`TimeStamp`),
+  KEY `IX_Transactions_CurrencyCode` (`CurrencyCode`),
+  KEY `IX_Transactions_Status` (`Status`),
+  KEY `IX_Transactions_TimeStamp` (`TimeStamp`),
+  PRIMARY KEY (`TransactionId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TransactionTagLinks`
+CREATE TABLE `TransactionTagLinks` (
+  `Id` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_TransactionTagLinks_TransactionTags_TransactionTagId` FOREIGN KEY (`TransactionTagId`) REFERENCES `TransactionTags` (`TransactionTagId`),
+  CONSTRAINT `FK_TransactionTagLinks_Transactions_TransactionId` FOREIGN KEY (`TransactionId`) REFERENCES `Transactions` (`TransactionId`) ON DELETE CASCADE,
+  KEY `IX_TransactionTagLinks_TransactionTagId` (`TransactionTagId`),
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `IX_TransactionTagLinks_TransactionId_TransactionTagId` (`TransactionId`,`TransactionTagId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `TransactionTags`
+CREATE TABLE `TransactionTags` (
+  `Archived` datetime(6) DEFAULT NULL,
+  `Color` varchar(7) DEFAULT NULL,
+  `Description` varchar(256) DEFAULT NULL,
+  `Icon` varchar(64) DEFAULT NULL,
+  `Name` varchar(64) NOT NULL,
+  `TransactionTagId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  KEY `IX_TransactionTags_Archived` (`Archived`),
+  PRIMARY KEY (`TransactionTagId`),
+  UNIQUE KEY `IX_TransactionTags_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `UserPreferences`
+CREATE TABLE `UserPreferences` (
+  `Key` varchar(255) NOT NULL,
+  `PreferencesJson` varchar(4096) DEFAULT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  `UserPreferenceId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_UserPreferences_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE,
+  PRIMARY KEY (`UserPreferenceId`),
+  UNIQUE KEY `IX_UserPreferences_UserId_Key` (`UserId`,`Key`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `UserProfileImageBlobs`
+CREATE TABLE `UserProfileImageBlobs` (
+  `Content` longblob NOT NULL,
+  `UserProfileImageId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_UserProfileImageBlobs_UserProfileImages_UserProfileImageId` FOREIGN KEY (`UserProfileImageId`) REFERENCES `UserProfileImages` (`UserProfileImageId`) ON DELETE CASCADE,
+  PRIMARY KEY (`UserProfileImageId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `UserProfileImages`
+CREATE TABLE `UserProfileImages` (
+  `ContentType` varchar(64) NOT NULL,
+  `Height` int(11) NOT NULL,
+  `ImageVersion` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Sha256Hash` varchar(64) NOT NULL,
+  `SizeBytes` bigint(20) NOT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `UploadedAtUtc` datetime(6) NOT NULL,
+  `UserId` varchar(255) NOT NULL,
+  `UserProfileImageId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `Width` int(11) NOT NULL,
+  CONSTRAINT `FK_UserProfileImages_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE,
+  PRIMARY KEY (`UserProfileImageId`),
+  UNIQUE KEY `IX_UserProfileImages_UserId` (`UserId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `UserProfiles`
+CREATE TABLE `UserProfiles` (
+  `BirthDate` date DEFAULT NULL,
+  `DisplayName` varchar(256) DEFAULT NULL,
+  `FirstName` varchar(128) DEFAULT NULL,
+  `LastName` varchar(128) DEFAULT NULL,
+  `MiddleName` varchar(128) DEFAULT NULL,
+  `Sex` int(11) DEFAULT NULL,
+  `Title` varchar(128) DEFAULT NULL,
+  `UserId` varchar(255) NOT NULL,
+  `UserProfileId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_UserProfiles_AspNetUsers_UserId` FOREIGN KEY (`UserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE CASCADE,
+  PRIMARY KEY (`UserProfileId`),
+  UNIQUE KEY `IX_UserProfiles_UserId` (`UserId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `VehicleDetails`
+CREATE TABLE `VehicleDetails` (
+  `FirstRegisteredDate` datetime(6) DEFAULT NULL,
+  `Kind` int(11) NOT NULL,
+  `Make` varchar(64) DEFAULT NULL,
+  `ModelYear` int(11) DEFAULT NULL,
+  `Model` varchar(64) DEFAULT NULL,
+  `PropertyId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `RegistrationNumber` varchar(16) DEFAULT NULL,
+  `Vin` varchar(32) DEFAULT NULL,
+  CONSTRAINT `FK_VehicleDetails_Properties_PropertyId` FOREIGN KEY (`PropertyId`) REFERENCES `Properties` (`PropertyId`) ON DELETE CASCADE,
+  PRIMARY KEY (`PropertyId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherDays`
+CREATE TABLE `WeatherDays` (
+  `ForecastCoverageHours` int(11) DEFAULT NULL,
+  `ForecastIssuedAtUtc` datetime(6) DEFAULT NULL,
+  `ForecastMaxTempC` decimal(4,1) DEFAULT NULL,
+  `ForecastMaxWindGustMps` decimal(4,1) DEFAULT NULL,
+  `ForecastMeanWindSpeedMps` decimal(4,1) DEFAULT NULL,
+  `ForecastMinTempC` decimal(4,1) DEFAULT NULL,
+  `ForecastPrecipitationMm` decimal(5,1) DEFAULT NULL,
+  `ForecastSiteVersion` int(11) DEFAULT NULL,
+  `ForecastSymbolCode` varchar(48) DEFAULT NULL,
+  `LocalDate` date NOT NULL,
+  `ObservedFetchedAtUtc` datetime(6) DEFAULT NULL,
+  `ObservedMaxTempC` decimal(4,1) DEFAULT NULL,
+  `ObservedMaxWindGustMps` decimal(4,1) DEFAULT NULL,
+  `ObservedMeanTempC` decimal(4,1) DEFAULT NULL,
+  `ObservedMeanWindSpeedMps` decimal(4,1) DEFAULT NULL,
+  `ObservedMinTempC` decimal(4,1) DEFAULT NULL,
+  `ObservedPrecipitationMm` decimal(5,1) DEFAULT NULL,
+  `ObservedSiteVersion` int(11) DEFAULT NULL,
+  `UpdatedAtUtc` datetime(6) NOT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_WeatherDays_HasData` CHECK (`ForecastCoverageHours` is not null or `ObservedFetchedAtUtc` is not null),
+  CONSTRAINT `FK_WeatherDays_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`),
+  PRIMARY KEY (`WeatherPointId`,`LocalDate`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherForecastRuns`
+CREATE TABLE `WeatherForecastRuns` (
+  `AltitudeMeters` int(11) DEFAULT NULL,
+  `ExpiresAtUtc` datetime(6) DEFAULT NULL,
+  `FetchedAtUtc` datetime(6) NOT NULL,
+  `Latitude` decimal(6,3) NOT NULL,
+  `Longitude` decimal(7,3) NOT NULL,
+  `ProviderUpdatedAt` datetime(6) NOT NULL,
+  `Provider` int(11) NOT NULL,
+  `SiteVersion` int(11) NOT NULL,
+  `WeatherForecastRunId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_WeatherForecastRuns_ProviderKnown` CHECK (`Provider` = 1),
+  CONSTRAINT `FK_WeatherForecastRuns_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`),
+  PRIMARY KEY (`WeatherForecastRunId`),
+  UNIQUE KEY `IX_WeatherForecastRuns_WeatherPointId_SiteVersion_ProviderUpdat~` (`WeatherPointId`,`SiteVersion`,`ProviderUpdatedAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherForecastSteps`
+CREATE TABLE `WeatherForecastSteps` (
+  `AirPressureHpa` decimal(5,1) DEFAULT NULL,
+  `AirTemperatureC` decimal(4,1) DEFAULT NULL,
+  `CloudAreaFractionPct` decimal(4,1) DEFAULT NULL,
+  `PeriodHours` tinyint(3) unsigned NOT NULL,
+  `PrecipitationMm` decimal(5,1) DEFAULT NULL,
+  `PrecipitationProbabilityPct` decimal(4,1) DEFAULT NULL,
+  `RelativeHumidityPct` decimal(4,1) DEFAULT NULL,
+  `RunFetchedAtUtc` datetime(6) NOT NULL,
+  `RunProviderUpdatedAt` datetime(6) NOT NULL,
+  `SiteVersion` int(11) NOT NULL,
+  `SymbolCode` varchar(48) DEFAULT NULL,
+  `TempMaxC` decimal(4,1) DEFAULT NULL,
+  `TempMinC` decimal(4,1) DEFAULT NULL,
+  `TimeUtc` datetime(6) NOT NULL,
+  `UvIndexClearSky` decimal(3,1) DEFAULT NULL,
+  `WeatherForecastRunId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `WeatherForecastStepId` bigint(20) NOT NULL AUTO_INCREMENT,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `WindFromDirectionDeg` decimal(4,1) DEFAULT NULL,
+  `WindGustMps` decimal(4,1) DEFAULT NULL,
+  `WindSpeedMps` decimal(4,1) DEFAULT NULL,
+  CONSTRAINT `FK_WeatherForecastSteps_WeatherForecastRuns_WeatherForecastRunId` FOREIGN KEY (`WeatherForecastRunId`) REFERENCES `WeatherForecastRuns` (`WeatherForecastRunId`) ON DELETE CASCADE,
+  KEY `IX_WeatherForecastSteps_WeatherPointId_TimeUtc_SiteVersion_RunP~` (`WeatherPointId`,`TimeUtc`,`SiteVersion`,`RunProviderUpdatedAt`,`RunFetchedAtUtc`),
+  PRIMARY KEY (`WeatherForecastStepId`),
+  UNIQUE KEY `IX_WeatherForecastSteps_WeatherForecastRunId_TimeUtc` (`WeatherForecastRunId`,`TimeUtc`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherObservationCoverages`
+CREATE TABLE `WeatherObservationCoverages` (
+  `FromDate` date NOT NULL,
+  `SiteVersion` int(11) NOT NULL,
+  `ToDate` date NOT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_WeatherObservationCoverages_Order` CHECK (`ToDate` >= `FromDate`),
+  CONSTRAINT `FK_WeatherObservationCoverages_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`) ON DELETE CASCADE,
+  PRIMARY KEY (`WeatherPointId`,`SiteVersion`,`FromDate`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherObservations`
+CREATE TABLE `WeatherObservations` (
+  `FetchedAtUtc` datetime(6) NOT NULL,
+  `LocalDate` date NOT NULL,
+  `MaxTempC` decimal(4,1) DEFAULT NULL,
+  `MaxWindGustMps` decimal(4,1) DEFAULT NULL,
+  `MeanTempC` decimal(4,1) DEFAULT NULL,
+  `MeanWindSpeedMps` decimal(4,1) DEFAULT NULL,
+  `MinTempC` decimal(4,1) DEFAULT NULL,
+  `PrecipitationMm` decimal(5,1) DEFAULT NULL,
+  `PrecipitationStationId` varchar(32) DEFAULT NULL,
+  `Provider` int(11) NOT NULL,
+  `SiteVersion` int(11) NOT NULL,
+  `TemperatureStationId` varchar(32) DEFAULT NULL,
+  `WeatherObservationId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `WindStationId` varchar(32) DEFAULT NULL,
+  CONSTRAINT `FK_WeatherObservations_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`),
+  KEY `IX_WeatherObservations_WeatherPointId_LocalDate_SiteVersion_Fet~` (`WeatherPointId`,`LocalDate`,`SiteVersion`,`FetchedAtUtc`),
+  PRIMARY KEY (`WeatherObservationId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherPointHistoryWindows`
+CREATE TABLE `WeatherPointHistoryWindows` (
+  `FromDate` date NOT NULL,
+  `ToDate` date DEFAULT NULL,
+  `WeatherPointHistoryWindowId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_WeatherPointHistoryWindows_Order` CHECK (`ToDate` is null or `ToDate` >= `FromDate`),
+  CONSTRAINT `FK_WeatherPointHistoryWindows_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`) ON DELETE CASCADE,
+  PRIMARY KEY (`WeatherPointHistoryWindowId`),
+  UNIQUE KEY `IX_WeatherPointHistoryWindows_WeatherPointId_FromDate` (`WeatherPointId`,`FromDate`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherPoints`
+CREATE TABLE `WeatherPoints` (
+  `CreatedAt` datetime(6) NOT NULL,
+  `CreatedByUserId` varchar(255) DEFAULT NULL,
+  `CurrentSiteVersion` int(11) NOT NULL,
+  `EnabledAt` datetime(6) NOT NULL,
+  `ForecastEnabled` tinyint(1) NOT NULL,
+  `HistoryEnabled` tinyint(1) NOT NULL,
+  `IsTracked` tinyint(1) NOT NULL,
+  `Name` varchar(256) NOT NULL,
+  `PurgeMode` int(11) DEFAULT NULL,
+  `PurgeStartedAt` datetime(6) DEFAULT NULL,
+  `SettingsVersion` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `StationResolvedAtUtc` datetime(6) DEFAULT NULL,
+  `UpdatedAt` datetime(6) NOT NULL,
+  `UpdatedByUserId` varchar(255) DEFAULT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_WeatherPoints_CurrentSiteVersionPositive` CHECK (`CurrentSiteVersion` >= 1),
+  CONSTRAINT `CK_WeatherPoints_PurgeModeWithFence` CHECK (`PurgeStartedAt` is null = (`PurgeMode` is null)),
+  CONSTRAINT `FK_WeatherPoints_AspNetUsers_CreatedByUserId` FOREIGN KEY (`CreatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_WeatherPoints_AspNetUsers_UpdatedByUserId` FOREIGN KEY (`UpdatedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  KEY `IX_WeatherPoints_CreatedByUserId` (`CreatedByUserId`),
+  KEY `IX_WeatherPoints_UpdatedByUserId` (`UpdatedByUserId`),
+  PRIMARY KEY (`WeatherPointId`),
+  UNIQUE KEY `IX_WeatherPoints_Name` (`Name`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherPointSchedules`
+CREATE TABLE `WeatherPointSchedules` (
+  `ForecastConsecutiveFailures` int(11) NOT NULL,
+  `ForecastExpiresAtUtc` datetime(6) DEFAULT NULL,
+  `ForecastFailureKind` int(11) DEFAULT NULL,
+  `ForecastLastModified` varchar(64) DEFAULT NULL,
+  `LastForecastSuccessUtc` datetime(6) DEFAULT NULL,
+  `LastObservationSuccessUtc` datetime(6) DEFAULT NULL,
+  `LeaseUntilUtc` datetime(6) DEFAULT NULL,
+  `NextForecastFetchAfterUtc` datetime(6) DEFAULT NULL,
+  `NextObservationFetchAfterUtc` datetime(6) DEFAULT NULL,
+  `ObservationConsecutiveFailures` int(11) NOT NULL,
+  `ObservationFailureKind` int(11) DEFAULT NULL,
+  `ObservationsCheckedThroughDate` date DEFAULT NULL,
+  `Version` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `FK_WeatherPointSchedules_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`) ON DELETE CASCADE,
+  PRIMARY KEY (`WeatherPointId`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherPointSites`
+CREATE TABLE `WeatherPointSites` (
+  `AltitudeMeters` int(11) DEFAULT NULL,
+  `AppliedAt` datetime(6) NOT NULL,
+  `AppliedByUserId` varchar(255) DEFAULT NULL,
+  `Latitude` decimal(6,3) NOT NULL,
+  `Longitude` decimal(7,3) NOT NULL,
+  `SiteVersion` int(11) NOT NULL,
+  `TimeZoneId` varchar(64) NOT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_WeatherPointSites_VersionPositive` CHECK (`SiteVersion` >= 1),
+  CONSTRAINT `FK_WeatherPointSites_AspNetUsers_AppliedByUserId` FOREIGN KEY (`AppliedByUserId`) REFERENCES `AspNetUsers` (`Id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_WeatherPointSites_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`) ON DELETE CASCADE,
+  KEY `IX_WeatherPointSites_AppliedByUserId` (`AppliedByUserId`),
+  PRIMARY KEY (`WeatherPointId`,`SiteVersion`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+table `WeatherStations`
+CREATE TABLE `WeatherStations` (
+  `AltitudeMeters` int(11) DEFAULT NULL,
+  `DistanceKm` decimal(5,1) DEFAULT NULL,
+  `Group` int(11) NOT NULL,
+  `Name` varchar(128) DEFAULT NULL,
+  `ResolvedAtUtc` datetime(6) NOT NULL,
+  `StationId` varchar(32) DEFAULT NULL,
+  `WeatherPointId` char(36) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  CONSTRAINT `CK_WeatherStations_GroupKnown` CHECK (`Group` in (0,1,2)),
+  CONSTRAINT `FK_WeatherStations_WeatherPoints_WeatherPointId` FOREIGN KEY (`WeatherPointId`) REFERENCES `WeatherPoints` (`WeatherPointId`) ON DELETE CASCADE,
+  PRIMARY KEY (`WeatherPointId`,`Group`)
+) ENGINE=InnoDB DEFAULT CHARSET=<database default> COLLATE=<database default>
+
+[seed-rows]
+table `AspNetRoles`
+ConcurrencyStamp	Id	Name	NormalizedName
+1d63d0dc-6c9f-4ec4-90c5-2a7f8a0b2f2c	019ebf36-3a6a-43b2-aa58-7e022c3b9cf3	User	user
+c6c5b1d6-6c4a-4a5e-8c8b-7736ff6a8f27	6c17017f-8072-44a8-8ed1-a03b71ef85a6	Admin	admin
+27f1b3e3-82ff-4e4a-9e14-0c6a3c0f1f9e	c9a82815-d9f8-4f3f-8b34-9f7272b71c7c	Guest	guest
+5e6b9878-3b89-474f-a2db-0e3d1e38859d	e444d6c0-1a33-4b2c-9f20-ef7a4ad2770b	Owner	owner
+[seed-keys]
+table `FileStorageMaintenanceLeases`
+Id
+1
+table `NewsStorageTotals`
+Id
+1
+table `PhotoThumbnailBuckets`
+Id
+1
+table `SystemSettings`
+Key
+AccountMaxSmartTagsPerAccount
+CalendarEventMaxLinksPerKind
+CalendarIcsMaxAggregateExportRows
+CalendarIcsMaxAggregateExportWindowDays
+CalendarIcsMaxAggregateOccurrences
+CalendarIcsMaxExportEvents
+CalendarIcsMaxExportMegabytes
+CalendarIcsMaxImportEvents
+CalendarIcsMaxImportMegabytes
+CalendarMaxEventDurationDays
+CalendarMaxWindowDays
+ContactVCardMaxExportMegabytes
+ContactVCardMaxExportRows
+ContactVCardMaxImportEntries
+ContactVCardMaxImportMegabytes
+ContactVCardMaxRepeatablePropertiesPerEntry
+ContractChargeWindowDays
+ContractEndingWindowDays
+ContractMaxFilesPerContract
+ContractMaxPartiesPerContract
+ContractMaxSmartTagsPerContract
+ContractMaxSummaryCharges
+ContractMaxSummaryContracts
+ContractMaxTermsPerContract
+EmailClientBaseUrl
+EmailFromAddress
+EmailFromName
+EmailMaxTrackedRecipients
+EmailPerRecipientLimit
+EmailPerRecipientWindowMinutes
+EmailRequireConfirmation
+EmailSmtpHost
+EmailSmtpPort
+EmailUseStartTls
+ExchangeRateHistoryStartDate
+ExchangeRateSyncIntervalHours
+FileAnalysisBaseUrl
+FileAnalysisEnabled
+FileAnalysisExtractionPromptAddition
+FileAnalysisLawfulBasis
+FileAnalysisMatchAutoLinkThreshold
+FileAnalysisMatchPromptAddition
+FileAnalysisMatchTimeoutSeconds
+FileAnalysisMaxFutureTransactionDays
+FileAnalysisMaxTokens
+FileAnalysisModel
+FileAnalysisPrivacyNoticeUrl
+FileAnalysisProcessor
+FileAnalysisProcessorRegion
+FileStorageDeletionGraceHours
+FileStorageMaxUploadMegabytes
+ImportMaxSamplesPerSkipReason
+InstrumentPriceStaleAfterDays
+InstrumentPriceSyncHistoryDays
+InstrumentPriceSyncIntervalHours
+JobRunRetentionDays
+JournalEntryMaxLinksPerKind
+JournalIcsMaxExportMegabytes
+JournalIcsMaxExportRows
+JournalIcsMaxImportEntries
+JournalIcsMaxImportMegabytes
+JournalTaskMaxLinksPerKind
+NewsDefaultFetchIntervalMinutes
+NewsFeedMaxArticlesPerDay
+NewsFeedMaxImageMbPerDay
+NewsImageMaxPerArticle
+NewsImageMaxSizeKb
+NewsImageStoreMaxGiB
+NewsMaxFeeds
+NewsOpmlMaxImportEntries
+NewsOpmlMaxImportMegabytes
+NewsPrivateHostAllowList
+NewsTextStoreMaxGiB
+PhotoMaxAlbumMembers
+PhotoMaxLinksPerKind
+PhotoMetadataExtractionTimeoutSeconds
+PhotoMetadataReadMegabytes
+PodcastAudioMaxEpisodeMb
+PodcastAudioStoreMaxGiB
+PodcastAutoDownloadMaxUnfetchedPerFeed
+PodcastAutoDownloadsPerFeedPerDay
+PropertyMaxSmartTagsPerProperty
+RecurrenceMaxGeneratedOccurrences
+RegistrationRequireAdminApproval
+RequireTwoFactor
+TaskIcsMaxExportMegabytes
+TaskIcsMaxExportTasks
+TaskIcsMaxImportMegabytes
+TaskIcsMaxImportTasks
+WeatherDefaultPointId
+WeatherMaxTrackedPoints
+WeatherRefreshIntervalMinutes
+WeatherUserAgentContact
+[parity-rows]
+table `AccountEstimates`
+AccountEstimateId	AccountId	CreatedAtUtc	CurrencyCode	EffectiveFrom	Note	Value
+table `AccountFiles`
+AccountId	AttachedAtUtc	AttachedByUserId	FileMetadataId	FileType	Id	IssuedAt	IssuedBy	ValidFrom	ValidTo
+table `Accounts`
+AccountId	AccountNumber	AccountType	Archived	Closed	CurrencyCode	CustodianId	Description	Name	Opened
+table `AccountSmartTags`
+AccountId	AddedAt	TransactionTagId
+table `Addresses`
+ContactId	Id	IsPrimary	Label	LocationId
+table `AspNetRoleClaims`
+ClaimType	ClaimValue	Id	RoleId
+table `AspNetRoles`
+ConcurrencyStamp	Id	Name	NormalizedName
+1d63d0dc-6c9f-4ec4-90c5-2a7f8a0b2f2c	019ebf36-3a6a-43b2-aa58-7e022c3b9cf3	User	user
+c6c5b1d6-6c4a-4a5e-8c8b-7736ff6a8f27	6c17017f-8072-44a8-8ed1-a03b71ef85a6	Admin	admin
+27f1b3e3-82ff-4e4a-9e14-0c6a3c0f1f9e	c9a82815-d9f8-4f3f-8b34-9f7272b71c7c	Guest	guest
+5e6b9878-3b89-474f-a2db-0e3d1e38859d	e444d6c0-1a33-4b2c-9f20-ef7a4ad2770b	Owner	owner
+table `AspNetUserClaims`
+ClaimType	ClaimValue	Id	UserId
+table `AspNetUserLogins`
+LoginProvider	ProviderDisplayName	ProviderKey	UserId
+table `AspNetUserRoles`
+RoleId	UserId
+table `AspNetUsers`
+AccessFailedCount	ConcurrencyStamp	Email	EmailConfirmed	Id	LockoutEnabled	LockoutEnd	MustChangePassword	NormalizedEmail	NormalizedUserName	PasswordHash	PhoneNumber	PhoneNumberConfirmed	SecurityStamp	TwoFactorEnabled	UserName
+table `AspNetUserTokens`
+LoginProvider	Name	UserId	Value
+table `BookAttachments`
+BookAttachmentId	BookId	CreatedAt	FileId
+table `BookContributors`
+BookContributorId	BookId	ContactId	Position	Role
+table `BookImages`
+BookId	BookImageId	CreatedAt	IsCover	PhotoId
+table `Books`
+BookId	CreatedAt	CreatedByUserId	Description	Format	Isbn	MainAuthorContactId	Notes	Publisher	Status	Title	UpdatedAt	UpdatedByUserId	Version	Year
+table `BookTagLinks`
+BookId	BookTagId	BookTagLinkId
+table `BookTags`
+Archived	BookTagId	Color	Description	Icon	Name
+table `BudgetItems`
+BudgetId	BudgetItemId	CategoryType	PlannedAmount	TransactionTagId
+table `Budgets`
+Archived	BaseCurrencyCode	BudgetId	Description	EndDate	Name	StartDate
+table `CalendarEventAttachments`
+CalendarEventAttachmentId	CalendarEventId	CreatedAt	FileId
+table `CalendarEventPhotos`
+CalendarEventId	CalendarEventPhotoId	CreatedAt	PhotoId	Position
+table `CalendarEvents`
+CalendarEventId	CalendarId	CreatedAt	CreatedByUserId	Description	EndDateTime	ExternalUid	ImportSourceUid	IsAllDay	IsOverride	Location	LocationId	OccurrenceKey	RecurrencePatternId	StartDateTime	TimeZoneId	Title	UpdatedAt	UpdatedByUserId
+table `Calendars`
+CalendarId	Color	CreatedAt	CreatedByUserId	Description	Icon	Name	UpdatedAt	UpdatedByUserId
+table `ContactAliases`
+ContactId	Id	Label	Value
+table `Contacts`
+Archived	AvatarFileId	ContactId	CreatedAt	DisplayName	ExternalUid	NormalizedName	Notes	Type	UpdatedAt
+table `ContractFiles`
+AttachedAtUtc	AttachedByUserId	ContractFileId	ContractId	FileMetadataId	FileType	IssuedAt	IssuedBy	ValidFrom	ValidTo
+table `ContractParties`
+AccountId	ContactId	ContractId	ContractPartyId	FromDate	PropertyId	Role	ToDate
+table `Contracts`
+Archived	CompletionDate	ContractId	CreatedAtUtc	CreatedByUserId	Description	EndDate	Name	Paused	Ready	ReferenceNumber	Signed	SmartTagScopeEnd	SmartTagScopeStart	StartDate	Type
+table `ContractSmartTags`
+AddedAt	ContractId	TransactionTagId
+table `Currencies`
+Archived	CurrencyCode	MinorUnits	Name	Symbol
+\N	AED	2	UAE Dirham	\N
+\N	AFN	2	Afghani	\N
+\N	ALL	2	Albanian Lek	L
+\N	AMD	2	Armenian Dram	\N
+\N	AOA	2	Kwanza	\N
+\N	ARS	2	Argentine Peso	\N
+\N	AUD	2	Australian Dollar	$
+\N	AWG	2	Aruban Florin	\N
+\N	AZN	2	Azerbaijan Manat	₼
+\N	BAM	2	Convertible Mark	\N
+\N	BBD	2	Barbados Dollar	$
+\N	BDT	2	Taka	৳
+\N	BGN	2	Bulgarian Lev	лв
+\N	BHD	3	Bahraini Dinar	\N
+\N	BIF	0	Burundi Franc	\N
+\N	BMD	2	Bermudian Dollar	$
+\N	BND	2	Brunei Dollar	$
+\N	BOB	2	Boliviano	Bs.
+\N	BOV	2	Mvdol	\N
+\N	BRL	2	Brazilian Real	R$
+\N	BSD	2	Bahamian Dollar	$
+\N	BTN	2	Ngultrum	\N
+\N	BWP	2	Pula	\N
+\N	BYN	2	Belarusian Ruble	\N
+\N	BZD	2	Belize Dollar	$
+\N	CAD	2	Canadian Dollar	$
+\N	CDF	2	Congolese Franc	\N
+\N	CHE	2	WIR Euro	\N
+\N	CHF	2	Swiss Franc	CHF
+\N	CHW	2	WIR Franc	\N
+\N	CLF	4	Unidad de Fomento	\N
+\N	CLP	0	Chilean Peso	$
+\N	CNY	2	Yuan Renminbi	¥
+\N	COP	2	Colombian Peso	$
+\N	COU	2	Unidad de Valor Real	\N
+\N	CRC	2	Costa Rican Colon	₡
+\N	CUP	2	Cuban Peso	₱
+\N	CVE	2	Cape Verde Escudo	\N
+\N	CZK	2	Czech Koruna	Kč
+\N	DJF	0	Djibouti Franc	\N
+\N	DKK	2	Danish Krone	kr
+\N	DOP	2	Dominican Peso	RD$
+\N	DZD	2	Algerian Dinar	\N
+\N	EGP	2	Egyptian Pound	£
+\N	ERN	2	Nakfa	\N
+\N	ETB	2	Ethiopian Birr	\N
+\N	EUR	2	Euro	€
+\N	FJD	2	Fiji Dollar	$
+\N	FKP	2	Falkland Islands Pound	£
+\N	GBP	2	Pound Sterling	£
+\N	GEL	2	Lari	₾
+\N	GHS	2	Ghana Cedi	₵
+\N	GIP	2	Gibraltar Pound	£
+\N	GMD	2	Dalasi	\N
+\N	GNF	0	Guinean Franc	\N
+\N	GTQ	2	Quetzal	Q
+\N	GYD	2	Guyana Dollar	$
+\N	HKD	2	Hong Kong Dollar	$
+\N	HNL	2	Lempira	L
+\N	HTG	2	Gourde	\N
+\N	HUF	2	Forint	Ft
+\N	IDR	2	Rupiah	Rp
+\N	ILS	2	New Israeli Sheqel	₪
+\N	INR	2	Indian Rupee	₹
+\N	IQD	3	Iraqi Dinar	\N
+\N	IRR	2	Iranian Rial	\N
+\N	ISK	0	Iceland Krona	kr
+\N	JMD	2	Jamaican Dollar	$
+\N	JOD	3	Jordanian Dinar	\N
+\N	JPY	0	Yen	¥
+\N	KES	2	Kenyan Shilling	\N
+\N	KGS	2	Som	\N
+\N	KHR	2	Riel	៛
+\N	KMF	0	Comorian Franc	\N
+\N	KPW	0	North Korean Won	₩
+\N	KRW	0	Won	₩
+\N	KWD	3	Kuwaiti Dinar	\N
+\N	KYD	2	Cayman Islands Dollar	$
+\N	KZT	2	Tenge	₸
+\N	LAK	0	Lao Kip	₭
+\N	LBP	0	Lebanese Pound	£
+\N	LKR	2	Sri Lanka Rupee	₨
+\N	LRD	2	Liberian Dollar	$
+\N	LSL	2	Loti	\N
+\N	LYD	3	Libyan Dinar	\N
+\N	MAD	2	Moroccan Dirham	\N
+\N	MDL	2	Moldovan Leu	\N
+\N	MGA	2	Malagasy Ariary	\N
+\N	MKD	2	Macedonian Denar	ден
+\N	MMK	2	Kyat	Ks
+\N	MNT	2	Tugrik	₮
+\N	MOP	2	Pataca	MOP$
+\N	MRU	2	Ouguiya	\N
+\N	MUR	2	Mauritius Rupee	₨
+\N	MVR	2	Rufiyaa	\N
+\N	MWK	2	Malawi Kwacha	MK
+\N	MXN	2	Mexican Peso	$
+\N	MXV	2	Mexican Unidad de Inversion (UDI)	\N
+\N	MYR	2	Malaysian Ringgit	RM
+\N	MZN	2	Mozambique Metical	\N
+\N	NAD	2	Namibia Dollar	$
+\N	NGN	2	Naira	₦
+\N	NIO	2	Cordoba Oro	C$
+\N	NOK	2	Norwegian Krone	kr
+\N	NPR	2	Nepalese Rupee	₨
+\N	NZD	2	New Zealand Dollar	$
+\N	OMR	3	Rial Omani	\N
+\N	PAB	2	Balboa	B/.
+\N	PEN	2	Sol	S/
+\N	PGK	2	Kina	\N
+\N	PHP	2	Philippine Peso	₱
+\N	PKR	2	Pakistan Rupee	₨
+\N	PLN	2	Zloty	zł
+\N	PYG	0	Guarani	₲
+\N	QAR	2	Qatari Rial	\N
+\N	RON	2	Romanian Leu	lei
+\N	RSD	2	Serbian Dinar	\N
+\N	RUB	2	Russian Ruble	₽
+\N	RWF	0	Rwanda Franc	\N
+\N	SAR	2	Saudi Riyal	\N
+\N	SBD	2	Solomon Islands Dollar	$
+\N	SCR	2	Seychelles Rupee	₨
+\N	SDG	2	Sudanese Pound	\N
+\N	SEK	2	Swedish Krona	kr
+\N	SGD	2	Singapore Dollar	$
+\N	SHP	2	Saint Helena Pound	£
+\N	SLE	2	Leone	\N
+\N	SOS	2	Somali Shilling	\N
+\N	SRD	2	Surinam Dollar	$
+\N	SSP	2	South Sudanese Pound	£
+\N	STN	2	Dobra	Db
+\N	SVC	2	El Salvador Colon	₡
+\N	SYP	2	Syrian Pound	£
+\N	SZL	2	Lilangeni	\N
+\N	THB	2	Baht	฿
+\N	TJS	2	Somoni	\N
+\N	TMT	2	Turkmenistan New Manat	\N
+\N	TND	3	Tunisian Dinar	\N
+\N	TOP	2	Pa'anga	\N
+\N	TRY	2	Turkish Lira	₺
+\N	TTD	2	Trinidad and Tobago Dollar	$
+\N	TWD	2	New Taiwan Dollar	$
+\N	TZS	2	Tanzanian Shilling	\N
+\N	UAH	2	Ukrainian Hryvnia	₴
+\N	UGX	0	Uganda Shilling	\N
+\N	USD	2	US Dollar	$
+\N	USN	2	US Dollar (Next Day)	\N
+\N	UYI	0	Uruguay Peso en Unidades Indexadas (UI)	\N
+\N	UYU	2	Peso Uruguayo	$U
+\N	UYW	4	Unidad Previsional	\N
+\N	UZS	2	Uzbekistan Sum	\N
+\N	VED	2	Bolivar Digital	\N
+\N	VND	0	Dong	₫
+\N	VUV	0	Vatu	\N
+\N	WST	2	Tala	\N
+\N	XAF	0	CFA Franc BEAC	\N
+\N	XCD	2	East Caribbean Dollar	$
+\N	XCG	2	Caribbean Guilder	\N
+\N	XOF	0	CFA Franc BCEAO	\N
+\N	XPF	0	CFP Franc	\N
+\N	YER	2	Yemeni Rial	\N
+\N	ZAR	2	Rand	R
+\N	ZMW	2	Zambian Kwacha	ZK
+\N	ZWG	2	Zimbabwe Gold	\N
+table `EmailAddresses`
+ContactId	Id	IsPrimary	Label	Value
+table `Events`
+ContractId	CreatedAtUtc	CreatedByUserId	Description	EventId	Notes	OccurredAt	OwnerKind	PropertyId	Source	Title	Type
+table `ExchangeRateProviderSeries`
+CurrencyCode	FetchedAtUtc	FirstObservation	NewestObservation	Provider
+table `ExchangeRates`
+AsOf	CreatedAt	ExchangeRateId	FromCurrencyCode	Provider	Rate	ToCurrencyCode	UpdatedAt
+table `ExchangeRateSyncCurrencies`
+BackfilledFrom	CurrencyCode	Enabled	HistoryStartDate	UpdatedAtUtc	UpdatedByUserId
+table `FileAnalysisCandidateTags`
+CandidateTransactionId	TransactionTagId
+table `FileAnalysisCandidateTransactions`
+Amount	AnalysisJobId	BookingDate	CategoryHint	CategoryMatchConfidence	Currency	Description	ExternalId	Id	InternalId	LlmConfidence	LlmModel	LlmProviderResponseId	LlmRawJson	MatchMethod	MatchedContactId	Merchant	MerchantMatchConfidence	ReferenceNumber	ReviewStatus	ReviewedAt	ReviewedByUserId	TransactionDate
+table `FileAnalysisJobs`
+AccountFileId	AliasCount	AnalyzerBaseUrlHost	AnalyzerBaseUrlOrigin	AnalyzerModel	AnalyzerProvider	AutoLinkThresholdInForce	ClaimedAt	CompletedAt	ConsentMethod	ConsentRecorded	ConsentText	ContactCount	DisclosureVersionInForce	ExtractionGeneration	ExtractionPromptAdditionInForce	FailureCode	FailureMessage	FileSha256	FileTypeDetected	Id	LawfulBasis	LeaseUntilUtc	MatchDisclosureVersionInForce	MatchFailureMessage	MatchGeneration	MatchPromptAdditionInForce	MatchPromptVersion	MatchStatus	MatchTimeoutSecondsInForce	MatchVocabularyScope	MaxTokensInForce	ProcessorInForce	ProcessorRegionInForce	PromptTemplateHash	PromptVersion	QueuedAt	RequestedByUserId	RunId	StartedAt	Status	TagCount	TagDescriptionCount	TransferStartedAt	VocabularyCount	VocabularyReduction
+table `FileMetadata`
+ContactAvatarStoredObjectId	ContentType	Description	FileName	FinanceStoredObjectId	Id	JournalStoredObjectId	LibraryStoredObjectId	Sha256Hash	SizeBytes	UploadedAtUtc	UploadedByUserId
+table `FileStorageMaintenanceLeases`
+HolderId	Id	LastCompletedAtUtc	LeaseUntilUtc	Version
+\N	1	\N	\N	3c8f0d4e-5a8b-4f6e-9a51-2b7d1e0c9f34
+table `FileStorageOrphanSightings`
+FirstSeenAtUtc	Id	LastSeenPass	RelativePath	VolumeId
+table `FileStorageVolumes`
+Id	InitializedAtUtc	LastPassOrphanCount	LastSeenAtUtc	Name	QuarantinedFileCount	ReconciliationCursor	ReconciliationHaltedAtUtc	ReconciliationPass
+table `FileStorageWorkerVerdicts`
+FailedAtUtc	FailedCheck	LastReportedAtUtc	WorkerId
+table `InstrumentPrices`
+Close	CreatedAtUtc	CreatedByUserId	InstrumentId	InstrumentPriceId	SourceKey	SourceKeyGuard	TradingDate	UpdatedAtUtc
+table `InstrumentPriceSourceBindings`
+BackfilledFrom	ConsecutiveFailures	Enabled	HistoryStartDate	InstrumentId	LastFailure	LastFailureUtc	LastSuccessUtc	NewestFetched	Priority	SourceKey	SourceSymbol	UpdatedAtUtc	UpdatedByUserId
+table `InstrumentPriceSourceStates`
+BackOffReason	BackOffUntilUtc	RequestCount	RequestDay	RequestHourCount	RequestHourUtc	SourceKey	UpdatedAtUtc	Version
+table `Instruments`
+Archived	CreatedAtUtc	CreatedByUserId	CurrencyCode	InstrumentId	Isin	ListingKey	MicCode	Name	ShowOnDashboard	Symbol	Type	UpdatedAtUtc	UpdatedByUserId
+table `JobHeartbeats`
+JobType	LastTickAtUtc	WorkerId
+table `JobRuns`
+AbandonedWritesSwept	AnalysesCompleted	AnalysesFailed	AnalysesRefused	ArtworkFailed	ArtworkStored	AudioBytesReleased	AudioBytesStored	AudioReleased	ChaptersFetched	ClaimedAtUtc	Crashes	CurrencyCodes	DownloadsDeferred	DownloadsFailed	DownloadsRecovered	DownloadsStored	DurationMs	ErrorKind	ExclusiveGuard	FailureCategory	FailureKind	FallbacksUsed	FeedsFetched	FeedsMarked	FeedsQuarantined	FilesErased	FinishedAtUtc	ForecastsStored	Generation	Hangs	HeldByCheck	HeldReason	ImagesStored	InstrumentsAttempted	InstrumentsDeferred	InstrumentsFailed	InstrumentsSucceeded	IntegrityFailures	ItemsFailed	ItemsProcessed	ItemsRevised	ItemsStored	JobRunId	JobType	KeyRowsDetached	LastActivityAtUtc	ObjectsScrubbed	ObservationDaysStored	OpenHeldGuard	OrphansFound	PhotosFailed	PhotosRendered	PhotosRequeued	PointsAttempted	PointsFailed	PointsSkippedNotExpired	PricesDeleted	PricesInserted	Provider	RequestedByUserId	RequestsMade	ReservationsRefused	RowsDeleted	RowsInserted	RowsRejected	RowsSkipped	SeriesKeyFailures	SeriesKeyed	SpanFrom	SpanTo	StartedAtUtc	Status	Trigger	WorkerId
+table `JournalEntries`
+Archived	Content	CreatedAt	CreatedByUserId	EntryDate	ExternalUid	JournalEntryId	Location	LocationId	Title	UpdatedAt	UpdatedByUserId
+table `JournalEntryAttachments`
+CreatedAt	FileId	JournalEntryAttachmentId	JournalEntryId
+table `JournalEntryContacts`
+ContactId	JournalEntryContactId	JournalEntryId
+table `JournalEntryPhotos`
+CreatedAt	JournalEntryId	JournalEntryPhotoId	PhotoId	Position
+table `JournalEntryTags`
+JournalEntryId	JournalEntryTagId	JournalTagId
+table `JournalTags`
+Archived	Color	Description	Icon	JournalTagId	Name
+table `JournalTaskAttachments`
+CreatedAt	FileId	JournalTaskAttachmentId	JournalTaskId
+table `JournalTasks`
+Archived	CompletedAt	Content	CreatedAt	CreatedByUserId	Deadline	ExternalUid	JournalTaskId	Position	StartedAt	Title	UpdatedAt	UpdatedByUserId
+table `JournalTaskTagLinks`
+JournalTaskId	JournalTaskTagId	JournalTaskTagLinkId
+table `JournalTaskTags`
+Archived	Color	Description	Icon	JournalTaskTagId	Name
+table `LicenseAcceptances`
+Accepted	Id	LicenseHash	RespondedAt	UserId
+table `Locations`
+AddressKey	AddressText	AltitudeMeters	Archived	City	CountryCode	CreatedAt	CreatedByUserId	Description	Latitude	Line1	Line2	LocationId	Longitude	MergedIntoLocationId	Name	PostalCode	Region	Source	SourceReference	TimeZoneId	UpdatedAt	UpdatedByUserId	WeatherPointId
+table `NewsArticleFiles`
+ContentType	CreatedAtUtc	Kind	NewsArticleFileId	NewsArticleId	NewsArticleRevisionId	Sha256	SizeBytes	StoredObjectId
+table `NewsArticleIdentities`
+FirstSeenAtUtc	IdentityKey	IdentityKeyHash	Kind	LastSeenAtUtc	NewsArticleId	NewsArticleIdentityId	NewsFeedId
+table `NewsArticleImages`
+AltText	Attempts	DeferredReason	DisplayOrder	Height	LastRequeuedAtUtc	LeaseExpiresAtUtc	LeaseOwner	NewsArticleFileId	NewsArticleId	NewsArticleImageId	NextAttemptAtUtc	Origin	Position	SourceUrl	State	VerifiedAtUtc	Width
+table `NewsArticleRevisions`
+Author	BodyLength	BodyOmittedReason	ContentHash	IdentityHash	Link	NewsArticleId	NewsArticleRevisionId	ReplacedAtUtc	RevisionNumber	Title	ValidFromUtc
+table `NewsArticles`
+Author	BodyLength	BodyOmittedReason	Bucket	ContentChangedAtUtc	ContentHash	Excerpt	FeedKind	FeedUpdatedAtUtc	FeedVisible	FirstSeenAtUtc	IdentityHash	IsRead	Language	LastSeenAtUtc	Link	LinkKeyHash	NewsArticleId	NewsFeedId	PublishedAtUtc	ReadAtUtc	RevisionCount	SortAtUtc	Title
+table `NewsArticleTags`
+NewsArticleId	NewsArticleTagId	NewsTagId	SortAtUtc
+table `NewsFeedBuckets`
+ArticlesInBucket	CurrentBucket	NewsFeedBucketId	NewsFeedId	UpdatedAtUtc
+table `NewsFeedCounters`
+ArticleCount	NewsFeedId	UnreadCount
+table `NewsFeedCrashEvents`
+DetectedAtUtc	FeedsInFlight	LeaseOwner	NewsFeedCrashEventId
+table `NewsFeedFetchStates`
+ArticlesToday	ConsecutiveFailures	CrashSuspectCount	DailyQuotaDate	Description	ETag	FeedKindRewrittenAtUtc	FeedTtlMinutes	FetchFence	Format	ImageBytesToday	Language	LastBodySha256	LastErrorAtUtc	LastErrorKind	LastErrorMessage	LastFetchAttemptAtUtc	LastHttpStatus	LastModified	LastSuccessAtUtc	LeaseExpiresAtUtc	LeaseOwner	NewsFeedId	NextFetchAtUtc	QuarantinedAtUtc	QuotaReachedAtUtc	QuotaReason	RedirectedFromHttps	RefreshRequestedAtUtc	SiteUrl	SuggestedUrl	Title	ValidatorsResetRequestedAtUtc
+table `NewsFeeds`
+ArchivedAtUtc	AutoDeleteAfterDays	AutoDeleteChangedAtUtc	AutoDeleteEnabled	AutoDownload	CreatedAtUtc	CustomTitle	DeletionRequestedAtUtc	DownloadImages	FetchIntervalMinutes	IsActive	Kind	KindChangedAtUtc	NewsFeedId	SettingsVersion	Url	UrlKeyHash
+table `NewsFeedTags`
+NewsFeedId	NewsFeedTagId	NewsTagId
+table `NewsHostThrottle`
+HostKeyHash	NextAllowedAtUtc
+table `NewsStorageTotals`
+ArtworkBytes	AudioBytes	AudioPendingReleaseBytes	AudioReservedBytes	Id	ImageBytes	TextAndSourceBytes
+0	0	0	0	1	0	0
+table `NewsTags`
+ArchivedAtUtc	Color	CreatedAtUtc	Description	Icon	Name	NameKey	NewsTagId	UpdatedAtUtc
+table `OrganizationDetails`
+ContactId	DissolvedDate	EstablishedDate	LegalName	OrganizationNumber	Website
+table `PersonDetails`
+Company	ContactId	DateOfBirth	DateOfDeath	FirstName	LastName	MiddleName	Sex	Title
+table `PhoneNumbers`
+ContactId	Id	IsPrimary	Label	Value
+table `PhotoAlbumItems`
+CreatedAt	PhotoAlbumId	PhotoAlbumItemId	PhotoId	Position
+table `PhotoAlbums`
+Archived	Color	CoverPhotoId	CreatedAt	CreatedByUserId	Description	Icon	Name	PhotoAlbumId	UpdatedAt	UpdatedByUserId
+table `PhotoOriginalBuckets`
+CurrentBucket	PhotosWritten	UpdatedAtUtc	Year
+table `PhotoPeople`
+ContactId	PhotoId	PhotoPersonId
+table `Photos`
+Archived	Caption	CapturedLatitude	CapturedLongitude	ContentType	CreatedAt	CreatedByUserId	Favourited	FileName	LegacyFileId	LocationName	PhotoId	PixelHeight	PixelWidth	Sha256Hash	SizeBytes	StoredObjectId	TakenAt	Title	UpdatedAt	UpdatedByUserId
+table `PhotoTagLinks`
+PhotoId	PhotoTagId	PhotoTagLinkId
+table `PhotoTags`
+Archived	Color	Description	Icon	Name	PhotoTagId
+table `PhotoThumbnailBuckets`
+CurrentBucket	Id	PhotosWritten	UpdatedAtUtc
+1	1	0	2026-10-31 00:00:00
+table `PhotoThumbnailIncidents`
+Id	Kind	OccurredAtUtc	WorkerName
+table `PhotoThumbnailJobs`
+AttemptedRecipeVersion	Attempts	FailureCode	Generation	LastClaimedAtUtc	LeaseExpiries	LeaseUntilUtc	ManualRequeues	NextAttemptAtUtc	PhotoId	Priority	ReclaimIncidentId	ReclaimedRunId	RerunRequested	RunId	State	UpdatedAtUtc
+table `PhotoThumbnails`
+CreatedAtUtc	PhotoId	PhotoThumbnailId	PixelHeight	PixelWidth	RecipeVersion	Size	StoredObjectId
+table `PhotoThumbnailWorkerHeartbeats`
+State	UpdatedAtUtc	WorkerName
+table `PodcastArtwork`
+Attempts	CreatedAtUtc	DeferredReason	Height	LeaseExpiresAtUtc	LeaseOwner	NewsFeedId	NextAttemptAtUtc	PodcastArtworkId	RejectedReason	RenderStartedAtUtc	SourceUrl	SourceUrlKeyHash	State	Width
+table `PodcastArtworkFiles`
+ContentType	Kind	PodcastArtworkFileId	PodcastArtworkId	Sha256	SizeBytes	StoredObjectId
+table `PodcastArtworkIncidents`
+DetectedAtUtc	Kind	PodcastArtworkIncidentId
+table `PodcastChapters`
+EndMs	NewsArticleId	PodcastChapterId	Position	Source	StartMs	Title	Url
+table `PodcastEpisodeAudio`
+Attempts	AudioFence	ContentType	DeferredReason	EnclosureHostKeyHash	FailureKind	FeedDownloadGuard	HostDownloadGuard	LastUserRequestAtUtc	LeaseExpiresAtUtc	LeaseOwner	NewsArticleId	NewsFeedId	NextAttemptAtUtc	RequestedAtUtc	RequestedBy	ReservedBytes	Sha256	SizeBytes	State	StoredAtUtc	StoredObjectId
+table `PodcastEpisodes`
+ArtworkId	ChaptersAttempts	ChaptersFetchState	ChaptersLeaseExpiresAtUtc	ChaptersLeaseOwner	ChaptersNextAttemptAtUtc	ChaptersUrl	ChaptersUrlKeyHash	Description	DurationSeconds	EnclosureDeclaredLength	EnclosureDeclaredType	EnclosureUrl	EpisodeHash	EpisodeNumber	EpisodeType	Explicit	LastPlayedAtUtc	NewsArticleId	NewsFeedId	PlaybackPositionSeconds	SeasonNumber	SortAtUtc
+table `PodcastFeedDetails`
+ArtworkId	ArtworkIncidentAtUtc	ArtworkIncidentCount	Author	AutoDownloadDate	AutoDownloadsToday	BaselineAtUtc	Explicit	NewsFeedId	PodcastType
+table `Properties`
+AcquiredDate	Archived	CreatedAt	CurrencyCode	Description	DisposedDate	Name	Notes	PropertyId	Type	UpdatedAt
+table `PropertyEstimates`
+CreatedAtUtc	CurrencyCode	EffectiveFrom	Note	PropertyEstimateId	PropertyId	Value
+table `PropertyFiles`
+AttachedAtUtc	AttachedByUserId	FileMetadataId	FileType	IssuedAt	IssuedBy	PropertyFileId	PropertyId	ValidFrom	ValidTo
+table `PropertySmartTags`
+AddedAt	PropertyId	TransactionTagId
+table `RealEstateDetails`
+BuildYear	CadastralNumber	HomeownerAssociationId	Kind	LivingAreaSqm	LocationId	PlotAreaSqm	PropertyId
+table `RecipeAttachments`
+CreatedAt	FileId	RecipeAttachmentId	RecipeId
+table `RecipeIngredients`
+Amount	AmountMax	Name	Optional	Position	Preparation	RecipeId	RecipeIngredientId	Section	Unit
+table `RecipePhotos`
+CreatedAt	PhotoId	Position	RecipeId	RecipePhotoId
+table `Recipes`
+Archived	CookMinutes	CreatedAt	CreatedByUserId	Description	Notes	PrepMinutes	RecipeId	Servings	ServingsLabel	Source	Title	UpdatedAt	UpdatedByUserId	Version
+table `RecipeSteps`
+Position	RecipeId	RecipeStepId	Section	Text
+table `RecipeTagLinks`
+RecipeId	RecipeTagId	RecipeTagLinkId
+table `RecipeTags`
+Archived	Color	Description	Icon	Name	RecipeTagId
+table `RecurrenceExclusions`
+CreatedAt	CreatedByUserId	OccurrenceKey	RecurrenceExclusionId	RecurrencePatternId
+table `RecurrencePatternAttachments`
+CreatedAt	FileId	RecurrencePatternAttachmentId	RecurrencePatternId
+table `RecurrencePatternPhotos`
+CreatedAt	PhotoId	Position	RecurrencePatternId	RecurrencePatternPhotoId
+table `RecurrencePatterns`
+CalendarId	CreatedAt	CreatedByUserId	DayOfMonth	DaysOfWeek	Description	EndDateTime	ExternalUid	Frequency	ImportSourceUid	Interval	IsAllDay	KeysBackfilledAt	Location	LocationId	MonthOfYear	OccurrenceCount	RecurrenceEndDate	RecurrencePatternId	StartDateTime	TimeZoneId	Title	UpdatedAt	UpdatedByUserId	Version
+table `StoredFileBuckets`
+CurrentBucket	FeatureKey	ObjectsWritten	UpdatedAtUtc	Year
+table `StoredObjects`
+CreatedAtUtc	DeleteImmediately	DeleteRequestedAtUtc	FeatureKey	Id	IntegrityFaultAtUtc	LastVerifiedAtUtc	RelativePath	Sha256Hash	SizeBytes	State	VolumeId
+table `SystemSettings`
+Key	UpdatedAt	UpdatedBy	Value
+AccountMaxSmartTagsPerAccount	2000-01-01 00:00:00	\N	20
+CalendarEventMaxLinksPerKind	2000-01-01 00:00:00	\N	50
+CalendarIcsMaxAggregateExportRows	2000-01-01 00:00:00	\N	20000
+CalendarIcsMaxAggregateExportWindowDays	2000-01-01 00:00:00	\N	92
+CalendarIcsMaxAggregateOccurrences	2000-01-01 00:00:00	\N	5000
+CalendarIcsMaxExportEvents	2000-01-01 00:00:00	\N	unlimited
+CalendarIcsMaxExportMegabytes	2000-01-01 00:00:00	\N	10240
+CalendarIcsMaxImportEvents	2000-01-01 00:00:00	\N	unlimited
+CalendarIcsMaxImportMegabytes	2000-01-01 00:00:00	\N	10240
+CalendarMaxEventDurationDays	2000-01-01 00:00:00	\N	366
+CalendarMaxWindowDays	2000-01-01 00:00:00	\N	92
+ContactVCardMaxExportMegabytes	2000-01-01 00:00:00	\N	64
+ContactVCardMaxExportRows	2000-01-01 00:00:00	\N	unlimited
+ContactVCardMaxImportEntries	2000-01-01 00:00:00	\N	unlimited
+ContactVCardMaxImportMegabytes	2000-01-01 00:00:00	\N	64
+ContactVCardMaxRepeatablePropertiesPerEntry	2000-01-01 00:00:00	\N	200
+ContractChargeWindowDays	2000-01-01 00:00:00	\N	45
+ContractEndingWindowDays	2000-01-01 00:00:00	\N	45
+ContractMaxFilesPerContract	2000-01-01 00:00:00	\N	50
+ContractMaxPartiesPerContract	2000-01-01 00:00:00	\N	25
+ContractMaxSmartTagsPerContract	2000-01-01 00:00:00	\N	20
+ContractMaxSummaryCharges	2000-01-01 00:00:00	\N	6
+ContractMaxSummaryContracts	2000-01-01 00:00:00	\N	1000
+ContractMaxTermsPerContract	2000-01-01 00:00:00	\N	500
+EmailClientBaseUrl	2000-01-01 00:00:00	\N	
+EmailFromAddress	2000-01-01 00:00:00	\N	no-reply@odyssey.local
+EmailFromName	2000-01-01 00:00:00	\N	Odyssey
+EmailMaxTrackedRecipients	2000-01-01 00:00:00	\N	20000
+EmailPerRecipientLimit	2000-01-01 00:00:00	\N	3
+EmailPerRecipientWindowMinutes	2000-01-01 00:00:00	\N	60
+EmailRequireConfirmation	2000-01-01 00:00:00	\N	true
+EmailSmtpHost	2000-01-01 00:00:00	\N	
+EmailSmtpPort	2000-01-01 00:00:00	\N	587
+EmailUseStartTls	2000-01-01 00:00:00	\N	true
+ExchangeRateHistoryStartDate	2000-01-01 00:00:00	\N	
+ExchangeRateSyncIntervalHours	2000-01-01 00:00:00	\N	24
+FileAnalysisBaseUrl	2000-01-01 00:00:00	\N	https://api.anthropic.com
+FileAnalysisEnabled	2000-01-01 00:00:00	\N	false
+FileAnalysisExtractionPromptAddition	2000-01-01 00:00:00	\N	
+FileAnalysisLawfulBasis	2000-01-01 00:00:00	\N	Consent · GDPR Art. 6(1)(a)
+FileAnalysisMatchAutoLinkThreshold	2000-01-01 00:00:00	\N	0.6
+FileAnalysisMatchPromptAddition	2000-01-01 00:00:00	\N	
+FileAnalysisMatchTimeoutSeconds	2000-01-01 00:00:00	\N	60
+FileAnalysisMaxFutureTransactionDays	2000-01-01 00:00:00	\N	90
+FileAnalysisMaxTokens	2000-01-01 00:00:00	\N	8096
+FileAnalysisModel	2000-01-01 00:00:00	\N	claude-sonnet-5
+FileAnalysisPrivacyNoticeUrl	2000-01-01 00:00:00	\N	https://www.anthropic.com/legal/privacy
+FileAnalysisProcessor	2000-01-01 00:00:00	\N	Anthropic
+FileAnalysisProcessorRegion	2000-01-01 00:00:00	\N	United States
+FileStorageDeletionGraceHours	2000-01-01 00:00:00	\N	24
+FileStorageMaxUploadMegabytes	2000-01-01 00:00:00	\N	64
+ImportMaxSamplesPerSkipReason	2000-01-01 00:00:00	\N	100
+InstrumentPriceStaleAfterDays	2000-01-01 00:00:00	\N	5
+InstrumentPriceSyncHistoryDays	2000-01-01 00:00:00	\N	365
+InstrumentPriceSyncIntervalHours	2000-01-01 00:00:00	\N	24
+JobRunRetentionDays	2000-01-01 00:00:00	\N	90
+JournalEntryMaxLinksPerKind	2000-01-01 00:00:00	\N	50
+JournalIcsMaxExportMegabytes	2000-01-01 00:00:00	\N	10240
+JournalIcsMaxExportRows	2000-01-01 00:00:00	\N	unlimited
+JournalIcsMaxImportEntries	2000-01-01 00:00:00	\N	unlimited
+JournalIcsMaxImportMegabytes	2000-01-01 00:00:00	\N	10240
+JournalTaskMaxLinksPerKind	2000-01-01 00:00:00	\N	50
+NewsDefaultFetchIntervalMinutes	2000-01-01 00:00:00	\N	60
+NewsFeedMaxArticlesPerDay	2000-01-01 00:00:00	\N	500
+NewsFeedMaxImageMbPerDay	2000-01-01 00:00:00	\N	200
+NewsImageMaxPerArticle	2000-01-01 00:00:00	\N	5
+NewsImageMaxSizeKb	2000-01-01 00:00:00	\N	5120
+NewsImageStoreMaxGiB	2000-01-01 00:00:00	\N	50
+NewsMaxFeeds	2000-01-01 00:00:00	\N	200
+NewsOpmlMaxImportEntries	2000-01-01 00:00:00	\N	100000
+NewsOpmlMaxImportMegabytes	2000-01-01 00:00:00	\N	64
+NewsPrivateHostAllowList	2000-01-01 00:00:00	\N	
+NewsTextStoreMaxGiB	2000-01-01 00:00:00	\N	20
+PhotoMaxAlbumMembers	2000-01-01 00:00:00	\N	1000
+PhotoMaxLinksPerKind	2000-01-01 00:00:00	\N	50
+PhotoMetadataExtractionTimeoutSeconds	2000-01-01 00:00:00	\N	5
+PhotoMetadataReadMegabytes	2000-01-01 00:00:00	\N	8
+PodcastAudioMaxEpisodeMb	2000-01-01 00:00:00	\N	1024
+PodcastAudioStoreMaxGiB	2000-01-01 00:00:00	\N	50
+PodcastAutoDownloadMaxUnfetchedPerFeed	2000-01-01 00:00:00	\N	5
+PodcastAutoDownloadsPerFeedPerDay	2000-01-01 00:00:00	\N	5
+PropertyMaxSmartTagsPerProperty	2000-01-01 00:00:00	\N	20
+RecurrenceMaxGeneratedOccurrences	2000-01-01 00:00:00	\N	1000
+RegistrationRequireAdminApproval	2000-01-01 00:00:00	\N	true
+RequireTwoFactor	2000-01-01 00:00:00	\N	false
+TaskIcsMaxExportMegabytes	2000-01-01 00:00:00	\N	10240
+TaskIcsMaxExportTasks	2000-01-01 00:00:00	\N	unlimited
+TaskIcsMaxImportMegabytes	2000-01-01 00:00:00	\N	10240
+TaskIcsMaxImportTasks	2000-01-01 00:00:00	\N	unlimited
+WeatherDefaultPointId	2000-01-01 00:00:00	\N	
+WeatherMaxTrackedPoints	2000-01-01 00:00:00	\N	5
+WeatherRefreshIntervalMinutes	2000-01-01 00:00:00	\N	1440
+WeatherUserAgentContact	2000-01-01 00:00:00	\N	
+table `SystemSettingSecrets`
+Ciphertext	Key	ProtectionScheme	UpdatedAt	UpdatedBy
+table `TaxStatementFiles`
+AttachedAtUtc	AttachedByUserId	FileMetadataId	FileType	Id	TaxStatementId
+table `TaxStatements`
+Archived	AssessedTax	BaseCurrencyCode	CreatedAtUtc	DeclaredNetWorth	DeclaredTotalAssets	DeclaredTotalIncome	DeclaredTotalLiabilities	EndDate	FiledAtUtc	FiscalYear	Name	Notes	SettledAtUtc	SettlementAmount	SettlementEndDate	SettlementStartDate	StartDate	Status	StatusChangedAt	StatusComment	TaxOfficeApprovedAtUtc	TaxStatementId
+table `TaxStatementTags`
+Id	Role	TaxStatementId	TransactionTagId
+table `Terms`
+AnchorDate	ContractId	CreatedAtUtc	CurrencyCode	DateTimeValue	Direction	EffectiveFrom	Interval	IntervalCount	Label	LabelKey	Note	TermId	TextValue	Value	ValueUnit
+table `TermsOfServiceAcceptances`
+Accepted	Id	RespondedAt	TermsOfServiceVersionId	UserId
+table `TermsOfServiceVersions`
+Content	Id	PublishedAt	PublishedByUserId
+table `TransactionFiles`
+AttachedAtUtc	AttachedByUserId	FileMetadataId	Id	TransactionId	Type
+table `Transactions`
+AccountId	Amount	ContactId	CurrencyCode	Description	ExternalId	ExtraData	InternalId	Status	StatusChangedAt	StatusComment	TimeStamp	TransactionId
+table `TransactionTagLinks`
+Id	TransactionId	TransactionTagId
+table `TransactionTags`
+Archived	Color	Description	Icon	Name	TransactionTagId
+table `UserPreferences`
+Key	PreferencesJson	UpdatedAt	UserId	UserPreferenceId
+table `UserProfileImageBlobs`
+Content	UserProfileImageId
+table `UserProfileImages`
+ContentType	Height	ImageVersion	Sha256Hash	SizeBytes	UpdatedAtUtc	UploadedAtUtc	UserId	UserProfileImageId	Width
+table `UserProfiles`
+BirthDate	DisplayName	FirstName	LastName	MiddleName	Sex	Title	UserId	UserProfileId
+table `VehicleDetails`
+FirstRegisteredDate	Kind	Make	Model	ModelYear	PropertyId	RegistrationNumber	Vin
+table `WeatherDays`
+ForecastCoverageHours	ForecastIssuedAtUtc	ForecastMaxTempC	ForecastMaxWindGustMps	ForecastMeanWindSpeedMps	ForecastMinTempC	ForecastPrecipitationMm	ForecastSiteVersion	ForecastSymbolCode	LocalDate	ObservedFetchedAtUtc	ObservedMaxTempC	ObservedMaxWindGustMps	ObservedMeanTempC	ObservedMeanWindSpeedMps	ObservedMinTempC	ObservedPrecipitationMm	ObservedSiteVersion	UpdatedAtUtc	WeatherPointId
+table `WeatherForecastRuns`
+AltitudeMeters	ExpiresAtUtc	FetchedAtUtc	Latitude	Longitude	Provider	ProviderUpdatedAt	SiteVersion	WeatherForecastRunId	WeatherPointId
+table `WeatherForecastSteps`
+AirPressureHpa	AirTemperatureC	CloudAreaFractionPct	PeriodHours	PrecipitationMm	PrecipitationProbabilityPct	RelativeHumidityPct	RunFetchedAtUtc	RunProviderUpdatedAt	SiteVersion	SymbolCode	TempMaxC	TempMinC	TimeUtc	UvIndexClearSky	WeatherForecastRunId	WeatherForecastStepId	WeatherPointId	WindFromDirectionDeg	WindGustMps	WindSpeedMps
+table `WeatherObservationCoverages`
+FromDate	SiteVersion	ToDate	WeatherPointId
+table `WeatherObservations`
+FetchedAtUtc	LocalDate	MaxTempC	MaxWindGustMps	MeanTempC	MeanWindSpeedMps	MinTempC	PrecipitationMm	PrecipitationStationId	Provider	SiteVersion	TemperatureStationId	WeatherObservationId	WeatherPointId	WindStationId
+table `WeatherPointHistoryWindows`
+FromDate	ToDate	WeatherPointHistoryWindowId	WeatherPointId
+table `WeatherPoints`
+CreatedAt	CreatedByUserId	CurrentSiteVersion	EnabledAt	ForecastEnabled	HistoryEnabled	IsTracked	Name	PurgeMode	PurgeStartedAt	SettingsVersion	StationResolvedAtUtc	UpdatedAt	UpdatedByUserId	WeatherPointId
+table `WeatherPointSchedules`
+ForecastConsecutiveFailures	ForecastExpiresAtUtc	ForecastFailureKind	ForecastLastModified	LastForecastSuccessUtc	LastObservationSuccessUtc	LeaseUntilUtc	NextForecastFetchAfterUtc	NextObservationFetchAfterUtc	ObservationConsecutiveFailures	ObservationFailureKind	ObservationsCheckedThroughDate	Version	WeatherPointId
+table `WeatherPointSites`
+AltitudeMeters	AppliedAt	AppliedByUserId	Latitude	Longitude	SiteVersion	TimeZoneId	WeatherPointId
+table `WeatherStations`
+AltitudeMeters	DistanceKm	Group	Name	ResolvedAtUtc	StationId	WeatherPointId

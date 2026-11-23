@@ -118,7 +118,8 @@ internal static partial class ParityFingerprint
         output.Write($"{SchemaFingerprint.ParityRowsSection}\n");
         foreach (var table in tables.Where(t => t != SchemaFingerprint.HistoryTable))
         {
-            var names = columns[table].Select(c => c.Column).ToList();
+            // By name, like the schema section: a rebaseline cannot reproduce the order columns were appended in.
+            var names = columns[table].Select(c => c.Column).Order(StringComparer.Ordinal).ToList();
             var order = keys.TryGetValue(table, out var key) ? key : names;
             output.Write($"table {SchemaCapture.Quote(table)}\n{string.Join('\t', names)}\n");
 

@@ -850,7 +850,7 @@ through first — so when a release note says "databases below `vX` must upgrade
 upgrade before deploying the newer image.
 
 **A data migration is restored from backup, not rolled back.** `Down()` reverses schema at most; a
-migration that moves or rewrites rows (for example `RetirePropertyAndVehicleAccountTypes`, which moves
+migration that moves or rewrites rows (for example *RetirePropertyAndVehicleAccountTypes*, now folded into the v0.51.0 baseline, which moved
 Property- and Vehicle-type accounts onto property records and whose `Down()` drops only a constraint)
 cannot be reversed by any EF command. Take the backup above before upgrading across one, and keep it
 until the upgraded instance has been checked.
@@ -1360,7 +1360,7 @@ own household is permitted, or limit who holds the read claim. *The product deci
 
 ### Release note (issue #447)
 
-- **One additive migration** (`AddInstrumentPriceHourlyCap`): two columns on `InstrumentPriceSourceStates` (the
+- **One additive migration** (*AddInstrumentPriceHourlyCap*, since folded into the v0.51.0 baseline): two columns on `InstrumentPriceSourceStates` (the
   hourly request counter) and one counter column on `JobRuns` (`InstrumentsDeferred`). Schema only; `Down()` drops
   them. It also drops and re-adds `CK_JobRuns_CountersNonNegative` to cover the new column, which re-validates
   that CHECK over every `JobRuns` row and holds the table for that long (brief at the run log's retained size; the
@@ -1872,7 +1872,7 @@ records, and accepts EPUB (`application/epub+zip`) on **every** upload surface.
 - **Bind `LibraryFiles` before you upgrade.** Add `FileStorage__Bindings__LibraryFiles` to **both** `api` and
   `worker` (the base compose file and the AppHost bind it to `primary`, like the other three areas). A host with
   volumes and the feature unbound refuses to start (check B1). Keep the two services identical.
-- **One migration**, `AddBooks`: the six book tables, one nullable column `FileMetadata.LibraryStoredObjectId`
+- **One migration**, *AddBooks* (since folded into the v0.51.0 baseline): the six book tables, one nullable column `FileMetadata.LibraryStoredObjectId`
   (`RESTRICT` to `StoredObjects`, unique), and `CK_FileMetadata_ExactlyOneSource` re-created to count it. Re-adding
   the check re-validates every `FileMetadata` row, which on MariaDB rebuilds the table under a lock: **time it on a
   production-sized copy** before the upgrade window.
