@@ -8,7 +8,6 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -38,7 +37,7 @@ public sealed class CalendarIcsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export a calendar's events as an RFC 5545 .ics file.")]
+    [EndpointSummary("Export a calendar's events as an RFC 5545 .ics file.")]
     public Task<IActionResult> Export(
         [FromRoute(Name = "id")] Guid id,
         // Whether linked files and photos travel inline (issue #521 §5.4); omit needs neither read claim.
@@ -57,7 +56,7 @@ public sealed class CalendarIcsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Summarize what a calendar's .ics export would contain.")]
+    [EndpointSummary("Summarize what a calendar's .ics export would contain.")]
     public Task<ActionResult<CalendarIcsExportSummary>> SummarizeExport(
         [FromRoute(Name = "id")] Guid id,
         [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
@@ -79,7 +78,7 @@ public sealed class CalendarIcsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status507InsufficientStorage, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Import an RFC 5545 .ics file into an existing calendar.")]
+    [EndpointSummary("Import an RFC 5545 .ics file into an existing calendar.")]
     public async Task<IActionResult> Import(
         [FromRoute(Name = "id")] Guid id,
         IFormFile file,

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 
 using Odyssey.Core.Finance;
 
@@ -31,9 +31,8 @@ public sealed class TransactionTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingTransactionTag>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List transaction tags.",
-        Description = @"List transaction tags with search, status filter, sorting and pagination.")]
+    [EndpointSummary("List transaction tags.")]
+    [EndpointDescription(@"List transaction tags with search, status filter, sorting and pagination.")]
     public async Task<IActionResult> Get(
         [FromQuery] TransactionTagsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -47,12 +46,10 @@ public sealed class TransactionTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingTransactionTag))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get a transaction tag based on the transaction tag ID.",
-        Description = @"Get a transaction tag based on the transaction tag ID.")]
+    [EndpointSummary("Get a transaction tag based on the transaction tag ID.")]
+    [EndpointDescription(@"Get a transaction tag based on the transaction tag ID.")]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the transaction tag to get.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the transaction tag to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var transactionTag = await transactionTagService.Get(id, cancellationToken);
         if (transactionTag is null)
@@ -69,13 +66,11 @@ public sealed class TransactionTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Create a new transaction tag.",
-        Description = @"Create a new transaction tag. If a new transaction tag is created, the url for the new transaction tag is
+    [EndpointSummary("Create a new transaction tag.")]
+    [EndpointDescription(@"Create a new transaction tag. If a new transaction tag is created, the url for the new transaction tag is
                         returned in the location header.")]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewTransactionTag", Required = true,
-            Description = "The new transaction tag to create.")] NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
+        [FromBody][Description("The new transaction tag to create.")] NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
     {
         var transactionTag = await transactionTagService.Create(newTransactionTag, cancellationToken);
         return CreatedAtRoute("GetTransactionTag", new { id = transactionTag.TransactionTagId }, "");
@@ -88,15 +83,12 @@ public sealed class TransactionTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update the details for a transaction tag.",
-        Description = @"Update the details for a transaction tag. Not an upsert: an unknown ID is a 404 and
+    [EndpointSummary("Update the details for a transaction tag.")]
+    [EndpointDescription(@"Update the details for a transaction tag. Not an upsert: an unknown ID is a 404 and
                         nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the transaction tag to update.")] Guid id,
-        [FromBody] [SwaggerParameter("NewTransactionTag", Required = true,
-            Description = @"The transaction tag with the updated values.")] NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the transaction tag to update.")] Guid id,
+        [FromBody][Description(@"The transaction tag with the updated values.")] NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
     {
         var transactionTag = await transactionTagService.Update(id, newTransactionTag, cancellationToken);
         return transactionTag is null
@@ -109,14 +101,12 @@ public sealed class TransactionTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete a transaction tag based on the transaction tag ID.",
-        Description = @"Delete a transaction tag based on the transaction tag ID. A tag that is planned for by a 
+    [EndpointSummary("Delete a transaction tag based on the transaction tag ID.")]
+    [EndpointDescription(@"Delete a transaction tag based on the transaction tag ID. A tag that is planned for by a 
                         budget item, configured as an account smart tag, or applied to a transaction is refused 
                         with a 409 naming how many of each reference it.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the transaction tag to delete.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the transaction tag to delete.")] Guid id, CancellationToken cancellationToken = default)
     {
         await transactionTagService.Delete(id, cancellationToken);
         return NoContent();

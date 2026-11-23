@@ -57,4 +57,9 @@
     <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailRenameScenarios.cs" Link="CoreScenarios\PhotoThumbnailRenameScenarios.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The committed schema fingerprint (issue #581), read by SchemaFingerprintParityTests from the output directory. -->
+    <None Include="..\Odyssey.Context\Migrations\Baseline\*.fingerprint.txt" Link="Baseline\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

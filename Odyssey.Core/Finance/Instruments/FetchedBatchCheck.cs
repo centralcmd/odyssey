@@ -15,6 +15,9 @@ public static class FetchedBatchCheck
     /// <summary>Rows a batch may carry beyond its window's day count.</summary>
     public const int RowSlack = 5;
 
+    /// <summary>The rule a batch breaks when a close is not in the instrument's currency (§8.5 rule 5).</summary>
+    public const int CurrencyMismatchRule = 5;
+
     private static readonly decimal Min = decimal.Parse(MoneyBounds.InstrumentPriceMin, System.Globalization.CultureInfo.InvariantCulture);
     private static readonly decimal Max = decimal.Parse(MoneyBounds.InstrumentPriceMax, System.Globalization.CultureInfo.InvariantCulture);
 
@@ -52,7 +55,7 @@ public static class FetchedBatchCheck
                 || (code.Any(char.IsUpper) && code.Any(char.IsLower))
                 || !string.Equals(code, instrumentCurrency, StringComparison.OrdinalIgnoreCase))
             {
-                return (JobFailureCategory.UnsupportedInput, 5);
+                return (JobFailureCategory.UnsupportedInput, CurrencyMismatchRule);
             }
         }
 

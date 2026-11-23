@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
@@ -39,7 +38,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingTaxStatement>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List tax statements.")]
+    [EndpointSummary("List tax statements.")]
     public async Task<IActionResult> Get(
         [FromQuery] TaxStatementsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -52,7 +51,7 @@ public sealed class TaxStatementsController : ControllerBase
     [HttpGet("summary", Name = "GetTaxStatementSummary")]
     [Authorize(Policy = PermissionClaims.TaxesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TaxStatementSummary))]
-    [SwaggerOperation(Summary = "Summary rollup: years on file, the fiscal-year bounds and the per-year declared figures.")]
+    [EndpointSummary("Summary rollup: years on file, the fiscal-year bounds and the per-year declared figures.")]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken = default)
     {
         return Ok(await service.GetSummary(cancellationToken));
@@ -62,7 +61,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingTaxStatement))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a tax statement with its selected tag IDs and file metadata.")]
+    [EndpointSummary("Get a tax statement with its selected tag IDs and file metadata.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -80,7 +79,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TaxStatementReport))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get the reconciliation report (declared vs. derived figures and diffs).")]
+    [EndpointSummary("Get the reconciliation report (declared vs. derived figures and diffs).")]
     public async Task<IActionResult> GetReport(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -92,7 +91,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesCreate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingTaxStatement))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a tax statement.")]
+    [EndpointSummary("Create a tax statement.")]
     public async Task<IActionResult> Post(
         [FromBody] NewTaxStatement request, CancellationToken cancellationToken = default)
     {
@@ -106,7 +105,7 @@ public sealed class TaxStatementsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingTaxStatement))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a tax statement's declared figures, period, currency, dates and settlement.")]
+    [EndpointSummary("Update a tax statement's declared figures, period, currency, dates and settlement.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateTaxStatement request, CancellationToken cancellationToken = default)
@@ -125,7 +124,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesUpdate)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingTaxStatement))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Set the review status and optional status comment; stamps StatusChangedAt.")]
+    [EndpointSummary("Set the review status and optional status comment; stamps StatusChangedAt.")]
     public async Task<IActionResult> PatchStatus(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateTaxStatementStatus request, CancellationToken cancellationToken = default)
@@ -146,7 +145,7 @@ public sealed class TaxStatementsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace the selected tax-payment, income and settlement tag sets in one call.")]
+    [EndpointSummary("Replace the selected tax-payment, income and settlement tag sets in one call.")]
     public async Task<IActionResult> PutTags(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateTaxStatementTags request, CancellationToken cancellationToken = default)
@@ -170,7 +169,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Archive (soft-delete) a tax statement.")]
+    [EndpointSummary("Archive (soft-delete) a tax statement.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -185,7 +184,7 @@ public sealed class TaxStatementsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Attach an already-uploaded document to a tax statement (requires taxes.update + files.read).")]
+    [EndpointSummary("Attach an already-uploaded document to a tax statement (requires taxes.update + files.read).")]
     public async Task<IActionResult> AttachFile(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] AttachTaxStatementFileRequest request, CancellationToken cancellationToken = default)
@@ -223,7 +222,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesRead)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Download an attached tax statement document.")]
+    [EndpointSummary("Download an attached tax statement document.")]
     public async Task<IActionResult> DownloadFile(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)
@@ -240,7 +239,7 @@ public sealed class TaxStatementsController : ControllerBase
     [Authorize(Policy = PermissionClaims.TaxesUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Detach a document from a tax statement.")]
+    [EndpointSummary("Detach a document from a tax statement.")]
     public async Task<IActionResult> DetachFile(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)

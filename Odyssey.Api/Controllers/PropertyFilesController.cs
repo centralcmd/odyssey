@@ -6,7 +6,6 @@ using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
@@ -46,9 +45,8 @@ public sealed class PropertyFilesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Attach an already-uploaded document to a property (requires properties.update + files.read).",
-        Description = @"files.read is required because attaching makes the file's bytes downloadable
+    [EndpointSummary("Attach an already-uploaded document to a property (requires properties.update + files.read).")]
+    [EndpointDescription(@"files.read is required because attaching makes the file's bytes downloadable
                         through properties.read. The file's server-recorded content type must be PDF,
                         PNG, JPEG or WebP. There is no per-property document cap.")]
     public async Task<IActionResult> AttachFile(
@@ -87,9 +85,8 @@ public sealed class PropertyFilesController : ControllerBase
     [Authorize(Policy = PermissionClaims.PropertiesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingPropertyFile>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List the documents attached to a property.",
-        Description = @"Unpaged and uncapped, oldest attachment first; metadata only. A property with no
+    [EndpointSummary("List the documents attached to a property.")]
+    [EndpointDescription(@"Unpaged and uncapped, oldest attachment first; metadata only. A property with no
                         documents returns an empty array, never a 404. issuedBy is the contact id only.")]
     public async Task<IActionResult> GetFiles(
         [FromRoute(Name = "propertyId")] Guid propertyId, CancellationToken cancellationToken = default)
@@ -109,9 +106,8 @@ public sealed class PropertyFilesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update an attached property document's type and validity metadata.",
-        Description = @"A full replacement: an omitted date or issuer clears the stored value; fileType
+    [EndpointSummary("Update an attached property document's type and validity metadata.")]
+    [EndpointDescription(@"A full replacement: an omitted date or issuer clears the stored value; fileType
                         may not be omitted. files.read is deliberately not required — this verb reads no
                         file metadata and takes no file id the caller had not already attached.")]
     public async Task<IActionResult> UpdateFile(
@@ -128,7 +124,7 @@ public sealed class PropertyFilesController : ControllerBase
     [Authorize(Policy = PermissionClaims.PropertiesRead)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Download a document attached to a property.")]
+    [EndpointSummary("Download a document attached to a property.")]
     public async Task<IActionResult> DownloadFile(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)
@@ -145,7 +141,7 @@ public sealed class PropertyFilesController : ControllerBase
     [Authorize(Policy = PermissionClaims.PropertiesUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Detach a document from a property (the underlying file is left intact).")]
+    [EndpointSummary("Detach a document from a property (the underlying file is left intact).")]
     public async Task<IActionResult> DetachFile(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)

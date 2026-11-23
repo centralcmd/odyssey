@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odyssey.Dtos.Application;
 using Odyssey.Core.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -27,7 +26,7 @@ public sealed class UploadLimitsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UploadLimitsDto))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The effective maximum upload size for file-upload surfaces.")]
+    [EndpointSummary("The effective maximum upload size for file-upload surfaces.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var limits = await lookup.GetAsync(cancellationToken);

@@ -1081,11 +1081,9 @@
   "project/components/AddRow/AddRow.d.ts",
   "project/components/AddRow/README.md",
   "project/components/Checkbox/Checkbox.d.ts",
-  "project/components/DialogEnablePriceSource/preview.html",
   "project/components/IconButton.jsx",
   "project/components/IconButton/IconButton.d.ts",
   "project/components/IconButton/README.md",
-  "project/components/InstrumentPriceSourcesPanel/preview.html",
   "project/components/PageNewsFeeds/preview.html",
   "project/components/PagePodcasts/preview.html",
   "project/components/PageRecipes/preview.html",
@@ -1099,7 +1097,6 @@
   "project/components/bundle.js",
   "project/components/index.d.ts",
   "project/design-system.json",
-  "project/docs/components-instruments.md",
   "project/docs/components-podcasts.md",
   "project/docs/components-recipes.md",
   "project/github.md",
@@ -1107,7 +1104,6 @@
   "project/templates/recipes/Recipes.dc.html",
   "project/templates/recipes/support.js",
   "project/ui_kits/web/BackgroundJobs.jsx",
-  "project/ui_kits/web/InstrumentPriceSources.jsx",
   "project/ui_kits/web/News.jsx",
   "project/ui_kits/web/NewsFeeds.jsx",
   "project/ui_kits/web/NewsTags.jsx",
@@ -1116,7 +1112,6 @@
   "project/ui_kits/web/Recipes.jsx",
   "project/ui_kits/web/background-jobs-data.js",
   "project/ui_kits/web/index.html",
-  "project/ui_kits/web/instruments-data.js",
   "project/ui_kits/web/kit.css",
   "project/ui_kits/web/news-data.js",
   "project/ui_kits/web/podcasts-data.js",
@@ -1125,5 +1120,5 @@
   "project/ui_kits/web/recipes.css",
   "project/ui_kits/web/system-settings-data.js"
  ],
- "pendingReason": "Left by the 1795304704-7fab sync, which implemented Books only (the Library module: /books, /book-tags, the book and contributor dialogs, the contact-delete books state, the EPUB file kind) on PR centralcmd/odyssey#577. Pending: the Podcasts and Recipes designs (no backend yet), the AddRow / Checkbox / IconButton / StepperField atom revisions and the News, News feeds and Background jobs page changes made by other syncs' authors, the shared files those changes touched (README, manifest, bundle, kit), and the Instruments items carried over from the 1795121522-cc6f sync (they need the #447 provider backend). The design-system parity check's SystemSettingsDesignSyncTests failure (a Podcasts settings section) belongs to the Podcasts item."
+ "pendingReason": "Left by the 1795304704-7fab sync, which implemented Books only (the Library module: /books, /book-tags, the book and contributor dialogs, the contact-delete books state, the EPUB file kind) on PR centralcmd/odyssey#577. Pending: the Podcasts and Recipes designs (no backend yet), the AddRow / Checkbox / IconButton / StepperField atom revisions and the News, News feeds and Background jobs page changes made by other syncs' authors and the shared files those changes touched (README, manifest, bundle, kit). The Instruments items carried over from the 1795121522-cc6f sync are implemented by the #447 provider backend and client on PR centralcmd/odyssey#471. The design-system parity check's SystemSettingsDesignSyncTests failure (a Podcasts settings section) belongs to the Podcasts item."
 }

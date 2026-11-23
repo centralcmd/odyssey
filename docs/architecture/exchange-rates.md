@@ -5,7 +5,7 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
 **Exchange rates sync from Norges Bank, stored as the published currency → NOK direction only, and every
 other pair converts through NOK** (issues #349, #472). `ExchangeRate.Provider` is `NULL` for a manual row and
 `NorgesBank` for a fetched one; there is no separate source column. The sync writes one row per observation
-and never the reciprocal: `StoreFetchedRatesInPublishedDirectionOnly` deleted every fetched `NOK → X` row that
+and never the reciprocal: the *StoreFetchedRatesInPublishedDirectionOnly* migration (folded into the v0.51.0 baseline) deleted every fetched `NOK → X` row that
 had its `X → NOK` partner (manual and partnerless rows were kept), and readers invert instead. Rules that are easy to get backwards:
 
 - **The newest-rate ordering is written once, in `ExchangeRateOrdering`** — `AsOf`, then

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Odyssey.Context;
+using Odyssey.Context.Migrations;
 using Odyssey.MigrationService;
 using Xunit;
 
@@ -58,8 +59,10 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
             {
                 Assert.True(await TableExistsAsync(context, firstTable));
 
-                await context.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM `__EFMigrationsHistory` WHERE MigrationId = {0}", migrationId);
+                // The whole history, not just InitialCreate's row: InitialCreate is the baseline, and a history
+                // that kept the later rows but lost the baseline's would be refused by the cut-point guard
+                // first (issue #581) — a state no interruption produces, since nothing is recorded before it.
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM `__EFMigrationsHistory`");
             }
 
             await using (var context = new OdysseyContext(OdysseyOptions()))
@@ -79,24 +82,15 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// The second cause the guard's message names, and the one a squash produces: the database is
-    /// entirely intact, but it was built by a migration set this build no longer ships, so the current
-    /// migration is pending and dies on the tables the old set already created. Nothing was interrupted.
+    /// A superseded set AFTER the baseline (issue #581 AC 17): a table-creating migration's history row
+    /// carries an id this build does not ship, as a renumber leaves it. The baseline row is intact, so the cut-point
+    /// guard passes, and the drift message names the superseded set — listing the unknown id — rather than offering
+    /// both causes.
     /// </summary>
     /// <remarks>
-    /// The guard is expected to detect this identically to an interrupted run, and to keep naming both
-    /// causes — which is why this test asserts on the message rather than on a distinct exception or
-    /// property: the diagnosis is the operator's to make, and the message is what they make it from.
-    ///
-    /// <para>
-    /// The reason used to be that the guard <em>could not</em> tell the two apart: two contexts shared
-    /// one <c>__EFMigrationsHistory</c> table, so the other context's ids always looked unknown from
-    /// here and "history holds an id this build does not ship" meant nothing. With one context that is
-    /// no longer true, and an unrecognised id would now be real evidence of a superseded set. Telling
-    /// the two apart is therefore newly *possible* — but it is a separate change with its own message
-    /// and its own test, and until someone makes it deliberately the guard reports both causes and this
-    /// test pins that it still does.
-    /// </para>
+    /// The squash shape this test used to model — InitialCreate's own row renamed — no longer reaches the drift guard:
+    /// a history lacking the baseline id is the cut-point guard's to refuse, which
+    /// <c>MigrationBaselineGuardIntegrationTests</c> covers.
     /// </remarks>
     [SkippableFact]
     public async Task A_database_built_by_a_superseded_migration_set_is_reported_as_drift()
@@ -104,41 +98,37 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await RecreateDatabaseAsync();
 
-        // An id in the shape this repository's squashed history actually left behind.
-        const string supersededId = "20260828172122_InitialCreate";
-
         try
         {
             string migrationId;
-            string firstTable;
+            string supersededId;
+            string createdTable;
 
-            await using (var context = new OdysseyContext(OdysseyOptions()))
+            await using (var context = new OdysseyContext(ProbeOptions()))
             {
-                migrationId = SchemaMigrationId(context);
-                firstTable = MigrationOperations(context).OfType<CreateTableOperation>().First().Name;
+                (migrationId, createdTable) = (ProbeMigrationsAssembly.ProbeId, ProbeMigrationsAssembly.ProbeTable);
+                supersededId = migrationId + "Renumbered";
                 await MigrationRunner.MigrateAsync(context, CancellationToken.None);
             }
 
             await using (var context = new OdysseyContext(OdysseyOptions()))
             {
-                // Swap the applied id for one this build does not ship. The schema is untouched and
-                // complete — the only thing wrong is that history describes it with a name that is gone.
                 await context.Database.ExecuteSqlRawAsync(
                     "UPDATE `__EFMigrationsHistory` SET MigrationId = {0} WHERE MigrationId = {1}",
                     supersededId, migrationId);
             }
 
-            await using (var context = new OdysseyContext(OdysseyOptions()))
+            await using (var context = new OdysseyContext(ProbeOptions()))
             {
                 var error = await Assert.ThrowsAsync<MigrationDriftException>(
                     () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
 
                 Assert.Equal(migrationId, error.MigrationId);
-                Assert.Contains(firstTable, error.ExistingObject);
-
-                // The operator has to be able to reach the right diagnosis from the message alone.
-                Assert.Contains("superseded", error.Message, StringComparison.OrdinalIgnoreCase);
-                Assert.Contains("__EFMigrationsHistory", error.Message, StringComparison.Ordinal);
+                Assert.Contains(createdTable, error.ExistingObject);
+                Assert.Equal([supersededId], error.SupersededIds);
+                Assert.Contains("superseded set", error.Message, StringComparison.Ordinal);
+                Assert.Contains($"'{supersededId}'", error.Message, StringComparison.Ordinal);
+                Assert.DoesNotContain("interrupted", error.Message, StringComparison.Ordinal);
                 Assert.Contains("docs/migration-history-drift.md", error.Message, StringComparison.Ordinal);
             }
         }
@@ -149,10 +139,63 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// The other half of the guard, and the more dangerous one to get wrong: the healthy paths must
-    /// stay silent. A detector that fired here would take down every deployment it was meant to
-    /// protect.
+    /// Retired ids never count (issue #581 B2): an unknown id EARLIER than the baseline is what every healthy
+    /// database holds after a rebaseline, so an ordinary interruption beside one keeps the interruption message.
     /// </summary>
+    [SkippableFact]
+    public async Task An_unknown_id_earlier_than_the_baseline_leaves_an_interruption_reported_as_one()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateDatabaseAsync();
+
+        try
+        {
+            string migrationId;
+
+            await using (var context = new OdysseyContext(ProbeOptions()))
+            {
+                migrationId = ProbeMigrationsAssembly.ProbeId;
+                await MigrationRunner.MigrateAsync(context, CancellationToken.None);
+            }
+
+            await using (var context = new OdysseyContext(OdysseyOptions()))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM `__EFMigrationsHistory` WHERE MigrationId = {0}", migrationId);
+                await context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO `__EFMigrationsHistory` (MigrationId, ProductVersion) VALUES ('20200101000000_Retired', '9.0.0')");
+            }
+
+            await using (var context = new OdysseyContext(ProbeOptions()))
+            {
+                var error = await Assert.ThrowsAsync<MigrationDriftException>(
+                    () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
+
+                Assert.Equal(migrationId, error.MigrationId);
+                Assert.Empty(error.SupersededIds);
+                Assert.Contains("interrupted", error.Message, StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            await DropDatabaseAsync();
+        }
+    }
+
+    /// <summary>
+    /// The real chain plus <see cref="ProbeMigrationsAssembly"/>'s one table-creating migration after head, so the
+    /// two after-the-baseline scenarios can be built whatever the chain holds — including right after a rebaseline,
+    /// when nothing after the baseline creates a table.
+    /// </summary>
+    private DbContextOptions<OdysseyContext> ProbeOptions()
+    {
+        var connection = fixture.ConnectionStringFor(Database);
+        return new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(connection, ServerVersion.AutoDetect(connection))
+            .ReplaceService<IMigrationsAssembly, ProbeMigrationsAssembly>()
+            .Options;
+    }
+
     [SkippableFact]
     public async Task A_fresh_database_and_an_up_to_date_one_both_migrate_without_complaint()
     {
@@ -335,5 +378,45 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
         var connection = fixture.ConnectionStringFor(Database);
         return new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connection, ServerVersion.AutoDetect(connection)).Options;
+    }
+}
+
+#pragma warning disable EF1001 // MigrationsAssembly is EF's own implementation; subclassing it keeps the real chain.
+
+/// <summary>
+/// The real migrations plus one probe migration, later than any real id, that creates <see cref="ProbeTable"/>. It
+/// gives the drift tests a table-creating migration after the baseline that does not depend on the chain.
+/// </summary>
+internal sealed class ProbeMigrationsAssembly(
+    Microsoft.EntityFrameworkCore.Infrastructure.ICurrentDbContext currentContext,
+    Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptions options,
+    IMigrationsIdGenerator idGenerator,
+    Microsoft.EntityFrameworkCore.Diagnostics.IDiagnosticsLogger<DbLoggerCategory.Migrations> logger)
+    : Microsoft.EntityFrameworkCore.Migrations.Internal.MigrationsAssembly(currentContext, options, idGenerator, logger)
+{
+    public const string ProbeId = "29991231235959_DriftProbe";
+    public const string ProbeTable = "DriftProbes";
+
+    private IReadOnlyDictionary<string, System.Reflection.TypeInfo>? withProbe;
+
+    public override IReadOnlyDictionary<string, System.Reflection.TypeInfo> Migrations =>
+        withProbe ??= new Dictionary<string, System.Reflection.TypeInfo>(base.Migrations)
+        {
+            [ProbeId] = System.Reflection.IntrospectionExtensions.GetTypeInfo(typeof(DriftProbe)),
+        };
+
+    [Microsoft.EntityFrameworkCore.Infrastructure.DbContext(typeof(OdysseyContext))]
+    [Migration(ProbeId)]
+    internal sealed class DriftProbe : Migration
+    {
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        {
+        }
+
+        protected override void Up(MigrationBuilder migrationBuilder) =>
+            migrationBuilder.CreateTable(
+                name: ProbeTable,
+                columns: table => new { Id = table.Column<int>(nullable: false) },
+                constraints: table => table.PrimaryKey("PK_DriftProbes", x => x.Id));
     }
 }

@@ -111,6 +111,16 @@ public sealed class SecretSettingsRegistry
             RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
             Kind = SecretKind.RotatableCredential,
         },
+
+        // Issue #447. The Tiingo price-source token, sent to api.tiingo.com only, as "Authorization: Token <value>";
+        // the scheme is a compiled prefix, so the stored value is the bare token. NotSet is healthy — the source is
+        // unconfigured and sends nothing; Unreadable fails closed for that source (its bindings record Configuration).
+        new SecretSettingDescriptor
+        {
+            Key = SecretSettingKeys.TiingoApiToken,
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            Kind = SecretKind.RotatableCredential,
+        },
     ];
 
     private readonly IReadOnlyList<SecretSettingDescriptor> descriptors;

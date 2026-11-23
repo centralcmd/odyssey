@@ -63,9 +63,9 @@ daemon and restores the solution. It **detects rather than assumes** the SDK loc
 when Docker is unreachable, so without it `dotnet test` reports success having never run that tier.
 Rationale and the TLS-interception override: [`docs/claude-code-environment.md`](docs/claude-code-environment.md).
 
-**Local endpoints:** Frontend `http://localhost:5199`, API `http://localhost:5188`, Swagger
-`http://localhost:5188/swagger`, MariaDB host port **3307** (not 3306). Compose binds all of them to
-`127.0.0.1`. Aspire pins the API to 5188 and MariaDB to 3307; the client takes 5199 from its launch profile.
+**Local endpoints:** Frontend `http://localhost:5199`, API `http://localhost:5188`, API reference
+`http://localhost:5188/scalar/v1` (sign in to the client first), MariaDB host port **3307** (not 3306).
+Compose binds all of them to `127.0.0.1`. Aspire pins the API to 5188 and MariaDB to 3307; the client takes 5199 from its launch profile.
 
 **Running alongside a stack a teammate already has up:** Compose and Aspire use the same ports, so the
 second stack collides. Bring yours up with a port-remap override and **never** `docker compose down -v`
@@ -320,8 +320,13 @@ to create and apply migrations. Scaffolding binds through `Odyssey.Api` with no 
 `UseInMemoryDatabase` must be false, the environment must not be `Testing`, and
 `ConnectionStrings__OdysseyConnection` must be set — otherwise no usable migration comes out.
 
-- **Never squash again.** Production data has existed since `v0.35.0`; every change is an additive migration
-  and `20260829095318_InitialCreate` is the permanent root.
+- **No ad-hoc squash; only a guarded rebaseline** (issue #581). Production data has existed since `v0.35.0`, so
+  every change is an additive migration, except a rebaseline done by
+  [`docs/migration-rebaseline.md`](docs/migration-rebaseline.md): the baseline keeps the id of the newest
+  migration it replaces. `MigrationBaseline.Current` names it, and `MigrationRunner` refuses a database whose
+  history lacks it before anything runs. `SchemaFingerprintParityTests` compares the baseline with the committed
+  `Migrations/Baseline/<id>.fingerprint.txt`; a failure is a defect, **never** a reason to regenerate the file.
+  Name a migration only through `CoupledMigrationNames` (a lint enforces it).
 - **A data migration is undone only by restoring a backup** (`Down()` restores schema, not rows). Say so in the
   commit body and release notes, and test it against shapes the demo seed does not produce.
 - **`MigrationRunner` guards against an interrupted migration** (MariaDB commits DDL implicitly, issue #468): it

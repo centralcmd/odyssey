@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Odyssey.Core.Internet.News;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Application;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -34,7 +33,7 @@ public sealed class ImportLimitsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ImportLimitsDto))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The effective import/export volume caps for the four bulk import/export surfaces.")]
+    [EndpointSummary("The effective import/export volume caps for the four bulk import/export surfaces.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var limits = await lookup.GetAsync(cancellationToken);

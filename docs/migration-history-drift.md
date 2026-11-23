@@ -58,10 +58,22 @@ merge of the application and domain contexts, for example, a database from befor
 
 neither of which exists any more, while the current `InitialCreate` is pending.
 
-Read that tell yourself rather than expecting the guard to. With one context writing the table, an
-unrecognised row really is evidence of a superseded set, but the guard deliberately reports only the
-object collision it can prove. Making it name this cause specifically is a worthwhile follow-up with
-its own message and test; until then, read the ids.
+Since issue #581 the job reads that tell for you, in two places:
+
+- **The cut-point guard runs first.** A history that lacks this build's baseline migration
+  (`MigrationBaseline.Current`, today `20261122104734_AddRecipes`, the v0.51.0 cut) never reaches the drift guard: the
+  job stops with `MigrationBaselineException`. If the history's newest id is *earlier* than the
+  baseline, the message names the release to upgrade through (or says the database must be recreated,
+  when no bridge exists); if it is *later*, the message says the database was built by a different
+  migration set. The example above is the second case. Before following "upgrade to the bridge
+  release", check that the printed newest id really belongs to that release's chain — the guard decides
+  by id order alone.
+- **The drift guard names a superseded set when it can prove one.** When it fires and the history holds
+  ids this build does not ship that are **later than the baseline**, the message lists them and names
+  the superseded set as the cause. Unknown ids *earlier* than the baseline never count: they are the
+  retired ids a rebaseline leaves on every healthy database (see
+  [`migration-rebaseline.md`](migration-rebaseline.md)), and counting them would report an ordinary
+  interruption as a superseded set. Without such ids the message still names both causes.
 
 Note that a squash is **not** repaired by re-running, and is not repaired by hand-editing the history
 row either. The old schema is not the new schema — after the context merges it is missing every
@@ -78,7 +90,8 @@ exists is drift.
 Most migrations in the repository bundle their indexes and foreign keys into `CreateTable`, so in
 practice a drifted database is usually caught on a table. The other kinds are covered because an
 index-only or constraint-only migration drifts in exactly the same way — issue #218's
-`RetirePropertyAndVehicleAccountTypes`, whose only DDL is `CK_Accounts_AccountTypeNotRetired`, is why
+*RetirePropertyAndVehicleAccountTypes* (since folded into the v0.51.0 baseline), whose only DDL was
+`CK_Accounts_AccountTypeNotRetired`, is why
 check constraints joined. Adding another kind means one case in `MigrationRunner.CreatedBy` (and
 `DroppedBy`), one arm in the snapshot query, and one member on `SchemaObjectKind`.
 
@@ -178,10 +191,11 @@ demonstrably complete.
 
 After either option, start the stack normally and confirm the job exits 0.
 
-**`WeatherPointsExpand` / `WeatherPointsContract` (issue #387): fix forward, never replay.** These two data
-migrations are not replay-safe by product decision, and neither Option A nor Option B applies to them as
-written: if either fails, restore the pre-deploy backup, or repair forward with a follow-up migration or a
-manual fix of the half-applied step — do not delete its history row to make it run again.
+**Data migrations that are not replay-safe: fix forward, never replay.** *WeatherPointsExpand* and
+*WeatherPointsContract* (issue #387, folded into the v0.51.0 baseline) were the precedent: neither Option A nor
+Option B applies to such a migration as written. If one fails, restore the pre-deploy backup, or repair forward
+with a follow-up migration or a manual fix of the half-applied step — do not delete its history row to make it
+run again.
 
 ## Reducing the chance of hitting it
 

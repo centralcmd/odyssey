@@ -20,9 +20,10 @@ visible and `WorkerTests` can substitute them:
    administer.
 
 Any failure sets exit code 1. Other files: `MigrationDriftDetector.cs` / `MigrationDriftException.cs` (the guard's
-schema snapshot and its operator-facing error), `AccountTypeRetirementReport.cs` and
-`NonPositiveExchangeRateException.cs` (pre-checks tied to one migration each), `MigrationServiceIdentity.cs` (the
-Identity registration the tests share).
+schema snapshot and its operator-facing error), `MigrationBaselineException.cs` (the cut-point guard's refusal),
+`Fingerprint/` (the read-only `--schema-fingerprint` mode, see
+[`docs/migration-rebaseline.md`](../docs/migration-rebaseline.md)), `MigrationServiceIdentity.cs` (the Identity
+registration the tests share).
 
 ## Running and testing
 

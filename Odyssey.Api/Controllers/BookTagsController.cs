@@ -5,7 +5,6 @@ using Odyssey.Core.Books;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Books;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -18,7 +17,7 @@ public sealed class BookTagsController(BookTagService service) : ControllerBase
     [Authorize(Policy = PermissionClaims.BookTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingBookTag>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List book tags with search, archival-status filter, sort and paging.")]
+    [EndpointSummary("List book tags with search, archival-status filter, sort and paging.")]
     public async Task<IActionResult> Get([FromQuery] BookTagsQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await service.ListAsync(query, cancellationToken));
 
@@ -26,7 +25,7 @@ public sealed class BookTagsController(BookTagService service) : ControllerBase
     [Authorize(Policy = PermissionClaims.BookTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingBookTag))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a book tag.")]
+    [EndpointSummary("Get a book tag.")]
     public async Task<IActionResult> Get([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var tag = await service.GetAsync(id, cancellationToken);
@@ -38,7 +37,7 @@ public sealed class BookTagsController(BookTagService service) : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingBookTag))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a book tag; a name colliding with an existing (incl. archived) tag returns 409.")]
+    [EndpointSummary("Create a book tag; a name colliding with an existing (incl. archived) tag returns 409.")]
     public async Task<IActionResult> Post([FromBody] NewBookTag request, CancellationToken cancellationToken = default)
     {
         var created = await service.CreateAsync(request, cancellationToken);
@@ -51,7 +50,7 @@ public sealed class BookTagsController(BookTagService service) : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a book tag and toggle its archival state.")]
+    [EndpointSummary("Update a book tag and toggle its archival state.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id, [FromBody] UpdateBookTag request, CancellationToken cancellationToken = default)
     {
@@ -64,7 +63,7 @@ public sealed class BookTagsController(BookTagService service) : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an unused book tag; a tag in use returns 409 (archive it instead).")]
+    [EndpointSummary("Delete an unused book tag; a tag in use returns 409 (archive it instead).")]
     public async Task<IActionResult> Delete([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
         await service.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound(id);
 

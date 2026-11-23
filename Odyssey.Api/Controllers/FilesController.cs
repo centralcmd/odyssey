@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Annotations;
 using System.Security.Claims;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
@@ -42,13 +41,12 @@ public sealed class FilesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Upload a file",
-        Description = @"Upload a file with optional description. Returns file metadata. 'area' (Finance, Journal or Library) is
+    [EndpointSummary("Upload a file")]
+    [EndpointDescription(@"Upload a file with optional description. Returns file metadata. 'area' (Finance, Journal or Library) is
 required and only decides which folder on the file store holds the bytes (issue #448); it never affects who may read or
 link the file. There is no contacts area here: contact images go through the avatar endpoint.")]
     public async Task<IActionResult> UploadFile(
-        //[FromForm] // Swagger doesn't handle [FromForm] on IFormFile correctly, so we rely on the default binding behavior for multipart/form-data
+        //[FromForm] // The OpenAPI generator did not handle [FromForm] on IFormFile correctly, so we rely on the default binding behavior for multipart/form-data
         IFormFile file,
         // Nullable with [Required], so an omitted area reads as required rather than as an invalid enum value (the
         // ContractPartyRequest.Role precedent); FileUploadArea has no 0 and no contacts member.
@@ -77,9 +75,8 @@ link the file. There is no contacts area here: contact images go through the ava
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List files",
-        Description = "List files with search, filtering, sorting, and pagination.")]
+    [EndpointSummary("List files")]
+    [EndpointDescription("List files with search, filtering, sorting, and pagination.")]
     public async Task<IActionResult> GetFiles(
         [FromQuery] FilesQueryParams query,
         CancellationToken cancellationToken = default)
@@ -97,9 +94,8 @@ link the file. There is no contacts area here: contact images go through the ava
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get file metadata",
-        Description = "Get metadata for a specific file by ID.")]
+    [EndpointSummary("Get file metadata")]
+    [EndpointDescription("Get metadata for a specific file by ID.")]
     public async Task<IActionResult> GetFileMetadata(
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
@@ -122,9 +118,8 @@ link the file. There is no contacts area here: contact images go through the ava
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Download file content",
-        Description = "Download the binary content of a file.")]
+    [EndpointSummary("Download file content")]
+    [EndpointDescription("Download the binary content of a file.")]
     public async Task<IActionResult> DownloadFile(
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
@@ -151,9 +146,8 @@ link the file. There is no contacts area here: contact images go through the ava
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update file metadata",
-        Description = "Update metadata for a file (currently only description).")]
+    [EndpointSummary("Update file metadata")]
+    [EndpointDescription("Update metadata for a file (currently only description).")]
     public async Task<IActionResult> UpdateFileMetadata(
         [FromRoute] Guid id,
         [FromBody] UpdateFileMetadataRequest request,
@@ -177,9 +171,8 @@ link the file. There is no contacts area here: contact images go through the ava
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete file",
-        Description = "Delete a file and its associated data.")]
+    [EndpointSummary("Delete file")]
+    [EndpointDescription("Delete a file and its associated data.")]
     public async Task<IActionResult> DeleteFile(
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)

@@ -7,7 +7,6 @@ using Odyssey.Core.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
@@ -44,9 +43,8 @@ public sealed class PropertyEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingPropertyEvent>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List a property's events, with search, type/date/source filters, sorting and pagination.",
-        Description = @"Newest first by default. The search term spans the title, the description AND
+    [EndpointSummary("List a property's events, with search, type/date/source filters, sorting and pagination.")]
+    [EndpointDescription(@"Newest first by default. The search term spans the title, the description AND
                         the notes. Events are NOT inlined on GET /api/properties/{id}.")]
     public async Task<IActionResult> GetEvents(
         [FromRoute(Name = "propertyId")] Guid propertyId,
@@ -69,9 +67,8 @@ public sealed class PropertyEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Record one event on a property.",
-        Description = @"source, createdBy and createdAtUtc are server-stamped and ignored if present in
+    [EndpointSummary("Record one event on a property.")]
+    [EndpointDescription(@"source, createdBy and createdAtUtc are server-stamped and ignored if present in
                         the body. occurredAt more than 60 seconds ahead of the server clock is a 422
                         keyed occurredAt. A type illegal for the property's type, or one only the server
                         records (Archived, Unarchived, AcquisitionDateCleared, DisposalReversed), is a
@@ -103,9 +100,8 @@ public sealed class PropertyEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Replace one event on a property (FULL replacement).",
-        Description = @"null means ""clear this field"", NOT ""leave unchanged"". A body omitting
+    [EndpointSummary("Replace one event on a property (FULL replacement).")]
+    [EndpointDescription(@"null means ""clear this field"", NOT ""leave unchanged"". A body omitting
                         description or notes CLEARS it, and one omitting type resets it to Other. A
                         system-only type may be kept on a row that already carries it, never introduced.
                         An event id belonging to another property or to a contract is a 404.")]
@@ -128,7 +124,7 @@ public sealed class PropertyEventsController : ControllerBase
     [Authorize(Policy = PermissionClaims.PropertiesUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove one event from a property's log (the property itself is untouched).")]
+    [EndpointSummary("Remove one event from a property's log (the property itself is untouched).")]
     public async Task<IActionResult> DeleteEvent(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromRoute(Name = "eventId")] Guid eventId,

@@ -254,7 +254,7 @@ anywhere**. Terminating TLS removes that failure mode instead of depending on it
 private deployment a faithful rehearsal of the public one.
 
 The alternative — running `Development` locally to dodge the cookie flag — is the wrong trade and
-worth naming explicitly: it also turns on Swagger, permits demo seeding, and substitutes
+worth naming explicitly: it also turns on the API documentation, permits demo seeding, and substitutes
 `LegalOptions.DevelopmentPseudonymizationSecret` for the real pseudonymisation key
 (`Odyssey.Api/Legal/LegalPseudonymizer.cs`). Use `Production` on both deployments.
 
@@ -263,7 +263,7 @@ worth naming explicitly: it also turns on Swagger, permits demo seeding, and sub
 The `Caddyfile` sends `Strict-Transport-Security: max-age=31536000; includeSubDomains`, and
 **browsers key HSTS by hostname and ignore the port.** Setting `ODYSSEY_DOMAIN=localhost` would
 therefore pin *every* `http://localhost:<port>` URL in that browser to HTTPS for a year — breaking
-the dev stack on :5199 and Swagger on :5188, recoverable only via `chrome://net-internals/#hsts`.
+the dev stack on :5199 and the API docs on :5188, recoverable only via `chrome://net-internals/#hsts`.
 
 Scoped to `odyssey.localhost` the pin is harmless, browsers resolve `*.localhost` to loopback with
 no hosts-file entry, and Caddy recognises the name as non-public and issues from its internal CA
@@ -841,12 +841,16 @@ includes migrations.
 
 The migration history was squashed to a single `InitialCreate` more than once during development,
 most recently when the identity context was merged into `OdysseyContext`; a database built before
-`20260829095318_InitialCreate` has no upgrade path and must be recreated. **That is over.** A
-production database with real data has run since `v0.35.0`, so from then on every schema change is an
-additive migration and the history is never squashed again.
+`20260829095318_InitialCreate` has no upgrade path and must be recreated. **Those ad-hoc squashes are
+over.** A production database with real data has run since `v0.35.0`, so every schema change is an
+additive migration, except for a **guarded rebaseline** done by the procedure in
+[`migration-rebaseline.md`](migration-rebaseline.md), which existing databases cross with no manual
+SQL. A database below a rebaseline's cut is refused by the migrations job with the release to upgrade
+through first — so when a release note says "databases below `vX` must upgrade to `vX` first", do that
+upgrade before deploying the newer image.
 
 **A data migration is restored from backup, not rolled back.** `Down()` reverses schema at most; a
-migration that moves or rewrites rows (for example `RetirePropertyAndVehicleAccountTypes`, which moves
+migration that moves or rewrites rows (for example *RetirePropertyAndVehicleAccountTypes*, now folded into the v0.51.0 baseline, which moved
 Property- and Vehicle-type accounts onto property records and whose `Down()` drops only a constraint)
 cannot be reversed by any EF command. Take the backup above before upgrading across one, and keep it
 until the upgraded instance has been checked.
@@ -934,7 +938,10 @@ then fails closed (a `503`, a failed run or a skipped send), and nothing falls b
 
 Image pulls from GHCR are made by the Docker host at deploy time, not by a container. Nothing else is
 contacted: the client's Content Security Policy admits only its own origin plus `MAP_ALLOWED_ORIGINS`, and
-no instrument-price source ships in this build (the sync framework registers none).
+no instrument-price source ships in this build (the sync framework registers none). The API documentation page
+(Scalar at `/scalar/v1`, never served in Production) contacts nothing either: every Scalar feature that
+would reach a third party — fonts, AI chat, MCP, telemetry, the request proxy — is off in code, and the page
+carries its own policy admitting only the API's origin (issue #569).
 
 ## Household locations: what leaves the deployment, and how to erase one
 
@@ -1369,6 +1376,114 @@ run's trigger, status, error kind, span, currencies and row counts. Per-currency
 log under the System settings audit category (`Odyssey.Api.SystemSettings.SystemSettingsService`), and
 manual runs under `Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService`, each with the acting
 user's id.
+
+## Instrument prices: what leaves the deployment, and how to stop it
+
+Issue #446 added a watchlist of instruments with manual prices and a sync framework; issue #447 adds the first
+price source, **Tiingo** (`api.tiingo.com`): end-of-day closes for US-listed stocks, ETFs and mutual funds, on
+Tiingo's free *Starter* plan. Nothing is sent until an Admin **both** pastes a Tiingo token (*System settings* →
+*Instrument prices* → *Tiingo API token*) **and** enables a Tiingo binding on an instrument (*Instruments* → the
+instrument's price sources).
+
+### What leaves the deployment
+
+- **From the worker only**, over HTTPS to `api.tiingo.com` (a compile-time constant; no setting names it, redirects
+  are not followed): the **source symbol** of each enabled Tiingo binding (for example `AAPL`, `BRK-B`), the
+  **date range** asked for, and the **token** in an `Authorization: Token …` header. Nothing else — no user,
+  account, holding, amount or instrument name. The API container never calls Tiingo.
+- **The followed list is personal data where the household is identifiable.** Together with the operator's Tiingo
+  account and the server's IP address, the set of symbols discloses a household's investment interests. Tiingo
+  most likely receives it as an **independent controller** in the US (a third country), not as a processor for
+  the operator.
+- **Tiingo's privacy policy and EU-US Data Privacy Framework status: verify before enabling.** Read Tiingo's
+  privacy policy (linked from the footer of tiingo.com) and check whether Tiingo appears on the Data Privacy
+  Framework list (dataprivacyframework.gov). *These two facts were not confirmed when this section was written —
+  tiingo.com renders its legal pages client-side and they could not be read from the build environment.* Whether
+  the GDPR household exemption covers a given deployment depends on that deployment, not on Odyssey.
+- **One token per deployment.** Tiingo counts its limits **per account**, so a token shared between deployments
+  (or with another tool) makes each one run into limits the other spent.
+
+### Limits
+
+Tiingo's free plan allows 50 requests an hour, 1,000 a day (reset at midnight US Eastern) and 500 **unique symbols
+a month**. Odyssey stays well inside the first two on its own, across all worker replicas:
+
+| Cap | Value | Why |
+|---|---|---|
+| Per UTC hour | 25 | half of 50, so two adjacent clock hours stay within 50 even if Tiingo's window is rolling |
+| Per run | 25 | equal to the hourly cap |
+| Per Oslo day | 600 | 25 × 25 h (the US fall-back day) = 625 < 1,000, so any Tiingo day is bounded by the hourly cap |
+| Spacing | 2 s | between consecutive requests of one worker process, retries included |
+| Days per request | 1,461 | four years per price request |
+
+A first fetch of a symbol costs two requests (its venue, then its prices); later spans cost one for a week. A run
+spends at most half its budget on bringing bindings up to date and the rest on backfilling history, so **a large
+watchlist fills over several hours**: about 6 new symbols an hour on the first day, all of 50 current within about
+5 h of the first run after the US close (~23:30 Oslo time) once their venues are known. A run that reaches a cap
+**defers** the rest — they are not failures, nothing is written on them, and the next run starts at the next hour.
+
+The 500-unique-symbols-a-month limit is Tiingo's, and Odyssey does not count it; a symbol Tiingo refuses for it
+records a per-binding failure and is retried the next day.
+
+### Symbols and currencies
+
+- **Symbol format is Tiingo's**: share classes use a dash (`BRK-B`, not `BRK.B`). A symbol Odyssey cannot bind
+  (outside `[A-Za-z0-9._-]`) cannot be used.
+- **Tiingo states no currency**, so Odyssey derives it from the **listing venue** Tiingo states, through a fixed
+  map: `NYSE`, `NASDAQ`, `NYSE ARCA`, `NYSE MKT`, `AMEX`, `BATS` and `NMFQS` (mutual funds) → USD. Any other venue
+  — OTC markets, Shanghai and Shenzhen (whose tickers quote in more than one currency) — is refused for that
+  binding, as are the five tickers Tiingo lists on a US venue but prices in AUD (`AYA`, `CSF`, `FDV`, `MPG`, `NYM`).
+  A batch whose derived currency differs from the instrument's is rejected whole.
+- **Not detected:** a source symbol that points at a **different instrument in the same currency** (say `VTI`
+  bound to an instrument meant to be `VOO`) fetches that other instrument's prices. Check the symbol when binding.
+- **Also not detected:** a ticker **listed after 2026-11-11** on a mapped US venue but priced by Tiingo in another
+  currency. The AUD exception list is a snapshot of `supported_tickers.zip` on that date; such a ticker bound to a USD
+  instrument would store its closes as USD. Check Tiingo's `priceCurrency` for an unusual listing before binding it.
+- A fund's close is its **NAV**. Only the unadjusted close is stored; adjusted prices, dividends and splits are
+  ignored.
+
+### Entering the token
+
+Paste the **bare token** from your Tiingo account page — **without** the word `Token` in front. Odyssey adds the
+`Token ` prefix itself; a pasted prefix becomes `Token Token …`, which Tiingo refuses, and the source then records a
+credential problem on every binding (it fails closed and nothing is fetched). A replaced token takes effect on the
+next request without a restart. An unset token means "not configured" (nothing is sent, nothing fails); a token
+the deployment cannot decrypt (a lost Data Protection key) fails closed, records *Configuration* on every Tiingo
+binding and fails the run.
+
+### Stopping it
+
+- **Stop sending:** disable the Tiingo bindings, or clear the token (*Clear* on its row). Either takes effect on
+  the next run.
+- **Remove what was fetched:** *Delete prices* on the instrument (*Instruments*), choosing fetched prices, removes
+  Tiingo's rows as a purge run; manual prices can be kept.
+
+### Licence (Tiingo's terms) — the operator's to satisfy
+
+Tiingo's free plan is licensed for **internal, personal use**: its terms say the data may be used "for your own
+personal use" and not displayed or shared "with another person or organization". Odyssey shows prices to **every
+household member** who holds the instrument-prices read claim, and does **not** restrict that display to the token
+owner. Each operator supplies their own token — the project ships none — and **satisfying Tiingo's licence for
+their household is the operator's responsibility**: confirm with Tiingo that showing prices to the members of your
+own household is permitted, or limit who holds the read claim. *The product decision recorded on issue #447
+(§7.5) is authoritative where it differs from this paragraph.* Odyssey shows the credit
+*End-of-day prices from Tiingo (tiingo.com).* wherever Tiingo prices appear.
+
+### Release note (issue #447)
+
+- **One additive migration** (*AddInstrumentPriceHourlyCap*, since folded into the v0.51.0 baseline): two columns on `InstrumentPriceSourceStates` (the
+  hourly request counter) and one counter column on `JobRuns` (`InstrumentsDeferred`). Schema only; `Down()` drops
+  them. It also drops and re-adds `CK_JobRuns_CountersNonNegative` to cover the new column, which re-validates
+  that CHECK over every `JobRuns` row and holds the table for that long (brief at the run log's retained size; the
+  worker's jobs wait on it).
+- **The sync's forward watermark now records the newest date the source returned** (#468) rather than the date it
+  asked up to, so a close published after a run is fetched by the next one. Days more than five days old count as
+  fetched whether or not they came back.
+- **`MinRequestInterval` is now enforced** (#469), per source and per worker process.
+- **A binding whose last attempt failed as unsupported** (unknown symbol, unmapped venue, currency mismatch) is
+  not retried until the next Oslo day; editing it (symbol, enabled flag, start date or its place in the source
+  order) clears that at once.
+- **No new claims, no new setting, no feature switch.** The token is a new secret with no default.
 
 ## File storage (filesystem volumes)
 
@@ -1868,7 +1983,7 @@ records, and accepts EPUB (`application/epub+zip`) on **every** upload surface.
 - **Bind `LibraryFiles` before you upgrade.** Add `FileStorage__Bindings__LibraryFiles` to **both** `api` and
   `worker` (the base compose file and the AppHost bind it to `primary`, like the other three areas). A host with
   volumes and the feature unbound refuses to start (check B1). Keep the two services identical.
-- **One migration**, `AddBooks`: the six book tables, one nullable column `FileMetadata.LibraryStoredObjectId`
+- **One migration**, *AddBooks* (since folded into the v0.51.0 baseline): the six book tables, one nullable column `FileMetadata.LibraryStoredObjectId`
   (`RESTRICT` to `StoredObjects`, unique), and `CK_FileMetadata_ExactlyOneSource` re-created to count it. Re-adding
   the check re-validates every `FileMetadata` row, which on MariaDB rebuilds the table under a lock: **time it on a
   production-sized copy** before the upgrade window.
@@ -2039,7 +2154,7 @@ download or since the rule last changed, whichever is later. Audio never downloa
 
 ## Security checklist
 
-- [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**
+- [ ] `ASPNETCORE_ENVIRONMENT=Production` (API docs off; set in the overlay) — and **not**
       `Testing`, which the API refuses to start under; see the section above.
 - [ ] No demo data: if this host ever ran the base `docker compose up`, its `mariadb_data`
       volume was destroyed with `docker compose down -v` before the production overlay came up.

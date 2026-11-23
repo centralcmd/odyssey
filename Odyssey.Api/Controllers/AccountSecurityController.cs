@@ -9,7 +9,6 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -83,7 +82,7 @@ public sealed class AccountSecurityController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status423Locked, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Change the signed-in user's own password.")]
+    [EndpointSummary("Change the signed-in user's own password.")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         var user = await userManager.GetUserAsync(User);
@@ -173,7 +172,7 @@ public sealed class AccountSecurityController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status423Locked, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Request a change of the signed-in user's email address.")]
+    [EndpointSummary("Request a change of the signed-in user's email address.")]
     public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailRequest request)
     {
         var user = await userManager.GetUserAsync(User);
@@ -255,7 +254,7 @@ public sealed class AccountSecurityController : ControllerBase
     [PasswordChangeExempt]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [SwaggerOperation(Summary = "Sign the current user out, clearing the authentication cookie.")]
+    [EndpointSummary("Sign the current user out, clearing the authentication cookie.")]
     public async Task<IActionResult> Logout()
     {
         await signInManager.SignOutAsync();

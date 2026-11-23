@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
@@ -36,9 +36,8 @@ public sealed class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingBudget>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List budgets.",
-        Description = @"List budgets with search, sorting and pagination.")]
+    [EndpointSummary("List budgets.")]
+    [EndpointDescription(@"List budgets with search, sorting and pagination.")]
     public async Task<IActionResult> Get(
         [FromQuery] BudgetsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -50,9 +49,8 @@ public sealed class BudgetsController : ControllerBase
     [HttpGet("summary", Name = "GetBudgetSummary")]
     [Authorize(Policy = PermissionClaims.BudgetsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BudgetSummary))]
-    [SwaggerOperation(
-        Summary = "Summary rollup: active / archived counts and the combined planned balance.",
-        Description = @"Aggregated server-side so the page header does not have to fetch every budget and its items.")]
+    [EndpointSummary("Summary rollup: active / archived counts and the combined planned balance.")]
+    [EndpointDescription(@"Aggregated server-side so the page header does not have to fetch every budget and its items.")]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken = default)
     {
         return Ok(await budgetService.GetSummary(cancellationToken));
@@ -63,12 +61,10 @@ public sealed class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingBudget))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get a budget based on the budget ID.",
-        Description = @"Get a budget based on the budget ID.")]
+    [EndpointSummary("Get a budget based on the budget ID.")]
+    [EndpointDescription(@"Get a budget based on the budget ID.")]
     public async Task<IActionResult> Get(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the budget to get.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the budget to get.")] Guid id, CancellationToken cancellationToken = default)
     {
         var budget = await budgetService.Get(id, cancellationToken);
         if (budget is null)
@@ -84,13 +80,11 @@ public sealed class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Create a new budget.",
-        Description = @"Create a new budget. If a new budget is created, the url for the new budget is 
+    [EndpointSummary("Create a new budget.")]
+    [EndpointDescription(@"Create a new budget. If a new budget is created, the url for the new budget is 
                         returned in the location header.")]
     public async Task<IActionResult> Post(
-        [FromBody] [SwaggerParameter("NewBudget", Required = true,
-            Description = "The new budget to create.")] NewBudget newBudget, CancellationToken cancellationToken = default)
+        [FromBody][Description("The new budget to create.")] NewBudget newBudget, CancellationToken cancellationToken = default)
     {
         var budget = await budgetService.Create(newBudget, cancellationToken);
         return CreatedAtRoute("GetBudget", new { id = budget.BudgetId }, "");
@@ -102,15 +96,12 @@ public sealed class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Update the details for a budget.",
-        Description = @"Update the details for a budget. Not an upsert: an unknown ID is a 404 and
+    [EndpointSummary("Update the details for a budget.")]
+    [EndpointDescription(@"Update the details for a budget. Not an upsert: an unknown ID is a 404 and
                         nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the budget to update.")] Guid id,
-        [FromBody] [SwaggerParameter("NewBudget", Required = true,
-            Description = @"The budget with the updated values.")] NewBudget newBudget, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the budget to update.")] Guid id,
+        [FromBody][Description(@"The budget with the updated values.")] NewBudget newBudget, CancellationToken cancellationToken = default)
     {
         var budget = await budgetService.Update(id, newBudget, cancellationToken);
         return budget is null
@@ -122,12 +113,10 @@ public sealed class BudgetsController : ControllerBase
     [Authorize(Policy = PermissionClaims.BudgetsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Delete a budget based on the budget ID.",
-        Description = @"Delete a budget based on the budget ID.")]
+    [EndpointSummary("Delete a budget based on the budget ID.")]
+    [EndpointDescription(@"Delete a budget based on the budget ID.")]
     public async Task<IActionResult> Delete(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the budget to delete.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the budget to delete.")] Guid id, CancellationToken cancellationToken = default)
     {
         await budgetService.Delete(id, cancellationToken);
         return NoContent();
@@ -138,12 +127,10 @@ public sealed class BudgetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BudgetReport))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get transactions in a budget based on the budget ID.",
-        Description = @"Get transactions based on the budget ID.")]
+    [EndpointSummary("Get transactions in a budget based on the budget ID.")]
+    [EndpointDescription(@"Get transactions based on the budget ID.")]
     public async Task<IActionResult> GetBudgetTransactions(
-        [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the budget to get transactions for.")] Guid id, CancellationToken cancellationToken = default)
+        [FromRoute(Name = "id")][Description(@"The ID for the budget to get transactions for.")] Guid id, CancellationToken cancellationToken = default)
     {
         var transactions = await budgetService.GetTransactions(id, cancellationToken);
         if (transactions is null)

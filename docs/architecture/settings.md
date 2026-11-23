@@ -4,6 +4,13 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
 
 **No runtime feature toggles for new features.** Do not add per-feature kill-switch flags (e.g. a `Feature:Enabled` option that returns `503` when off) when building new features. Gate capabilities with **permission claims**, not config toggles. One early feature (file analysis's `FileAnalysis:Enabled`) predates this convention and keeps its flag; don't follow that pattern in new work and don't add more.
 
+**`ApiDocs:Enabled` and `ApiDocs:RequireLogin` are a deliberate exception, and not a precedent** (issue #569).
+They are deploy-time switches that decide whether the API documentation routes exist (never in Production) and
+whether reading them needs a session. That is an access posture for a non-production developer surface, not a
+product capability: "anyone, no login" cannot be expressed as a permission claim, and both are bound when the
+routes are mapped at startup, so neither belongs in the `SystemSettings` store. Do not cite them for a product
+toggle.
+
 That rule is unchanged by issue #439, which **relocated** the one grandfathered flag from `appsettings.json` into the `SystemSettings` store (`FileAnalysisEnabled`) rather than adding a new one. Nothing about the claim gates changed — `file-analysis.create` / `.read` / `.import` still apply. What changed is that the flag is operable without a redeploy, which matters because it is the switch that stops personal data leaving the deployment for a third-party processor: an operator facing a processor incident, a withdrawn DPA or a data-residency question should not need a container rebuild. It is read **live and uncached** on every file-analysis call (never on the `FileAnalysisSettings` snapshot), so a disable binds on the next request rather than up to 30 seconds later.
 
 **Instance-wide policy lives in the database, not `appsettings.json`.** A growing set of runtime

@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel;
 
 using Odyssey.Core.Finance;
 using Odyssey.Core.Identity;
@@ -46,9 +46,8 @@ public sealed class FileAnalysisController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<FileAnalysisAuditEntry>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List the external-AI file-analysis audit trail.",
-        Description = "Admin-only accountability log of every statement sent to the AI provider for analysis — " +
+    [EndpointSummary("List the external-AI file-analysis audit trail.")]
+    [EndpointDescription("Admin-only accountability log of every statement sent to the AI provider for analysis — " +
                       "who, which file, when, the lawful basis, and the result. Newest first.")]
     public async Task<IActionResult> GetAuditLog(
         [FromQuery] FileAnalysisAuditQueryParams query,
@@ -133,12 +132,11 @@ public sealed class FileAnalysisController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingFileAnalysisJob))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the status and candidate transactions for an analysis job.",
-        Description = "The polling endpoint (issue #444): while the job is Queued or Running the response carries "
+    [EndpointSummary("Get the status and candidate transactions for an analysis job.")]
+    [EndpointDescription("The polling endpoint (issue #444): while the job is Queued or Running the response carries "
             + "Retry-After: 2; candidates arrive with Completed. Readable while analysis is switched off.")]
     public async Task<IActionResult> GetJob(
-        [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
+        [FromRoute(Name = "analysisJobId")] [Description("Analysis Job ID")]
         Guid analysisJobId, CancellationToken cancellationToken = default)
     {
         var job = await fileAnalysisService.GetJobAsync(analysisJobId, cancellationToken);
@@ -170,15 +168,14 @@ public sealed class FileAnalysisController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Run (or re-run) the AI match step for an extraction-completed analysis job.",
-        Description = "Sends the user's active contacts (names, and aliases when the job's consent covers them) and " +
+    [EndpointSummary("Run (or re-run) the AI match step for an extraction-completed analysis job.")]
+    [EndpointDescription("Sends the user's active contacts (names, and aliases when the job's consent covers them) and " +
                       "tags (names, and descriptions likewise) to the AI provider to resolve each candidate's " +
                       "merchant/category, persists the matches, and returns the updated job. Synchronous. A provider " +
                       "failure is recorded on matchStatus and never blocks importing the candidates. 409 with code " +
                       "file_analysis_destination_changed when the provider settings changed since the analysis.")]
     public async Task<IActionResult> MatchCandidates(
-        [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
+        [FromRoute(Name = "analysisJobId")] [Description("Analysis Job ID")]
         Guid analysisJobId, CancellationToken cancellationToken = default)
     {
         var job = await fileAnalysisService.MatchAsync(analysisJobId, cancellationToken);
@@ -193,13 +190,12 @@ public sealed class FileAnalysisController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Import selected candidate transactions from an analysis job.",
-        Description = "Commits the specified candidates as real transactions. Optional field overrides (date, description, amount, currency) are applied before import. Each candidate is validated like any other transaction write: its currency must be the account's, its contact and tags must exist and be active, and a candidate that is no longer Pending is reported as a failure rather than imported again. A closed or archived account refuses the whole request (400); a candidate reviewed by a concurrent request is a 409.")]
+    [EndpointSummary("Import selected candidate transactions from an analysis job.")]
+    [EndpointDescription("Commits the specified candidates as real transactions. Optional field overrides (date, description, amount, currency) are applied before import. Each candidate is validated like any other transaction write: its currency must be the account's, its contact and tags must exist and be active, and a candidate that is no longer Pending is reported as a failure rather than imported again. A closed or archived account refuses the whole request (400); a candidate reviewed by a concurrent request is a 409.")]
     public async Task<IActionResult> ImportCandidates(
-        [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
+        [FromRoute(Name = "analysisJobId")] [Description("Analysis Job ID")]
         Guid analysisJobId,
-        [FromBody] [SwaggerParameter("ImportRequest", Required = true)]
+        [FromBody] [Description("ImportRequest")]
         ImportRequest request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

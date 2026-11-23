@@ -1345,8 +1345,8 @@ public class WeatherApiTests(WeatherApiTests.Host host) : SharedApiHostTests<Wea
     [Fact]
     public async Task The_openapi_document_lists_the_hourly_parameters_and_requires_none()
     {
-        await using var factory = new WeatherFactory(Reader, configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
-        using var document = JsonDocument.Parse(await factory.CreateClient().GetStringAsync("/swagger/v1/swagger.json"));
+        await using var factory = new WeatherFactory(Reader, configuration: new Dictionary<string, string?> { ["ApiDocs:Enabled"] = "true", ["ApiDocs:RequireLogin"] = "false" });
+        using var document = JsonDocument.Parse(await factory.CreateClient().GetStringAsync("/openapi/v1.json"));
 
         var parameters = document.RootElement.GetProperty("paths").GetProperty("/api/weather/hourly").GetProperty("get")
             .GetProperty("parameters").EnumerateArray().ToList();

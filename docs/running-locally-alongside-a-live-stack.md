@@ -123,7 +123,7 @@ unauthenticated.
 
 - Frontend: `http://localhost:5199`
 - API: `http://localhost:5188`
-- Swagger: `http://localhost:5188/swagger`
+- API reference (Scalar): `http://localhost:5188/scalar/v1` — sign in to the client first
 - MariaDB (with the override above): `localhost:3308`, database `odyssey`, user/password
   `odyssey` / `odyssey_password` (defaults in `docker-compose.yml`; override via the
   `MARIADB_*` env vars).

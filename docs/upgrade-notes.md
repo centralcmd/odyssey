@@ -16,6 +16,57 @@ starts at 0.16.0) is filed under *Before 0.16.0*.
 
 ## Unreleased
 
+### Migration history rebaselined at v0.51.0: upgrade to v0.51.0 first
+
+The 95 migrations up to and including v0.51.0's `20261122104734_AddRecipes` were folded into one baseline that
+keeps that id (issue #581, [`migration-rebaseline.md`](migration-rebaseline.md)).
+
+- **A database on v0.51.0 needs nothing.** Its history already holds the baseline's id, so the migrations job finds
+  nothing to apply and changes nothing. The old history rows stay; they are harmless.
+- **A database older than v0.51.0 is refused** by the migrations job, which names v0.51.0 as the release to upgrade
+  through. Deploy v0.51.0, let its migrations job complete, then deploy this release. Nothing is changed by the
+  refusal.
+- **Before deploying**, take a dump and run `--schema-fingerprint` against each database (the runbook's step 4);
+  after deploying, run it again. Both diffs should be empty. Run the mode from **this release's** build or migrations
+  image: v0.51.0 has no fingerprint mode, and a build from before this release prints its output in a different
+  normalisation that does not diff against the committed file.
+- Gone with the old chain: the one-time location conversion, the non-positive exchange-rate pre-check and the
+  property/vehicle account retirement report. All three ran during upgrades that every supported database has
+  already completed.
+
+### Sign-in broke behind the client nginx at 0.50.0: larger request-header buffers
+
+0.50.0 added 18 permission claims (books, recipes and their tags, podcast audio). The Identity auth cookie carries
+every claim, so it grew past nginx's default request-header buffer of `4 8k` — about 8.3 KB for Admin and 7.6 KB
+for Owner before any other cookie. The client nginx then answered **every** request after sign-in, static files
+included, with `400 Request Header Or Cookie Too Large`. Sessions already signed in broke within a minute of the
+deploy, when the security-stamp check rewrote their cookie with the new claims.
+
+- **The shipped client image now sets `large_client_header_buffers 4 32k;`.** Pull the new image; nothing else to do
+  with the shipped compose files and `Caddyfile` (Caddy's own header limit is far larger).
+- **If you run your own reverse proxy in front of the client or the API**, raise its request-header limit to match:
+  at least 16 KB for a single header line, 32 KB for all headers. 32 KB is Kestrel's `MaxRequestHeadersTotalSize`,
+  so more buys nothing. In nginx that is `large_client_header_buffers 4 32k;` in the `server` (default server) or
+  `http` block that receives the browser's request.
+- This only buys headroom: each new module adds roughly 8 claims. A structural fix that stops the cookie growing
+  with the claim catalogue is tracked in issue #583.
+
+### API documentation moved to Scalar; `SWAGGER_ENABLED` became `API_DOCS_ENABLED`
+
+Issue #569 replaced Swashbuckle with the built-in OpenAPI generator and Swagger UI with Scalar.
+
+- **New URLs:** the reference is `/scalar/v1` and the OpenAPI 3.1 document is `/openapi/v1.json` (through the
+  client's proxy, `/api/scalar/v1` and `/api/openapi/v1.json`). `/swagger` serves nothing; there is no redirect.
+- **`SWAGGER_ENABLED` / `Swagger:Enabled` is no longer read**, and nothing falls back to it. Set
+  `API_DOCS_ENABLED` (`ApiDocs:Enabled`) instead. On Compose the default is now `false`; a stack run as
+  Development still serves the docs whatever it says, but any other non-Production stack needs
+  `API_DOCS_ENABLED=true`. A host that still sets the old key logs one warning naming the new one at startup.
+- **New: `API_DOCS_REQUIRE_LOGIN` (`ApiDocs:RequireLogin`), default `true` everywhere, Development included.**
+  Sign in to the client first, then open the docs; without a session they answer `401`. Set it to `false` for
+  the previous anonymous behaviour. A value other than `true`/`false` stops the API at startup, in every
+  environment.
+- **Production is unchanged:** the docs are never served there.
+
 ### Legacy file storage removed (`RemoveLegacyFileBlobStorage`)
 
 Issues #428 and #448 moved every photo original and file out of the `FileBlob` table with two worker jobs (the

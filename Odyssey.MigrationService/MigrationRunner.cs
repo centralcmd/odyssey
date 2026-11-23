@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using Odyssey.Core.Locations.Conversion;
+using Odyssey.Context.Migrations;
 
 namespace Odyssey.MigrationService;
 
@@ -14,12 +14,6 @@ namespace Odyssey.MigrationService;
 /// </summary>
 public static class MigrationRunner
 {
-    /// <summary>The migration that adds <c>CK_ExchangeRates_RatePositive</c> (issue #472).</summary>
-    internal const string RatePositiveMigration = "AddExchangeRatePositiveCheck";
-
-    /// <summary>The most row ids a <see cref="NonPositiveExchangeRateException"/> lists.</summary>
-    internal const int NonPositiveRateIdLimit = 20;
-
     /// <summary>
     /// Checks for migration-history drift, then applies the context's pending migrations.
     /// </summary>
@@ -40,26 +34,14 @@ public static class MigrationRunner
     /// </para>
     /// </remarks>
     public static Task MigrateAsync(DbContext dbContext, CancellationToken cancellationToken) =>
-        MigrateAsync(dbContext, conversion: null, cancellationToken);
+        MigrateAsync(dbContext, MigrationBaseline.Current, cancellationToken);
 
     /// <summary>
-    /// Migrates in stages around the issue #380 location conversion (§11): up to and including
-    /// <see cref="ILocationConversion.ExpandMigration"/>, then the conversion, then the rest. The conversion
-    /// runs only while <see cref="ILocationConversion.ContractMigration"/> is still pending, so a later
-    /// upgrade never runs it again; without a <paramref name="conversion"/> (the test harnesses that build a
-    /// schema with no data) everything migrates in one stage.
+    /// As <see cref="MigrateAsync(DbContext, CancellationToken)"/>, against an explicit <paramref name="baseline"/>.
+    /// Production passes <see cref="MigrationBaseline.Current"/>; only tests pass another (issue #581 AC 21).
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The drift guard runs before EACH stage, over that stage's pending migrations only, so a contract
-    /// migration interrupted on an earlier start is reported before anything else runs. Both stage
-    /// migrations are passed <see cref="CancellationToken.None"/> for the reason above. The conversion runs
-    /// between them, outside any other execution strategy: each of its batches is its own strategy and
-    /// transaction, so it is restart-safe and may be cancelled between batches.
-    /// </para>
-    /// </remarks>
-    public static async Task MigrateAsync(
-        DbContext dbContext, ILocationConversion? conversion, CancellationToken cancellationToken)
+    internal static async Task MigrateAsync(
+        DbContext dbContext, MigrationBaseline baseline, CancellationToken cancellationToken)
     {
         // The non-relational short-circuit stays first: MigrateAsync throws EF's own, clear error for a
         // non-relational provider, which nothing below — a pending-migrations read included — would.
@@ -69,136 +51,48 @@ public static class MigrationRunner
             return;
         }
 
+        // First of all, before the pending read (issue #581 §3): a database below the baseline must not reach a
+        // guard or a migration that assumes the chain it was built by.
+        await GuardAgainstBaselineGapAsync(dbContext, baseline, cancellationToken);
+
         var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-        var plan = PlanStages(pending, conversion is not null);
 
-        if (plan.RunConversion)
-        {
-            if (plan.ExpandStage is { } expandStage)
-            {
-                var expandId = expandStage[^1];
-                await RunStageAsync(dbContext, expandStage, cancellationToken,
-                    () => dbContext.Database.MigrateAsync(expandId, CancellationToken.None));
-            }
-
-            await conversion!.ConvertAsync(cancellationToken);
-            pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-        }
-
-        await RunStageAsync(dbContext, pending, cancellationToken,
-            () => dbContext.Database.MigrateAsync(CancellationToken.None));
-    }
-
-    /// <summary>One stage: the drift guard over <paramref name="stage"/>, then <paramref name="migrate"/>.</summary>
-    private static async Task RunStageAsync(
-        DbContext dbContext, IReadOnlyCollection<string> stage, CancellationToken cancellationToken, Func<Task> migrate)
-    {
+        // Inside one execution strategy, so a transient failure retries the drift guard and the migration together.
         var strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
-            await GuardAgainstDriftAsync(dbContext, cancellationToken, stage);
-
-            // After the drift guard, so a drifted database is reported as drift first.
-            await GuardAgainstNonPositiveRatesAsync(dbContext, stage, cancellationToken);
-
-            await migrate();
+            await GuardAgainstDriftAsync(dbContext, cancellationToken, pending, baseline);
+            await dbContext.Database.MigrateAsync(CancellationToken.None);
         });
     }
 
-    /// <summary>What <see cref="MigrateAsync(DbContext, ILocationConversion?, CancellationToken)"/> does before its final stage.</summary>
-    /// <param name="ExpandStage">
-    /// The pending migrations up to and including <see cref="ILocationConversion.ExpandMigration"/>, migrated as a
-    /// stage of their own before the conversion; null when Expand is already applied (or there is no conversion).
-    /// </param>
-    /// <param name="RunConversion">Whether the conversion runs: only while the contract migration is still pending.</param>
-    internal sealed record StagePlan(IReadOnlyList<string>? ExpandStage, bool RunConversion);
-
     /// <summary>
-    /// The staging decision alone, with no database: a pure function of the pending migration ids, so the fast
-    /// tier can pin it (senior-tester L3). The conversion runs only while the contract migration is pending —
-    /// never on a later upgrade, never on a fresh database that a previous start already took past it — and
-    /// Expand gets its own stage only when it is itself still pending.
-    /// </summary>
-    internal static StagePlan PlanStages(IReadOnlyList<string> pending, bool hasConversion)
-    {
-        if (!hasConversion || !pending.Any(id => IsNamed(id, ILocationConversion.ContractMigration)))
-        {
-            return new StagePlan(null, false);
-        }
-
-        var expandAt = pending.ToList().FindIndex(id => IsNamed(id, ILocationConversion.ExpandMigration));
-        return new StagePlan(expandAt >= 0 ? pending.Take(expandAt + 1).ToList() : null, true);
-    }
-
-    /// <summary>
-    /// Stops before <see cref="RatePositiveMigration"/> when <c>ExchangeRates</c> holds a row its CHECK forbids
-    /// (issue #472 §11), naming at most <see cref="NonPositiveRateIdLimit"/> ids and the total. Reports and never
-    /// repairs, like <see cref="GuardAgainstDriftAsync"/>.
+    /// Refuses a non-empty database whose history lacks <see cref="MigrationBaseline.BaselineMigrationId"/>
+    /// (issue #581). Reports and never repairs: it writes no history row, because a database lacking the
+    /// baseline id is by definition not at the cut, and recording it would claim a schema it does not have.
     /// </summary>
     /// <remarks>
-    /// It runs only while that migration is in the stage about to run, and does nothing on a non-relational
-    /// provider or when the table does not exist yet — a fresh database has <c>InitialCreate</c> in the same stage
-    /// and must migrate normally.
+    /// An empty history — the table absent included — is a fresh install and passes; the drift guard still
+    /// catches an empty history over existing tables. Ids compare as ordinal strings, which orders EF's
+    /// <c>yyyyMMddHHmmss_</c> prefix chronologically.
     /// </remarks>
-    internal static async Task GuardAgainstNonPositiveRatesAsync(
-        DbContext dbContext, IReadOnlyCollection<string> stage, CancellationToken cancellationToken)
+    internal static async Task GuardAgainstBaselineGapAsync(
+        DbContext dbContext, MigrationBaseline baseline, CancellationToken cancellationToken)
     {
-        if (!dbContext.Database.IsRelational() || !stage.Any(id => IsNamed(id, RatePositiveMigration)))
+        if (!dbContext.Database.IsRelational())
         {
             return;
         }
 
-        await dbContext.Database.OpenConnectionAsync(cancellationToken);
-        try
+        var applied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
+        if (applied.Count == 0 || applied.Contains(baseline.BaselineMigrationId, StringComparer.Ordinal))
         {
-            var connection = dbContext.Database.GetDbConnection();
-
-            await using (var exists = connection.CreateCommand())
-            {
-                exists.CommandText = """
-                    SELECT COUNT(*) FROM information_schema.TABLES
-                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ExchangeRates'
-                    """;
-                if (Convert.ToInt64(await exists.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture) == 0)
-                {
-                    return;
-                }
-            }
-
-            long total;
-            await using (var count = connection.CreateCommand())
-            {
-                count.CommandText = "SELECT COUNT(*) FROM ExchangeRates WHERE Rate <= 0";
-                total = Convert.ToInt64(await count.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
-            }
-
-            if (total == 0)
-            {
-                return;
-            }
-
-            var ids = new List<string>();
-            await using (var select = connection.CreateCommand())
-            {
-                select.CommandText =
-                    $"SELECT ExchangeRateId FROM ExchangeRates WHERE Rate <= 0 ORDER BY ExchangeRateId LIMIT {NonPositiveRateIdLimit}";
-                await using DbDataReader reader = await select.ExecuteReaderAsync(cancellationToken);
-                while (await reader.ReadAsync(cancellationToken))
-                {
-                    ids.Add(Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)!);
-                }
-            }
-
-            throw new NonPositiveExchangeRateException(ids, total);
+            return;
         }
-        finally
-        {
-            await dbContext.Database.CloseConnectionAsync();
-        }
+
+        var newest = applied.Max(StringComparer.Ordinal)!;
+        throw new MigrationBaselineException(baseline, newest);
     }
-
-    private static bool IsNamed(string migrationId, string name) =>
-        migrationId.EndsWith("_" + name, StringComparison.Ordinal);
 
     /// <summary>
     /// Fails fast when a pending migration would recreate an object the database already has, rather
@@ -207,8 +101,14 @@ public static class MigrationRunner
     /// <param name="stage">
     /// The pending migrations of the stage about to run; null for every pending migration.
     /// </param>
+    /// <param name="baseline">
+    /// Decides which unknown history ids name a superseded set: only those later than the baseline. Ids earlier
+    /// than it are the retired ids a rebaseline leaves behind on every healthy database (issue #581 §9).
+    /// Defaults to <see cref="MigrationBaseline.Current"/>.
+    /// </param>
     internal static async Task GuardAgainstDriftAsync(
-        DbContext dbContext, CancellationToken cancellationToken, IReadOnlyCollection<string>? stage = null)
+        DbContext dbContext, CancellationToken cancellationToken, IReadOnlyCollection<string>? stage = null,
+        MigrationBaseline? baseline = null)
     {
         // The check reads information_schema, so it only means anything against a real engine. This is
         // NOT support for the in-memory provider: MigrateAsync below is relational-only and throws
@@ -229,8 +129,21 @@ public static class MigrationRunner
 
         if (MigrationDriftDetector.Detect(pending, existing) is { } drift)
         {
-            throw new MigrationDriftException(drift);
+            var superseded = await ReadSupersededIdsAsync(dbContext, baseline ?? MigrationBaseline.Current, cancellationToken);
+            throw new MigrationDriftException(drift, superseded);
         }
+    }
+
+    /// <summary>History ids this build does not ship that are later than the baseline, in order.</summary>
+    internal static async Task<IReadOnlyList<string>> ReadSupersededIdsAsync(
+        DbContext dbContext, MigrationBaseline baseline, CancellationToken cancellationToken)
+    {
+        var known = dbContext.GetService<IMigrationsAssembly>().Migrations.Keys.ToHashSet(StringComparer.Ordinal);
+        return (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken))
+            .Where(id => !known.Contains(id)
+                && string.CompareOrdinal(id, baseline.BaselineMigrationId) > 0)
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>

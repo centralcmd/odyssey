@@ -7,7 +7,6 @@ using Odyssey.Core.Recipes;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Recipes;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -26,7 +25,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<RecipeSummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List recipes with search (title or ingredient), tag, time, photo, file and status filters, sort and paging.")]
+    [EndpointSummary("List recipes with search (title or ingredient), tag, time, photo, file and status filters, sort and paging.")]
     public async Task<IActionResult> Get([FromQuery] RecipesQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await service.ListAsync(query, CanReadPhotos(), CanReadFiles(), cancellationToken));
 
@@ -35,7 +34,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingRecipe))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a recipe, optionally with its amounts scaled to ?servings= (read-only, nothing is stored).")]
+    [EndpointSummary("Get a recipe, optionally with its amounts scaled to ?servings= (read-only, nothing is stored).")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id,
         [FromQuery] RecipeReadQuery query,
@@ -53,7 +52,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a recipe. Linking photos needs photos.read; linking files, files.read; linking tags, recipes.tags.read.")]
+    [EndpointSummary("Create a recipe. Linking photos needs photos.read; linking files, files.read; linking tags, recipes.tags.read.")]
     public async Task<IActionResult> Post([FromBody] NewRecipe request, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -76,7 +75,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace a recipe (not an upsert). A stale version is 409 recipe-version-conflict; photoIds / attachmentFileIds null leave those links unchanged.")]
+    [EndpointSummary("Replace a recipe (not an upsert). A stale version is 409 recipe-version-conflict; photoIds / attachmentFileIds null leave those links unchanged.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateRecipe request,
@@ -96,7 +95,7 @@ public sealed class RecipesController(RecipeService service, IUserDisplayNameRes
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a recipe with its ingredients, steps and links; library photos, Files-store files and tags stay. A delete that loses a race to an edit is 409.")]
+    [EndpointSummary("Delete a recipe with its ingredients, steps and links; library photos, Files-store files and tags stay. A delete that loses a race to an edit is 409.")]
     public async Task<IActionResult> Delete([FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

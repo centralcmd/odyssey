@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -24,7 +23,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [EnableRateLimiting(WeatherRateLimiting.ReadPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherCurrentResponse))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The current conditions and today's summary for a place.")]
+    [EndpointSummary("The current conditions and today's summary for a place.")]
     public async Task<IActionResult> Current([FromQuery] WeatherPointQuery query, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -41,7 +40,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherHourlyResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The effective forecast steps in a window of at most 10 days (fromUtc/toUtc), or of one point-local day (date).")]
+    [EndpointSummary("The effective forecast steps in a window of at most 10 days (fromUtc/toUtc), or of one point-local day (date).")]
     public async Task<IActionResult> Hourly([FromQuery] WeatherHourlyQuery query, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -58,7 +57,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherDailyResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Day summaries over a range of at most 366 days; days with no data are omitted.")]
+    [EndpointSummary("Day summaries over a range of at most 366 days; days with no data are omitted.")]
     public async Task<IActionResult> Daily([FromQuery] WeatherDailyQuery query, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -75,7 +74,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [EnableRateLimiting(WeatherRateLimiting.ReadPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarEventWeatherResponse))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The weather for a calendar event's time or dates.")]
+    [EndpointSummary("The weather for a calendar event's time or dates.")]
     public async Task<IActionResult> CalendarEvent(
         [FromRoute(Name = "id")] Guid id, [FromQuery] WeatherPointQuery query, CancellationToken cancellationToken = default)
     {
@@ -95,7 +94,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [EnableRateLimiting(WeatherRateLimiting.ReadPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JournalEntryWeatherResponse))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The weather for the day of a journal entry.")]
+    [EndpointSummary("The weather for the day of a journal entry.")]
     public async Task<IActionResult> JournalEntry(
         [FromRoute(Name = "id")] Guid id, [FromQuery] WeatherPointQuery query, CancellationToken cancellationToken = default)
     {
@@ -134,7 +133,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [EnableRateLimiting(WeatherRateLimiting.BatchPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarEventWeatherBatch))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
-    [SwaggerOperation(Summary = "Weather summaries for up to 50 calendar events (repeated ids). Unknown ids are omitted; never fetches from MET.")]
+    [EndpointSummary("Weather summaries for up to 50 calendar events (repeated ids). Unknown ids are omitted; never fetches from MET.")]
     public async Task<IActionResult> CalendarEvents([FromQuery(Name = "ids")] string[]? ids, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -157,7 +156,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [EnableRateLimiting(WeatherRateLimiting.BatchPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JournalEntryWeatherBatch))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
-    [SwaggerOperation(Summary = "The day's weather for up to 50 journal entries (repeated ids). Unknown ids are omitted; never fetches from MET.")]
+    [EndpointSummary("The day's weather for up to 50 journal entries (repeated ids). Unknown ids are omitted; never fetches from MET.")]
     public async Task<IActionResult> JournalEntries([FromQuery(Name = "ids")] string[]? ids, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -180,7 +179,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherPointOptions))]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The weather points a user can pick, by name — or nearest first from nearLocationId (needs locations.read).")]
+    [EndpointSummary("The weather points a user can pick, by name — or nearest first from nearLocationId (needs locations.read).")]
     public async Task<IActionResult> Options([FromQuery] WeatherPointOptionsQuery query, CancellationToken cancellationToken = default)
     {
         // A distance ordering is derived from a place's position, which locations.read guards.
@@ -197,7 +196,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [Authorize(Policy = PermissionClaims.WeatherRead)]
     [EnableRateLimiting(WeatherRateLimiting.ReadPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherPreferences))]
-    [SwaggerOperation(Summary = "The caller's own weather place, and the household default.")]
+    [EndpointSummary("The caller's own weather place, and the household default.")]
     public async Task<IActionResult> Preferences(CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -212,7 +211,7 @@ public sealed class WeatherController(WeatherReadService service, WeatherBatchRe
     [Authorize(Policy = PermissionClaims.WeatherPreferencesUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Set the caller's own weather place; null follows the household default.")]
+    [EndpointSummary("Set the caller's own weather place; null follows the household default.")]
     public async Task<IActionResult> PutPreferences(
         [FromBody] UpdateWeatherPreferences request, CancellationToken cancellationToken = default)
     {

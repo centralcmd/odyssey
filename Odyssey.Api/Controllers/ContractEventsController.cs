@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Identity;
@@ -48,9 +47,8 @@ public sealed class ContractEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingContractEvent>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "List a contract's events, with search, type/date filters, sorting and pagination.",
-        Description = @"Newest first by default. The search term spans the title, the description AND
+    [EndpointSummary("List a contract's events, with search, type/date filters, sorting and pagination.")]
+    [EndpointDescription(@"Newest first by default. The search term spans the title, the description AND
                         the notes: all three sit behind contracts.read and are returned to the same
                         callers, so the notes field being absent from the timeline is a presentation
                         rule and never an access one. Events are NOT inlined on GET /api/contracts/{id}
@@ -75,9 +73,8 @@ public sealed class ContractEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingContractEvent))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Record one event on a contract.",
-        Description = @"createdBy and createdAtUtc are server-stamped and ignored if present in the
+    [EndpointSummary("Record one event on a contract.")]
+    [EndpointDescription(@"createdBy and createdAtUtc are server-stamped and ignored if present in the
                         body. occurredAt must not be in the future — a 60-second forward tolerance
                         allows for a client clock that runs slightly fast, and beyond that the request
                         is a 400 keyed to the field. Writing to an archived contract is permitted,
@@ -111,9 +108,8 @@ public sealed class ContractEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingContractEvent))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Replace one event on a contract (FULL replacement).",
-        Description = @"null means ""clear this field"", NOT ""leave unchanged"" — the opposite of
+    [EndpointSummary("Replace one event on a contract (FULL replacement).")]
+    [EndpointDescription(@"null means ""clear this field"", NOT ""leave unchanged"" — the opposite of
                         PUT /api/contracts/{id}. A body omitting description or notes CLEARS it, and one
                         omitting type resets it to Other. createdBy and createdAtUtc are never rewritten
                         by an update. An event id that exists but belongs to a different contract is a
@@ -137,7 +133,7 @@ public sealed class ContractEventsController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove one event from a contract's log (the contract itself is untouched).")]
+    [EndpointSummary("Remove one event from a contract's log (the contract itself is untouched).")]
     public async Task<IActionResult> DeleteEvent(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "eventId")] Guid eventId,

@@ -16,13 +16,6 @@ public class MigratedSchemaTemplateTests(MariaDbFixture fixture)
     private const string Migrated = "odyssey_template_check_migrated";
     private const string Copied = "odyssey_template_check_copied";
 
-    /// <summary>
-    /// An intermediate target with the shapes a copy has to reproduce — a generated column with a unique index on it
-    /// (<c>JobRuns.ExclusiveGuard</c>), <c>CHECK</c> constraints, foreign keys and seeded rows — and with later
-    /// migrations still pending, so the copy's history has to stop exactly where the template's did.
-    /// </summary>
-    private const string Intermediate = "_AddJobRuns";
-
     [SkippableFact]
     public async Task A_copy_matches_a_database_migrated_from_empty_in_schema_and_rows()
     {
@@ -32,23 +25,6 @@ public class MigratedSchemaTemplateTests(MariaDbFixture fixture)
         await fixture.CreateMigratedDatabaseAsync(Copied);
 
         await AssertSameAsync();
-    }
-
-    [SkippableFact]
-    public async Task A_copy_at_an_intermediate_migration_matches_a_database_migrated_to_it_in_schema_and_rows()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-
-        await MigrateTheSlowWayAsync(Intermediate);
-        var copy = await fixture.CreateDatabaseAtMigrationAsync(Copied, Intermediate);
-
-        await AssertSameAsync();
-
-        // The copy is a usable seam baseline: the rest of the chain applies on top of it.
-        await using var context = ContextFor(copy);
-        Assert.NotEmpty(await context.Database.GetPendingMigrationsAsync());
-        await context.Database.MigrateAsync();
-        Assert.Empty(await context.Database.GetPendingMigrationsAsync());
     }
 
     private async Task MigrateTheSlowWayAsync(string? nameSuffix)

@@ -4,7 +4,6 @@ using Microsoft.Net.Http.Headers;
 using Odyssey.Core.Internet.News.Podcasts;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Internet;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -20,7 +19,7 @@ public sealed class PodcastArtworkController(PodcastEpisodeService episodes) : C
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Podcast artwork: Small, Medium (default) or the stored Original.")]
+    [EndpointSummary("Podcast artwork: Small, Medium (default) or the stored Original.")]
     public async Task<IActionResult> Content(
         [FromRoute] Guid id,
         [FromQuery, System.ComponentModel.DataAnnotations.EnumDataType(typeof(PodcastArtworkSize))] PodcastArtworkSize size = PodcastArtworkSize.Medium,

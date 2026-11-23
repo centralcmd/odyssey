@@ -4,7 +4,6 @@ using Microsoft.Extensions.Options;
 using Odyssey.Api.Map;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -32,7 +31,7 @@ public sealed class MapStylesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(MapStyles))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [SwaggerOperation(Summary = "The basemap style URLs and attribution for the location map.")]
+    [EndpointSummary("The basemap style URLs and attribution for the location map.")]
     public IActionResult Get()
     {
         var map = options.Value;

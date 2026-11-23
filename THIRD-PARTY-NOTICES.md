@@ -99,7 +99,7 @@ licensing.
 | MailKit / MimeKit | MIT |
 | Ical.Net | MIT |
 | QRCoder | MIT |
-| Swashbuckle.AspNetCore | MIT |
+| Scalar.AspNetCore | MIT |
 | MessagePack | MIT |
 | Bogus | MIT |
 | Microsoft.Playwright | MIT |

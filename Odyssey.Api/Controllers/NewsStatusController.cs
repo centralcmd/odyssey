@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Internet;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -19,7 +18,7 @@ public sealed class NewsStatusController(NewsStatusService status) : ControllerB
     [HttpGet]
     [Authorize(Policy = PermissionClaims.FileStorageRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(NewsStatus))]
-    [SwaggerOperation(Summary = "News storage state, totals against the resolved quotas, and the feeds using the most image bytes.")]
+    [EndpointSummary("News storage state, totals against the resolved quotas, and the feeds using the most image bytes.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken = default) =>
         Ok(await status.GetAsync(cancellationToken));
 }

@@ -174,7 +174,7 @@ page's provenance line reads. `SystemSettingSecret` carries no seed at all: an a
 is a secret's correct initial state.
 
 Issue #8 added four such rows — `EmailSmtpHost`, `EmailSmtpPort`, `EmailUseStartTls` and
-`EmailClientBaseUrl` — in the `AddEmailTransportSettings` migration, seeded with `587` and `true` for
+`EmailClientBaseUrl` — in the *AddEmailTransportSettings* migration (folded into the v0.51.0 baseline), seeded with `587` and `true` for
 the two typed keys and the **empty string** for the two string ones. The empty values are the real
 ones, not placeholders awaiting an adoption step: there is no path from configuration or the
 environment into this store, so a fresh deployment starts with mail switched off until an
@@ -257,7 +257,10 @@ provider and the generated migration is unusable.
 In normal operation nobody runs `database update` by hand: `Odyssey.MigrationService` migrates the
 context on start, and the API waits for it to exit successfully.
 
-**History is never squashed again.** A production database with real data has existed since `v0.35.0`,
-so every schema change is an additive migration and `InitialCreate` stays the permanent root. A
+**No ad-hoc squash; only a guarded rebaseline.** A production database with real data has existed since
+`v0.35.0`, so every schema change is an additive migration, except a rebaseline done by the procedure in
+[`docs/migration-rebaseline.md`](../docs/migration-rebaseline.md). The baseline keeps the id of the newest
+migration it replaces, so existing databases cross it with no manual SQL; `MigrationBaseline.Current` and the
+committed `Migrations/Baseline/<id>.fingerprint.txt` describe it. A
 migration interrupted on MariaDB leaves its DDL behind with no history row; `MigrationRunner` detects
 that and names the repair, described in [`docs/migration-history-drift.md`](../docs/migration-history-drift.md).

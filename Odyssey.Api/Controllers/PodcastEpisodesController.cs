@@ -7,7 +7,6 @@ using Odyssey.Core.Internet.News.Podcasts;
 using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Internet;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -28,7 +27,7 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One page of episodes of podcast feeds, newest or oldest first; continue with nextCursor.")]
+    [EndpointSummary("One page of episodes of podcast feeds, newest or oldest first; continue with nextCursor.")]
     public async Task<IActionResult> List([FromQuery] PodcastEpisodesQueryParams query, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query.Search))
@@ -61,7 +60,7 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PodcastEpisodeDetail))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One episode with its description, show notes and chapters.")]
+    [EndpointSummary("One episode with its description, show notes and chapters.")]
     public async Task<IActionResult> Get([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         await episodes.GetAsync(id, cancellationToken) is { } episode ? Ok(episode) : NotFound(id);
 
@@ -77,7 +76,7 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "An episode's stored audio as an attachment, with nosniff, CORP same-site, a strong ETag and range processing.")]
+    [EndpointSummary("An episode's stored audio as an attachment, with nosniff, CORP same-site, a strong ETag and range processing.")]
     public async Task<IActionResult> AudioContent([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         if (await episodes.AudioAsync(id, cancellationToken) is not { } descriptor)
@@ -148,7 +147,7 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status507InsufficientStorage, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Queue a server download of the episode's audio. No body; already stored is a 200.")]
+    [EndpointSummary("Queue a server download of the episode's audio. No body; already stored is a 200.")]
     public async Task<IActionResult> RequestAudio([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
@@ -170,7 +169,7 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove the episode's stored audio, or cancel its pending download. Idempotent.")]
+    [EndpointSummary("Remove the episode's stored audio, or cancel its pending download. Idempotent.")]
     public async Task<IActionResult> RemoveAudio([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

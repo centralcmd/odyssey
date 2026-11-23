@@ -10,7 +10,6 @@ using Odyssey.Core.Jobs;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -32,21 +31,21 @@ public sealed class BackgroundJobsController(
 {
     [HttpGet("overview")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BackgroundJobsOverview))]
-    [SwaggerOperation(Summary = "Every background job's health, and the run log's totals.")]
+    [EndpointSummary("Every background job's health, and the run log's totals.")]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken = default) =>
         Ok(await jobs.GetOverviewAsync(Access(), cancellationToken));
 
     [HttpGet("runs")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingJobRun>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One page of every job's runs, filtered by job, status, trigger and start date.")]
+    [EndpointSummary("One page of every job's runs, filtered by job, status, trigger and start date.")]
     public async Task<IActionResult> ListRuns([FromQuery] JobRunsQueryParams query, CancellationToken cancellationToken = default) =>
         Ok(await jobs.ListRunsAsync(query, Access(), cancellationToken));
 
     [HttpGet("runs/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JobRunDetail))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "One run, with its job's own counters.")]
+    [EndpointSummary("One run, with its job's own counters.")]
     public async Task<IActionResult> GetRun([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
         await jobs.GetRunAsync(id, Access(), cancellationToken) is { } run
             // Serialised as the BASE type, so JobRunDetailJsonConverter writes the $kind discriminator: MVC's formatter
@@ -68,7 +67,7 @@ public sealed class BackgroundJobsController(
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Run a background job now.")]
+    [EndpointSummary("Run a background job now.")]
     public async Task<IActionResult> PostRun([FromRoute] string jobType, CancellationToken cancellationToken = default)
     {
         if (!JobCatalogue.TryResolve(jobType, out var entry))

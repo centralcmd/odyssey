@@ -3,7 +3,6 @@ using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Core.Finance;
 
@@ -38,9 +37,8 @@ public sealed class PropertySmartTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingTransactionTag>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(
-        Summary = "Get the smart tags configured for a property.",
-        Description = @"Lists the transaction tags currently associated with the property as smart
+    [EndpointSummary("Get the smart tags configured for a property.")]
+    [EndpointDescription(@"Lists the transaction tags currently associated with the property as smart
                         tags, oldest association first. An empty list is a healthy 200, never a 404.")]
     public async Task<IActionResult> GetPropertySmartTags(
         [FromRoute(Name = "propertyId")] Guid propertyId, CancellationToken cancellationToken = default)
@@ -61,7 +59,7 @@ public sealed class PropertySmartTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Associate an existing tag with a property as a smart tag.")]
+    [EndpointSummary("Associate an existing tag with a property as a smart tag.")]
     public async Task<IActionResult> AddPropertySmartTag(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromRoute(Name = "tagId")] Guid tagId, CancellationToken cancellationToken = default)
@@ -75,7 +73,7 @@ public sealed class PropertySmartTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove a smart-tag association from a property.")]
+    [EndpointSummary("Remove a smart-tag association from a property.")]
     public async Task<IActionResult> RemovePropertySmartTag(
         [FromRoute(Name = "propertyId")] Guid propertyId,
         [FromRoute(Name = "tagId")] Guid tagId, CancellationToken cancellationToken = default)

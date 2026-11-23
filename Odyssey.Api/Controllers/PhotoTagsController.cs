@@ -6,7 +6,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -29,7 +28,7 @@ public sealed class PhotoTagsController : ControllerBase
     [Authorize(Policy = PermissionClaims.PhotoTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingPhotoTag>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List photo tags with search, archival-status filter, sort and paging.")]
+    [EndpointSummary("List photo tags with search, archival-status filter, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] PhotoTagsQueryParams query,
         CancellationToken cancellationToken = default)
@@ -41,7 +40,7 @@ public sealed class PhotoTagsController : ControllerBase
     [Authorize(Policy = PermissionClaims.PhotoTagsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingPhotoTag))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get a photo tag.")]
+    [EndpointSummary("Get a photo tag.")]
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -54,7 +53,7 @@ public sealed class PhotoTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingPhotoTag))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a photo tag; a name colliding with an existing (incl. archived) tag returns 409.")]
+    [EndpointSummary("Create a photo tag; a name colliding with an existing (incl. archived) tag returns 409.")]
     public async Task<IActionResult> Post(
         [FromBody] NewPhotoTag request, CancellationToken cancellationToken = default)
     {
@@ -68,7 +67,7 @@ public sealed class PhotoTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a photo tag and toggle its archival state.")]
+    [EndpointSummary("Update a photo tag and toggle its archival state.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdatePhotoTag request, CancellationToken cancellationToken = default)
@@ -82,7 +81,7 @@ public sealed class PhotoTagsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete an unused photo tag; a tag in use returns 409 (archive it instead).")]
+    [EndpointSummary("Delete an unused photo tag; a tag in use returns 409 (archive it instead).")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

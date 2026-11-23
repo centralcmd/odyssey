@@ -34,7 +34,7 @@ and #191 undid it for terms. Rules that are easy to get backwards:
   The smart-tag count is `properties.read` data and is always filled.
 
 **`AccountType.Property` (6) and `AccountType.Vehicle` (7) are retired, and the ordinals are permanent
-holes** (issue #218). `RetirePropertyAndVehicleAccountTypes` moved every such account onto a property
+holes** (issue #218). The *RetirePropertyAndVehicleAccountTypes* migration (folded into the v0.51.0 baseline) moved every such account onto a property
 **under the same GUID**; an account holding transactions was kept as an archived `OtherAsset` (a property
 holds none), so one GUID can legitimately name an account *and* a property — nothing may resolve a bare id
 across both tables. `CK_Accounts_AccountTypeNotRetired` forbids 6/7 in the database and `[EnumDataType]`

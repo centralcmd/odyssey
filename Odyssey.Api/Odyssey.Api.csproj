@@ -15,10 +15,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Swagger" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
+    <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,5 +35,19 @@
     <InternalsVisibleTo Include="Odyssey.Api.Tests" />
   </ItemGroup>
 
+
+  <!--
+    Microsoft.AspNetCore.OpenApi ships a source generator that copies /// XML comments into the OpenAPI
+    document, and Directory.Build.props turns GenerateDocumentationFile on for every project, so it would
+    run here. The document's descriptions come from attributes alone (issue #569, non-goal 1): the comments
+    on controllers are written for maintainers — issue numbers, claim rationale — and the generator lets
+    them OVERWRITE an [EndpointSummary]. Removing the analyzer keeps them out without touching the
+    solution-wide setting.
+  -->
+  <Target Name="DisableOpenApiXmlCommentGenerator" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'Microsoft.AspNetCore.OpenApi.SourceGenerators'" />
+    </ItemGroup>
+  </Target>
 
 </Project>

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using MySqlConnector;
 using Odyssey.Context;
+using Odyssey.MigrationService.Fingerprint;
 
 namespace Odyssey.IntegrationTests;
 
@@ -130,18 +131,14 @@ internal sealed class MigratedSchemaTemplate
             body);
     }
 
+    /// <remarks>
+    /// Reads through <see cref="SchemaCapture"/>, the migrations job's own schema reader (issue #581 A-N2), so a
+    /// template copy and a schema fingerprint cannot disagree about what a schema is. The connection is to the
+    /// template database itself.
+    /// </remarks>
     private static async Task<MigratedSchemaTemplate> CaptureAsync(MySqlConnection connection, string database)
     {
-        var unsupported = await ReadAsync(connection,
-            $"""
-            SELECT CONCAT('view ', TABLE_NAME) FROM information_schema.VIEWS WHERE TABLE_SCHEMA = '{database}'
-            UNION ALL SELECT CONCAT('trigger ', TRIGGER_NAME) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '{database}'
-            UNION ALL SELECT CONCAT('routine ', ROUTINE_NAME) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '{database}'
-            UNION ALL SELECT CONCAT('event ', EVENT_NAME) FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '{database}'
-            UNION ALL SELECT CONCAT(TABLE_TYPE, ' ', TABLE_NAME) FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = '{database}' AND TABLE_TYPE NOT IN ('BASE TABLE', 'VIEW')
-            """,
-            reader => reader.GetString(0));
+        var unsupported = await SchemaCapture.ReadUnsupportedObjectsAsync(connection);
         if (unsupported.Count > 0)
         {
             throw new InvalidOperationException(
@@ -149,26 +146,20 @@ internal sealed class MigratedSchemaTemplate
                 $"migrated database: {string.Join(", ", unsupported)}. Teach {nameof(MigratedSchemaTemplate)} to copy them.");
         }
 
-        var (charset, collation) = (await ReadAsync(connection,
-            $"SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '{database}'",
-            reader => (reader.GetString(0), reader.GetString(1)))).Single();
-
-        var tables = await ReadAsync(connection,
-            $"SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{database}' AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME",
-            reader => reader.GetString(0));
+        var (charset, collation) = await SchemaCapture.ReadDefaultsAsync(connection);
+        var tables = await SchemaCapture.ReadBaseTablesAsync(connection);
 
         // Generated columns are computed by the copy itself and cannot be inserted into.
-        var insertable = (await ReadAsync(connection,
-                $"SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{database}' AND IS_GENERATED = 'NEVER' ORDER BY TABLE_NAME, ORDINAL_POSITION",
-                reader => (Table: reader.GetString(0), Column: reader.GetString(1))))
-            .GroupBy(column => column.Table)
-            .ToDictionary(group => group.Key, group => string.Join(", ", group.Select(column => $"`{column.Column}`")));
+        var insertable = (await SchemaCapture.ReadColumnsAsync(connection))
+            .ToDictionary(
+                table => table.Key,
+                table => string.Join(", ", table.Value.Where(c => !c.Generated).Select(c => $"`{c.Column}`")));
 
         var body = new StringBuilder("SET FOREIGN_KEY_CHECKS = 0; ");
         var copies = new StringBuilder();
         foreach (var table in tables)
         {
-            var create = (await ReadAsync(connection, $"SHOW CREATE TABLE `{database}`.`{table}`", reader => reader.GetString(1))).Single();
+            var create = await SchemaCapture.ShowCreateTableAsync(connection, table);
             body.Append(create).Append("; ");
 
             var hasRows = (await ReadAsync(connection, $"SELECT EXISTS (SELECT 1 FROM `{database}`.`{table}`)", reader => reader.GetBoolean(0))).Single();

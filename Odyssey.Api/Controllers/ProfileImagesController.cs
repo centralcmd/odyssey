@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Net.Http.Headers;
 using Odyssey.Core.Profiles;
 using Odyssey.Dtos.Authorization;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -59,8 +58,8 @@ public sealed class ProfileImagesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Stream a user's profile picture.",
-        Description = @"Gated on profile-images.read, which every role holds — revoking it from a role is
+    [EndpointSummary("Stream a user's profile picture.")]
+    [EndpointDescription(@"Gated on profile-images.read, which every role holds — revoking it from a role is
 the supported way to narrow who sees colleagues' pictures.
 
 404 — with a body naming no identifier — when the user does not exist, has no picture, is
