@@ -64,7 +64,7 @@ public sealed class MapStylesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [SwaggerOperation(Summary = "204 when the caller may read the self-hosted basemap file; nginx's access check.")]
+    [EndpointSummary("204 when the caller may read the self-hosted basemap file; nginx's access check.")]
     public IActionResult GetBasemapAccess()
     {
         Response.Headers.CacheControl = "no-store";
