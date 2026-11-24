@@ -79,6 +79,8 @@ public class PodcastsPageTests
             EpisodeType = e.EpisodeType,
             Audio = e.Audio,
             LastPlayedAtUtc = e.LastPlayedAtUtc,
+            LastListenedAtUtc = e.LastListenedAtUtc,
+            PlaybackPositionSeconds = e.PlaybackPositionSeconds,
             Description = "About it.",
         };
         edit?.Invoke(detail);
@@ -244,7 +246,7 @@ public class PodcastsPageTests
     }
 
     [Fact]
-    public async Task A_guest_sees_states_and_save_to_device_only()
+    public async Task A_guest_sees_states_play_and_save_to_device_only()
     {
         var feed = Podcast("Tidewater Talks");
         var stored = Episode(feed, "Stored", PodcastAudioState.Stored);
@@ -254,7 +256,8 @@ public class PodcastsPageTests
         Expand(cut, stored);
 
         var buttons = cut.FindAll($"#pod-{stored.Id} .pod-audio-actions button").Select(b => b.GetAttribute("aria-label")).ToList();
-        Assert.Equal(["Save to device, Stored"], buttons);
+        // Play is news.read, like the stream it loads (#594 §3); a guest plays but never saves.
+        Assert.Equal(["Play, Stored", "Save to device, Stored"], buttons);
         Assert.DoesNotContain("Last saved to a device", cut.Find($"#pod-{stored.Id}").TextContent, StringComparison.Ordinal);
     }
 
@@ -617,5 +620,108 @@ public class PodcastsPageTests
         page.PollResult = null;
         cut.FindAll($"#pod-{episode.Id} .pod-audio-trouble button").Single().Click();
         cut.WaitForAssertion(() => Assert.DoesNotContain("Couldn’t refresh the download status.", cut.Find($"#pod-{episode.Id} .pod-audio").TextContent, StringComparison.Ordinal));
+    }
+
+    // ── In-browser playback (issue #594) ───────────────────────────────────────────────────────────
+
+    private static Bunit.BunitJSModuleInterop PlayerModule(Harness page, bool canPlay = true)
+    {
+        var module = page.Context.Ctx.JSInterop.SetupModule(Odyssey.Client.Components.OdsPodcastPlayer.ModulePath);
+        module.Setup<bool>("canPlay", _ => true).SetResult(canPlay);
+        module.Setup<string>("start", _ => true).SetResult("ok");
+        module.Setup<string>("play", _ => true).SetResult("ok");
+        module.Setup<int>("readVolume", _ => true).SetResult(80);
+        page.Context.Podcasts.Setup(p => p.AudioStreamUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://localhost/api/podcast-episodes/{id}/audio/stream");
+        page.Context.Podcasts.Setup(p => p.AudioStreamPathPattern).Returns("^/api/podcast-episodes/[0-9a-f-]{36}/audio/stream$");
+        return module;
+    }
+
+    [Fact]
+    public async Task Playback_a_stored_episode_leads_with_resume_and_save_to_device_turns_outlined()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored, e => { e.PlaybackPositionSeconds = 754; e.DurationSeconds = 3127; });
+        await using var page = new Harness([feed], [stored]);
+        PlayerModule(page);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+
+        var buttons = cut.FindAll($"#pod-{stored.Id} .pod-audio-actions button");
+        Assert.Equal("Resume from 12:34, Logbooks", buttons[0].GetAttribute("aria-label"));
+        Assert.Contains("Save to device", buttons[1].TextContent, StringComparison.Ordinal);
+        Assert.Contains("outlined", buttons[1].ClassName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Playback_play_starts_the_stream_shows_the_player_and_announces_it()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored, e => e.DurationSeconds = 3127);
+        await using var page = new Harness([feed], [stored]);
+        var module = PlayerModule(page);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Action(cut, PodcastAudioAction.Play, stored).Click();
+
+        cut.WaitForElement($"#pod-{stored.Id} .odc-podplayer");
+        Assert.Equal("Pause, Logbooks", cut.Find($"#{PodcastAudioActions.PlayerToggleId(stored.Id)}").GetAttribute("aria-label"));
+        Assert.Empty(cut.FindAll($"#{PodcastAudioActions.ActionId(PodcastAudioAction.Play, stored.Id)}"));
+        page.Context.Podcasts.Verify(p => p.AudioStreamUrl(stored.Id), Times.AtLeastOnce());
+        page.Context.Podcasts.Verify(p => p.AudioUrl(It.IsAny<Guid>()), Times.Never());
+        Assert.Contains(module.Invocations, i => i.Identifier == "start");
+        cut.WaitForAssertion(() => Assert.Contains("Playing.", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Playback_a_collapsed_playing_card_shows_playing_and_a_pause_button()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored, e => e.DurationSeconds = 3127);
+        await using var page = new Harness([feed], [stored]);
+        PlayerModule(page);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Action(cut, PodcastAudioAction.Play, stored).Click();
+        cut.WaitForElement($"#pod-{stored.Id} .odc-podplayer");
+        cut.Find($"#pod-{stored.Id} .odc-record-trigger").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Playing", cut.Find($"#pod-{stored.Id}").TextContent, StringComparison.Ordinal));
+        Assert.Equal("Pause, Logbooks", cut.Find($"#{PodcastEpisodeCard.HeaderToggleId(stored.Id)}").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public async Task Playback_an_unsupported_format_removes_play_and_says_why()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored, e => e.Audio.ContentType = "audio/ogg");
+        await using var page = new Harness([feed], [stored]);
+        var module = PlayerModule(page, canPlay: false);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Action(cut, PodcastAudioAction.Play, stored).Click();
+
+        cut.WaitForElement($"#{PodcastAudioActions.UnsupportedId(stored.Id)}");
+        Assert.Empty(cut.FindAll($"#{PodcastAudioActions.ActionId(PodcastAudioAction.Play, stored.Id)}"));
+        Assert.DoesNotContain(module.Invocations, i => i.Identifier == "start");
+        cut.WaitForAssertion(() => Assert.Contains("can’t play this audio format", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Playback_a_finished_listen_shows_the_listened_chip_and_tile()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored, e => e.LastListenedAtUtc = Now.UtcDateTime.AddDays(-1));
+        await using var page = new Harness([feed], [stored]);
+        PlayerModule(page);
+
+        var cut = page.Render();
+        Assert.Contains("Listened", cut.Find($"#pod-{stored.Id}").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Played", cut.Find($"#pod-{stored.Id}").TextContent, StringComparison.Ordinal);
+        Expand(cut, stored);
+        Assert.Contains("Last listened", cut.Find($"#pod-{stored.Id}").TextContent, StringComparison.Ordinal);
     }
 }

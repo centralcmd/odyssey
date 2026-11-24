@@ -39,6 +39,9 @@ public partial class PodcastsPage
     {
         switch (action)
         {
+            case PodcastAudioAction.Play:
+                await PlayAsync(episode);
+                return;
             case PodcastAudioAction.Save:
                 // The browser downloads the attachment natively; the file never enters the WASM heap (§3.2.5).
                 await Transfer.DownloadAsync(Podcasts.AudioUrl(episode.Id));
@@ -224,6 +227,7 @@ public partial class PodcastsPage
         }
 
         var episode = removal.Episode;
+        await StopIfPlayingAsync(episode.Id);
         var result = await Podcasts.RemoveAudioAsync(episode.Id);
         if (!result.IsSuccess)
         {
