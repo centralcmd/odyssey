@@ -170,7 +170,9 @@ server {
     # the whole file, so nginx must not buffer the response — buffered, a slow or aborted client would look complete to
     # the API, and a 1 GB episode would park on nginx's temp disk. A transfer gets an hour. The route is a GET, so the
     # body limit is the smallest nginx default worth stating, not a size any request needs.
-    location ~ ^/api/api/podcast-episodes/[^/]+/audio/content$ {
+    # In-browser playback (issue #593) streams the same file: ranged, unbuffered, an hour per transfer, so a slow
+    # listener never parks the file on nginx's temp disk. The location matches /audio/content's directive for directive.
+    location ~ ^/api/api/podcast-episodes/[^/]+/audio/(content|stream)$ {
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass http://api:8080;
         proxy_http_version 1.1;

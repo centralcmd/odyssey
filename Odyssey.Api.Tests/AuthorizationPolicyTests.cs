@@ -440,6 +440,19 @@ public class AuthorizationPolicyTests
             && !(role.Claims.Contains(PermissionClaims.PodcastAudioCreate) && role.Claims.Contains(PermissionClaims.PodcastAudioDelete)));
     }
 
+    /// <summary>
+    /// Issue #593 §7.3: a finished in-browser listen (<c>PUT …/playback</c>, <c>news.update</c>) starts the auto-delete
+    /// clock on the client's word alone. That is trusted only because every role able to send it can already remove the
+    /// audio outright; if this ever fails, the listened stamp needs server-side evidence before it may drive a delete.
+    /// </summary>
+    [Fact]
+    public void Every_role_holding_NewsUpdate_also_holds_PodcastAudioDelete()
+    {
+        Assert.Contains(MappedRoles(), role => role.Claims.Contains(PermissionClaims.NewsUpdate));
+        Assert.DoesNotContain(MappedRoles(), role =>
+            role.Claims.Contains(PermissionClaims.NewsUpdate) && !role.Claims.Contains(PermissionClaims.PodcastAudioDelete));
+    }
+
     /// <summary>Issue #446 §7.3: every price read embeds instrument fields, so a price reader must read instruments.</summary>
     [Fact]
     public void No_role_holds_InstrumentPricesRead_without_InstrumentsRead() =>

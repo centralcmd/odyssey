@@ -43,8 +43,18 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
   time-bounded rather than buffer-bounded. The chapter-marker reader (`PodcastAudioChapters`) is managed, bounded and
   polls its deadline in every loop; it must never throw out of the job.
 - **Last-played is stamped only after one response delivered the whole file to a `news.update` holder**, which is why
-  the client nginx streams `…/audio/content` unbuffered. Auto-delete counts from it, so a stamp on a partial transfer
-  would delete audio nobody has.
-- **"Saved to a device" is the only played signal, and it is `LastPlayedAtUtc`.** v1 has no player and no played
-  flag (#556 non-goal 10); the episode list's `savedToDevice` filter and the podcast block's `SavedEpisodeCount` both
-  read that stamp (#559 design note). Never word it as "played" in the API or the UI.
+  the client nginx streams `…/audio/content` unbuffered. A stamp on a partial transfer would delete audio nobody has.
+  In-browser playback reads `…/audio/stream` (#593), which shares the serving path but **never** stamps: playing a file
+  to its end is not saving it to a device.
+- **Auto-delete counts from the consumed-at time, `PodcastConsumption`** (#593): the later of `LastPlayedAtUtc` (saved
+  to a device, proven by a whole transfer) and `LastListenedAtUtc` (an in-browser listen reached the end, a
+  trusted-client signal), each only when at or after `StoredAtUtc`. Its query form is a conditional (`CASE`); never
+  `GREATEST`, which MariaDB makes `NULL` when either stamp is. The retention job, the summary's `AutoDeleteAtUtc` and the
+  auto-download backlog all read it. The listened stamp is trusted because every `news.update` holder also holds
+  `podcast-audio.delete` (`AuthorizationPolicyTests` pins that); it is written only while the audio is `Stored`.
+- **Two signals, never "played".** *Saved to a device* is `LastPlayedAtUtc`: the episode list's `savedToDevice` filter
+  and the podcast block's `SavedEpisodeCount` read it alone (#559). *Listened* is `LastListenedAtUtc`. Never word either
+  as "played" in the API or the UI.
+- **Playback position is the household's, shared** (#593): `PlaybackPositionSeconds` and `LastListenedAtUtc` have no
+  user, last write wins, and a position save inside `PodcastLimits.PlaybackCompletionGuardSeconds` after a finish is a
+  deliberate no-op so a late flush cannot undo it.

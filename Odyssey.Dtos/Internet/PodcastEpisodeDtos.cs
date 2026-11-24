@@ -115,6 +115,10 @@ public record PodcastEpisodeSummary
 
     public DateTime? LastPlayedAtUtc { get; set; }
 
+    /// <summary>When an in-browser listen last reached the end (#593); never worded "played".</summary>
+    public DateTime? LastListenedAtUtc { get; set; }
+
+    /// <summary>The household's shared resume position in whole seconds (#593); <c>null</c> when none.</summary>
     public int? PlaybackPositionSeconds { get; set; }
 
     /// <summary>When the auto-delete rule will release this audio, when it applies; computed server-side.</summary>
@@ -165,4 +169,26 @@ public sealed record PodcastEpisodePage
     public string? NextCursor { get; set; }
 
     public DateTime AsOfUtc { get; set; }
+}
+
+/// <summary>
+/// <c>PUT /api/podcast-episodes/{id}/playback</c> (issue #593 §5 #3): the shared resume position, or the end of a listen.
+/// Two scalars only; the episode is the route id.
+/// </summary>
+public sealed record PodcastPlaybackUpdate : IValidatableObject
+{
+    /// <summary>Whole seconds. Required unless <see cref="Completed"/>; ignored when it is.</summary>
+    [Range(0, PodcastLimits.MaxDurationSeconds)]
+    public int? PositionSeconds { get; set; }
+
+    /// <summary><c>true</c>: the listen reached the end, which stamps the listened time and clears the position.</summary>
+    public bool Completed { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!Completed && PositionSeconds is null)
+        {
+            yield return new ValidationResult("Send the position in seconds, or mark the listen completed.", [nameof(PositionSeconds)]);
+        }
+    }
 }

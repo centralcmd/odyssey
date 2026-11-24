@@ -579,6 +579,8 @@ public sealed class NewsFeedService(
                 Bytes = g.Where(a => a.State == PodcastAudioState.Stored).Sum(a => a.SizeBytes ?? 0),
             })
             .ToDictionaryAsync(g => g.FeedId, cancellationToken);
+        // "Saved to a device" is LastPlayedAtUtc alone; a finished in-browser listen (LastListenedAtUtc, #593) is a
+        // different signal and deliberately not counted here (docs/architecture/news-reader.md).
         var saved = await context.PodcastEpisodes.AsNoTracking().News()
             .Where(e => ids.Contains(e.NewsFeedId) && e.LastPlayedAtUtc != null)
             .GroupBy(e => e.NewsFeedId)

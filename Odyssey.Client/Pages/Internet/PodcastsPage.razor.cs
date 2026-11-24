@@ -279,6 +279,7 @@ public partial class PodcastsPage : IDisposable
         var user = await Auth.GetUserAsync();
         _canRequest = user.HasPermission(PermissionClaims.PodcastAudioCreate);
         _canDelete = user.HasPermission(PermissionClaims.PodcastAudioDelete);
+        _canSavePlayback = user.HasPermission(PermissionClaims.NewsUpdate);
         _canCreateFeeds = user.HasPermission(PermissionClaims.NewsFeedsCreate);
         _canUpdateFeeds = user.HasPermission(PermissionClaims.NewsFeedsUpdate);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
@@ -506,5 +507,6 @@ public partial class PodcastsPage : IDisposable
         _listCts.Dispose();
         _pollTimer?.Dispose();
         _cooldownTimer?.Dispose();
+        DisposePlayback();
     }
 }

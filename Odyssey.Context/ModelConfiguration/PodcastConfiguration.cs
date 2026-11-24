@@ -71,7 +71,7 @@ internal sealed class PodcastEpisodeConfiguration : IEntityTypeConfiguration<Pod
                 + $" AND (`SeasonNumber` IS NULL OR `SeasonNumber` BETWEEN 0 AND {PodcastLimits.MaxEpisodeNumber})"
                 + $" AND (`EpisodeNumber` IS NULL OR `EpisodeNumber` BETWEEN 0 AND {PodcastLimits.MaxEpisodeNumber})"
                 + " AND (`EnclosureDeclaredLength` IS NULL OR `EnclosureDeclaredLength` >= 0)"
-                + " AND (`PlaybackPositionSeconds` IS NULL OR `PlaybackPositionSeconds` >= 0)");
+                + $" AND (`PlaybackPositionSeconds` IS NULL OR `PlaybackPositionSeconds` BETWEEN 0 AND {PodcastLimits.MaxDurationSeconds})");
         });
     }
 }

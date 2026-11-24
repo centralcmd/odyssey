@@ -13,6 +13,13 @@ namespace Odyssey.Core.Internet.News.Podcasts;
 /// <summary>A stored file ready to serve: never its path or stored-object id outside this process.</summary>
 public sealed record PodcastFileDescriptor(Guid StoredObjectId, string FeatureKey, string ContentType, string Sha256Hex, long SizeBytes, string? DownloadName);
 
+/// <summary>What <c>PUT …/playback</c> did (#593 §9): saved (or a guarded no-op), or no such episode. A completion for audio that is not stored throws <c>409 podcast-audio-not-stored</c>.</summary>
+public enum PodcastPlaybackOutcome
+{
+    Saved,
+    NotFound,
+}
+
 /// <summary>What <c>POST …/audio</c> did (§5.3 #9): queued now or already in flight (<c>202</c>), or already stored (<c>200</c>).</summary>
 public sealed record PodcastAudioRequestOutcome(bool AlreadyStored, PodcastEpisodeAudioInfo Audio);
 
@@ -268,21 +275,22 @@ public sealed class PodcastEpisodeService(
         summary.TagIds = row.TagIds;
         summary.Audio = AudioInfo(row.Audio);
         summary.LastPlayedAtUtc = e.LastPlayedAtUtc;
+        summary.LastListenedAtUtc = e.LastListenedAtUtc;
         summary.PlaybackPositionSeconds = e.PlaybackPositionSeconds;
         summary.AutoDeleteAtUtc = AutoDeleteAt(row);
         return summary;
     }
 
-    /// <summary>The §3.7 rule, as a date: only while it applies to this row.</summary>
+    /// <summary>The §3.7 rule, as a date: only while it applies to this row. Counts from the consumed-at time (#593).</summary>
     private static DateTime? AutoDeleteAt(Row row)
     {
         if (row.Audio is not { State: PodcastAudioState.Stored, StoredAtUtc: { } storedAt } || !row.AutoDeleteEnabled || row.FeedArchived
-            || row.Episode.LastPlayedAtUtc is not { } played || played < storedAt)
+            || PodcastConsumption.ConsumedAt(row.Episode.LastPlayedAtUtc, row.Episode.LastListenedAtUtc, storedAt) is not { } consumed)
         {
             return null;
         }
 
-        var from = row.AutoDeleteChangedAtUtc is { } changed && changed > played ? changed : played;
+        var from = row.AutoDeleteChangedAtUtc is { } changed && changed > consumed ? changed : consumed;
         return from.AddDays(row.AutoDeleteAfterDays);
     }
 
@@ -450,6 +458,68 @@ public sealed class PodcastEpisodeService(
             episode.LastPlayedAtUtc = now;
             await context.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    // ── Playback (issue #593) ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <c>PUT …/playback</c> (#593 §5 #3). A position save sets the shared resume point unless a listen finished inside
+    /// <see cref="PodcastLimits.PlaybackCompletionGuardSeconds"/> (then it is a no-op, so a late save cannot undo the
+    /// finish). A completion stamps <see cref="PodcastEpisode.LastListenedAtUtc"/> and clears the position, in one update
+    /// conditional on the audio being <c>Stored</c>: the listened stamp drives auto-delete, so it is never written for
+    /// audio the server does not have. Each is one conditional update; the row has no concurrency token by design.
+    /// </summary>
+    public async Task<PodcastPlaybackOutcome> SavePlaybackAsync(Guid id, PodcastPlaybackUpdate update, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        if (!await VisibleAsync(id, cancellationToken))
+        {
+            return PodcastPlaybackOutcome.NotFound;
+        }
+
+        var now = Now;
+        if (!update.Completed)
+        {
+            var position = Math.Clamp(update.PositionSeconds ?? 0, 0, PodcastLimits.MaxDurationSeconds);
+            var guardFrom = now.AddSeconds(-PodcastLimits.PlaybackCompletionGuardSeconds);
+            if (context.Database.IsRelational())
+            {
+                // A save inside the guard window after a finish matches no row; that is a deliberate no-op, not a 404.
+                await context.Database.ExecuteSqlInterpolatedAsync(
+                    $"UPDATE `PodcastEpisodes` SET `PlaybackPositionSeconds` = {position} WHERE `NewsArticleId` = {id} AND (`LastListenedAtUtc` IS NULL OR `LastListenedAtUtc` <= {guardFrom})",
+                    cancellationToken);
+                return PodcastPlaybackOutcome.Saved;
+            }
+
+            if (await context.PodcastEpisodes.FirstOrDefaultAsync(e => e.NewsArticleId == id, cancellationToken) is { } tracked
+                && (tracked.LastListenedAtUtc is null || tracked.LastListenedAtUtc <= guardFrom))
+            {
+                tracked.PlaybackPositionSeconds = position;
+                await context.SaveChangesAsync(cancellationToken);
+            }
+
+            return PodcastPlaybackOutcome.Saved;
+        }
+
+        if (context.Database.IsRelational())
+        {
+            var stored = (byte)PodcastAudioState.Stored;
+            var changed = await context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE `PodcastEpisodes` SET `LastListenedAtUtc` = {now}, `PlaybackPositionSeconds` = NULL WHERE `NewsArticleId` = {id} AND EXISTS (SELECT 1 FROM `PodcastEpisodeAudio` WHERE `NewsArticleId` = {id} AND `State` = {stored})",
+                cancellationToken);
+            return changed > 0 ? PodcastPlaybackOutcome.Saved : throw NewsErrors.PodcastAudioNotStored(id);
+        }
+
+        var isStored = await context.PodcastEpisodeAudio.AnyAsync(a => a.NewsArticleId == id && a.State == PodcastAudioState.Stored, cancellationToken);
+        if (!isStored || await context.PodcastEpisodes.FirstOrDefaultAsync(e => e.NewsArticleId == id, cancellationToken) is not { } episode)
+        {
+            throw NewsErrors.PodcastAudioNotStored(id);
+        }
+
+        episode.LastListenedAtUtc = now;
+        episode.PlaybackPositionSeconds = null;
+        await context.SaveChangesAsync(cancellationToken);
+        return PodcastPlaybackOutcome.Saved;
     }
 
     // ── Download and remove ───────────────────────────────────────────────────────────────────────────

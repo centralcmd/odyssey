@@ -4815,6 +4815,72 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring, var(--mud-palette-primary)), 0 0 0 6px color-mix(in oklab, var(--mud-palette-primary) 24%, transparent); }
 .odc-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring, var(--mud-palette-primary)), 0 0 0 6px color-mix(in oklab, var(--mud-palette-primary) 24%, transparent); }
 
+/* ---------- PodcastPlayer (odc-podplayer, issue #594; Odyssey Design System · components/bundle.css) ----------
+   The in-browser player inside an episode's Audio panel. Built on odc-range,
+   with three changes for a media slider: the track is --control-border and
+   the fill and thumb --brand-text, so track, fill and thumb are each ≥ 3:1 on
+   the surface in BOTH themes (the plain odc-range track is the divider tone,
+   which a crop control can afford and a media position cannot); the WebKit
+   track paints its own fill from --odc-podplayer-pct (Firefox uses
+   ::-moz-range-progress); and the thumb is 20 px on a 24 px-high input.
+   The play toggle is the panel's one filled, round control: --brand-text
+   ground (≥ 4.5:1 on the surface), the glyph in the surface colour. */
+.odc-podplayer { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.odc-podplayer-main { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); min-width: 0; }
+.odc-podplayer-sub { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); min-width: 0; padding-inline-start: calc(44px + var(--space-3)); }
+.odc-podplayer-toggle {
+  flex: none; width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center;
+  border: 0; border-radius: var(--radius-pill); cursor: pointer;
+  background: var(--brand-text); color: var(--mud-palette-surface);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.odc-podplayer-toggle .material-icons { font-size: var(--icon-2xl); }
+.odc-podplayer-toggle:hover { background: var(--mud-palette-primary-darken); }
+[data-theme="light"] .odc-podplayer-toggle:hover { background: var(--tide-deep); }
+.odc-podplayer-toggle:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-podplayer-toggle.busy, .odc-podplayer-toggle[aria-disabled="true"] { cursor: progress; }
+.odc-podplayer-toggle[aria-disabled="true"]:not(.busy) { cursor: not-allowed; background: var(--control-border); }
+/* Client: the busy glyph is OdsSpinner (MudProgressCircular), drawn in the surface colour on the brand ground. */
+.odc-podplayer-toggle .mud-progress-circular { color: var(--mud-palette-surface); }
+.odc-podplayer-time { flex: none; min-width: 3.5em; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); }
+.odc-podplayer-time:last-child { text-align: end; }
+.odc-podplayer-seek { flex: 1 1 12rem; min-width: 8rem; width: auto; }
+.odc-podplayer-volume { display: flex; align-items: center; gap: var(--space-1); flex: 0 1 12rem; min-width: 9rem; }
+.odc-podplayer-mute { width: 32px; height: 32px; }
+.odc-podplayer-vol { flex: 1 1 auto; min-width: 5rem; }
+.odc-podplayer-status { margin: 0; flex: 1 1 14rem; min-width: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-podplayer-alert .odc-alert-body { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.odc-podplayer-alert:focus { outline: none; }
+.odc-podplayer-alert:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-podplayer-retry { height: auto; min-height: var(--space-8); }
+/* The media slider: 3:1 track, fill and thumb. Vendor rules stay separate (one bad selector drops a list). */
+.odc-podplayer .odc-range::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(to right, var(--brand-text) var(--odc-podplayer-pct, 0%), var(--control-border) var(--odc-podplayer-pct, 0%)); }
+.odc-podplayer .odc-range::-moz-range-track { height: 4px; background: var(--control-border); }
+.odc-podplayer .odc-range::-moz-range-progress { height: 4px; background: var(--brand-text); }
+.odc-podplayer .odc-range::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8px; background: var(--brand-text); box-shadow: 0 0 0 2px var(--mud-palette-surface); }
+.odc-podplayer .odc-range::-moz-range-thumb { width: 20px; height: 20px; background: var(--brand-text); box-shadow: 0 0 0 2px var(--mud-palette-surface); }
+.odc-podplayer .odc-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--mud-palette-surface), 0 0 0 calc(2px + var(--focus-ring-width)) var(--focus-ring, var(--mud-palette-primary)); }
+.odc-podplayer .odc-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--mud-palette-surface), 0 0 0 calc(2px + var(--focus-ring-width)) var(--focus-ring, var(--mud-palette-primary)); }
+/* Unknown length: no position to show. The track keeps its 3:1 tone; the thumb is hidden. */
+.odc-podplayer .odc-range[aria-disabled="true"] { cursor: default; }
+.odc-podplayer .odc-range[aria-disabled="true"]::-webkit-slider-thumb { visibility: hidden; }
+.odc-podplayer .odc-range[aria-disabled="true"]::-moz-range-thumb { visibility: hidden; }
+@media (max-width: 600px) {
+  .odc-podplayer-sub { padding-inline-start: 0; }
+  .odc-podplayer-seek { flex-basis: 100%; order: 3; }
+}
+@media (forced-colors: active) {
+  .odc-podplayer-toggle { background: ButtonFace; color: ButtonText; border: 2px solid ButtonText; forced-color-adjust: none; }
+  .odc-podplayer-toggle:focus-visible { outline: 2px solid Highlight; }
+  .odc-podplayer .odc-range { forced-color-adjust: none; }
+  .odc-podplayer .odc-range::-webkit-slider-runnable-track { background: linear-gradient(to right, Highlight var(--odc-podplayer-pct, 0%), CanvasText var(--odc-podplayer-pct, 0%)); }
+  .odc-podplayer .odc-range::-moz-range-track { background: CanvasText; }
+  .odc-podplayer .odc-range::-moz-range-progress { background: Highlight; }
+  .odc-podplayer .odc-range::-webkit-slider-thumb { background: Highlight; box-shadow: 0 0 0 2px Canvas; }
+  .odc-podplayer .odc-range::-moz-range-thumb { background: Highlight; box-shadow: 0 0 0 2px Canvas; }
+  .odc-podplayer .odc-range:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+}
+
 /* ---------- ImageCropDialog: the shared crop + downscale stage ----------
    (issue #86 §3, issue #94 §5. Odyssey Design System · components/bundle.css.)
    Extracted from the contact-avatar dialog when the user profile picture
