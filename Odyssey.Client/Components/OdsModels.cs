@@ -720,3 +720,10 @@ public enum OdsWizardStepState
 /// optional status line, empty by default — use it only for what needs acting on ("84 of 100" near a cap).
 /// </summary>
 public sealed record OdsWizardStep(string Label, string? Meta = null, OdsWizardStepState State = OdsWizardStepState.None, string? Key = null);
+
+/// <summary>One row handed to <see cref="OdsSortableList{TItem}"/>'s <c>RenderItem</c>: the item and its index.</summary>
+public sealed record OdsSortableItem<TItem>(TItem Item, int Index);
+
+/// <summary>A reorder from <see cref="OdsSortableList{TItem}"/>: move the row at <paramref name="From"/> to
+/// <paramref name="To"/> (both indexes into the list before the move).</summary>
+public sealed record OdsSortMove(int From, int To);

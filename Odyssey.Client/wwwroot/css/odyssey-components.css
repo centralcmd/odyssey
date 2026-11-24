@@ -3294,6 +3294,67 @@ tr:focus-within > .odc-rowactions.reveal,
   color: var(--mud-palette-text-secondary);
 }
 
+/* ---------- OdsSortableList (DS SortableList, 1795477868-c9a2: a reorderable list of editable rows) ----------
+   Each row is a compact card — handle · the consumer's fields · ⋯ — moved by
+   dragging the handle, by a keyboard lift, or from the ⋯ menu. A heading row
+   is a tinted band, flush left; once a list has one, the other rows (and the
+   header) step in one gutter. While dragging: the moved row dims with a dashed
+   outline and a primary line in the gap marks where it lands; nothing shifts.
+   A keyboard-lifted row is raised instead. Where a row lands it flashes once. */
+.odc-sortable { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.odc-sortable-head {
+  display: grid; gap: var(--space-2); padding: 0 var(--space-2) 0 var(--space-1); border: 1px solid transparent;
+  font: var(--fw-medium) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.odc-sortable-row {
+  position: relative; margin: 0; min-width: 0;
+  display: grid; grid-template-columns: 32px minmax(0, 1fr) 36px; align-items: start; gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-1);
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
+}
+.odc-sortable-row:hover, .odc-sortable-row:focus-within { border-color: var(--mud-palette-lines-inputs); }
+.odc-sortable-row.heading { background: var(--brand-soft); border-color: var(--brand-border); }
+.odc-sortable-row.heading:hover, .odc-sortable-row.heading:focus-within { border-color: var(--mud-palette-primary); }
+.odc-sortable.has-headings > .odc-sortable-row:not(.heading),
+.odc-sortable.has-headings > .odc-sortable-head { margin-left: var(--space-6); }
+.odc-sortable-row .odc-field { gap: var(--space-1); }
+
+.odc-sort-handle {
+  appearance: none; border: 0; background: transparent; padding: 0; margin: 0;
+  width: 32px; height: var(--control-h); border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--mud-palette-text-secondary); cursor: grab; touch-action: none;
+  transition: color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+.odc-sort-handle:hover, .odc-sortable-row:focus-within .odc-sort-handle { color: var(--mud-palette-text-primary); }
+.odc-sort-handle:hover { background: var(--mud-palette-action-default-hover); }
+.odc-sort-handle:active { cursor: grabbing; }
+.odc-sort-handle:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 0; }
+.odc-sort-handle.on { color: var(--mud-palette-primary-text); background: var(--mud-palette-primary); cursor: grabbing; }
+.odc-sort-menu { display: flex; align-items: center; justify-content: center; height: var(--control-h); }
+
+.odc-sortable-row.is-lifted { border-style: dashed; border-color: var(--mud-palette-primary); opacity: 0.5; }
+.odc-sortable-row.is-raised { opacity: 1; border-style: solid; box-shadow: var(--mud-elevation-8); }
+.odc-sortable-row.drop-before::before, .odc-sortable-row.drop-after::after {
+  content: ''; position: absolute; left: -1px; right: -1px; height: 3px; border-radius: 2px;
+  background: var(--mud-palette-primary); box-shadow: 0 0 0 3px var(--brand-soft); pointer-events: none;
+}
+.odc-sortable-row.drop-before::before { top: calc(var(--space-1) * -1 - 2.5px); }
+.odc-sortable-row.drop-after::after { bottom: calc(var(--space-1) * -1 - 2.5px); }
+@media (prefers-reduced-motion: no-preference) {
+  .odc-sortable-row.is-settled { animation: odc-sort-settle 900ms var(--ease-decelerate); }
+}
+@keyframes odc-sort-settle {
+  0% { box-shadow: 0 0 0 3px var(--brand-border); border-color: var(--mud-palette-primary); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (max-width: 599px) {
+  .odc-sortable-head { display: none; }
+  .odc-sortable.has-headings > .odc-sortable-row:not(.heading) { margin-left: var(--space-3); }
+}
+
 /* ---------- OdsTaskBoard (kanban) ---------- */
 .odc-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); align-items: start; }
 .odc-board-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

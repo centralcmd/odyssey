@@ -421,6 +421,7 @@ public class ControlContrastTests
             [("wwwroot/css/odyssey-components.css", ".odn-cmd-foot .odn-kbd,.odn-kbd")] = "keyboard-hint chip, not a control",
             [("wwwroot/css/odyssey-components.css", ".odc-photogrid-tile:hover")] = "hover emphasis on a tile identified by its image",
             [("wwwroot/css/odyssey-components.css", ".odc-board-card:hover")] = "hover emphasis on a card identified by its content",
+            [("wwwroot/css/odyssey-components.css", ".odc-sortable-row:hover,.odc-sortable-row:focus-within")] = "hover/focus emphasis on a row card whose controls carry their own boundaries",
             [("wwwroot/css/odyssey-components.css", ".odc-capacity-nolimit")] = "static 'No limit' stand-in, not a control",
             [("wwwroot/css/legal.css", ".lg-scroll,.lg-ver-view,.lg-admin-card .odc-input-multiline")] = "scrollbar colour",
             [("wwwroot/css/legal.css", ".lg-scroll::-webkit-scrollbar-thumb,.lg-ver-view::-webkit-scrollbar-thumb,.lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb")] = "scrollbar thumb",
