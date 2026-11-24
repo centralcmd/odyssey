@@ -50,6 +50,11 @@ public class RemoveIngredientPreparationAndRangeMigrationTests(MariaDbFixture fi
             var pinch = await InsertAsync(context, recipeId, "salt", 1m, null, IngredientUnit.Pinch, null);
             var decimalRange = await InsertAsync(context, recipeId, "chilli flakes", 0.5m, 1.5m, IngredientUnit.Teaspoon, null);
             var plain = await InsertAsync(context, recipeId, "honey", 1m, null, IngredientUnit.Tablespoon, null);
+            // An upper end with no lower amount: the service never wrote one, and the migration leaves it unnoted.
+            var upperOnly = await InsertAsync(context, recipeId, "parsley", null, 6m, IngredientUnit.Bunch, null);
+            // A name that only crosses the limit with its range suffix, and has no preparation.
+            var nearLimit = new string('b', RecipeLimits.MaxIngredientNameLength - 4);
+            var rangeCut = await InsertAsync(context, recipeId, nearLimit, 2m, 3m, IngredientUnit.None, null);
 
             await MigrationRunner.MigrateAsync(context, CancellationToken.None);
 
@@ -65,6 +70,13 @@ public class RemoveIngredientPreparationAndRangeMigrationTests(MariaDbFixture fi
             Assert.Equal(("salt", 1m), await LineAsync(context, pinch));
             Assert.Equal(("chilli flakes (0.5–1.5)", 0.5m), await LineAsync(context, decimalRange));
             Assert.Equal(("honey", 1m), await LineAsync(context, plain));
+            Assert.Equal(("parsley", (decimal?)null), await LineAsync(context, upperOnly));
+
+            // 196 characters + " (2–3)" is 202: cut to 199 characters of the folded name and the ellipsis, the lower amount kept.
+            var (rangeName, rangeAmount) = await LineAsync(context, rangeCut);
+            Assert.Equal(RecipeLimits.MaxIngredientNameLength, rangeName.Length);
+            Assert.Equal((nearLimit + " (2–3)")[..(RecipeLimits.MaxIngredientNameLength - 1)] + "…", rangeName);
+            Assert.Equal(2m, rangeAmount);
 
             // A name already at the limit keeps it: cut to 199 of its own characters and the ellipsis.
             var (truncated, _) = await LineAsync(context, full);
