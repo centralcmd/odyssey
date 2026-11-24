@@ -144,6 +144,10 @@ public static class NewsErrors
         HttpStatusCode.Conflict, NewsErrorCodes.PodcastAudioBusy,
         $"The audio of episode {episodeId} is downloading right now; try again when it has finished.");
 
+    public static NewsException PodcastAudioNotStored(Guid episodeId) => new(
+        HttpStatusCode.Conflict, NewsErrorCodes.PodcastAudioNotStored,
+        $"The audio of episode {episodeId} is not on the server, so the listen cannot be marked finished.");
+
     public static NewsException PodcastAudioCooldown(Guid episodeId, int retryAfterSeconds) => new(
         HttpStatusCode.TooManyRequests, NewsErrorCodes.PodcastAudioCooldown,
         $"The audio of episode {episodeId} was requested or removed a moment ago; try again later.",

@@ -46,6 +46,7 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
             .Returns((Guid id, PodcastArtworkSize size) => $"http://localhost/api/podcast-artwork/{id}/content?size={size}");
         Podcasts.Setup(p => p.AudioUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://localhost/api/podcast-episodes/{id}/audio/content");
         Ctx.Services.AddSingleton(Podcasts.Object);
+        Ctx.Services.AddSingleton(sp => new Odyssey.ApiClient.Auth.AntiforgeryTokenStore(sp));
         Ctx.Services.AddSingleton(Transfer.Object);
         Ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         Ctx.Services.AddSingleton(State.Object);

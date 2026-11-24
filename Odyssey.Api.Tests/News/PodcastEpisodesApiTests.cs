@@ -583,5 +583,272 @@ public class PodcastEpisodesApiTests(PodcastEpisodesApiTests.Host host) : Shared
         Assert.DoesNotContain(name, c => c is '\r' or '\n' or '"' or ';' or '\u0007');
     }
 
+    // ── In-browser playback (issue #593) ─────────────────────────────────────────────────────────────────
+
+    private Task<PodcastEpisode> EpisodeRowAsync(Guid id) =>
+        Factory.WithContextAsync(c => c.PodcastEpisodes.AsNoTracking().SingleAsync(e => e.NewsArticleId == id));
+
+    private static StringContent Playback(object body) => JsonBody(body);
+
+    [Fact]
+    public async Task Playback_AC1_The_stream_is_inline_ranged_sandboxed_and_carries_the_content_headers()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(ReadOnly).CreateClient();
+
+        var response = await client.GetAsync($"{Episodes}/{id}/audio/stream");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(AudioBytes, await response.Content.ReadAsByteArrayAsync());
+        Assert.Equal("audio/mpeg", response.Content.Headers.ContentType!.MediaType);
+        var disposition = response.Content.Headers.ContentDisposition!;
+        Assert.Equal("inline", disposition.DispositionType);
+        Assert.Null(disposition.FileName);
+        Assert.Null(disposition.FileNameStar);
+        Assert.Equal("bytes", response.Headers.AcceptRanges.Single());
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal("same-site", response.Headers.GetValues("Cross-Origin-Resource-Policy").Single());
+        Assert.Equal("default-src 'none'; sandbox", response.Headers.GetValues("Content-Security-Policy").Single());
+        Assert.False(response.Headers.ETag!.IsWeak);
+    }
+
+    [Fact]
+    public async Task Playback_AC2_AC3_A_range_is_206_an_unsatisfiable_one_416_and_a_matching_etag_304()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(ReadOnly).CreateClient();
+
+        using var ranged = new HttpRequestMessage(HttpMethod.Get, $"{Episodes}/{id}/audio/stream");
+        ranged.Headers.Range = new RangeHeaderValue(100, 199);
+        var partial = await client.SendAsync(ranged);
+        Assert.Equal(HttpStatusCode.PartialContent, partial.StatusCode);
+        Assert.Equal(AudioBytes[100..200], await partial.Content.ReadAsByteArrayAsync());
+        Assert.Equal((100L, 199L, (long)AudioBytes.Length), (partial.Content.Headers.ContentRange!.From!.Value, partial.Content.Headers.ContentRange.To!.Value, partial.Content.Headers.ContentRange.Length!.Value));
+
+        using var beyond = new HttpRequestMessage(HttpMethod.Get, $"{Episodes}/{id}/audio/stream");
+        beyond.Headers.Range = new RangeHeaderValue(AudioBytes.Length + 10, AudioBytes.Length + 20);
+        Assert.Equal(HttpStatusCode.RequestedRangeNotSatisfiable, (await client.SendAsync(beyond)).StatusCode);
+
+        using var conditional = new HttpRequestMessage(HttpMethod.Get, $"{Episodes}/{id}/audio/stream");
+        conditional.Headers.IfNoneMatch.Add(partial.Headers.ETag!);
+        Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(conditional)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Playback_AC3_The_stream_is_503_while_the_store_is_unavailable()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(ReadOnly).CreateClient();
+        var registry = Factory.Services.GetRequiredService<FileStorageVolumeRegistry>();
+        registry.MarkDegraded(registry.Volumes.Single(), new IOException("test"));
+        try
+        {
+            var response = await client.GetAsync($"{Episodes}/{id}/audio/stream");
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.Equal(NewsErrorCodes.StorageUnavailable, (await response.ProblemAsync()).Code());
+        }
+        finally
+        {
+            registry.MarkAvailable(registry.Volumes.Single());
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("bytes=0-")]
+    public async Task Playback_AC4_Streaming_the_whole_file_stamps_neither_saved_nor_listened(string? range)
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{Episodes}/{id}/audio/stream");
+        if (range is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Range", range);
+        }
+
+        var response = await client.SendAsync(request);
+        Assert.Equal(AudioBytes, await response.Content.ReadAsByteArrayAsync());
+
+        Assert.Null(await PlayedAsync(id));
+        Assert.Null((await EpisodeRowAsync(id)).LastListenedAtUtc);
+    }
+
+    [Theory]
+    [InlineData(PodcastAudioState.None)]
+    [InlineData(PodcastAudioState.Queued)]
+    [InlineData(PodcastAudioState.Downloading)]
+    [InlineData(PodcastAudioState.Failed)]
+    [InlineData(PodcastAudioState.Deferred)]
+    public async Task Playback_AC6_The_stream_is_404_unless_the_audio_is_stored(PodcastAudioState state)
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, state);
+        using var client = Factory.ForCaller(ReadOnly).CreateClient();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Episodes}/{id}/audio/stream")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Episodes}/{Guid.NewGuid()}/audio/stream")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Playback_AC7_The_stream_needs_news_read_and_the_save_needs_news_update()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+
+        using (var none = Factory.ForCaller([PermissionClaims.NewsUpdate]).CreateClient())
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, (await none.GetAsync($"{Episodes}/{id}/audio/stream")).StatusCode);
+        }
+
+        using var guest = Factory.ForCaller(ReadOnly).CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await guest.GetAsync($"{Episodes}/{id}/audio/stream")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await guest.PutAsync($"{Episodes}/{id}/playback", Playback(new { positionSeconds = 10 }))).StatusCode);
+        Assert.Null((await EpisodeRowAsync(id)).PlaybackPositionSeconds);
+    }
+
+    [Fact]
+    public async Task Playback_AC8_A_position_save_is_204_shows_on_the_next_read_and_repeats_idempotently()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsync($"{Episodes}/{id}/playback", Playback(new { positionSeconds = 1234, completed = false }))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsync($"{Episodes}/{id}/playback", Playback(new { positionSeconds = 1234, completed = false }))).StatusCode);
+
+        var detail = await client.GetFromJsonAsync<PodcastEpisodeDetail>($"{Episodes}/{id}");
+        Assert.Equal(1234, detail!.PlaybackPositionSeconds);
+        Assert.Null(detail.LastListenedAtUtc);
+    }
+
+    [Fact]
+    public async Task Playback_AC9_A_finish_stamps_listened_clears_the_position_and_leaves_saved_alone()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+        await client.PutAsync($"{Episodes}/{id}/playback", Playback(new { positionSeconds = 300 }));
+
+        var before = DateTime.UtcNow;
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsync($"{Episodes}/{id}/playback", Playback(new { completed = true }))).StatusCode);
+
+        var detail = await client.GetFromJsonAsync<PodcastEpisodeDetail>($"{Episodes}/{id}");
+        Assert.NotNull(detail!.LastListenedAtUtc);
+        Assert.InRange(detail.LastListenedAtUtc!.Value, before.AddSeconds(-5), DateTime.UtcNow.AddSeconds(5));
+        Assert.Null(detail.PlaybackPositionSeconds);
+        Assert.Null(detail.LastPlayedAtUtc);
+    }
+
+    [Fact]
+    public async Task Playback_AC10_A_finish_without_stored_audio_is_409_and_writes_nothing()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+
+        var response = await client.PutAsync($"{Episodes}/{id}/playback", Playback(new { completed = true }));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(NewsErrorCodes.PodcastAudioNotStored, (await response.ProblemAsync()).Code());
+        Assert.Null((await EpisodeRowAsync(id)).LastListenedAtUtc);
+    }
+
+    [Theory]
+    [InlineData(30, false)]
+    [InlineData(PodcastLimits.PlaybackCompletionGuardSeconds + 60, true)]
+    public async Task Playback_AC11_A_position_save_just_after_a_finish_is_ignored(int secondsSinceFinish, bool applies)
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        await Factory.WithContextAsync(async c =>
+        {
+            (await c.PodcastEpisodes.SingleAsync(e => e.NewsArticleId == id)).LastListenedAtUtc = DateTime.UtcNow.AddSeconds(-secondsSinceFinish);
+            await c.SaveChangesAsync();
+        });
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsync($"{Episodes}/{id}/playback", Playback(new { positionSeconds = 3000 }))).StatusCode);
+
+        Assert.Equal(applies ? 3000 : null, (await EpisodeRowAsync(id)).PlaybackPositionSeconds);
+    }
+
+    [Theory]
+    [InlineData("{\"completed\":false}")]
+    [InlineData("{\"positionSeconds\":-1}")]
+    [InlineData("{\"positionSeconds\":604801}")]
+    public async Task Playback_AC12_An_out_of_range_or_missing_position_is_400(string body)
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+
+        var response = await client.PutAsync($"{Episodes}/{id}/playback", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.True((await response.ProblemAsync()).HasError("PositionSeconds"));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsync($"{Episodes}/{Guid.NewGuid()}/playback", Playback(new { positionSeconds = 1 }))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Playback_AC18_Extra_members_change_only_the_two_playback_columns()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+
+        var response = await client.PutAsync($"{Episodes}/{id}/playback", Playback(new
+        {
+            positionSeconds = 42,
+            lastPlayedAtUtc = Base,
+            lastListenedAtUtc = Base,
+            audio = new { state = "None", storedObjectId = Guid.NewGuid() },
+            enclosureUrl = "https://evil.example/x.mp3",
+        }));
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var row = await EpisodeRowAsync(id);
+        Assert.Equal((42, (DateTime?)null, (DateTime?)null, "https://cdn.example.org/a.mp3"), (row.PlaybackPositionSeconds, row.LastPlayedAtUtc, row.LastListenedAtUtc, row.EnclosureUrl));
+        Assert.Equal(PodcastAudioState.Stored, (await AudioRowAsync(id)).State);
+    }
+
+    [Fact]
+    public async Task Playback_AC14_A_finished_listen_sets_the_auto_delete_date_and_savedToDevice_ignores_it()
+    {
+        var feed = await PodcastFeedAsync();
+        await Factory.WithContextAsync(async c =>
+        {
+            var f = await c.NewsFeeds.SingleAsync(x => x.NewsFeedId == feed);
+            f.AutoDeleteEnabled = true;
+            f.AutoDeleteAfterDays = 30;
+            f.AutoDeleteChangedAtUtc = null;
+            await c.SaveChangesAsync();
+        });
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(AllNewsClaims).CreateClient();
+        await client.PutAsync($"{Episodes}/{id}/playback", Playback(new { completed = true }));
+
+        var detail = await client.GetFromJsonAsync<PodcastEpisodeDetail>($"{Episodes}/{id}");
+        Assert.Equal(detail!.LastListenedAtUtc!.Value.AddDays(30), detail.AutoDeleteAtUtc);
+
+        var saved = await client.GetFromJsonAsync<PodcastEpisodePage>($"{Episodes}?feedIds={feed}&savedToDevice=true");
+        Assert.DoesNotContain(saved!.Items, e => e.Id == id);
+    }
+
     public sealed class Host() : OdysseyApiFactory([]);
 }

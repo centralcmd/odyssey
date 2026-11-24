@@ -258,16 +258,15 @@ public sealed class PodcastIngest(ILogger<PodcastIngest> logger)
     public static byte[] HostHash(string url) =>
         NewsUrlKey.Hash(Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.IdnHost.ToLowerInvariant() : url);
 
-    /// <summary>Auto-downloaded episodes of the feed on, or on their way to, the server that no device has fetched (§3.4).</summary>
+    /// <summary>Auto-downloaded episodes of the feed on, or on their way to, the server that nobody has consumed yet: no device download and no finished listen since it was stored (§3.4, #593).</summary>
     private static Task<int> UnfetchedAutoAsync(OdysseyContext context, Guid feedId, CancellationToken cancellationToken) =>
-        (from audio in context.PodcastEpisodeAudio.AsNoTracking()
-         join episode in context.PodcastEpisodes.AsNoTracking() on audio.NewsArticleId equals episode.NewsArticleId
-         where audio.NewsFeedId == feedId
-             && audio.RequestedBy == PodcastAudioRequestedBy.Auto
-             && (audio.State == PodcastAudioState.Stored || audio.State == PodcastAudioState.Queued
-                 || audio.State == PodcastAudioState.Downloading || audio.State == PodcastAudioState.Deferred)
-             && (episode.LastPlayedAtUtc == null || audio.StoredAtUtc == null || episode.LastPlayedAtUtc < audio.StoredAtUtc)
-         select audio).CountAsync(cancellationToken);
+        (from row in PodcastConsumption.Rows(context.PodcastEpisodeAudio.AsNoTracking(), context.PodcastEpisodes.AsNoTracking())
+         where row.Audio.NewsFeedId == feedId
+             && row.Audio.RequestedBy == PodcastAudioRequestedBy.Auto
+             && (row.Audio.State == PodcastAudioState.Stored || row.Audio.State == PodcastAudioState.Queued
+                 || row.Audio.State == PodcastAudioState.Downloading || row.Audio.State == PodcastAudioState.Deferred)
+             && row.ConsumedAtUtc == null
+         select row.Audio).CountAsync(cancellationToken);
 
     /// <summary>The audio quota's usage: stored, awaiting deletion and reserved (§6.4).</summary>
     private static async Task<long> QuotaUsedAsync(OdysseyContext context, CancellationToken cancellationToken)

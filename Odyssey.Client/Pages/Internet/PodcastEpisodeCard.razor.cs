@@ -69,6 +69,25 @@ public partial class PodcastEpisodeCard
 
     [Parameter] public EventCallback<PodcastEpisodeSummary> OnRetryDetail { get; set; }
 
+    /// <summary>The page's playback session (issue #594).</summary>
+    [Parameter] public PodcastPlaybackSession? Session { get; set; }
+
+    /// <summary>This browser cannot play the episode's audio type.</summary>
+    [Parameter] public bool Unsupported { get; set; }
+
+    /// <summary>The collapsed card's play/pause button.</summary>
+    public static string HeaderToggleId(Guid episodeId) => $"pod-head-toggle-{episodeId}";
+
+    private bool PlayingHere => Session?.Is(Episode.Id) == true;
+
+    /// <summary>
+    /// The collapsed card's Playing / Paused chip and toggle: only while there is something to play or pause — not after
+    /// the end and not with an error, which the open card's player explains.
+    /// </summary>
+    private bool ShowsHeaderPlayback => PlayingHere && !Open && Session!.Error is null && Session.State != OdsPodcastPlayerState.Ended;
+
+    private bool HeaderPlaying => Session is { } s && (s.PlayingNow || s.State == OdsPodcastPlayerState.Loading);
+
     public static string CardId(Guid id) => $"pod-{id}";
 
     public static string RetryId(Guid id) => $"pod-retry-{id}";

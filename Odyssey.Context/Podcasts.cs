@@ -46,8 +46,8 @@ public class PodcastFeedDetails
 
 /// <summary>
 /// One episode (§4.3): the episode-only metadata of a <see cref="NewsArticle"/> on a podcast feed. The worker writes the
-/// metadata columns under the feed lease; the API writes only <see cref="LastPlayedAtUtc"/>, by a conditional
-/// single-column update, so the row carries no concurrency token.
+/// metadata columns under the feed lease; the API writes only <see cref="LastPlayedAtUtc"/>, <see cref="LastListenedAtUtc"/>
+/// and <see cref="PlaybackPositionSeconds"/>, each by a conditional update, so the row carries no concurrency token.
 /// </summary>
 public class PodcastEpisode
 {
@@ -107,11 +107,20 @@ public class PodcastEpisode
     /// <summary>Copied from the article at insert (the <see cref="NewsArticleTag.SortAtUtc"/> precedent).</summary>
     public DateTime SortAtUtc { get; set; }
 
-    /// <summary>Unused in v1: kept so a v2 player needs no migration.</summary>
+    /// <summary>
+    /// The household's shared resume position in whole seconds (issue #593); <c>null</c> when never started or finished.
+    /// Written only by <c>PUT …/playback</c>.
+    /// </summary>
     public int? PlaybackPositionSeconds { get; set; }
 
     /// <summary>v1: the last completed device download of the whole file by a <c>news.update</c> holder (§5.3 #8).</summary>
     public DateTime? LastPlayedAtUtc { get; set; }
+
+    /// <summary>
+    /// When an in-browser listen last reached the end (issue #593): a trusted-client signal, written only while the audio
+    /// is <c>Stored</c>. Auto-delete counts from the later of this and <see cref="LastPlayedAtUtc"/> (<c>PodcastConsumption</c>).
+    /// </summary>
+    public DateTime? LastListenedAtUtc { get; set; }
 }
 
 /// <summary>Where the Podcasting 2.0 chapter file stands (§4.3).</summary>

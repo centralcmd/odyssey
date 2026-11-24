@@ -139,18 +139,19 @@ public sealed class PodcastAudioRetentionJob(
     }
 
     /// <summary>The §3.7 step 1 predicate.</summary>
+    /// <remarks>Counts from the consumed-at time (<see cref="PodcastConsumption"/>, issue #593): the later of the device
+    /// download and the in-browser listen made after the current copy was stored.</remarks>
     public static IQueryable<PodcastEpisodeAudio> Eligible(OdysseyContext context, DateTime now) =>
-        from audio in context.PodcastEpisodeAudio
-        join episode in context.PodcastEpisodes on audio.NewsArticleId equals episode.NewsArticleId
-        join feed in context.NewsFeeds on audio.NewsFeedId equals feed.NewsFeedId
-        where audio.State == PodcastAudioState.Stored
+        from row in PodcastConsumption.Rows(context.PodcastEpisodeAudio, context.PodcastEpisodes)
+        join feed in context.NewsFeeds on row.Audio.NewsFeedId equals feed.NewsFeedId
+        where row.Audio.State == PodcastAudioState.Stored
             && feed.Kind == NewsFeedKind.Podcast && feed.ArchivedAtUtc == null && feed.DeletionRequestedAtUtc == null
             && feed.AutoDeleteEnabled
-            && episode.LastPlayedAtUtc != null && audio.StoredAtUtc != null && episode.LastPlayedAtUtc >= audio.StoredAtUtc
-            && (feed.AutoDeleteChangedAtUtc == null || feed.AutoDeleteChangedAtUtc <= episode.LastPlayedAtUtc
-                ? episode.LastPlayedAtUtc!.Value.AddDays(feed.AutoDeleteAfterDays) <= now
+            && row.ConsumedAtUtc != null
+            && (feed.AutoDeleteChangedAtUtc == null || feed.AutoDeleteChangedAtUtc <= row.ConsumedAtUtc
+                ? row.ConsumedAtUtc!.Value.AddDays(feed.AutoDeleteAfterDays) <= now
                 : feed.AutoDeleteChangedAtUtc!.Value.AddDays(feed.AutoDeleteAfterDays) <= now)
-        select audio;
+        select row.Audio;
 
     private async Task<long?> ReleaseAsync(Guid id, CancellationToken cancellationToken)
     {

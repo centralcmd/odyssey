@@ -34,6 +34,12 @@ public static class PodcastLimits
     /// <summary>The newest chapter start or end, in milliseconds: one week (§4.5).</summary>
     public const long MaxChapterMilliseconds = MaxDurationSeconds * 1000L;
 
+    /// <summary>
+    /// After a listen is marked finished, a position save inside this many seconds is ignored (issue #593 §5), so a late
+    /// periodic or page-hide save cannot bring back a resume point on a finished episode.
+    /// </summary>
+    public const int PlaybackCompletionGuardSeconds = 120;
+
     /// <summary>The distinct artwork images one feed may hold (§3.2): 1,000 × 3 files keeps a folder under 10,000.</summary>
     public const int MaxArtworkPerFeed = 1000;
 

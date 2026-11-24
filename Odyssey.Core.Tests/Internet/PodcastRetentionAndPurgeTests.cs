@@ -103,6 +103,67 @@ public sealed class PodcastRetentionAndPurgeTests : IAsyncLifetime
 
     private Task<(int Released, long Bytes)> PassAsync() => Get<PodcastAudioRetentionJob>().PassAsync(CancellationToken.None);
 
+    private Task StampsAsync(DateTime? played, DateTime? listened) => news.WithContextAsync(async c =>
+    {
+        var episode = await c.PodcastEpisodes.SingleAsync();
+        episode.LastPlayedAtUtc = played;
+        episode.LastListenedAtUtc = listened;
+        await c.SaveChangesAsync();
+    });
+
+    /// <summary>
+    /// Issue #593 AC 13: the query form and the in-memory form of <see cref="PodcastConsumption"/> agree over every
+    /// combination of no stamp, a stamp before the stored copy, and stamps after it in either order.
+    /// </summary>
+    [Fact]
+    public async Task Playback_AC13_Both_forms_of_the_consumption_rule_agree_over_every_stamp_combination()
+    {
+        await StoredAsync();
+        var stored = (await AudioAsync()).StoredAtUtc!.Value;
+        DateTime?[] stamps = [null, stored.AddDays(-1), stored, stored.AddDays(1), stored.AddDays(2)];
+        foreach (var played in stamps)
+        {
+            foreach (var listened in stamps)
+            {
+                await StampsAsync(played, listened);
+                var queried = await news.WithContextAsync(c =>
+                    PodcastConsumption.Rows(c.PodcastEpisodeAudio.AsNoTracking(), c.PodcastEpisodes.AsNoTracking()).Select(r => r.ConsumedAtUtc).SingleAsync());
+                Assert.Equal(PodcastConsumption.ConsumedAt(played, listened, stored), queried);
+            }
+        }
+
+        Assert.Null(PodcastConsumption.ConsumedAt(stored.AddDays(1), stored.AddDays(1), null));
+        Assert.Equal(stored.AddDays(2), PodcastConsumption.ConsumedAt(stored.AddDays(1), stored.AddDays(2), stored));
+        Assert.Equal(stored.AddDays(1), PodcastConsumption.ConsumedAt(stored.AddDays(-1), stored.AddDays(1), stored));
+    }
+
+    /// <summary>Issue #593 AC 14: a finished in-browser listen alone starts the countdown; one from before the stored copy does not.</summary>
+    [Fact]
+    public async Task Playback_AC14_A_listen_after_the_copy_was_stored_starts_the_countdown_and_one_before_it_does_not()
+    {
+        await StoredAsync();
+        var stored = (await AudioAsync()).StoredAtUtc!.Value;
+        await StampsAsync(null, stored.AddMinutes(-1));
+        news.Advance(TimeSpan.FromDays(40));
+        Assert.Equal(0, (await PassAsync()).Released);
+
+        await StampsAsync(null, Now.AddDays(-31));
+        Assert.Equal(1, (await PassAsync()).Released);
+    }
+
+    /// <summary>Issue #593 AC 14: the later of the two stamps counts — saved on day 0, listened on day 20, 30 days → day 50.</summary>
+    [Fact]
+    public async Task Playback_AC14_The_later_of_saved_and_listened_counts()
+    {
+        await StoredAsync();
+        var start = Now;
+        await StampsAsync(start, start.AddDays(20));
+        news.Advance(TimeSpan.FromDays(31));
+        Assert.Equal(0, (await PassAsync()).Released);
+        news.Advance(TimeSpan.FromDays(19));
+        Assert.Equal(1, (await PassAsync()).Released);
+    }
+
     [Fact]
     public async Task AC22_Downloaded_audio_past_its_days_is_released_with_the_grace_and_the_episode_kept()
     {

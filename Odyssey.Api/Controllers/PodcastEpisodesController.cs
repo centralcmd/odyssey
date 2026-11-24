@@ -77,7 +77,47 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [EndpointSummary("An episode's stored audio as an attachment, with nosniff, CORP same-site, a strong ETag and range processing.")]
-    public async Task<IActionResult> AudioContent([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    public Task<IActionResult> AudioContent([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
+        ServeAudioAsync(id, inline: false, cancellationToken);
+
+    /// <remarks>
+    /// In-browser playback (issue #593 §5 #2): the same stored file, the same order, ETag and ranges as
+    /// <see cref="AudioContent"/>, but inline, under a sandboxing CSP, and it NEVER stamps — playing a file to its end
+    /// is not saving it to a device. GET only: the &lt;audio&gt; element needs no HEAD.
+    /// </remarks>
+    [HttpGet("{id:guid}/audio/stream")]
+    [Authorize(Policy = PermissionClaims.NewsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status206PartialContent)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status416RangeNotSatisfiable)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [EndpointSummary("An episode's stored audio for in-browser playback: inline, ranged, never counted as saved to a device.")]
+    public Task<IActionResult> AudioStream([FromRoute] Guid id, CancellationToken cancellationToken = default) =>
+        ServeAudioAsync(id, inline: true, cancellationToken);
+
+    /// <summary>
+    /// Saves the household's shared playback position, or marks the listen finished (issue #593 §5 #3). A position save
+    /// right after a finish is ignored (still <c>204</c>); a finish for audio that is not stored is a <c>409</c>.
+    /// </summary>
+    [HttpPut("{id:guid}/playback")]
+    [Authorize(Policy = PermissionClaims.NewsUpdate)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [EndpointSummary("Save the shared playback position of an episode, or mark an in-browser listen finished.")]
+    public async Task<IActionResult> SavePlayback([FromRoute] Guid id, [FromBody] PodcastPlaybackUpdate update, CancellationToken cancellationToken = default) =>
+        await episodes.SavePlaybackAsync(id, update, cancellationToken) == PodcastPlaybackOutcome.NotFound ? NotFound(id) : NoContent();
+
+    /// <summary>
+    /// The one path both audio endpoints share, so their headers, ETag and 304 cannot drift: authorise (the attribute),
+    /// 404 unless stored, the conditional GET, then open. <paramref name="inline"/> is the stream: inline disposition,
+    /// a sandboxing CSP and no completion callback at all.
+    /// </summary>
+    private async Task<IActionResult> ServeAudioAsync(Guid id, bool inline, CancellationToken cancellationToken)
     {
         if (await episodes.AudioAsync(id, cancellationToken) is not { } descriptor)
         {
@@ -85,6 +125,13 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
         }
 
         SetFileHeaders();
+        if (inline)
+        {
+            // Explicit: File() with no download name emits no Content-Disposition at all.
+            Response.Headers.ContentDisposition = "inline";
+            Response.Headers.ContentSecurityPolicy = "default-src 'none'; sandbox";
+        }
+
         var etag = new EntityTagHeaderValue($"\"{descriptor.Sha256Hex}\"");
         if (Request.GetTypedHeaders().IfNoneMatch is { Count: > 0 } ifNoneMatch && ifNoneMatch.Any(t => t.Compare(etag, useStrongComparison: false)))
         {
@@ -95,6 +142,11 @@ public sealed class PodcastEpisodesController(PodcastEpisodeService episodes, Ne
         if (await episodes.OpenAsync(id, descriptor, cancellationToken) is not { } content)
         {
             return AudioNotFound(id);
+        }
+
+        if (inline)
+        {
+            return File(content, descriptor.ContentType, fileDownloadName: null, lastModified: null, entityTag: etag, enableRangeProcessing: true);
         }
 
         var stream = new CountingStream(content);

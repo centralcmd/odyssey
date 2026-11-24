@@ -5,8 +5,9 @@
       • the mark is the show artwork (200 px rendition, lazy, alt=""), falling back to the podcasts glyph; the card's
         accent is the audio state's tone — the Internet module's convention (an article's mark takes its read state, a
         feed's its health) — and the PodcastAudioStateChip's text is what says the state;
-      • chips: the audio state · Saved to a device (when the audio ever reached a device: v1's only "played"
-        signal) · Trailer / Bonus · Explicit;
+      • chips: the audio state · Playing / Paused (the page's playing episode, only while this card is collapsed, with a
+        play/pause button before the ⋯ menu — issue #594) · Saved to a device (the whole file reached a device) ·
+        Listened (an in-browser listen reached the end) · Trailer / Bonus · Explicit. Neither is ever worded "played";
       • meta: podcast · published · duration · S2 · E14 · Has chapters, every abbreviation aria-hidden and followed by
         its spoken form;
       • the ⋯ menu carries navigation only. The audio actions live in the body's Audio panel, beside their status,
@@ -31,9 +32,18 @@
                Class="pod-card">
     <Chips>
         <PodcastAudioStateChip State="Episode.Audio.State" Compact="true" />
+        @if (ShowsHeaderPlayback)
+        {
+            var chip = HeaderPlaying ? OdsPodcastPlayback.Playing : OdsPodcastPlayback.Paused;
+            <OdsChip Tone="@(HeaderPlaying ? OdsChipTone.Info : OdsChipTone.Outline)" Icon="@chip.Icon" Class="sm">@chip.Label</OdsChip>
+        }
         @if (Episode.LastPlayedAtUtc is not null)
         {
             <OdsChip Tone="OdsChipTone.Outline" Icon="phone_iphone" Class="sm">Saved to a device</OdsChip>
+        }
+        @if (Episode.LastListenedAtUtc is not null)
+        {
+            <OdsChip Tone="OdsChipTone.Outline" Icon="@OdsPodcastPlayback.Listened.Icon" Class="sm">@OdsPodcastPlayback.Listened.Label</OdsChip>
         }
         @if (EpisodeTypeLabel is { } typeLabel)
         {
@@ -45,6 +55,12 @@
         }
     </Chips>
     <Actions>
+        @* Only while the card is collapsed: the open card has the player's own toggle (#594 §3). *@
+        @if (ShowsHeaderPlayback)
+        {
+            <OdsIconButton id="@HeaderToggleId(Episode.Id)" Icon="@(HeaderPlaying ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayArrow)"
+                           AriaLabel="@($"{(HeaderPlaying ? "Pause" : "Play")}, {Title}")" OnClick="Session!.ToggleAsync" />
+        }
         @if (Menu.Count > 0)
         {
             <OdsMenu Items="Menu" AriaLabel="@($"Actions for {Title}")" />
@@ -94,6 +110,12 @@
                     <Value>@AbsoluteTime(saved, string.Empty)</Value>
                 </OdsInfoTile>
             }
+            @if (Episode.LastListenedAtUtc is { } listened)
+            {
+                <OdsInfoTile Icon="@OdsPodcastPlayback.Listened.Icon" Label="Last listened" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value>@AbsoluteTime(listened, string.Empty)</Value>
+                </OdsInfoTile>
+            }
             @if (Episode.AutoDeleteAtUtc is { } autoDelete)
             {
                 <OdsInfoTile Icon="auto_delete" Label="Removed automatically on" ValueVariant="OdsInfoTileVariant.Text">
@@ -106,7 +128,8 @@
         <div class="pod-content">
             <PodcastAudioActions Episode="Episode" CanRequest="CanRequest" CanDelete="CanDelete" Pending="Pending"
                                  PollTrouble="PollTrouble" WaitStopped="WaitStopped" Now="Now" TimeZone="TimeZone"
-                                 OnAction="OnAction" OnCheckAgain="OnCheckAgain" />
+                                 OnAction="OnAction" OnCheckAgain="OnCheckAgain"
+                                 Session="Session" Unsupported="Unsupported" Lang="@Lang" />
             @switch (Detail?.Phase ?? NewsBodyPhase.Loading)
             {
                 case NewsBodyPhase.Loading:

@@ -78,4 +78,37 @@ public class PodcastsApiClientTests
 
         Assert.DoesNotContain("savedToDevice", handler.LastRequest!.RequestUri!.Query, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AudioStreamUrl_is_the_stream_route_and_matches_its_own_path_pattern()
+    {
+        var (client, _) = Create();
+        var id = Guid.Parse("22222222-0000-0000-0000-000000000002");
+
+        var url = new Uri(client.AudioStreamUrl(id));
+
+        Assert.Equal($"/api/podcast-episodes/{id}/audio/stream", url.AbsolutePath);
+        Assert.Matches(client.AudioStreamPathPattern, url.AbsolutePath);
+        Assert.DoesNotMatch(client.AudioStreamPathPattern, new Uri(client.AudioUrl(id)).AbsolutePath);
+        Assert.DoesNotMatch(client.AudioStreamPathPattern, "/api/podcast-episodes/x/audio/stream");
+    }
+
+    [Theory]
+    [InlineData(1234, false, "\"positionSeconds\":1234", "\"completed\":false")]
+    [InlineData(null, true, "\"positionSeconds\":null", "\"completed\":true")]
+    public async Task SavePlaybackAsync_puts_the_two_scalars(int? position, bool completed, string expectPosition, string expectCompleted)
+    {
+        var handler = new RecordingHttpHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
+        var client = new PodcastsApiClient(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
+        var id = Guid.Parse("22222222-0000-0000-0000-000000000002");
+
+        var result = await client.SavePlaybackAsync(id, position, completed);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(HttpMethod.Put, handler.LastRequest!.Method);
+        Assert.Equal($"/api/podcast-episodes/{id}/playback", handler.LastRequest.RequestUri!.AbsolutePath);
+        var body = handler.LastBody!;
+        Assert.Contains(expectPosition, body, StringComparison.Ordinal);
+        Assert.Contains(expectCompleted, body, StringComparison.Ordinal);
+    }
 }
