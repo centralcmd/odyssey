@@ -1,6 +1,6 @@
 {
  "artifact": "https://claude.ai/artifact/VkrcragM9HGn1cXKkANizr",
- "version": "1795486190-6f31",
+ "version": "1795487582-95f1",
  "syncedOn": "2026-11-24",
  "files": {
   "SKILL.md": "8f4f9b2b8c00084db6fe0280a35832529e5087ff370e87ab422f9fc896c5ce50",
@@ -822,10 +822,10 @@
   "project/components/WizardSteps/WizardSteps.d.ts": "f2fd96d93fe9926cefbf79593f68d2436c77ab1880e193b75cb8019f95f9a127",
   "project/components/WizardSteps/preview.html": "c835796b0bfec506e619ca633fc1a194da873fb217b59136a68e232e21788601",
   "project/components/WizardSteps.jsx": "4c6a7d9eccab616cdcb7209ab7aa325b28939f37d81c21b8ef570b84e0844a8f",
-  "project/components/bundle.css": "44b16fd5a9d64fa0d653c8f99b5da090da676dd386d719917e102b354cdef07e",
+  "project/components/bundle.css": "e5776598bc38dcfae67c61e9567523e2d7990143305056d7c324cd7e3a2375ff",
   "project/components/bundle.js": "0cf275a8199881b2dfbe64dba3df8142f4b24321a1df7a529406ae0410464418",
   "project/components/index.d.ts": "43e0a7b83a79379383047ac61fce1348681842be5c968f4df0ac71d8e4bc76c3",
-  "project/design-system.json": "3693f009ff103a8bd099f0aa50c05adbd94868e37b4986bae48b97af29791135",
+  "project/design-system.json": "d5bda9b683230203bde3411d44ddcdf77666b6d6ab75868d70b845909bc600fd",
   "project/docs/components-accounts.md": "34f52c929f12a9b3d48e20f4ae7282cba6852f292d8a644b8ae3d5af96c156b7",
   "project/docs/components-authentication-and-users.md": "01e8be88396dc9b379a4b32265ed1e642a0d7c4f746fa72c938e21900358a5d5",
   "project/docs/components-background-jobs.md": "f3d31b36f81be4daa7e14eb6b269f05230f4a3e520bd665ae57c83df9e8bff09",

@@ -189,12 +189,28 @@ public class ControlContrastTests
     [Fact]
     public void The_photo_tile_focus_ring_is_two_toned_and_drawn_above_the_photo()
     {
-        Assert.Matches(@"outline:\s*none", Rule(ComponentsCss, ".odc-phototile-open:focus-visible"));
+        // The selector appears twice: the normal rule (outline: none) and the forced-colours one (a Highlight outline).
+        var open = NormaliseSelector(".odc-phototile-open:focus-visible");
+        Assert.Contains(Rules(File.ReadAllText(ComponentsCss)), r => r.Selector == open && Regex.IsMatch(r.Body, @"outline:\s*none"));
 
         var ring = Rule(ComponentsCss, ".odc-phototile:has(.odc-phototile-open:focus-visible)::before");
         Assert.Matches(@"z-index:\s*1\b", ring);
         Assert.Matches(@"pointer-events:\s*none", ring);
         Assert.Matches(@"box-shadow:\s*inset 0 0 0 var\(--focus-ring-width\) var\(--focus-ring\),\s*inset 0 0 0 calc\(var\(--focus-ring-width\) \* 2\) #fff", ring);
+    }
+
+    /// <summary>
+    /// Forced-colours modes drop box-shadows, so the two-tone ring above would leave a focused tile with no indicator;
+    /// there the image button gets a real <c>Highlight</c> outline instead (WCAG 2.4.7, 1.4.11; PR #598 round 2).
+    /// </summary>
+    [Fact]
+    public void The_photo_tile_has_a_highlight_outline_in_forced_colours()
+    {
+        var media = Regex.Match(File.ReadAllText(ComponentsCss),
+            @"@media\s*\(forced-colors:\s*active\)\s*\{\s*\.odc-phototile-open:focus-visible\s*\{([^}]*)\}");
+        Assert.True(media.Success, "no forced-colors rule for .odc-phototile-open:focus-visible");
+        Assert.Matches(@"outline:\s*3px solid Highlight", media.Groups[1].Value);
+        Assert.Matches(@"outline-offset:\s*-3px", media.Groups[1].Value);
     }
 
     [SkippableFact]
