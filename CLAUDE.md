@@ -209,7 +209,7 @@ contact delete runs under `Odyssey.Api.Tests`**; that coverage lives in `Odyssey
 integration with a third-party system** (Claude, the Norges Bank rates feed, a weather or price source), because
 access to that system can be missing or withdrawn: a lapsed key, a provider incident, a withdrawn DPA. It is a
 setting in the store (never `appsettings.json`), switches only the outbound integration, and never replaces the
-claims that decide who may use it. `FileAnalysisEnabled` and `RecipeImportEnabled` are the worked examples; the
+claims that decide who may use it. `FileAnalysisEnabled` is the worked example (the planned AI recipe import adds a second); the
 rules are in [settings.md](docs/architecture/settings.md).
 
 **Instance-wide policy lives in the database, not `appsettings.json`.** Anything an administrator would
