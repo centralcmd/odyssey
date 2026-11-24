@@ -172,6 +172,10 @@ Bullets: scenario + target metric + percentile. Include any hard timeout.
 > needs an operator-adjustable value, it is a row in the `SystemSettings` store (admin-editable at
 > `/settings`), not a configuration key, and adding one has its own recipe in `CLAUDE.md`. Secrets go
 > in `SystemSettingSecrets`. State which of the three applies.
+>
+> **Exception — integration switches.** A feature that depends on a third-party system (an AI processor,
+> a rates or price feed) may add an on/off row in the `SystemSettings` store for that integration flow,
+> per `docs/architecture/settings.md`. Name it, state its default and where it is re-checked.
 
 ---
 

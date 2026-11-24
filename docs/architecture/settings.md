@@ -2,7 +2,17 @@
 
 Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.md). Read this before changing code in this area; the rules here are binding in the same way.
 
-**No runtime feature toggles for new features.** Do not add per-feature kill-switch flags (e.g. a `Feature:Enabled` option that returns `503` when off) when building new features. Gate capabilities with **permission claims**, not config toggles. One early feature (file analysis's `FileAnalysis:Enabled`) predates this convention and keeps its flag; don't follow that pattern in new work and don't add more.
+**No runtime feature toggles for new features — except an integration switch.** Do not add per-feature kill-switch flags (e.g. a `Feature:Enabled` option that returns `503` when off) when building new features. Gate capabilities with **permission claims**, not config toggles.
+
+**An integration switch is allowed** (maintainer decision, November 2026). A capability that depends on a **third-party system** — an AI processor such as Claude, an exchange-rate or price feed, a weather source — may have an on/off setting, because whether the deployment has access to that system is outside its control: a key lapses, a provider has an incident, a DPA is withdrawn, a data-residency question comes up. `FileAnalysisEnabled` (statement analysis) and `RecipeImportEnabled` (AI recipe import) are the worked examples. Rules:
+
+- **It is a row in the `SystemSettings` store**, added by the recipe below — never an `appsettings.json` key.
+- **One switch per integration flow**, named for the flow (`RecipeImportEnabled`), not one global AI switch: an operator may keep one flow and stop another.
+- **It switches the outbound integration only.** Internal behaviour that needs no third party gets no switch, and the switch never replaces the permission claims that decide who may use the capability.
+- **A flow that sends data or spends money ships `false`** and is read **live and uncached** on every request and again by the worker immediately before it sends — a disable binds on the next call, not after the 30 s cache TTL.
+- **Off is a clean, explained state**: the request answers `503` with a flow-specific code, queued work fails with a "disabled" code without sending, and the claim-free or claim-gated options endpoint reports `enabled: false` so the client can say why.
+
+Anything that is not an integration with an external system still follows the rule above: no toggle.
 
 **`ApiDocs:Enabled` and `ApiDocs:RequireLogin` are a deliberate exception, and not a precedent** (issue #569).
 They are deploy-time switches that decide whether the API documentation routes exist (never in Production) and
