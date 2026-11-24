@@ -27,8 +27,8 @@ public static class CoupledMigrationNames
     public const string RemoveIngredientPreparationAndRange = nameof(RemoveIngredientPreparationAndRange);
 
     /// <summary>
-    /// Every coupling above. The November 2026 rebaseline emptied the list: every coupling named a migration it folded
-    /// away, and the code behind each went with it.
+    /// Every coupling above. It holds only migrations added after the November 2026 rebaseline: every coupling before it
+    /// named a migration the baseline folded away, and the code behind each went with it.
     /// </summary>
     public static IReadOnlyList<string> All { get; } = [RemoveIngredientPreparationAndRange];
 
