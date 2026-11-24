@@ -13,7 +13,8 @@
 *@
 @implements IAsyncDisposable
 
-<div class="@($"odc-podplayer {Class}".TrimEnd())" role="group" aria-label="@($"Player, {Name}")" lang="@Lang">
+@* No lang on the group: its labels and status are the app's English; the episode language belongs to the title alone, which appears only inside those names (3.1.2). *@
+<div class="@($"odc-podplayer {Class}".TrimEnd())" role="group" aria-label="@($"Player, {Name}")">
     <div class="odc-podplayer-main">
         <button type="button" id="@ToggleId" class="@(Busy ? "odc-podplayer-toggle busy" : "odc-podplayer-toggle")"
                 aria-label="@($"{(PlayingNow ? "Pause" : "Play")}, {Name}")"

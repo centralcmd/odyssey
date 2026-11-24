@@ -219,7 +219,8 @@ export function bindSeek(input, step, page) {
         return;
     }
     const handler = (e) => {
-        if (input.getAttribute('aria-disabled') === 'true') {
+        // A modified key belongs to the browser (Alt+←/→ is Back/Forward, Ctrl+Home scrolls): never swallow it (2.1.1).
+        if (input.getAttribute('aria-disabled') === 'true' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
             return;
         }
         const max = Number(input.max) || 0;

@@ -15,7 +15,7 @@ public partial class OdsPodcastPlayer
     /// <summary>The episode title; part of every accessible name.</summary>
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
 
-    /// <summary>The podcast's language.</summary>
+    /// <summary>The podcast's language. Not applied to the player's own UI text (3.1.2); kept for callers that render the title.</summary>
     [Parameter] public string? Lang { get; set; }
 
     [Parameter] public OdsPodcastPlayerState State { get; set; } = OdsPodcastPlayerState.Paused;

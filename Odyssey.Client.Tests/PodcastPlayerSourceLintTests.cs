@@ -32,6 +32,11 @@ public class PodcastPlayerSourceLintTests
     public void The_source_is_checked_against_the_api_origin_and_the_stream_route() =>
         Assert.Contains("url.origin === apiOrigin && new RegExp(pattern).test(url.pathname)", Code, StringComparison.Ordinal);
 
+    /// <summary>A11y review (2.1.1): Alt/Ctrl/Meta/Shift + a seek key is the browser's (Back/Forward, scroll), never a seek.</summary>
+    [Fact]
+    public void The_seek_keys_leave_modified_keys_to_the_browser() =>
+        Assert.Contains("e.altKey || e.ctrlKey || e.metaKey || e.shiftKey", Code, StringComparison.Ordinal);
+
     [Fact]
     public void No_podcast_component_renders_markup_from_a_string()
     {
