@@ -147,13 +147,31 @@ public sealed class PodcastPlaybackSession(
         CurrentSeconds = OdsPodcastPlayback.ResumeAt(episode.PlaybackPositionSeconds, null);
         State = OdsPodcastPlayerState.Loading;
         _lastSaveAt = Now;
+        _pendingPosition = null;
         await host.ChangedAsync();
 
+        string outcome;
+        try
+        {
+            outcome = await StartModuleAsync(episode, canSave);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException)
+        {
+            // The module failed to load or start: never a spinner forever — the network error, with Try again.
+            outcome = "refused";
+        }
+
+        await PlayOutcomeAsync(outcome);
+    }
+
+    private async Task<string> StartModuleAsync(PodcastEpisodeSummary episode, bool canSave)
+    {
         var module = await ModuleAsync();
         Volume = await module.InvokeAsync<int>("readVolume");
+        _self?.Dispose();
         _self = DotNetObjectReference.Create(this);
         var src = api.AudioStreamUrl(episode.Id);
-        var outcome = await module.InvokeAsync<string>("start", _self, new
+        return await module.InvokeAsync<string>("start", _self, new
         {
             src,
             apiOrigin = new Uri(src).GetLeftPart(UriPartial.Authority),
@@ -166,7 +184,6 @@ public sealed class PodcastPlaybackSession(
             muted = Muted,
             startAt = CurrentSeconds,
         });
-        await PlayOutcomeAsync(outcome);
     }
 
     private static string SaveUrl(string streamUrl) => streamUrl[..streamUrl.LastIndexOf("/audio/stream", StringComparison.Ordinal)] + "/playback";
@@ -430,6 +447,12 @@ public sealed class PodcastPlaybackSession(
                 }
 
                 Error = kind;
+                if (kind == OdsPodcastPlayerError.Removed)
+                {
+                    _completed = true;
+                    await TellModuleNoSaveAsync();
+                }
+
                 break;
         }
 
@@ -445,9 +468,25 @@ public sealed class PodcastPlaybackSession(
         State = OdsPodcastPlayerState.Paused;
         _completed = true;
         CancelTimers();
+        await TellModuleNoSaveAsync();
         if (_module is not null)
         {
             await _module.InvokeVoidAsync("pause");
+        }
+    }
+
+    /// <summary>The keepalive save on leaving must stop too once .NET stops saving (a refusal, removed audio).</summary>
+    private async Task TellModuleNoSaveAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("setCanSave", false);
+            }
+        }
+        catch (JSException)
+        {
         }
     }
 
@@ -520,6 +559,7 @@ public sealed class PodcastPlaybackSession(
             {
                 // A role change reaches a live session within a minute: stop saving, say so once, never retry.
                 CanSave = false;
+                await TellModuleNoSaveAsync();
                 SaveNote = OdsPodcastPlayerSaveNote.Off;
                 host.Say("Your place isn’t being saved.");
                 await host.ChangedAsync();
@@ -570,6 +610,6 @@ public sealed class PodcastPlaybackSession(
             }
         }
 
-        _saveGate.Dispose();
+        // The gate is not disposed: a save still in flight when the page goes away must finish (or fail) quietly.
     }
 }

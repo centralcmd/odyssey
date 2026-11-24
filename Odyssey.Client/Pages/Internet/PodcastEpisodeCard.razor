@@ -32,10 +32,10 @@
                Class="pod-card">
     <Chips>
         <PodcastAudioStateChip State="Episode.Audio.State" Compact="true" />
-        @if (PlayingHere && !Open)
+        @if (ShowsHeaderPlayback)
         {
-            var chip = Session!.PlayingNow ? OdsPodcastPlayback.Playing : OdsPodcastPlayback.Paused;
-            <OdsChip Tone="@(Session.PlayingNow ? OdsChipTone.Info : OdsChipTone.Outline)" Icon="@chip.Icon" Class="sm">@chip.Label</OdsChip>
+            var chip = HeaderPlaying ? OdsPodcastPlayback.Playing : OdsPodcastPlayback.Paused;
+            <OdsChip Tone="@(HeaderPlaying ? OdsChipTone.Info : OdsChipTone.Outline)" Icon="@chip.Icon" Class="sm">@chip.Label</OdsChip>
         }
         @if (Episode.LastPlayedAtUtc is not null)
         {
@@ -56,7 +56,7 @@
     </Chips>
     <Actions>
         @* Only while the card is collapsed: the open card has the player's own toggle (#594 §3). *@
-        @if (PlayingHere && !Open)
+        @if (ShowsHeaderPlayback)
         {
             <OdsIconButton id="@HeaderToggleId(Episode.Id)" Icon="@(Session!.PlayingNow ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayArrow)"
                            AriaLabel="@($"{(Session.PlayingNow ? "Pause" : "Play")}, {Title}")" OnClick="Session.ToggleAsync" />

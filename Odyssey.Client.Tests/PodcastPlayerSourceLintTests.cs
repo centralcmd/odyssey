@@ -37,6 +37,24 @@ public class PodcastPlayerSourceLintTests
     public void The_seek_keys_leave_modified_keys_to_the_browser() =>
         Assert.Contains("e.altKey || e.ctrlKey || e.metaKey || e.shiftKey", Code, StringComparison.Ordinal);
 
+    /// <summary>#594 §8: the stored volume is parsed and range-checked before use, and written as a clamped integer.</summary>
+    [Fact]
+    public void The_stored_volume_is_validated_on_read_and_write()
+    {
+        Assert.Contains("Number.isInteger(v) && v >= 0 && v <= 100 ? v : 100", Code, StringComparison.Ordinal);
+        Assert.Contains("Math.min(100, Math.max(0, Math.round(percent)))", Code, StringComparison.Ordinal);
+    }
+
+    /// <summary>#594 §8: the client never restates the server's position cap; the player reads the media's own length.</summary>
+    [Fact]
+    public void No_player_file_restates_the_duration_cap() =>
+        Assert.DoesNotContain(PlayerFiles(), f => File.ReadAllText(f).Contains("604800", StringComparison.Ordinal) || File.ReadAllText(f).Contains("604_800", StringComparison.Ordinal));
+
+    private static IEnumerable<string> PlayerFiles() =>
+        Directory.GetFiles(Path.Combine(ClientSource.Root, "Pages", "Internet"), "Podcast*")
+            .Concat(Directory.GetFiles(Path.Combine(ClientSource.Root, "Components"), "OdsPodcast*"))
+            .Append(Path.Combine(ClientSource.Root, "wwwroot", "js", "podcast-player.js"));
+
     [Fact]
     public void No_podcast_component_renders_markup_from_a_string()
     {

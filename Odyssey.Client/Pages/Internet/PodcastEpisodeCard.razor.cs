@@ -80,6 +80,14 @@ public partial class PodcastEpisodeCard
 
     private bool PlayingHere => Session?.Is(Episode.Id) == true;
 
+    /// <summary>
+    /// The collapsed card's Playing / Paused chip and toggle: only while there is something to play or pause — not after
+    /// the end and not with an error, which the open card's player explains.
+    /// </summary>
+    private bool ShowsHeaderPlayback => PlayingHere && !Open && Session!.Error is null && Session.State != OdsPodcastPlayerState.Ended;
+
+    private bool HeaderPlaying => Session is { } s && (s.PlayingNow || s.State == OdsPodcastPlayerState.Loading);
+
     public static string CardId(Guid id) => $"pod-{id}";
 
     public static string RetryId(Guid id) => $"pod-retry-{id}";

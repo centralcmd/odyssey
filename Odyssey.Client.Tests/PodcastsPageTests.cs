@@ -724,4 +724,113 @@ public class PodcastsPageTests
         Expand(cut, stored);
         Assert.Contains("Last listened", cut.Find($"#pod-{stored.Id}").TextContent, StringComparison.Ordinal);
     }
+
+    private static void Play(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, PodcastEpisodeSummary episode)
+    {
+        Action(cut, PodcastAudioAction.Play, episode).Click();
+        cut.WaitForElement($"#{PodcastAudioActions.PlayerToggleId(episode.Id)}");
+    }
+
+    [Fact]
+    public async Task Playback_play_moves_focus_to_the_players_toggle()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored);
+        await using var page = new Harness([feed], [stored]);
+        PlayerModule(page);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Play(cut, stored);
+
+        cut.WaitForAssertion(() => Assert.Contains(page.Context.Ctx.JSInterop.Invocations,
+            i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], PodcastAudioActions.PlayerToggleId(stored.Id))));
+    }
+
+    [Fact]
+    public async Task Playback_a_second_play_stops_and_saves_the_first()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var first = Episode(feed, "Logbooks", PodcastAudioState.Stored);
+        var second = Episode(feed, "Fog horns", PodcastAudioState.Stored);
+        await using var page = new Harness([feed], [first, second]);
+        var module = PlayerModule(page);
+        page.Context.Podcasts.Setup(p => p.SavePlaybackAsync(It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+
+        var cut = page.Render();
+        Expand(cut, first);
+        Play(cut, first);
+        Expand(cut, second);
+        Play(cut, second);
+
+        Assert.Contains(module.Invocations, i => i.Identifier == "stop");
+        page.Context.Podcasts.Verify(p => p.SavePlaybackAsync(first.Id, It.IsAny<int?>(), false, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Single(cut.FindAll(".odc-podplayer"));
+        cut.WaitForAssertion(() => Assert.Contains("Paused Logbooks.", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Playback_removing_the_playing_episode_stops_it_before_the_request()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored);
+        await using var page = new Harness([feed], [stored]);
+        var module = PlayerModule(page);
+        var stoppedFirst = false;
+        page.Context.Podcasts.Setup(p => p.RemoveAudioAsync(stored.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                stoppedFirst = module.Invocations.Any(i => i.Identifier == "stop");
+                return ApiResult.Success(HttpStatusCode.NoContent);
+            });
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Play(cut, stored);
+        Action(cut, PodcastAudioAction.Remove, stored).Click();
+        cut.WaitForAssertion(() => Assert.Contains("Remove audio from the server?", cut.Markup, StringComparison.Ordinal));
+        page.Details[stored.Id] = Detail(stored, d => d.Audio = new PodcastEpisodeAudioInfo { State = PodcastAudioState.None });
+        cut.FindAll(".mud-dialog button").Single(b => b.TextContent.Trim().EndsWith("Remove", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.True(stoppedFirst));
+        Assert.Empty(cut.FindAll(".odc-podplayer"));
+    }
+
+    [Fact]
+    public async Task Playback_an_episode_that_leaves_the_list_stops_and_says_so()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored);
+        await using var page = new Harness([feed], [stored]);
+        var module = PlayerModule(page);
+        page.Context.Transfer.Setup(t => t.DownloadAsync(It.IsAny<string>())).Returns(ValueTask.CompletedTask);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Play(cut, stored);
+        // The server no longer has it: the re-read after Save to device is a 404 and the card goes.
+        page.Episodes.Clear();
+        Action(cut, PodcastAudioAction.Save, stored).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(module.Invocations, i => i.Identifier == "stop"));
+        cut.WaitForAssertion(() => Assert.Contains("Stopped Logbooks.", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Playback_the_collapsed_cards_button_pauses()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored);
+        await using var page = new Harness([feed], [stored]);
+        var module = PlayerModule(page);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Play(cut, stored);
+        cut.Find($"#pod-{stored.Id} .odc-record-trigger").Click();
+        cut.WaitForElement($"#{PodcastEpisodeCard.HeaderToggleId(stored.Id)}").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains(module.Invocations, i => i.Identifier == "pause"));
+    }
 }

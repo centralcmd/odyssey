@@ -383,4 +383,55 @@ public class PodcastPlayerTests : IAsyncDisposable
         Assert.Null(session.EpisodeId);
         Assert.Equal([new Saved(episode.Id, 1500, false)], saves);
     }
+
+    [Fact]
+    public async Task An_autoplay_refusal_is_the_blocked_state_and_says_press_play()
+    {
+        var (session, host, _, _, _) = Session();
+        ctx.JSInterop.SetupModule(OdsPodcastPlayer.ModulePath).Setup<string>("start", _ => true).SetResult("NotAllowedError");
+
+        await session.StartAsync(Episode(), "Fog horns", canSave: true);
+
+        Assert.Equal(OdsPodcastPlayerState.Blocked, session.State);
+        Assert.Contains("Press play to start.", host.Said);
+    }
+
+    [Theory]
+    [InlineData(OdsPodcastPlayerError.Network)]
+    [InlineData(OdsPodcastPlayerError.Removed)]
+    [InlineData(OdsPodcastPlayerError.Forbidden)]
+    public async Task A_network_or_source_error_takes_the_pages_classification(OdsPodcastPlayerError kind)
+    {
+        var (session, host, _, _, _) = Session();
+        host.Classify = kind;
+        await session.StartAsync(Episode(), "Fog horns", canSave: true);
+
+        await session.OnPlayerEvent("error", 10, 3127, "2");
+
+        Assert.Equal((kind, OdsPodcastPlayerState.Paused), (session.Error!.Value, session.State));
+    }
+
+    [Fact]
+    public async Task A_signed_out_stream_stops_the_session_without_an_error()
+    {
+        var (session, host, _, _, _) = Session();
+        host.Classify = null;
+        await session.StartAsync(Episode(), "Fog horns", canSave: true);
+
+        await session.OnPlayerEvent("error", 10, 3127, "4");
+
+        Assert.Null(session.EpisodeId);
+        Assert.Null(session.Error);
+    }
+
+    [Fact]
+    public async Task A_module_that_fails_to_start_shows_the_network_error_not_a_spinner()
+    {
+        var (session, _, _, _, _) = Session();
+        ctx.JSInterop.SetupModule(OdsPodcastPlayer.ModulePath).Setup<string>("start", _ => true).SetException(new Microsoft.JSInterop.JSException("import failed"));
+
+        await session.StartAsync(Episode(), "Fog horns", canSave: true);
+
+        Assert.Equal((OdsPodcastPlayerState.Paused, OdsPodcastPlayerError.Network), (session.State, session.Error!.Value));
+    }
 }

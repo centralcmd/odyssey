@@ -85,6 +85,22 @@ public class AntiforgeryEnforcementTests(AntiforgeryEnforcementTests.Host host) 
         Assert.Equal(AntiforgeryRejection, problem?.Detail);
     }
 
+    /// <summary>
+    /// Issue #593 AC 12: the playback save stays under the global antiforgery filter — no exemption and no POST alias
+    /// for <c>sendBeacon</c>; the client's leave-the-page save is a keepalive fetch carrying the header.
+    /// </summary>
+    [Fact]
+    public async Task PodcastPlaybackSave_WithoutToken_Returns400()
+    {
+        var factory = Factory.ForCaller([PermissionClaims.NewsRead, PermissionClaims.NewsUpdate]);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync($"/api/podcast-episodes/{Guid.NewGuid()}/playback", new { positionSeconds = 10 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(AntiforgeryRejection, (await response.Content.ReadFromJsonAsync<ProblemDetails>())?.Detail);
+    }
+
     [Fact]
     public async Task UnsafeRequest_WithToken_IsAccepted()
     {

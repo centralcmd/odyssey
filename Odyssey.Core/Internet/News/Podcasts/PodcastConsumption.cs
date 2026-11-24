@@ -21,8 +21,9 @@ public sealed class PodcastConsumedAudio
 /// </summary>
 /// <remarks>
 /// Two forms of one rule: <see cref="Rows"/> for the queries (the retention job, the auto-download backlog) and
-/// <see cref="ConsumedAt"/> in memory (the summary's <c>AutoDeleteAtUtc</c>). <c>PodcastConsumptionTests</c> runs both
-/// over every stamp combination. The query form is a conditional (SQL <c>CASE</c>), never <c>GREATEST</c>: MariaDB's
+/// <see cref="ConsumedAt"/> in memory (the summary's <c>AutoDeleteAtUtc</c>). The <c>Playback_AC13</c> tests in
+/// <c>PodcastRetentionAndPurgeTests</c> (InMemory) and <c>PodcastRelationalTests</c> (MariaDB) run both over every stamp
+/// combination. The query form is a conditional (SQL <c>CASE</c>), never <c>GREATEST</c>: MariaDB's
 /// <c>GREATEST</c> is <c>NULL</c> when either argument is, which would make every single-stamp episode look unconsumed.
 /// </remarks>
 public static class PodcastConsumption

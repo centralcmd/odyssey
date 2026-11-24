@@ -129,9 +129,9 @@ public partial class PodcastAudioActions
         }
     }
 
-    /// <summary>A cooled action, and every action but Save and Play while another is pending, is aria-disabled (focus kept).</summary>
+    /// <summary>A cooled action, and every action but Save while another is pending, is aria-disabled (focus kept): Play waits for a removal in flight.</summary>
     private bool IsLocked(ActionSpec action) =>
-        action.Cooled || (Pending is { } pending && pending != action.Kind && action.Kind is not (PodcastAudioAction.Save or PodcastAudioAction.Play));
+        action.Cooled || (Pending is { } pending && pending != action.Kind && action.Kind != PodcastAudioAction.Save);
 
     private Task PressAsync(ActionSpec action) =>
         IsLocked(action) || Pending == action.Kind ? Task.CompletedTask : OnAction.InvokeAsync(action.Kind);

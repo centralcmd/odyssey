@@ -182,6 +182,13 @@ export function setToken(token) {
     }
 }
 
+// .NET stopped saving (a refused save, removed audio): the leave-the-page save stops with it.
+export function setCanSave(canSave) {
+    if (state) {
+        state.canSave = !!canSave;
+    }
+}
+
 export function position() {
     return audio ? audio.currentTime || 0 : 0;
 }

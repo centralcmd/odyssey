@@ -638,6 +638,28 @@ public class PodcastEpisodesApiTests(PodcastEpisodesApiTests.Host host) : Shared
         Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(conditional)).StatusCode);
     }
 
+    [Fact]
+    public async Task Playback_AC3_The_stream_is_503_while_the_store_is_unavailable()
+    {
+        var feed = await PodcastFeedAsync();
+        var id = await EpisodeAsync(feed, PodcastAudioState.Queued);
+        await StoreAudioAsync(feed, id);
+        using var client = Factory.ForCaller(ReadOnly).CreateClient();
+        var registry = Factory.Services.GetRequiredService<FileStorageVolumeRegistry>();
+        registry.MarkDegraded(registry.Volumes.Single(), new IOException("test"));
+        try
+        {
+            var response = await client.GetAsync($"{Episodes}/{id}/audio/stream");
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.Equal(NewsErrorCodes.StorageUnavailable, (await response.ProblemAsync()).Code());
+        }
+        finally
+        {
+            registry.MarkAvailable(registry.Volumes.Single());
+        }
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("bytes=0-")]

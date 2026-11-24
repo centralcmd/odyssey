@@ -27,7 +27,28 @@ public partial class PodcastsPage : IPodcastPlaybackHost
 
     private string TitleOf(Guid id) => _rows.FirstOrDefault(r => r.Id == id) is { } row ? PodcastEpisodeCard.TitleOf(row) : "the episode";
 
+    /// <summary>A Play press already starting: a second press (a double click) is ignored rather than starting twice.</summary>
+    private bool _starting;
+
     private async Task PlayAsync(PodcastEpisodeSummary episode)
+    {
+        if (_starting)
+        {
+            return;
+        }
+
+        _starting = true;
+        try
+        {
+            await StartPlayAsync(episode);
+        }
+        finally
+        {
+            _starting = false;
+        }
+    }
+
+    private async Task StartPlayAsync(PodcastEpisodeSummary episode)
     {
         if (_session?.EpisodeId is { } playing && playing != episode.Id)
         {
