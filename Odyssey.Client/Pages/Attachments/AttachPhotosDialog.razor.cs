@@ -203,8 +203,8 @@ public partial class AttachPhotosDialog
     private static string LabelOf(PhotoSummary photo) =>
         string.IsNullOrWhiteSpace(photo.Title) ? "Photo" : photo.Title!;
 
-    private static string TileLabel(PhotoSummary photo, bool added) =>
-        added ? $"{LabelOf(photo)} — already added" : LabelOf(photo);
+    // A photo already on the record says so in visible text, not by its dimming alone (WCAG 1.4.1).
+    private static readonly IReadOnlyList<string?> AlreadyAdded = ["Already added"];
 
     private void TogglePick(PhotoSummary photo)
     {

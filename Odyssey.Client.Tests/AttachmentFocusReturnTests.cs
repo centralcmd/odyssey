@@ -5,6 +5,7 @@ using Moq;
 using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
@@ -60,21 +61,22 @@ public class AttachmentFocusReturnTests
         return (ctx, cut, module, draft);
     }
 
-    private static void RemovePhoto(IRenderedComponent<JournalEntryFields> cut, int index) =>
-        cut.FindAll("button.jef-photo-remove")[index].Click();
+    // The tile's ⋯ menu item, invoked directly: the menu itself is a MudBlazor popover.
+    private static Task RemovePhoto(IRenderedComponent<JournalEntryFields> cut, int index) =>
+        cut.InvokeAsync(() => cut.FindComponents<OdsPhotoTile>()[index].Instance.Actions!.Single(a => a.Label == "Remove from entry").OnClick.InvokeAsync());
 
     [Fact]
-    public async Task Removing_a_middle_photo_lands_on_the_next_photos_remove_button()
+    public async Task Removing_a_middle_photo_lands_on_the_next_tile()
     {
         var (ctx, cut, module, draft) = EntryFields(3);
         await using var _ = ctx;
         var next = draft.Photos[2];
 
-        RemovePhoto(cut, 1);
+        await RemovePhoto(cut, 1);
 
         cut.WaitForAssertion(() => Assert.True(module.Invocations["focusFirstLater"].Count > 0));
         var chain = LastCandidates(module, "focusFirstLater");
-        Assert.EndsWith(next.PhotoId.ToString(), chain[0]);
+        Assert.Equal($"#{cut.Find($"li[id$=\"{next.PhotoId:N}\"]").Id} .odc-phototile-open", chain[0]);
         Assert.EndsWith(" button", chain[^1]);
         Assert.Equal(2, draft.Photos.Count);
         Assert.Contains(cut.FindAll("[role=status].sr-only"), r => r.TextContent == "photo-2.jpg removed from the entry.");
@@ -87,9 +89,9 @@ public class AttachmentFocusReturnTests
         await using var _ = ctx;
         var previous = draft.Photos[0];
 
-        RemovePhoto(cut, 1);
+        await RemovePhoto(cut, 1);
 
-        cut.WaitForAssertion(() => Assert.EndsWith(previous.PhotoId.ToString(), LastCandidates(module, "focusFirstLater")[0]));
+        cut.WaitForAssertion(() => Assert.Contains($"{previous.PhotoId:N} .odc-phototile-open", LastCandidates(module, "focusFirstLater")[0]));
     }
 
     [Fact]
@@ -98,7 +100,7 @@ public class AttachmentFocusReturnTests
         var (ctx, cut, module, _) = EntryFields(1);
         await using var __ = ctx;
 
-        RemovePhoto(cut, 0);
+        await RemovePhoto(cut, 0);
 
         cut.WaitForAssertion(() =>
         {

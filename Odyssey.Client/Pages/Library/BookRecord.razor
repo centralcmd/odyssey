@@ -124,8 +124,9 @@ else
             }
             else
             {
-                <BookImageGrid Images="images" OnOpen="OpenImage"
-                               CanUpdate="CanUpdate" OnSetCover="SetCoverAsync" OnDetach="DetachImageAsync" />
+                <BookImageGrid @ref="_imageGrid" Images="images" States="_photoStates" IdPrefix="@ImageIdPrefix" OnOpen="OpenImage"
+                               CanUpdate="CanUpdate" OnSetCover="SetCoverAsync" OnDetach="DetachImageAsync"
+                               OnToggleFavourite="FavouriteCallback" />
             }
         </div>
     }
@@ -185,13 +186,12 @@ else
                                OnAttached="AddFilesAsync" />
     }
 
-    @if (_photoIndex is { } pi && _photoSummaries.Count > 0)
-    {
-        <PhotoDetailDialog Photos="_photoSummaries" Index="pi" IndexChanged="@(i => _photoIndex = i)"
-                           OnClose="@(() => _photoIndex = null)" CanUpdate="false" CanDelete="false"
-                           TagName="PhotoTagName" TagIcon="PhotoTagIcon" TagColor="PhotoTagColor"
-                           PersonName="PhotoPersonName" AlbumChip="PhotoAlbumChip" />
-    }
 }
+
+@* THE way a photo opens (PhotoViewer, design system 1795477868-c9a2) over the book's images, cover first — the same
+   options as the library, Archive and Delete included. Focus returns to the image's tile (named explicitly: the ⋯
+   menu's Open item unmounts with its popover). *@
+<PhotoViewer @ref="_viewer" Photos="_photoSummaries" Index="_photoIndex" IndexChanged="OnViewerIndexChanged"
+             ReturnFocusToId="@ViewerReturnFocusId" OnChanged="OnViewerChanged" />
 
 <OdsConfirm @ref="_confirm" />

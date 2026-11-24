@@ -65,28 +65,17 @@ public class CalendarAttachmentSourceLintTests
         Assert.DoesNotMatch(@"MarkupString|innerHTML|AddMarkupContent", Code(file));
     }
 
-    [Fact] // AC 11 (AX8): remove targets are 24 px, their focus ring is not clipped by the tile, and forced colours are handled
-    public void The_photo_remove_button_keeps_its_target_and_its_ring()
+    [Fact] // design system 1795477868-c9a2: the Photos field is the shared tile in a dense 96px grid, with no page-local tile CSS
+    public void The_photo_field_draws_the_shared_tile_not_its_own()
     {
+        var markup = Code("Pages/Attachments/AttachmentLinkFields.razor");
+        Assert.Matches(@"<OdsPhotoGrid\b[^>]*Dense=""true""[^>]*MinTile=""96""", markup);
+        Assert.Contains("<OdsPhotoTile", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<OdsPhotoImage", markup, StringComparison.Ordinal);
+
         var css = Raw("Pages/Attachments/AttachmentLinkFields.razor.css");
-        var remove = Regex.Match(css, @"\.jef-photo-remove\s*\{([^}]*)\}").Groups[1].Value;
-        Assert.Contains("width: var(--icon-xl)", remove, StringComparison.Ordinal);
-        Assert.Contains("height: var(--icon-xl)", remove, StringComparison.Ordinal);
-        Assert.Matches(@"--icon-xl:\s*24px", Raw("wwwroot/css/app.css"));
-
-        var tile = Regex.Match(css, @"\.jef-photo\s*\{([^}]*)\}").Groups[1].Value;
-        Assert.DoesNotContain("overflow", tile, StringComparison.Ordinal);
-        Assert.Matches(@"\.jef-photo-img\s*\{[^}]*overflow:\s*hidden", css);
-        Assert.Matches(@"\.jef-photo-remove:focus-visible\s*\{[^}]*outline:", css);
-        Assert.Matches(@"@media \(forced-colors: active\)\s*\{[\s\S]*?\.jef-photo-remove:focus-visible\s*\{[^}]*Highlight", css);
-    }
-
-    [Fact] // review nit 3: the remove button's scrim and glyph are the design system's values
-    public void The_photo_remove_button_uses_the_design_systems_scrim()
-    {
-        var remove = Regex.Match(Raw("Pages/Attachments/AttachmentLinkFields.razor.css"), @"\.jef-photo-remove\s*\{([^}]*)\}").Groups[1].Value;
-        Assert.Contains("background: rgba(8, 12, 24, 0.72)", remove, StringComparison.Ordinal);
-        Assert.Contains("color: #fff", remove, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"\.jef-photo", css);
+        Assert.DoesNotMatch(@"\.odc-phototile", css);
     }
 
     [Theory] // review 1: every class the export step renders is styled, with the design system's values

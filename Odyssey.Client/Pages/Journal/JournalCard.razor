@@ -10,8 +10,6 @@
 @inject INativeTransfer NativeTransfer
 @inject IFilesApiClient Files
 @inject IPhotosApiClient Photos
-@inject IPhotoTagsApiClient PhotoTags
-@inject IAlbumsApiClient Albums
 @inject ISnackbar Snackbar
 @inject IClipboardService Clipboard
 @inject NavigationManager Nav
@@ -118,7 +116,8 @@
                                   Weather="WeatherLoader.Get(e.JournalEntryId)"
                                   WeatherAttribution="WeatherLoader.Attribution"
                                   OnFilesOpened="@(() => LoadAttachmentsAsync(e))"
-                                  OnOpenPhoto="@(p => OpenPhotoDetail(e, p))"
+                                  OnOpenPhoto="@(id => OpenPhoto(e, id))"
+                                  OnToggleFavourite="FavouriteCallback"
                                   OnRemoveFile="@(_canUpdate ? EventCallback.Factory.Create<Guid>(this, fileId => RemoveAttachmentAsync(e, fileId)) : null)" />
             </RenderItem>
             <CreateAction>
@@ -168,24 +167,9 @@
     <ImportJournalEntriesDialog @bind-Open="_importOpen" OnChanged="OnEntriesImported" />
 }
 
-@* Clicking a photo opens the shared library detail dialog (Odyssey Design System · Photos · detail),
-   the same one the Photos library uses — with favourite, edit, archive and delete wired to the Photos
-   API and gated by the caller's photos.* claims. *@
-@if (_detailIndex is { } di)
-{
-    <PhotoDetailDialog Photos="_detailPhotos" Index="di"
-                       IndexChanged="@(i => _detailIndex = i)" OnClose="ClosePhotoDetail"
-                       OnToggleFavourite="ToggleFavouritePhotoAsync"
-                       OnEdit="OpenEditPhoto" OnToggleArchive="ArchivePhotoAsync" OnDelete="DeletePhotoAsync"
-                       CanUpdate="_canUpdatePhotos" CanDelete="_canDeletePhotos"
-                       TagName="PhotoTagName" TagIcon="PhotoTagIcon" TagColor="PhotoTagColor" PersonName="PhotoPersonName" AlbumChip="PhotoAlbumChip" />
-}
-
-@* Edit dialog stays mounted and toggles via Open (@key resets its state when the target changes). *@
-<EditPhotoDialog @key="_editPhotoId" Open="_editPhotoId is not null" OpenChanged="v => { if (!v) _editPhotoId = null; }"
-                 PhotoId="@(_editPhotoId ?? Guid.Empty)"
-                 TagOptions="_photoTagOptions" TagNameBlocked="_photoTagNameBlocked" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
-                 CanCreateTags="_canCreatePhotoTags" CanCreateContacts="_canCreateContacts"
-                 OnSaved="OnPhotoSaved" />
+@* THE way a photo opens (PhotoViewer, design system 1795477868-c9a2): the same detail dialog, Edit dialog and
+   writes as the Photos library — Archive and Delete included — over the open entry's photos. *@
+<PhotoViewer @ref="_viewer" Photos="_viewerPhotos" Index="_viewerIndex" IndexChanged="i => _viewerIndex = i"
+             OnChanged="OnViewerChanged" />
 
 <OdsConfirm @ref="_confirm" />

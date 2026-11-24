@@ -209,9 +209,9 @@ public sealed class CalendarAttachmentReflowTests(StackFixture fixture) : IAsync
 
                 // The editable fields, then the export step stacked over them.
                 await page.Locator($"button.odc-cal-chip[title=\"{EventTitle}\"]").First.ClickAsync();
-                await page.Locator(".cal-ce-links .jef-photo").WaitForAsync();
+                await page.Locator(".cal-ce-links .odc-phototile").WaitForAsync();
                 await AssertReflowsAsync(page, $"{pass}, fields", ".mud-dialog.cal-event-dialog",
-                    ".cal-ce-links", ".jef-photos", ".jef-files", ".jec-file", ".alf-caphelp", ".mud-dialog-actions");
+                    ".cal-ce-links", ".alf-photos", ".jef-files", ".jec-file", ".alf-caphelp", ".mud-dialog-actions");
 
                 await page.Locator("#cal-export-btn").ClickAsync();
                 await page.Locator(".cal-exp-att-body").WaitForAsync();
@@ -224,9 +224,9 @@ public sealed class CalendarAttachmentReflowTests(StackFixture fixture) : IAsync
 
                 // An occurrence: the read-only "From the series".
                 await page.Locator($"button.odc-cal-chip[title=\"{SeriesTitle}\"]").First.ClickAsync();
-                await page.Locator(".cal-ce-fromseries .jef-photo").WaitForAsync();
+                await page.Locator(".cal-ce-fromseries .odc-phototile").WaitForAsync();
                 await AssertReflowsAsync(page, $"{pass}, from the series", ".mud-dialog.cal-event-dialog",
-                    ".cal-ce-fromseries", ".cal-ce-fromseries-help", ".jef-photos", ".jec-file");
+                    ".cal-ce-fromseries", ".cal-ce-fromseries-help", ".alf-photos", ".jec-file");
                 await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Cancel", Exact = true }).Last.ClickAsync();
                 await page.Locator(".mud-dialog").WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Detached });
 

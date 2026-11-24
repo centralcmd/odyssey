@@ -1,5 +1,6 @@
 @using Odyssey.Client.Components
 @using Odyssey.Client.Pages.Journal
+@using Odyssey.Client.Pages.Photos
 @using Odyssey.Dtos.Finance
 @implements IAsyncDisposable
 @inject IFilesApiClient Files
@@ -44,6 +45,15 @@ else
                            AttachedIds="@([.. Attachments.Select(a => a.Id)])"
                            Attach="StageAttachmentAsync"
                            OnAttached="FilesStagedAsync" />
+}
+
+@* THE way a photo opens (PhotoViewer). It joins MudBlazor's dialog stack over the record's dialog, so Esc closes the
+   viewer alone; focus returns to the tile last shown. Mounted on the first Open and kept mounted from then on (a
+   MudDialog unmounted mid-open is orphaned), so a form that never opens a photo never builds the viewer. *@
+@if (_viewerMounted)
+{
+    <PhotoViewer @ref="_viewer" Photos="_viewerPhotos" Index="_viewerIndex" IndexChanged="OnViewerIndexChanged"
+                 ReturnFocusToId="@ViewerReturnFocusId" OnChanged="OnViewerChangedAsync" />
 }
 
 @if (_pickingPhotos)
@@ -181,26 +191,24 @@ else
         </OdsFieldShell>
     };
 
-    // A real list; an editable tile carries a named remove button, a read-only one an image named by its title (AX2).
+    // THE library tile (OdsPhotoTile) in a dense 96px OdsPhotoGrid (design system · AddCalendarEventModal.jsx
+    // CePhotoList, version 1795477868-c9a2). Each tile's ⋯ menu: Open (the shared PhotoViewer over these photos) and,
+    // when editable, Remove from event / entry — the link only; the photo stays in the library. Read-only: Open only.
     private RenderFragment PhotoList(bool removable) => __builder =>
     {
-        <ul class="jef-photos">
-            @foreach (var p in Photos)
-            {
-                <li class="jef-photo" title="@p.Name" @key="p.PhotoId">
-                    <span class="jef-photo-img">
-                        <OdsPhotoImage Source="ImageOf(p)" Alt="@(removable && Voice == AttachmentLinkVoice.Journal ? string.Empty : p.Name)" Fill="true" />
-                    </span>
-                    @if (removable)
-                    {
-                        <button type="button" class="jef-photo-remove" id="@PhotoRemoveId(p.PhotoId)"
-                                aria-label="@($"Remove {p.Name}")"
-                                @onclick="@(() => RemovePhotoAsync(p))">
-                            <OdsMIcon Name="close" Size="14" />
-                        </button>
-                    }
-                </li>
-            }
-        </ul>
+        <div class="alf-photos">
+            <OdsPhotoGrid TItem="JournalDraftPhoto" Dense="true" MinTile="96"
+                          AriaLabel="@(Photos.Count == 1 ? "1 photo" : $"{Photos.Count} photos")">
+                @foreach (var p in Photos)
+                {
+                    var photo = p;
+                    <li class="odc-photogrid2-item" id="@PhotoTileId(photo.PhotoId)" @key="photo.PhotoId">
+                        <OdsPhotoTile Name="@photo.Name" Image="ImageOf(photo)" Unavailable="ImageOf(photo).IsEmpty"
+                                      OnOpen="() => OpenPhotoAsync(photo)"
+                                      Actions="PhotoMenu(photo, removable)" ActionsLabel="@($"Actions for photo: {photo.Name}")" />
+                    </li>
+                }
+            </OdsPhotoGrid>
+        </div>
     };
 }
