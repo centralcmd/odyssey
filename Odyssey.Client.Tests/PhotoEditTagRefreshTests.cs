@@ -75,7 +75,7 @@ public sealed class PhotoEditTagRefreshTests
 
         await cut.InvokeAsync(cut.Instance.OnPhotoSaved);
         var tile = cut.FindComponent<OdsPhotoTile>().Instance;
-        await cut.InvokeAsync(() => tile.OnOpen.InvokeAsync(PhotoId));
+        await cut.InvokeAsync(() => tile.OnOpen.InvokeAsync());
 
         // The chip carries the tag's own icon too: a page that forgot to pass it would fall back to the
         // generic glyph silently.
@@ -103,12 +103,12 @@ public sealed class PhotoEditTagRefreshTests
     }
 
     /// <summary>
-    /// Every host of the photo detail dialog hands it the tag icons as well as the names. AlbumsPage has no
-    /// render harness, so this source check is what covers it; the render tests above cover the other two.
+    /// Every host of the photo detail dialog hands it the tag icons as well as the names. The Photos and Albums
+    /// pages reach it through the shared PhotoViewer, whose lookups carry the icons; the render tests above cover
+    /// the viewer (through the library) and the journal.
     /// </summary>
     [Theory]
-    [InlineData("Pages/Photos/PhotosCard.razor")]
-    [InlineData("Pages/Photos/AlbumsPage.razor")]
+    [InlineData("Pages/Photos/PhotoViewer.razor")]
     [InlineData("Pages/Journal/JournalCard.razor")]
     public void Every_photo_dialog_host_passes_the_tag_icons(string page)
     {

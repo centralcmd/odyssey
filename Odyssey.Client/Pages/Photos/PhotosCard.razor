@@ -90,13 +90,18 @@
         }
     </CreateAction>
     <ChildContent>
-        <div class="pl-grid">
-            @foreach (var p in _photos)
-            {
-                <OdsPhotoTile @key="p.PhotoId" Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
-                              OnOpen="OpenDetail" OnToggleSelect="ToggleSelect" OnStartSelect="StartSelectWith"
-                              OnToggleFavourite="ToggleFavouriteAsync" />
-            }
+        <div class="pl-grid-host">
+            <OdsPhotoGrid TItem="PhotoSummary" Items="_photos" ItemKey="p => p.PhotoId" Class="pl-grid"
+                          AriaLabel="@($"{_photos.Count} photo{(_photos.Count == 1 ? "" : "s")}")">
+                <ItemTemplate Context="p">
+                    <OdsPhotoTile Name="@PhotoName(p)" Image="ImageOf(p)" Badges="@(p.Archived is not null ? ArchivedBadge : [])"
+                                  Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
+                                  OnOpen="() => OpenDetail(p.PhotoId)" OnToggleSelect="() => ToggleSelect(p.PhotoId)"
+                                  OnStartSelect="() => StartSelectWith(p.PhotoId)"
+                                  Fav="@(p.Favourited is not null)"
+                                  OnToggleFav="FavCallback(p)" />
+                </ItemTemplate>
+            </OdsPhotoGrid>
         </div>
         @if (_photos.Count < _total)
         {
@@ -110,23 +115,9 @@
     </ChildContent>
 </OdsListStatus>
 
-@if (_detailIndex is { } di)
-{
-    <PhotoDetailDialog Photos="_photos" Index="di" IndexChanged="i => _detailIndex = i"
-                       OnClose="() => _detailIndex = null"
-                       OnEdit="OpenEditFromDetail" OnToggleFavourite="ToggleFavouriteAsync"
-                       OnToggleArchive="ToggleArchiveAsync" OnDelete="DeleteAsync"
-                       CanUpdate="_canUpdate" CanDelete="_canDelete"
-                       TagName="TagName" TagIcon="TagIcon" TagColor="TagColor" PersonName="PersonName" AlbumChip="AlbumChip" />
-}
-
-@* Dialogs stay mounted and toggle via Open (@bind-Open pattern) — an inline MudDialog @if-unmounted
-   on close orphans it. @key resets internal state when the target record changes. *@
-<EditPhotoDialog @key="_editId" Open="_editId is not null" OpenChanged="v => { if (!v) _editId = null; }"
-                 PhotoId="@(_editId ?? Guid.Empty)"
-                 TagOptions="_tagOptions" TagNameBlocked="_tagNameBlocked" PeopleOptions="_peopleOptions" AlbumOptions="_albumOptions"
-                 CanCreateTags="_canCreateTags" CanCreateContacts="_canCreateContacts"
-                 OnSaved="OnPhotoSaved" />
+@* THE way a photo opens (PhotoViewer): the detail dialog, its Edit dialog and the writes. *@
+<PhotoViewer Photos="_photos" Index="_detailIndex" IndexChanged="i => _detailIndex = i"
+             Lookups="_viewerLookups" OnChanged="OnViewerChanged" />
 
 <AddToAlbumDialog Open="_addToAlbumIds is not null" OpenChanged="v => { if (!v) _addToAlbumIds = null; }"
                   PhotoIds="@(_addToAlbumIds ?? [])" OnSaved="OnAlbumsChanged" />

@@ -770,6 +770,7 @@
 .mud-dialog:has(.mud-dialog-content :is(.odc-field-req, .mud-input-required)) .mud-dialog-actions.ods-modal-foot > .ods-modal-legend { display: inline-flex; }
 .ods-modal-legend .odc-field-req { margin-left: 0; }
 
+
 /* ---------- Form fields (DS components/Field — label ABOVE the box) ----------
    MudBlazor outlined fields render a *floating* label notched into the top border;
    the DS Field puts the label above the box (it turns primary on focus, error on
@@ -3090,7 +3091,108 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-photoimg.fill, .odc-photoimg-ph.fill { position: absolute; inset: 0; }
 
-/* ---------- JournalPhotoGallery ---------- */
+/* ---------- OdsPhotoTile + OdsPhotoGrid (THE library photo tile; DS PhotoTile/PhotoGrid, 1795477868-c9a2) ----------
+   Declared AFTER the PhotoImage rules on purpose: the tile's placeholder carries both .odc-photoimg-ph and
+   .odc-phototile-ph, and the striped background must win the tie by source order.
+   One tile wherever photos are listed (the Photos page, an album, a recipe's
+   Photos). The image zooms slightly on hover; the controls — check top-left,
+   heart and ⋯ top-right — and the caption are revealed on hover and on
+   keyboard focus, always shown on touch screens, and a control that is ON
+   stays shown. Badges ("Cover", "Archived") are always visible, in text. The
+   controls sit on a dark scrim so they read on any photo, in either theme. */
+.odc-photogrid2 { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.odc-photogrid2.dense { gap: 6px; }
+.odc-photogrid2-item { min-width: 0; }
+.odc-phototile {
+  position: relative; overflow: hidden; aspect-ratio: 1 / 1; border-radius: var(--radius-md);
+  background: var(--mud-palette-surface);
+}
+.odc-phototile-open {
+  appearance: none; border: 0; padding: 0; margin: 0; background: transparent; cursor: pointer;
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: inherit;
+}
+.odc-phototile-open:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: calc(var(--focus-ring-width) * -1); }
+.odc-phototile-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.odc-phototile-ph {
+  display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(45deg, var(--mud-palette-action-default-hover) 0 8px, transparent 8px 16px), var(--mud-palette-background);
+  color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
+}
+.odc-phototile:hover .odc-phototile-img { transform: scale(1.05); }
+.odc-phototile-scrim {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0%, transparent 28%, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+.odc-phototile-foot {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none;
+  display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2);
+}
+.odc-phototile-badge {
+  flex: none; padding: 3px var(--space-2); border-radius: var(--radius-pill);
+  background: rgba(8, 12, 24, 0.74); color: #fff; font: var(--fw-bold) var(--fs-caption)/1.2 var(--font-sans);
+}
+.odc-phototile-cap {
+  min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); opacity: 0; transition: opacity var(--duration-base) var(--ease-standard);
+}
+.odc-phototile-check, .odc-phototile-fav {
+  position: absolute; top: var(--space-2); z-index: 2; width: 28px; height: 28px; border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  border: 0; color: #fff; background: rgba(10, 12, 18, 0.58); backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+.odc-phototile-check { left: var(--space-2); }
+.odc-phototile-fav { right: var(--space-2); }
+.odc-phototile.has-menu .odc-phototile-fav { right: calc(var(--space-2) + 36px); }
+.odc-phototile-check .material-icons, .odc-phototile-fav .material-icons { font-size: var(--icon-sm); }
+.odc-phototile-check:hover, .odc-phototile-fav:hover { transform: scale(1.08); }
+.odc-phototile-check:focus-visible, .odc-phototile-fav:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
+.odc-phototile-check.on { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-phototile-fav.on { color: #ff8fab; }
+.odc-phototile-menu {
+  position: absolute; top: 4px; right: 4px; z-index: 2; border-radius: var(--radius-pill);
+  background: rgba(10, 12, 18, 0.58); backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.odc-phototile-menu .mud-icon-button, .odc-phototile-menu .odc-iconbtn { color: #fff; }
+/* The selection ring sits above the image (an outline would be painted under it). */
+.odc-phototile.is-selected::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  border: 3px solid var(--mud-palette-primary); border-radius: inherit;
+}
+/* Reveal on hover and keyboard focus; ON controls and an open menu stay. */
+.odc-phototile:hover .odc-phototile-scrim, .odc-phototile:focus-within .odc-phototile-scrim,
+.odc-phototile:hover .odc-phototile-cap, .odc-phototile:focus-within .odc-phototile-cap,
+.odc-phototile:hover .odc-phototile-check, .odc-phototile:focus-within .odc-phototile-check,
+.odc-phototile:hover .odc-phototile-fav, .odc-phototile:focus-within .odc-phototile-fav,
+.odc-phototile:hover .odc-phototile-menu, .odc-phototile:focus-within .odc-phototile-menu,
+.odc-phototile-check.on, .odc-phototile-fav.on,
+.odc-phototile-menu:has([aria-expanded="true"]) { opacity: 1; }
+/* Selection mode: the check is the tile's visible state, always shown — a hollow
+   ring when not selected, the filled check when selected. */
+.odc-phototile.is-selectable .odc-phototile-check { opacity: 1; }
+.odc-phototile.is-selectable .odc-phototile-check:not(.on) { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92); background: rgba(10, 12, 18, 0.32); }
+.odc-phototile.is-selectable .odc-phototile-check:not(.on) .material-icons { opacity: 0; }
+/* Disabled (e.g. "Already added" in a picker): dimmed and inert; the reason is a badge. */
+.odc-phototile.is-disabled .odc-phototile-open { cursor: not-allowed; }
+.odc-phototile.is-disabled .odc-phototile-img { opacity: 0.45; }
+.odc-phototile.is-disabled:hover .odc-phototile-img { transform: none; }
+/* No hover on a touch screen: the controls are always there. */
+@media (hover: none) {
+  .odc-phototile-check, .odc-phototile-fav, .odc-phototile-menu { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .odc-phototile:hover .odc-phototile-img { transform: none; }
+}
+
+/* ---------- JournalPhotoGallery (DS 1795477868-c9a2) ----------
+   A heading + count over an OdsPhotoGrid of OdsPhotoTiles: the tiles are styled by .odc-phototile; only
+   the heading and the empty line live here. */
 .odc-photogrid { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-photogrid-head { display: flex; align-items: center; gap: 8px; color: var(--mud-palette-text-secondary); }
 .odc-photogrid-head .material-icons { font-size: var(--icon-md); }
@@ -3101,6 +3203,9 @@ tr:focus-within > .odc-rowactions.reveal,
   padding: 3px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
 }
 .odc-photogrid-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* LEGACY gallery tile — no longer drawn by JournalPhotoGallery. Its last consumer is BookImageGrid
+   (Pages/Library), which the design-system rollout moves onto OdsPhotoGrid/OdsPhotoTile; delete these
+   rules (and the .odc-photogrid-ph-fallback trio further down) with that change. */
 .odc-photogrid-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
 .odc-photogrid-item { min-width: 0; }
 .odc-photogrid-tile {

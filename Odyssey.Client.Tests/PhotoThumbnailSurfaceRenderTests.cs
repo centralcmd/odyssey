@@ -90,9 +90,9 @@ public class PhotoThumbnailSurfaceRenderTests
         ctx.Render<MudPopoverProvider>();
 
         var cut = ctx.Render<PhotosCard>();
-        cut.WaitForState(() => cut.FindAll("img.pl-tile-img").Count == 2);
+        cut.WaitForState(() => cut.FindAll("img.odc-phototile-img").Count == 2);
 
-        var srcs = cut.FindAll("img.pl-tile-img").Select(i => i.GetAttribute("src")).ToList();
+        var srcs = cut.FindAll("img.odc-phototile-img").Select(i => i.GetAttribute("src")).ToList();
         Assert.Equal([Thumb(Ready.PhotoId, ThumbnailSize.Medium), Original(NotReady.PhotoId)], srcs);
     }
 
@@ -104,9 +104,9 @@ public class PhotoThumbnailSurfaceRenderTests
         ctx.Render<MudPopoverProvider>();
 
         var cut = ctx.Render<PhotosCard>();
-        cut.WaitForState(() => cut.FindAll("img.pl-tile-img").Count == 2);
+        cut.WaitForState(() => cut.FindAll("img.odc-phototile-img").Count == 2);
 
-        Assert.Empty(cut.FindAll(".pl-tile-ph"));
+        Assert.Empty(cut.FindAll(".odc-phototile-ph"));
         Assert.DoesNotContain("/files/", cut.Markup, StringComparison.Ordinal);
     }
 

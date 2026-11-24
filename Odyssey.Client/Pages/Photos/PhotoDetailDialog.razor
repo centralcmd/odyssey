@@ -5,12 +5,15 @@
     album(s), location + coordinates, tags, people, dimensions, provenance). The favourite toggle sits
     in the header beside close; Edit / Download / Archive / Delete are the footer actions. Full metadata
     is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
+
+    A page does not mount this directly any more: PhotoViewer (this folder) owns it, the Edit dialog and the
+    writes, so every surface opens a photo the same way. A photo with no date or no size hides those rows.
 *@
 @using Odyssey.Dtos
 @inject IPhotosApiClient Api
 @inject IJSRuntime Js
 
-<OdsModal Open="true" OpenChanged="OnOpenChanged" Class="pl-ods-wide" AriaLabel="@Label(Current)"
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" ReturnFocusToId="@ReturnFocusToId" Class="pl-ods-wide" AriaLabel="@Label(Current)"
           Icon="@LeadIcon" OnClose="OnClose"
           Title="@TitleFragment" Subtitle="@SubFragment"
           HeaderActions="@HeaderActionsFragment" Footer="@FooterFragment">
@@ -112,39 +115,6 @@
 </OdsModal>
 
 @code {
-    [Parameter, EditorRequired] public IReadOnlyList<PhotoSummary> Photos { get; set; } = [];
-    [Parameter] public int Index { get; set; }
-    [Parameter] public EventCallback<int> IndexChanged { get; set; }
-    [Parameter] public EventCallback OnClose { get; set; }
-    [Parameter] public EventCallback<Guid> OnEdit { get; set; }
-    [Parameter] public EventCallback<Guid> OnToggleFavourite { get; set; }
-    [Parameter] public EventCallback<Guid> OnToggleArchive { get; set; }
-    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
-    [Parameter] public bool CanUpdate { get; set; }
-    [Parameter] public bool CanDelete { get; set; }
-    [Parameter] public Func<Guid, string> TagName { get; set; } = id => id.ToString();
-    /// <summary>A tag's stored icon key, or <c>null</c> for none — its chip then shows the generic glyph.</summary>
-    [Parameter] public Func<Guid, string?> TagIcon { get; set; } = _ => null;
-    /// <summary>A tag's colour, or <c>null</c> for none — its chip then has no dot (issue #394).</summary>
-    [Parameter] public Func<Guid, string?> TagColor { get; set; } = _ => null;
-    [Parameter] public Func<Guid, string> PersonName { get; set; } = id => id.ToString();
-    /// <summary>An album as its chip (name, icon, colour), or <c>null</c> for one the host does not hold — it is then left out.</summary>
-    [Parameter] public Func<Guid, OdsTagChips.Tag?> AlbumChip { get; set; } = _ => null;
-
-    private ExistingPhoto? _detail;
-    private IReadOnlyList<OdsTagChips.Tag> _tagChips = [];
-    private IReadOnlyList<OdsTagChips.Tag> _albumChips = [];
-    private Guid _loadedFor;
-    private ElementReference _body;
-    private bool _focused;
-
-    private PhotoSummary? Current => Index >= 0 && Index < Photos.Count ? Photos[Index] : null;
-
-    // Always the library glyph: a tag's icon shows on its own chip in the Tags group, never in the title area.
-    private const string LeadIcon = "photo_library";
-
-    private string Label(PhotoSummary? p) => p is null ? "Photo" : (string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!);
-
     private RenderFragment TitleFragment => builder => builder.AddContent(0, Label(Current));
 
     private RenderFragment SubFragment => builder =>
@@ -187,77 +157,5 @@
         {
             <OdsButton Variant="OdsButtonVariant.Text" Icon="delete" OnClick="() => OnDelete.InvokeAsync(Current!.PhotoId)">Delete</OdsButton>
         }
-    };
-
-    // OdsModal fires this on Esc / scrim / close button (Open→false); tell the host to unmount us.
-    private Task OnOpenChanged(bool open) => open ? Task.CompletedTask : OnClose.InvokeAsync();
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (Current is { PhotoId: var id } && id != _loadedFor)
-        {
-            _loadedFor = id;
-            _detail = await Api.GetAsync(id);
-        }
-
-        // Built once per parameter set rather than per render: a host refreshes its tag names by
-        // re-rendering us, which is exactly when this runs again.
-        _tagChips = _detail is null ? [] : [.. _detail.TagIds.Select(t => new OdsTagChips.Tag(TagName(t), TagIcon(t), TagColor(t)))];
-        _albumChips = _detail is null ? [] : [.. _detail.AlbumIds.Select(AlbumChip).OfType<OdsTagChips.Tag>()];
-    }
-
-    // Focus the stage once the teleported dialog body is in the DOM so ←/→ navigation works without a
-    // click first (retries across renders until the element exists; this modal has no form field for
-    // OdsModal's autofocus to land on).
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!_focused)
-        {
-            try { await _body.FocusAsync(); _focused = true; }
-            catch { /* not teleported into the DOM yet — retry next render */ }
-        }
-    }
-
-    private async Task Move(int delta)
-    {
-        if (Photos.Count == 0)
-        {
-            return;
-        }
-
-        var next = (Index + delta + Photos.Count) % Photos.Count;
-        await IndexChanged.InvokeAsync(next);
-    }
-
-    private async Task DownloadAsync()
-    {
-        if (Current is { PhotoId: var pid })
-        {
-            await Js.InvokeVoidAsync("open", Api.ContentUrl(pid), "_blank", "noopener");
-        }
-    }
-
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case "ArrowRight": await Move(1); break;
-            case "ArrowLeft": await Move(-1); break;
-        }
-    }
-
-    private static RenderFragment Row(string icon, string text) => builder =>
-    {
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "pl-vrow");
-        builder.OpenElement(2, "span");
-        builder.AddAttribute(3, "class", "material-icons");
-        builder.AddAttribute(4, "aria-hidden", "true");
-        builder.AddContent(5, icon);
-        builder.CloseElement();
-        builder.OpenElement(6, "span");
-        builder.AddContent(7, text);
-        builder.CloseElement();
-        builder.CloseElement();
     };
 }

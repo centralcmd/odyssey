@@ -27,7 +27,7 @@ public class PhotoThumbnailSurfaceTests
     ];
 
     /// <summary>The viewer, "Open original" and the edit banner always show the original (§2 non-goals).</summary>
-    private static readonly string[] OriginalAllowed = ["Pages/Photos/EditPhotoDialog.razor", "Pages/Photos/PhotoDetailDialog.razor"];
+    private static readonly string[] OriginalAllowed = ["Pages/Photos/EditPhotoDialog.razor", "Pages/Photos/PhotoDetailDialog.razor", "Pages/Photos/PhotoDetailDialog.razor.cs"];
 
     private static string Code(string relative) =>
         SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, relative)));
@@ -72,12 +72,12 @@ public class PhotoThumbnailSurfaceTests
     [Fact]
     public void Every_surface_draws_its_photo_through_OdsPhotoImage()
     {
-        var markup = Surfaces.Where(f => f.EndsWith(".razor", StringComparison.Ordinal) && !f.StartsWith("Components/OdsPhotoTile", StringComparison.Ordinal)
-                && !f.EndsWith("PhotosCard.razor", StringComparison.Ordinal))
+        var markup = Surfaces.Where(f => f.EndsWith(".razor", StringComparison.Ordinal) && !f.StartsWith("Components/OdsPhotoTile", StringComparison.Ordinal))
             .ToList();
         Assert.NotEmpty(markup);
 
-        Assert.All(markup, file => Assert.Contains("<OdsPhotoImage", Code(file), StringComparison.Ordinal));
+        // A surface draws through OdsPhotoImage itself, or through OdsPhotoTile, which does (asserted below).
+        Assert.All(markup, file => Assert.Matches("<OdsPhoto(Image|Tile)\\b", Code(file)));
         Assert.Contains("<OdsPhotoImage", Code("Components/OdsPhotoTile.razor"), StringComparison.Ordinal);
         Assert.All(Surfaces.Where(f => f.EndsWith(".razor", StringComparison.Ordinal)),
             file => Assert.DoesNotMatch(@"<img\b", Code(file)));
