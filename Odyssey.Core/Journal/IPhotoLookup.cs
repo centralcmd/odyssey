@@ -1,7 +1,10 @@
 namespace Odyssey.Core.Journal;
 
-/// <summary>What the Journal module may know about a linked library photo (issue #428 §5.3): its label, never its bytes.</summary>
-public sealed record PhotoLinkInfo(Guid PhotoId, string? Title, string? FileName);
+/// <summary>
+/// What the Journal module may know about a linked library photo (issue #428 §5.3): its label and its library state
+/// (the favourite and archive timestamps the shared photo tile shows), never its bytes.
+/// </summary>
+public sealed record PhotoLinkInfo(Guid PhotoId, string? Title, string? FileName, DateTime? Favourited = null, DateTime? Archived = null);
 
 /// <summary>
 /// Narrow read surface the Photos module exposes to the Journal module (issue #321 v4), mirroring
@@ -15,7 +18,7 @@ public interface IPhotoLookup
     Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Each existing photo's label (title and file name) in one batched query, for render enrichment. Ids
+    /// Each existing photo's label (title and file name) and library state (favourite, archived) in one batched query, for render enrichment. Ids
     /// that no longer resolve are absent from the map (the caller drops them).
     /// </summary>
     Task<IReadOnlyDictionary<Guid, PhotoLinkInfo>> ResolveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);

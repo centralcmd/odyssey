@@ -58,6 +58,8 @@ internal static class CalendarLinkVisibility
                 photo.Title = null;
                 photo.FileName = null;
                 photo.ThumbnailsReady = false;
+                photo.Favourited = null;
+                photo.Archived = null;
             }
         }
     }

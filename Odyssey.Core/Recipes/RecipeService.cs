@@ -797,6 +797,8 @@ public sealed class RecipeService(
                     Position = p.Position,
                     Title = info[p.PhotoId].Title,
                     FileName = info[p.PhotoId].FileName,
+                    Favourited = info[p.PhotoId].Favourited,
+                    Archived = info[p.PhotoId].Archived,
                     ThumbnailsReady = ready.Contains(p.PhotoId),
                 })
                 .ToList();

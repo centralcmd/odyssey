@@ -18,6 +18,16 @@ public sealed record JournalEntryPhotoDto
     /// <summary>The effective file name (<c>Photo.FileName ?? FileMetadata.FileName</c>, issue #428 §5.4).</summary>
     public string? FileName { get; set; }
 
+    /// <summary>
+    /// The library photo's own <c>Favourited</c> timestamp (UTC; null = not a favourite), so the shared photo tile can
+    /// draw its heart without a per-photo <c>GET /api/photos/{id}</c>. Null for a caller without
+    /// <c>photos.read</c>, by the same controller helper as <see cref="ThumbnailsReady"/>.
+    /// </summary>
+    public DateTime? Favourited { get; set; }
+
+    /// <summary>The library photo's own <c>Archived</c> timestamp (UTC; null = live), for the tile's "Archived" badge. Null without <c>photos.read</c>.</summary>
+    public DateTime? Archived { get; set; }
+
     public required int Position { get; set; }
 
     public required DateTime CreatedAt { get; set; }

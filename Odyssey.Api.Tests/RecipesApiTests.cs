@@ -954,6 +954,26 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     }
 
     [Fact]
+    public async Task WithPhotosRead_EachPhotoCarriesItsLibraryFavouriteAndArchivedState()
+    {
+        var marked = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "marked.jpg");
+        var plain = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "plain.jpg");
+        await PhotoTestSupport.MarkLibraryStateAsync(Factory, marked);
+        using var client = Factory.ClientWith(EditorWithPhotos);
+        var request = Pancakes();
+        request.PhotoIds = [marked, plain];
+        var created = await CreateAsync(client, request);
+        var read = (await client.GetFromJsonAsync<ExistingRecipe>($"{Path}/{created.RecipeId}"))!;
+
+        foreach (var photos in new[] { created.Photos!, read.Photos! })
+        {
+            Assert.Equal(
+                [((DateTime?)PhotoTestSupport.FavouritedAt, (DateTime?)PhotoTestSupport.ArchivedAt), (null, null)],
+                photos.Select(p => (p.Favourited, p.Archived)));
+        }
+    }
+
+    [Fact]
     public async Task WithPhotosRead_TheCoverIsTheFirstPhoto_AndThumbnailReadinessComesFromTheStore()
     {
         var plain = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "plain.jpg");

@@ -135,6 +135,25 @@ public static class PhotoTestSupport
         return photo.PhotoId;
     }
 
+    /// <summary>Fixed favourite and archive stamps for <see cref="MarkLibraryStateAsync"/>.</summary>
+    public static readonly DateTime FavouritedAt = new(2026, 5, 1, 8, 0, 0, DateTimeKind.Utc);
+
+    public static readonly DateTime ArchivedAt = new(2026, 5, 2, 9, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>
+    /// Favourite and archive a seeded photo (<see cref="FavouritedAt"/>, <see cref="ArchivedAt"/>): the library state the
+    /// shared photo tile shows, which every photo-link DTO carries for a <c>photos.read</c> holder.
+    /// </summary>
+    public static async Task MarkLibraryStateAsync(WebApplicationFactory<Program> factory, Guid photoId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
+        photo.Favourited = FavouritedAt;
+        photo.Archived = ArchivedAt;
+        await context.SaveChangesAsync();
+    }
+
     /// <summary>
     /// A photo moved onto the store (issue #428) whose former file is still in the Files store, named only by the
     /// photo's <c>LegacyFileId</c> — the file a pre-move export references. Such a file is a photo original, hidden from

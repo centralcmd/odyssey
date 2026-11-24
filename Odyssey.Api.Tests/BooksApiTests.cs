@@ -77,6 +77,7 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         var editor = await PhotoTestSupport.SeedPersonAsync(Factory, "Bea Editor");
         var front = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "front.jpg");
         var spine = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "spine.jpg");
+        await PhotoTestSupport.MarkLibraryStateAsync(Factory, spine);
         var file = await PhotoTestSupport.SeedImageFileAsync(Factory, ActorUserId, "dune.epub", "application/epub+zip");
         var tag = await SeedTagAsync("Signed");
         using var client = Factory.ForCaller(Full).CreateClient();
@@ -105,6 +106,11 @@ public class BooksApiTests(BooksApiTests.Host host) : SharedApiHostTests<BooksAp
         Assert.Equal(spine, book.CoverPhotoId);
         Assert.True(book.Images!.Single(i => i.PhotoId == spine).IsCover);
         Assert.False(book.Images!.Single(i => i.PhotoId == front).IsCover);
+        // Each image carries its library photo's own state, for the shared photo tile's heart and "Archived" badge.
+        var spineImage = book.Images!.Single(i => i.PhotoId == spine);
+        Assert.Equal(((DateTime?)PhotoTestSupport.FavouritedAt, (DateTime?)PhotoTestSupport.ArchivedAt), (spineImage.Favourited, spineImage.Archived));
+        var frontImage = book.Images!.Single(i => i.PhotoId == front);
+        Assert.Equal(((DateTime?)null, (DateTime?)null), (frontImage.Favourited, frontImage.Archived));
         var attachment = Assert.Single(book.Attachments!);
         Assert.Equal(("dune.epub", "application/epub+zip"), (attachment.FileName, attachment.ContentType));
         Assert.Equal([tag], book.TagIds);
