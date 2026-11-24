@@ -41,7 +41,16 @@ public partial class RecipeBody
 
     [Parameter] public EventCallback<RecipeAttachmentDto> OnDownloadFile { get; set; }
 
+    /// <summary>Preview — the shared file viewer (FilePreviewDialog), as every other files table opens it.</summary>
+    [Parameter] public EventCallback<RecipeAttachmentDto> OnPreviewFile { get; set; }
+
+    /// <summary>The photo viewer changed a library photo (archive, delete, edit): re-read the recipe.</summary>
+    [Parameter] public EventCallback OnPhotosChanged { get; set; }
+
     [Parameter] public EventCallback<RecipeAttachmentDto> OnCopyFileId { get; set; }
+
+    /// <summary>The sr-only lead of a step's label: "Step 3 of 6: ".</summary>
+    internal static string StepPrefix(int index, int count) => $"Step {index + 1} of {count}: ";
 
     private bool HasLabel => !string.IsNullOrWhiteSpace(Recipe.ServingsLabel);
 
@@ -80,6 +89,13 @@ public partial class RecipeBody
         var file = files.First(f => f.FileId.ToString() == row.Id);
         return
         [
+            new OdsMenuItem
+            {
+                Icon = "visibility",
+                Label = "Preview",
+                AriaLabel = $"Preview {file.FileName}",
+                OnClick = EventCallback.Factory.Create(this, () => OnPreviewFile.InvokeAsync(file)),
+            },
             new OdsMenuItem
             {
                 Icon = "download",
