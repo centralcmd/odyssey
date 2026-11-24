@@ -21,7 +21,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// The shared library photo tile rolled out to the remaining surfaces (Odyssey Design System · components/PhotoTile,
-/// version 1795477868-c9a2): a journal entry's photos, a book's images and the
+/// version 1795477868-c9a2): a journal entry's photos, a book's images, the Tasks page's Archived divider and the
 /// viewer opened over the calendar event dialog. The picker and the event dialog's Photos field are pinned in
 /// <see cref="AttachPhotosDialogTests"/> and <see cref="CalendarAttachmentDialogTests"/>.
 /// </summary>
@@ -262,5 +262,17 @@ public sealed class PhotoTileRolloutTests
         h.Cut.WaitForAssertion(() => Assert.Single(h.Cut.FindComponents<MudDialogContainer>()));
         Assert.True(h.Cut.FindComponent<CalendarEventDialog>().Instance.Open);
         Assert.Equal(2, h.Tiles.Count);
+    }
+
+    // ── Tasks ────────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void The_tasks_archived_heading_is_the_section_divider_with_a_task_count()
+    {
+        var source = Odyssey.Testing.SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Journal/TasksPage.razor")));
+        Assert.Matches(@"<OdsSectionDivider Label=""Archived""[^>]*Meta=""@\(\$""\{ArchivedTasks\.Count\} \{\(ArchivedTasks\.Count == 1 \? ""task"" : ""tasks""\)\}""\)""", source);
+        Assert.DoesNotContain("tk-archived-head", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("odc-photogrid", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("tk-archived-", File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Journal/TasksPage.razor.css")), StringComparison.Ordinal);
     }
 }

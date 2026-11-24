@@ -146,11 +146,9 @@
                     @if (_showArchived && ArchivedTasks.Count > 0)
                     {
                         <div class="tk-archived">
-                            <div class="tk-archived-head">
-                                <span class="material-icons" aria-hidden="true">inventory_2</span>
-                                <span class="tk-archived-title">Archived</span>
-                                <span class="tk-archived-count">@ArchivedTasks.Count</span>
-                            </div>
+                            @* The one section divider (design system · Tasks.jsx, version 1795477868-c9a2), the count in words. *@
+                            <OdsSectionDivider Label="Archived" HeadingLevel="2"
+                                               Meta="@($"{ArchivedTasks.Count} {(ArchivedTasks.Count == 1 ? "task" : "tasks")}")" />
                             <div class="acct-list">
                                 @foreach (var t in ArchivedTasks)
                                 {
