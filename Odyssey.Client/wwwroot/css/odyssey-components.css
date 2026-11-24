@@ -834,6 +834,7 @@
   .odc-wiz-text { align-items: center; padding-top: 0; max-width: 96px; }
   .odc-wiz-meta { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   .odc-wiz-line { margin-left: var(--space-1); margin-right: var(--space-1); min-width: var(--space-2); }
+}
 
 /* ---------- Form fields (DS components/Field — label ABOVE the box) ----------
    MudBlazor outlined fields render a *floating* label notched into the top border;

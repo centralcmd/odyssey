@@ -153,6 +153,14 @@ public class OdsWizardStepsTests
         Assert.Contains(".mud-dialog .mud-dialog-title.ods-modal-head.has-steps { flex-wrap: wrap;", css);
         Assert.Contains(".ods-modal-steps { flex: 1 0 100%;", css);
         Assert.Matches(@"\.mud-dialog\.ods-modal\.wizard \.mud-dialog-actions\.ods-modal-foot \{[^}]*flex-wrap: wrap", css);
+
+        // The phone block closes: an unclosed @media swallows every rule after it into a phone-only query, which
+        // silently unstyles the whole app on a desktop.
+        var phone = css.IndexOf("  .odc-wiz-line { margin-left: var(--space-1);", StringComparison.Ordinal);
+        Assert.True(phone >= 0);
+        Assert.StartsWith("}", css[(css.IndexOf('\n', phone) + 1)..]);
+        var code = System.Text.RegularExpressions.Regex.Replace(css, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.Equal(code.Count(c => c == '{'), code.Count(c => c == '}'));
     }
 
     public sealed class WizardHost : ComponentBase
