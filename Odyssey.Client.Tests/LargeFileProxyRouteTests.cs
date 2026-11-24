@@ -80,6 +80,9 @@ public class LargeFileProxyRouteTests
     {
         var pattern = Regex.Matches(Nginx, @"(?m)^\s*location ~ (\S+) \{").Select(m => m.Groups[1].Value).Single(p => p.Contains("podcast-episodes"));
         Assert.Matches(pattern, $"/api/api/podcast-episodes/{Guid.NewGuid()}/audio/content");
+        // In-browser playback (#593) shares the block, so the two routes cannot drift apart directive by directive.
+        Assert.Matches(pattern, $"/api/api/podcast-episodes/{Guid.NewGuid()}/audio/stream");
+        Assert.DoesNotMatch(pattern, $"/api/api/podcast-episodes/{Guid.NewGuid()}/playback");
         Assert.DoesNotMatch(pattern, $"/api/api/podcast-episodes/{Guid.NewGuid()}/audio");
         Assert.DoesNotMatch(pattern, "/api/api/podcast-episodes");
         var at = Nginx.IndexOf(pattern, StringComparison.Ordinal);

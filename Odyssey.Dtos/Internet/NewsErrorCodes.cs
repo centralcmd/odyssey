@@ -88,4 +88,7 @@ public static class NewsErrorCodes
 
     /// <summary><c>507</c>: the audio storage quota, counting audio awaiting deletion, is reached.</summary>
     public const string PodcastAudioQuotaReached = "podcast-audio-quota-reached";
+
+    /// <summary><c>409</c> (#593): a finished listen was reported for an episode whose audio is not on the server.</summary>
+    public const string PodcastAudioNotStored = "podcast-audio-not-stored";
 }
