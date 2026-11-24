@@ -10,7 +10,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// <see cref="OdsWizardSteps"/> and <see cref="OdsModal.Steps"/> (Odyssey Design System · components/WizardSteps and
-/// Modal <c>steps</c>, version 1795477868-c9a2): a <c>nav</c> of an <c>ol</c>, the current step's
+/// Modal <c>steps</c>, version 1795486190-6f31): a <c>nav</c> of an <c>ol</c>, the current step's
 /// <c>aria-current="step"</c>, every state in words as well as the disc, and the wizard dialog's head, width class
 /// and footer.
 /// </summary>
@@ -51,7 +51,7 @@ public class OdsWizardStepsTests
         var cut = ctx.Render<OdsWizardSteps>(p => p.Add(w => w.Steps, Three).Add(w => w.Current, 1));
 
         var texts = cut.FindAll(".odc-wiz-text").Select(t => t.TextContent).ToList();
-        Assert.Equal("Step 1 of 3: Details", texts[0]);
+        Assert.Equal("Step 1 of 3: Details, completed", texts[0]);
         Assert.Equal("Step 2 of 3: Ingredients, 12 lines", texts[1]);
         Assert.Equal("Step 3 of 3: Method", texts[2]);
     }
@@ -88,6 +88,24 @@ public class OdsWizardStepsTests
         Assert.Contains("is-current", first.ClassList);
         Assert.DoesNotContain("is-done", first.ClassList);
         Assert.Equal("1", first.QuerySelector(".odc-wiz-disc")!.TextContent.Trim());
+        // Current wins: no "completed" while the step is the one being edited.
+        Assert.Equal("Step 1 of 3: Details", first.QuerySelector(".odc-wiz-text")!.TextContent);
+    }
+
+    [Fact]
+    public async Task A_finished_step_says_completed_in_words_not_only_in_its_check_disc()
+    {
+        // WCAG 1.3.1 (PR #598 review): the check disc is aria-hidden, so "done" ends the step's text, sr-only.
+        await using var ctx = NewContext();
+        IReadOnlyList<OdsWizardStep> steps = [new("Details", State: OdsWizardStepState.Done), new("Ingredients", State: OdsWizardStepState.Error), new("Method", Meta: "3 steps")];
+        var cut = ctx.Render<OdsWizardSteps>(p => p.Add(w => w.Steps, steps).Add(w => w.Current, 2));
+
+        var items = cut.FindAll("li.odc-wiz-step");
+        var completed = items[0].QuerySelector(".odc-wiz-text > .odc-sr-only")!;
+        Assert.Equal(", completed", completed.TextContent);
+        Assert.Equal("Step 1 of 3: Details, completed", items[0].QuerySelector(".odc-wiz-text")!.TextContent);
+        Assert.DoesNotContain("completed", items[1].TextContent, StringComparison.Ordinal);
+        Assert.Equal("Step 3 of 3: Method, 3 steps", items[2].QuerySelector(".odc-wiz-text")!.TextContent);
     }
 
     [Fact]
