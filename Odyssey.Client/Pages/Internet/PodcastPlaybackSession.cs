@@ -220,7 +220,8 @@ public sealed class PodcastPlaybackSession(
             return;
         }
 
-        if (PlayingNow)
+        // Loading counts as playing: the header and the chip say "Playing", so the press pauses.
+        if (PlayingNow || State == OdsPodcastPlayerState.Loading)
         {
             await _module.InvokeVoidAsync("pause");
             return;

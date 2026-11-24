@@ -58,8 +58,8 @@
         @* Only while the card is collapsed: the open card has the player's own toggle (#594 §3). *@
         @if (ShowsHeaderPlayback)
         {
-            <OdsIconButton id="@HeaderToggleId(Episode.Id)" Icon="@(Session!.PlayingNow ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayArrow)"
-                           AriaLabel="@($"{(Session.PlayingNow ? "Pause" : "Play")}, {Title}")" OnClick="Session.ToggleAsync" />
+            <OdsIconButton id="@HeaderToggleId(Episode.Id)" Icon="@(HeaderPlaying ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayArrow)"
+                           AriaLabel="@($"{(HeaderPlaying ? "Pause" : "Play")}, {Title}")" OnClick="Session!.ToggleAsync" />
         }
         @if (Menu.Count > 0)
         {

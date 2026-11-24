@@ -95,7 +95,26 @@ public partial class PodcastsPage : IPodcastPlaybackHost
         }
     }
 
-    Task IPodcastPlaybackHost.ChangedAsync() => _disposed ? Task.CompletedTask : InvokeAsync(StateHasChanged);
+    /// <summary>The episode whose card the page opened to show a playback error, so it is opened once, not on every render.</summary>
+    private Guid? _openedForError;
+
+    Task IPodcastPlaybackHost.ChangedAsync() => _disposed ? Task.CompletedTask : InvokeAsync(async () =>
+    {
+        // A playback error is explained only by the open card's player (its alert, and the focus target the page
+        // moves to). A collapsed card would say nothing, so the page opens it (a11y review, 4.1.3 / 2.4.3).
+        if (_session is { EpisodeId: { } id, Error: not null } && _openId != id && _openedForError != id
+            && _rows.FirstOrDefault(r => r.Id == id) is { } row)
+        {
+            _openedForError = id;
+            await OnToggleAsync(row, true);
+        }
+        else if (_session?.Error is null)
+        {
+            _openedForError = null;
+        }
+
+        StateHasChanged();
+    });
 
     void IPodcastPlaybackHost.Say(string text) => Say(text);
 

@@ -833,4 +833,26 @@ public class PodcastsPageTests
 
         cut.WaitForAssertion(() => Assert.Contains(module.Invocations, i => i.Identifier == "pause"));
     }
+
+    [Fact]
+    public async Task Playback_an_error_on_a_collapsed_card_opens_it_so_the_alert_is_seen()
+    {
+        var feed = Podcast("Tidewater Talks");
+        var stored = Episode(feed, "Logbooks", PodcastAudioState.Stored);
+        await using var page = new Harness([feed], [stored]);
+        var module = PlayerModule(page);
+
+        var cut = page.Render();
+        Expand(cut, stored);
+        Play(cut, stored);
+        cut.Find($"#pod-{stored.Id} .odc-record-trigger").Click();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll($"#pod-{stored.Id} .odc-podplayer")));
+
+        // The module reports a decode error through the session's DotNetObjectReference.
+        var self = (Microsoft.JSInterop.DotNetObjectReference<PodcastPlaybackSession>)module.Invocations.First(i => i.Identifier == "start").Arguments[0]!;
+        await cut.InvokeAsync(() => self.Value.OnPlayerEvent("error", 12, 3127, "3"));
+
+        cut.WaitForAssertion(() => Assert.Contains("This audio file couldn’t be played.", cut.Find($"#{PodcastAudioActions.PlayerAlertId(stored.Id)}").TextContent, StringComparison.Ordinal));
+        Assert.Equal("alert", cut.Find($"#{PodcastAudioActions.PlayerAlertId(stored.Id)}").GetAttribute("role"));
+    }
 }
