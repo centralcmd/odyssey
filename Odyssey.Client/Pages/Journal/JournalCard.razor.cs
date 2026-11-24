@@ -12,6 +12,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Client.Pages.Photos;
 using Odyssey.Client.Pages.Weather;
 
 namespace Odyssey.Client.Pages.Journal;
@@ -48,25 +49,14 @@ public partial class JournalCard
     // from hydrating every attachment on every card.
     private readonly Dictionary<Guid, IReadOnlyList<FileMetadataResponse>> _attachments = new();
 
-    // Photo detail dialog — the shared library lightbox (Odyssey Design System · Photos · detail).
-    // null index = closed.
-    private List<PhotoSummary> _detailPhotos = [];
-    private int? _detailIndex;
-    private Guid? _detailEntryId;
-    private Guid? _editPhotoId;
+    // The shared PhotoViewer over the open entry's photos (null index = closed), and the library state — heart,
+    // Archived badge — of every shown entry's photos, which the link DTO does not carry.
+    private PhotoViewer? _viewer;
+    private IReadOnlyList<PhotoSummary> _viewerPhotos = [];
+    private int? _viewerIndex;
+    private readonly LinkedPhotoStates _photoStates = new();
+    private bool _canReadPhotos;
     private bool _canUpdatePhotos;
-    private bool _canDeletePhotos;
-    private bool _canCreatePhotoTags;
-    private bool _photoRefsLoaded;
-    private Dictionary<Guid, string> _photoTagNames = [];
-    private Dictionary<Guid, string?> _photoTagIcons = [];
-    private Dictionary<Guid, string?> _photoTagColors = [];
-    private Dictionary<Guid, PhotoAlbumSummary> _photoAlbumById = [];
-    private IReadOnlyList<OdsOption> _photoTagOptions = [];
-    private Func<string, string?>? _photoTagNameBlocked;
-    private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
-    private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
-    private IJSObjectReference? _focusJs;
 
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
@@ -75,7 +65,6 @@ public partial class JournalCard
     private bool _canReadFiles;
     private PhotoImageAccess _imageAccess = new(false);
     private bool _canReadContacts;
-    private bool _canCreateContacts;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "journal-page";
@@ -153,6 +142,30 @@ public partial class JournalCard
     {
         _shownIds = [.. shown.Select(e => e.JournalEntryId)];
         _ = WeatherLoader.ShowAsync(_shownIds);
+        _ = HydratePhotoStatesAsync(shown);
+    }
+
+    // The heart and the Archived badge need each shown photo's library state, which the link DTO does not carry:
+    // read once per photo, for the entries on screen only, and redraw when any arrived (photos.read).
+    private async Task HydratePhotoStatesAsync(IReadOnlyList<JournalEntrySummary> shown)
+    {
+        if (!_canReadPhotos)
+        {
+            return;
+        }
+
+        try
+        {
+            if (await _photoStates.EnsureAsync(Photos, shown.SelectMany(e => e.Photos).Select(p => p.PhotoId)))
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Supplementary: without the state the tiles simply show no heart and no badge.
+            Log.LogDebug(ex, "Could not read the journal photos' library state.");
+        }
     }
 
     // A sign-out, a different user or a changed claim set: start over from nothing.
@@ -162,6 +175,7 @@ public partial class JournalCard
         {
             var user = (await state).User;
             WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+            _photoStates.Clear();
             await InvokeAsync(StateHasChanged);
             await WeatherLoader.ShowAsync(_shownIds);
         }
@@ -196,10 +210,8 @@ public partial class JournalCard
         // The gallery's thumbnail needs photos.read, read once here rather than per tile (issue #365 B5).
         _imageAccess = PhotoImageAccess.From(user);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
-        _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
+        _canReadPhotos = user.HasPermission(PermissionClaims.PhotosRead);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
-        _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
-        _canCreatePhotoTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
         WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
@@ -456,21 +468,25 @@ public partial class JournalCard
         }
     }
 
-    private IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(JournalEntrySummary e) =>
-        GalleryPhotos(e.Photos, _imageAccess, Photos);
+    private IReadOnlyList<JournalEntryCard.Photo> GalleryPhotos(JournalEntrySummary e) =>
+        GalleryPhotos(e.Photos, _imageAccess, Photos, _photoStates);
 
     /// <summary>
-    /// The gallery's sources (issue #365 B5, issue #428): both the Small thumbnail and the original are photo data
-    /// under <c>photos.read</c>, and the label travels on the link. "No access" is the case with neither source.
+    /// The tiles' sources (issue #365 B5, issue #428): both the Small thumbnail and the original are photo data
+    /// under <c>photos.read</c>, and the label travels on the link. "No access" is the case with neither source. The
+    /// heart and the "Archived" badge come from <paramref name="states"/> once a photo's library state is read.
     /// Static so the rule is tested without rendering the page.
     /// </summary>
-    internal static IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(
-        IEnumerable<JournalEntryPhotoDto> photos, PhotoImageAccess access, IPhotosApiClient photoClient) =>
+    internal static IReadOnlyList<JournalEntryCard.Photo> GalleryPhotos(
+        IEnumerable<JournalEntryPhotoDto> photos, PhotoImageAccess access, IPhotosApiClient photoClient,
+        LinkedPhotoStates? states = null) =>
         [.. photos.OrderBy(p => p.Position).Select((p, i) =>
         {
             var image = PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient);
-            return new JournalPhotoGallery.Photo(
-                p.PhotoId.ToString(), PhotoMappers.Label(p.Title, p.FileName, $"Photo {i + 1}"), image, Unavailable: image.IsEmpty);
+            var state = states?.Get(p.PhotoId);
+            return new JournalEntryCard.Photo(
+                p.PhotoId, PhotoMappers.Label(p.Title, p.FileName, $"Photo {i + 1}"), image, Unavailable: image.IsEmpty,
+                Favourite: state is null ? null : state.Favourited is not null, Archived: state?.Archived is not null);
         })];
 
     private IReadOnlyList<FileMetadataResponse> ResolvedAttachments(ExistingJournalEntry e) =>
@@ -479,184 +495,51 @@ public partial class JournalCard
             .Where(m => m is not null)
             .Cast<FileMetadataResponse>()];
 
-    // Remember the activating gallery tile so focus returns to it when the lightbox closes (WCAG 2.4.3),
-    // then open. The lightbox itself traps focus (MudFocusTrap) while open.
-    // Clicking a gallery tile opens the shared PhotoDetailDialog over the entry's photos. The gallery
-    // keys tiles by PhotoId; the entry's link order (Position) drives the dialog's prev/next, so the
-    // summary list is built in that same order and the clicked tile's ordinal is the opening index.
-    private async Task OpenPhotoDetail(JournalEntrySummary e, JournalPhotoGallery.Photo photo)
+    // A tile opens the shared PhotoViewer over its entry's photos, in the entry's link order (Position), so ← / →
+    // walk the card's tiles. A photo whose state could not be read opens as a minimal summary (image + navigation).
+    // Focus returns to the tile on close: the viewer's dialog captures its opener.
+    private async Task OpenPhoto(JournalEntrySummary e, Guid photoId)
     {
-        _focusJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/overlay-focus.js");
-        await _focusJs.InvokeVoidAsync("remember");
+        var ordered = e.Photos.OrderBy(p => p.Position).Select(p => p.PhotoId).ToList();
+        if (_canReadPhotos)
+        {
+            await _photoStates.EnsureAsync(Photos, ordered);
+        }
 
-        await EnsurePhotoRefsAsync();
-
-        var ordered = e.Photos.OrderBy(p => p.Position).ToList();
-        // Hydrate all links in parallel — full detail gives favourite/archived/metadata; a link that
-        // can't be fetched (no photos.read / since-deleted) falls back to a minimal summary so the
-        // image + navigation still work.
-        var fulls = await Task.WhenAll(ordered.Select(jp => Photos.GetAsync(jp.PhotoId)));
-        _detailPhotos =
-        [
-            .. ordered.Select((jp, i) => fulls[i] is { } full
-                ? PhotoMappers.ToSummary(full)
-                : PhotoMappers.MinimalSummary(jp.PhotoId)),
-        ];
-        _detailEntryId = e.JournalEntryId;
-        var idx = ordered.FindIndex(p => p.PhotoId.ToString() == photo.Id);
-        _detailIndex = idx < 0 ? 0 : idx;
+        _viewerPhotos = _photoStates.Summaries(ordered);
+        var index = ordered.IndexOf(photoId);
+        _viewerIndex = index < 0 ? 0 : index;
     }
 
-    private async Task ClosePhotoDetail()
+    // The tile heart favourites through the viewer, so a tile and the open photo do it the same way.
+    private EventCallback<Guid> FavouriteCallback =>
+        _canUpdatePhotos
+            ? EventCallback.Factory.Create<Guid>(this, id => _viewer?.ToggleFavouriteAsync(id) ?? Task.CompletedTask)
+            : default;
+
+    // Favourite is patched in place; an archive re-reads the photo; an edit (a new title is on the link) or a
+    // delete (the link is gone) reloads the list.
+    internal async Task OnViewerChanged(PhotoViewerChange change)
     {
-        _detailIndex = null;
-        if (_focusJs is not null)
+        switch (change.Kind)
         {
-            try
-            { await _focusJs.InvokeVoidAsync("restore"); }
-            catch (Exception) { /* best-effort focus return */ }
+            case PhotoViewerChangeKind.Favourite:
+                _photoStates.ToggleFavourite(change.PhotoId);
+                break;
+            case PhotoViewerChangeKind.Archive:
+                await _photoStates.RefreshAsync(Photos, change.PhotoId);
+                break;
+            case PhotoViewerChangeKind.Edit:
+                await _photoStates.RefreshAsync(Photos, change.PhotoId);
+                _details.Clear();
+                await LoadEntries();
+                break;
+            case PhotoViewerChangeKind.Delete:
+                _photoStates.Forget(change.PhotoId);
+                _details.Clear();
+                await LoadEntries();
+                break;
         }
-    }
-
-    // Favourite is the one action the dialog always exposes (its header heart); wire it through the
-    // Photos API and reflect the new state in the open summary list. No-op without photos.update.
-    private async Task ToggleFavouritePhotoAsync(Guid id)
-    {
-        if (!_canUpdatePhotos)
-        {
-            return;
-        }
-
-        var full = await Photos.GetAsync(id);
-        if (full is null)
-        {
-            return;
-        }
-
-        var body = PhotoMappers.ToUpdate(full);
-        body.Favourite = full.Favourited is null;
-        if ((await Photos.UpdateAsync(id, body)).Toast(Snackbar, "Could not update favourite"))
-        {
-            var i = _detailPhotos.FindIndex(p => p.PhotoId == id);
-            if (i >= 0)
-            {
-                _detailPhotos[i] = _detailPhotos[i] with { Favourited = body.Favourite ? DateTime.UtcNow : null };
-            }
-        }
-    }
-
-    // Edit opens the shared EditPhotoDialog (closing the detail dialog first, mirroring the library).
-    private void OpenEditPhoto(Guid id)
-    {
-        _detailIndex = null;
-        _editPhotoId = id;
-    }
-
-    // The edit dialog may have created tags or people inline; drop the cached photo lookups and reload
-    // them so the detail rail names them rather than showing "—".
-    internal async Task OnPhotoSaved()
-    {
-        _editPhotoId = null;
-        _photoRefsLoaded = false;
-        // Sequential: the photo refs build their people options from the reloaded contacts.
-        await LoadContacts();
-        await EnsurePhotoRefsAsync();
-        await RefreshOpenEntryAsync();
-    }
-
-    private async Task ArchivePhotoAsync(Guid id)
-    {
-        if (!_canUpdatePhotos)
-        {
-            return;
-        }
-
-        var full = await Photos.GetAsync(id);
-        if (full is null)
-        {
-            return;
-        }
-
-        var body = PhotoMappers.ToUpdate(full);
-        body.Archived = full.Archived is null;
-        if ((await Photos.UpdateAsync(id, body)).Toast(Snackbar, "Could not archive photo",
-                body.Archived ? "Photo archived." : "Photo unarchived."))
-        {
-            _detailIndex = null;
-            await RefreshOpenEntryAsync();
-        }
-    }
-
-    private async Task DeletePhotoAsync(Guid id)
-    {
-        if (!_canDeletePhotos)
-        {
-            return;
-        }
-
-        if ((await Photos.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Photo deleted."))
-        {
-            _detailIndex = null;
-            await RefreshOpenEntryAsync();
-        }
-    }
-
-    // Re-fetch after a photo edit/archive/delete so the galleries reflect it. The list projection
-    // carries the photo links, so this is a list reload — the cached file metadata for the entry's
-    // photos is dropped first, or a rename would never show through.
-    private async Task RefreshOpenEntryAsync()
-    {
-        if (_detailEntryId is not { } eid)
-        {
-            return;
-        }
-
-        _details.Remove(eid);
-        await LoadEntries();
-    }
-
-    internal string PhotoTagName(Guid id) => _photoTagNames.GetValueOrDefault(id, "—");
-    internal string? PhotoTagIcon(Guid id) => _photoTagIcons.GetValueOrDefault(id);
-
-    internal string? PhotoTagColor(Guid id) => _photoTagColors.GetValueOrDefault(id);
-    private OdsTagChips.Tag? PhotoAlbumChip(Guid id) => Odyssey.Client.Pages.Photos.AlbumVisuals.Chip(_photoAlbumById.GetValueOrDefault(id));
-    private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
-
-    // Tag/album names + edit-dialog option lists for the detail rail — loaded lazily on first open
-    // and again after a photo save. People resolve from the contacts already loaded for the entry chips.
-    internal async Task EnsurePhotoRefsAsync()
-    {
-        if (_photoRefsLoaded)
-        {
-            return;
-        }
-
-        // A failed fetch keeps the names already held, so a reload after a save never blanks them.
-        var tagsResult = await PhotoTags.ListAllAsync();
-        var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
-        if (tagsResult.IsSuccess)
-        {
-            _photoTagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
-            _photoTagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
-            _photoTagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
-            _photoTagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
-            _photoTagNameBlocked = TagNameRule.For(tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Photo);
-        }
-
-        var albumsResult = await Albums.ListAllAsync();
-        var albums = albumsResult.ItemsOrToast(Snackbar, "albums");
-        if (albumsResult.IsSuccess)
-        {
-            _photoAlbumById = albums.ToDictionary(a => a.PhotoAlbumId);
-            _photoAlbumOptions = [.. albums.Select(Odyssey.Client.Pages.Photos.AlbumVisuals.FilterOption)];
-        }
-
-        // Active Person contacts for the people picker — reuse the entry's already-loaded set.
-        _photoPeopleOptions = OdsContactOptions.Active(
-            _contactById.Values.Where(c => c.Type == ContactType.Person));
-
-        // Set only after the fetches succeed, so a transient failure retries on the next open.
-        _photoRefsLoaded = tagsResult.IsSuccess && albumsResult.IsSuccess;
     }
 
     // ── Contact chip helper (rendered inline in the markup) ─────────────────
@@ -983,13 +866,6 @@ public partial class JournalCard
         {
             try
             { await _focusReturnJs.DisposeAsync(); }
-            catch (Exception) { /* JS already gone on teardown */ }
-        }
-
-        if (_focusJs is not null)
-        {
-            try
-            { await _focusJs.DisposeAsync(); }
             catch (Exception) { /* JS already gone on teardown */ }
         }
     }

@@ -78,11 +78,21 @@
             <p class="jec-text">@Entry.Content</p>
         }
 
-        @* Title explicitly cleared — the card has no section dividers, so the gallery's own head would
-           be a heading with nothing to head. *@
+        @* The entry's photos: THE library tile (OdsPhotoTile) in a 120px OdsPhotoGrid, uncapped (design system ·
+           Journal.jsx, version 1795477868-c9a2). No heading — the card has no section dividers. The heart is the
+           library favourite and "Archived" a text badge; both appear only once the host knows the photo's state.
+           A tile opens the host's shared PhotoViewer. *@
         @if (Photos.Count > 0)
         {
-            <JournalPhotoGallery Photos="Photos" Title="@null" MinTile="120" OnOpen="OnOpenPhoto" />
+            <OdsPhotoGrid TItem="Photo" Items="Photos" ItemKey="p => p.PhotoId" MinTile="120" Class="jec-photos"
+                          AriaLabel="@PhotosLabel">
+                <ItemTemplate Context="p">
+                    <OdsPhotoTile Name="@p.Name" Image="p.Image" Unavailable="p.Unavailable"
+                                  Badges="BadgesOf(p)"
+                                  OnOpen="() => OnOpenPhoto.InvokeAsync(p.PhotoId)"
+                                  Fav="@(p.Favourite == true)" OnToggleFav="FavCallback(p)" />
+                </ItemTemplate>
+            </OdsPhotoGrid>
         }
 
         @if (Contacts.Count > 0 || Tags.Count > 0 || Entry.AttachmentCount > 0)

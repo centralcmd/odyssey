@@ -217,16 +217,16 @@ public class PhotoThumbnailSurfaceRenderTests
         var draft = new JournalDraftPhoto(NotReady.PhotoId, "draft.jpg", ThumbnailsReady: false);
 
         var cut = ctx.Render<JournalEntryFields>(p => p.Add(f => f.Draft, new JournalEntryDraft { Photos = [ready, draft] }));
-        cut.WaitForState(() => cut.FindAll(".jef-photo img").Count == 2);
+        cut.WaitForState(() => cut.FindAll(".odc-phototile-open img").Count == 2);
 
         Assert.Equal([Thumb(Ready.PhotoId, ThumbnailSize.Small), Original(NotReady.PhotoId)],
-            cut.FindAll(".jef-photo img").Select(i => i.GetAttribute("src")));
-        var removeLabel = cut.Find(".jef-photo-remove").GetAttribute("aria-label");
+            cut.FindAll(".odc-phototile-open img").Select(i => i.GetAttribute("src")));
+        var removeLabel = cut.Find(".odc-phototile-open").GetAttribute("aria-label");
 
-        cut.Find(".jef-photo img").TriggerEvent("onerror", EventArgs.Empty);
+        cut.Find(".odc-phototile-open img").TriggerEvent("onerror", EventArgs.Empty);
 
-        Assert.Equal(Original(Ready.PhotoId), cut.Find(".jef-photo img").GetAttribute("src"));
-        Assert.Equal(removeLabel, cut.Find(".jef-photo-remove").GetAttribute("aria-label"));
+        Assert.Equal(Original(Ready.PhotoId), cut.Find(".odc-phototile-open img").GetAttribute("src"));
+        Assert.Equal(removeLabel, cut.Find(".odc-phototile-open").GetAttribute("aria-label"));
         Assert.Empty(cut.FindAll("[role=alert]"));
     }
 

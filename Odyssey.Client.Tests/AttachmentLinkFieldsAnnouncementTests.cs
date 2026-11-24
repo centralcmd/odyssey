@@ -116,7 +116,9 @@ public class AttachmentLinkFieldsAnnouncementTests
     {
         await using var f = new Fixture(cap: 10, photos: 2);
 
-        f.Cut.Find("button[aria-label='Remove photo-1.jpg']").Click();
+        // The tile's ⋯ Remove item, invoked directly (the menu is a MudBlazor popover).
+        var tile = f.Cut.FindComponents<Odyssey.Client.Components.OdsPhotoTile>().Single(t => t.Instance.Name == "photo-1.jpg").Instance;
+        await f.Cut.InvokeAsync(() => tile.Actions!.Single(a => a.Danger).OnClick.InvokeAsync());
 
         Assert.Equal(["Removed photo-1.jpg."], f.Announced);
     }

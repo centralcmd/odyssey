@@ -6,11 +6,11 @@ using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
-using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Pages.Photos;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -84,57 +84,37 @@ public sealed class PhotoEditTagRefreshTests
             e => e.TextContent.Trim().EndsWith("Hiking") && e.QuerySelector(".material-icons")?.TextContent.Trim() == "hiking"));
     }
 
-    [Fact]
-    public async Task Journal_the_photo_rail_names_a_tag_created_in_the_edit_dialog()
-    {
-        await using var ctx = PageTestContext.Create(PermissionClaims.JournalRead, PermissionClaims.PhotosUpdate);
-        ctx.Services.AddSingleton(TagsGainingHiking().Object);
-
-        var cut = ctx.Render<JournalCard>();
-
-        // The rail loaded its names before the edit, so the new tag is not among them yet.
-        await cut.InvokeAsync(cut.Instance.EnsurePhotoRefsAsync);
-        Assert.Equal("—", cut.Instance.PhotoTagName(HikingId));
-
-        await cut.InvokeAsync(cut.Instance.OnPhotoSaved);
-
-        Assert.Equal("Hiking", cut.Instance.PhotoTagName(HikingId));
-        Assert.Equal("hiking", cut.Instance.PhotoTagIcon(HikingId));
-    }
-
     /// <summary>
-    /// Every host of the photo detail dialog hands it the tag icons as well as the names. The Photos and Albums
-    /// pages reach it through the shared PhotoViewer, whose lookups carry the icons; the render tests above cover
-    /// the viewer (through the library) and the journal.
+    /// The one host of the photo detail dialog is the shared PhotoViewer, and it hands the dialog the tag icons as
+    /// well as the names; its lookups carry the icons. Every surface that lists library photos opens them through
+    /// the viewer (design system 1795477868-c9a2), never a PhotoDetailDialog of its own — which is how the journal
+    /// once kept its own tag names and showed "—" for a tag created inline.
     /// </summary>
-    [Theory]
-    [InlineData("Pages/Photos/PhotoViewer.razor")]
-    [InlineData("Pages/Journal/JournalCard.razor")]
-    public void Every_photo_dialog_host_passes_the_tag_icons(string page)
+    [Fact]
+    public void The_viewer_is_the_only_photo_dialog_host_and_passes_the_tag_icons()
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, page));
+        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Photos/PhotoViewer.razor"));
         var start = source.IndexOf("<PhotoDetailDialog", StringComparison.Ordinal);
-        Assert.True(start >= 0, $"{page} no longer hosts PhotoDetailDialog; update this list.");
+        Assert.True(start >= 0, "PhotoViewer no longer hosts PhotoDetailDialog; update this test.");
         var tag = source[start..source.IndexOf("/>", start, StringComparison.Ordinal)];
         Assert.Contains("TagIcon=", tag);
+
+        var hosts = ClientSource.RazorFilesIn("Pages", "Components")
+            .Where(f => SourceLint.StripComments(File.ReadAllText(f)).Contains("<PhotoDetailDialog", StringComparison.Ordinal))
+            .Select(f => ClientSource.Relative(f).Replace(Path.DirectorySeparatorChar, '/'))
+            .ToList();
+        Assert.Equal(["Pages/Photos/PhotoViewer.razor"], hosts);
     }
 
-    [Fact]
-    public async Task Journal_a_failed_reload_after_a_save_keeps_the_names_already_loaded()
+    [Theory]
+    [InlineData("Pages/Journal/JournalCard.razor")]
+    [InlineData("Pages/Library/BookRecord.razor")]
+    [InlineData("Pages/Attachments/AttachmentLinkFields.razor")]
+    [InlineData("Pages/Photos/PhotosCard.razor")]
+    [InlineData("Pages/Photos/AlbumsPage.razor")]
+    public void Every_photo_surface_opens_through_the_shared_viewer(string page)
     {
-        await using var ctx = PageTestContext.Create(PermissionClaims.JournalRead, PermissionClaims.PhotosUpdate);
-        var tags = new Mock<IPhotoTagsApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
-        tags.SetupSequence(t => t.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<List<ExistingPhotoTag>>.Success(
-                [new ExistingPhotoTag { PhotoTagId = HikingId, Name = "Hiking" }], HttpStatusCode.OK))
-            .ReturnsAsync(ApiResult<List<ExistingPhotoTag>>.Failure(
-                HttpStatusCode.InternalServerError, new ApiProblem { Title = "Server error" }));
-        ctx.Services.AddSingleton(tags.Object);
-
-        var cut = ctx.Render<JournalCard>();
-        await cut.InvokeAsync(cut.Instance.EnsurePhotoRefsAsync);
-        await cut.InvokeAsync(cut.Instance.OnPhotoSaved);
-
-        Assert.Equal("Hiking", cut.Instance.PhotoTagName(HikingId));
+        var source = SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, page)));
+        Assert.Contains("<PhotoViewer", source, StringComparison.Ordinal);
     }
 }

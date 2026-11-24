@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Authorization;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Journal;
+using Odyssey.Client.Pages.Photos;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
@@ -96,7 +98,90 @@ public partial class AttachmentLinkFields
     private string FilesListId => $"jef-files-{_uid}";
     private string PhotosCapId => $"jef-photos-cap-{_uid}";
     private string FilesCapId => $"jef-files-cap-{_uid}";
-    private string PhotoRemoveId(Guid photoId) => $"jef-rm-{_uid}-{photoId}";
+    private string PhotoTileId(Guid photoId) => $"alf-ph-{_uid}-{photoId:N}";
+
+    // The shared viewer over the field's photos. Their library state is read on first Open (the draft carries only
+    // the label); one that cannot be read opens as a minimal summary.
+    private PhotoViewer? _viewer;
+    private readonly LinkedPhotoStates _photoStates = new();
+    private IReadOnlyList<PhotoSummary> _viewerPhotos = [];
+    private int? _viewerIndex;
+    private Guid? _lastShownPhoto;
+    private bool _viewerMounted;
+
+    // The tile list item the viewer hands focus back to: its first control is the tile's image button.
+    private string? ViewerReturnFocusId => _lastShownPhoto is { } id && Photos.Any(p => p.PhotoId == id) ? PhotoTileId(id) : null;
+
+    /// <summary>"Remove from event" → "Remove Beach from event": the item's accessible name carries the photo.</summary>
+    internal string RemoveItemLabel(string name) =>
+        RemoveLabel.StartsWith("Remove ", StringComparison.Ordinal) ? $"Remove {name} {RemoveLabel["Remove ".Length..]}" : $"{RemoveLabel}: {name}";
+
+    private IReadOnlyList<OdsMenuItem> PhotoMenu(JournalDraftPhoto photo, bool removable)
+    {
+        var items = new List<OdsMenuItem>
+        {
+            new() { Icon = "open_in_full", Label = "Open", AriaLabel = $"Open {photo.Name}", OnClick = EventCallback.Factory.Create(this, () => OpenPhotoAsync(photo)) },
+        };
+        if (removable)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "link_off",
+                Label = RemoveLabel,
+                AriaLabel = RemoveItemLabel(photo.Name),
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => RemovePhotoAsync(photo)),
+            });
+        }
+
+        return items;
+    }
+
+    private async Task OpenPhotoAsync(JournalDraftPhoto photo)
+    {
+        var ids = Photos.Select(p => p.PhotoId).ToList();
+        await _photoStates.EnsureAsync(PhotosApi, ids);
+        _viewerPhotos = _photoStates.Summaries(ids);
+        _viewerMounted = true;
+        var index = ids.IndexOf(photo.PhotoId);
+        _viewerIndex = index < 0 ? 0 : index;
+        _lastShownPhoto = ids.Count == 0 ? null : ids[_viewerIndex.Value];
+    }
+
+    private void OnViewerIndexChanged(int? index)
+    {
+        _viewerIndex = index;
+        if (index is { } i && i >= 0 && i < _viewerPhotos.Count)
+        {
+            _lastShownPhoto = _viewerPhotos[i].PhotoId;
+        }
+    }
+
+    // A photo deleted from the library leaves the field (its link is gone with it); an edit may have renamed it.
+    private async Task OnViewerChangedAsync(PhotoViewerChange change)
+    {
+        var index = Photos.FindIndex(p => p.PhotoId == change.PhotoId);
+        switch (change.Kind)
+        {
+            case PhotoViewerChangeKind.Delete when index >= 0:
+                _photoStates.Forget(change.PhotoId);
+                Photos.RemoveAt(index);
+                await ChangedAsync(AttachmentLinkKind.Photos);
+                break;
+            case PhotoViewerChangeKind.Edit or PhotoViewerChangeKind.Archive:
+                await _photoStates.RefreshAsync(PhotosApi, change.PhotoId);
+                if (change.Kind == PhotoViewerChangeKind.Edit && index >= 0 && _photoStates.Get(change.PhotoId) is { } fresh)
+                {
+                    Photos[index] = Photos[index] with { Name = PhotoMappers.Label(fresh.Title, null, Photos[index].Name) };
+                }
+
+                break;
+            case PhotoViewerChangeKind.Favourite:
+                _photoStates.ToggleFavourite(change.PhotoId);
+                break;
+        }
+    }
 
     // Focus return after a removal destroyed the control that had focus (WCAG 2.4.3): a CSS selector chain, resolved
     // before the removal while the removed item still has a neighbour — the next item, else the previous, else Add.
@@ -232,7 +317,8 @@ public partial class AttachmentLinkFields
             : index > 0 ? Photos[index - 1]
             : null;
         Photos.RemoveAt(index);
-        _focusAfter = [neighbour is null ? null : $"#{PhotoRemoveId(neighbour.PhotoId)}", $"#jef-add-photos-{_uid} button"];
+        // The ⋯ menu that removed it is gone: the next tile's image, else the previous one's, else Add photos.
+        _focusAfter = [neighbour is null ? null : $"#{PhotoTileId(neighbour.PhotoId)} .odc-phototile-open", $"#jef-add-photos-{_uid} button"];
         await ChangedAsync(AttachmentLinkKind.Photos);
         await AnnounceAsync(Voice == AttachmentLinkVoice.Journal ? $"{photo.Name} removed from the {Noun}." : $"Removed {photo.Name}.");
     }
