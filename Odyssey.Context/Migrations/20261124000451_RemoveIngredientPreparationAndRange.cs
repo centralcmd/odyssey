@@ -9,7 +9,9 @@ namespace Odyssey.Context.Migrations
     /// columns go, each line's preparation is appended to its name (", sifted") and a range is noted after it
     /// (" (4–6)", numbers without trailing zeros) while <c>Amount</c> keeps the lower value, so "garlic" 4–6 cloves,
     /// "unpeeled" becomes 4 cloves "garlic, unpeeled (4–6)". A result longer than the name column is cut to it, ending
-    /// with "…". <see cref="Down"/> restores the columns only, empty: the rewrite is undone only by restoring a backup.
+    /// with "…". The rewrite empties the two columns as it reads them and both are dropped in one statement, so a re-run
+    /// after a failure part-way does not fold a line twice. <see cref="Down"/> restores the columns only, empty: the rewrite
+    /// is undone only by restoring a backup.
     /// </summary>
     public partial class RemoveIngredientPreparationAndRange : Migration
     {
@@ -27,18 +29,18 @@ namespace Odyssey.Context.Migrations
                 + "CASE WHEN `AmountMax` IS NOT NULL AND `Amount` IS NOT NULL "
                 + "THEN CONCAT(' (', " + Plain("`Amount`") + ", '–', " + Plain("`AmountMax`") + ", ')') ELSE '' END)";
 
+            // MariaDB commits DDL implicitly, so this UPDATE and the drop below are not one transaction. The UPDATE
+            // therefore empties the two columns as it folds them (assignments run left to right, so `Name` reads the old
+            // values first): a re-run after a failure between the two statements finds nothing left to append.
             migrationBuilder.Sql(
                 "UPDATE `RecipeIngredients` SET `Name` = "
-                + $"CASE WHEN CHAR_LENGTH({rewritten}) > {NameLength} THEN CONCAT(LEFT({rewritten}, {NameLength - 1}), '…') ELSE {rewritten} END "
+                + $"CASE WHEN CHAR_LENGTH({rewritten}) > {NameLength} THEN CONCAT(LEFT({rewritten}, {NameLength - 1}), '…') ELSE {rewritten} END, "
+                + "`Preparation` = NULL, `AmountMax` = NULL "
                 + "WHERE `Preparation` REGEXP '[^[:space:]]' OR (`AmountMax` IS NOT NULL AND `Amount` IS NOT NULL);");
 
-            migrationBuilder.DropColumn(
-                name: "AmountMax",
-                table: "RecipeIngredients");
-
-            migrationBuilder.DropColumn(
-                name: "Preparation",
-                table: "RecipeIngredients");
+            // Both columns in one ALTER, so a failure cannot leave one dropped and the other in place (a re-run's UPDATE
+            // would then fail on the missing column).
+            migrationBuilder.Sql("ALTER TABLE `RecipeIngredients` DROP COLUMN `AmountMax`, DROP COLUMN `Preparation`;");
         }
 
         /// <summary>A <c>decimal(12,3)</c> as text without trailing zeros: 4.000 → "4", 0.500 → "0.5".</summary>

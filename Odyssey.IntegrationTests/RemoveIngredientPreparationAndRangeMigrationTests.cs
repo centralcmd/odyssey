@@ -3,6 +3,8 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Odyssey.Context;
 using Odyssey.Context.Migrations;
 using Odyssey.Dtos.Recipes;
@@ -88,6 +90,51 @@ public class RemoveIngredientPreparationAndRangeMigrationTests(MariaDbFixture fi
         {
             await DropAsync();
         }
+    }
+
+    [SkippableFact]
+    public async Task A_rerun_after_the_rewrite_does_not_fold_a_line_twice()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await fixture.CreateDatabaseAtMigrationAsync(Database, MigrationBaseline.Current.BaselineMigrationId);
+
+        try
+        {
+            await using var context = NewContext();
+            var recipeId = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+            await context.Database.ExecuteSqlAsync(
+                $"INSERT INTO `Recipes` (`RecipeId`, `Title`, `Servings`, `Version`, `CreatedAt`, `UpdatedAt`) VALUES ({recipeId}, {"Rerun"}, {4}, {1}, {now}, {now})");
+            var both = await InsertAsync(context, recipeId, "garlic", 4m, 6m, IngredientUnit.Clove, "unpeeled");
+
+            // MariaDB commits DDL implicitly: simulate a run that died after its UPDATE, before the columns were dropped
+            // and before the history row was written, by running the migration's first statement alone.
+            var update = Assert.IsType<SqlOperation>(UpOperations()[0]);
+            await context.Database.ExecuteSqlRawAsync(update.Sql);
+            Assert.False(await MigrationSeam.HasRunAsync(context, CoupledMigrationNames.RemoveIngredientPreparationAndRange));
+
+            await MigrationRunner.MigrateAsync(context, CancellationToken.None);
+
+            Assert.True(await MigrationSeam.HasRunAsync(context, CoupledMigrationNames.RemoveIngredientPreparationAndRange));
+            Assert.Equal(("garlic, unpeeled (4–6)", 4m), await LineAsync(context, both));
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
+    /// <summary>The migration's <c>Up</c> operations, in order, as MariaDB would receive them.</summary>
+    private static IReadOnlyList<MigrationOperation> UpOperations()
+    {
+        var builder = new MigrationBuilder("Pomelo.EntityFrameworkCore.MySql");
+        new UpProbe().Run(builder);
+        return builder.Operations;
+    }
+
+    private sealed class UpProbe : RemoveIngredientPreparationAndRange
+    {
+        public void Run(MigrationBuilder builder) => Up(builder);
     }
 
     private static async Task<Guid> InsertAsync(
