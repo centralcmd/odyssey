@@ -17,6 +17,11 @@
     could only have been built the nested way, so it was removed; a select-style
     control with its own trigger belongs on OdsPopupMenu instead.
 
+    Horizontal clamp (DS ActionMenu, 1795477868-c9a2): the menu hangs from the trigger's right edge, and
+    from its left edge when that would run it off the left of the window (a photo tile's ⋯). MudPopover's
+    flip overflow behaviour does exactly that and then clamps to the window gutter, so there is no code
+    for it here (PopoverHorizontalClampTests).
+
     An item marked Disabled is NOT rendered. An action a record cannot take is absent from its menu
     rather than dimmed with an explanation, and any divider or header the omission orphans is
     dropped with it, so a menu never opens onto a stray rule or a group label heading nothing.
