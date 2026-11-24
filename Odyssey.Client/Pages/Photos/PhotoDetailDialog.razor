@@ -4,7 +4,8 @@
     keyboard-operable prev/next on the left and a scrolling metadata rail on the right (caption, when,
     album(s), location + coordinates, tags, people, dimensions, provenance). The favourite toggle sits
     in the header beside close; Edit / Download / Archive / Delete are the footer actions. Full metadata
-    is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
+    is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate, and each move
+    is announced in a polite live region as "{title}, n of N".
 
     A page does not mount this directly any more: PhotoViewer (this folder) owns it, the Edit dialog and the
     writes, so every surface opens a photo the same way. A photo with no date or no size hides those rows.
@@ -18,6 +19,8 @@
           Title="@TitleFragment" Subtitle="@SubFragment"
           HeaderActions="@HeaderActionsFragment" Footer="@FooterFragment">
     <div class="odc-modal-body pl-ods2" tabindex="-1" @ref="_body" @onkeydown="OnKeyDown">
+        @* ← / → and Previous / Next swap the photo in place; say which one it is now (WCAG 4.1.3). *@
+        <OdsLiveAnnouncer @ref="_announcer" />
         <div class="pl-ods2-stage">
             @if (Current is { PhotoId: var pid })
             {

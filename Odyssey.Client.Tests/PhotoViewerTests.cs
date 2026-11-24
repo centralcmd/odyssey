@@ -100,6 +100,50 @@ public sealed class PhotoViewerTests
     }
 
     [Fact]
+    public async Task Each_move_is_announced_politely_with_the_title_and_position()
+    {
+        // WCAG 4.1.3 (PR #598 review): the dialog's name is read only on open, so a move says which photo is shown now.
+        var (ctx, _) = NewContext();
+        await using var _ctx = ctx;
+        var cut = Render(ctx);
+        cut.WaitForAssertion(() => Assert.Contains("1 of 2", cut.Find(".ods-modal-sub").TextContent));
+
+        var region = cut.Find(".pl-ods2 [role=status]");
+        Assert.Equal("polite", region.GetAttribute("aria-live"));
+
+        cut.Find(".pl-mnav.next").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Undated, 2 of 2", cut.Find(".pl-ods2 [role=status]").TextContent));
+
+        cut.Find(".pl-ods2").KeyDown("ArrowRight");
+        cut.WaitForAssertion(() => Assert.Equal("Summit, 1 of 2", cut.Find(".pl-ods2 [role=status]").TextContent));
+
+        cut.Find(".pl-mnav.prev").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Undated, 2 of 2", cut.Find(".pl-ods2 [role=status]").TextContent));
+
+        cut.Find(".pl-ods2").KeyDown("ArrowLeft");
+        cut.WaitForAssertion(() => Assert.Equal("Summit, 1 of 2", cut.Find(".pl-ods2 [role=status]").TextContent));
+    }
+
+    [Fact]
+    public async Task A_favourite_whose_photo_cannot_be_read_says_so_instead_of_failing_silently()
+    {
+        var (ctx, api) = NewContext(PermissionClaims.PhotosUpdate);
+        await using var _ctx = ctx;
+        var cut = Render(ctx);
+        cut.WaitForAssertion(() => Assert.Equal("false", cut.Find(".pl-headheart").GetAttribute("aria-pressed")));
+
+        // The viewer re-reads the photo before its full PUT; that read now fails.
+        api.Setup(p => p.GetAsync(A, It.IsAny<CancellationToken>())).ReturnsAsync((ExistingPhoto?)null);
+        cut.Find(".pl-headheart").Click();
+
+        var snackbar = ctx.Services.GetRequiredService<ISnackbar>();
+        cut.WaitForAssertion(() => Assert.Contains(snackbar.ShownSnackbars, t => t.Message == "Could not update favourite: the photo could not be loaded."));
+        api.Verify(p => p.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdatePhoto>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Empty(cut.Instance.Changes);
+        Assert.Equal("false", cut.Find(".pl-headheart").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public async Task A_photo_with_no_date_or_size_hides_those_rows()
     {
         var (ctx, _) = NewContext();

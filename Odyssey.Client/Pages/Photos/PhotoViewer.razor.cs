@@ -246,6 +246,8 @@ public partial class PhotoViewer
         var full = await PhotosApi.GetAsync(id);
         if (full is null)
         {
+            // The re-read failed (gone, no access, offline): say so the way a failed write does, never silently.
+            Snackbar.Add($"{failure}: the photo could not be loaded.", Severity.Error);
             return null;
         }
 

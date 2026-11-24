@@ -41,6 +41,7 @@ public partial class PhotoDetailDialog
     private Guid _loadedFor;
     private ElementReference _body;
     private bool _focused;
+    private OdsLiveAnnouncer? _announcer;
 
     private PhotoSummary? Current => Index >= 0 && Index < Photos.Count ? Photos[Index] : null;
 
@@ -98,7 +99,14 @@ public partial class PhotoDetailDialog
 
         var next = (Index + delta + Photos.Count) % Photos.Count;
         await IndexChanged.InvokeAsync(next);
+        if (_announcer is not null && next < Photos.Count)
+        {
+            _ = _announcer.Announce(MoveAnnouncement(next));
+        }
     }
+
+    /// <summary>What a move to <paramref name="index"/> says: "{title}, n of N".</summary>
+    internal string MoveAnnouncement(int index) => $"{Label(Photos[index])}, {index + 1} of {Photos.Count}";
 
     private async Task DownloadAsync()
     {
