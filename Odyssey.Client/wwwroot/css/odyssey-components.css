@@ -770,6 +770,70 @@
 .mud-dialog:has(.mud-dialog-content :is(.odc-field-req, .mud-input-required)) .mud-dialog-actions.ods-modal-foot > .ods-modal-legend { display: inline-flex; }
 .ods-modal-legend .odc-field-req { margin-left: 0; }
 
+/* ---------- OdsModal wizard + OdsWizardSteps (DS Modal `steps` / WizardSteps, 1795477868-c9a2) ----------
+   A wizard (OdsModal Steps) is wider than the standard dialog and roomier: the step path needs width, and a
+   step holds rows rather than a few fields. The path is a full-width row in the header band under the title;
+   the footer carries Back and an error summary as well as Cancel and the primary, so it wraps. Selectors
+   keep the `.mud-dialog` prefix so they outrank MudBlazor's own dialog rules (see the Modal block above). */
+.mud-dialog.ods-modal.wizard { max-width: 760px; }
+.mud-dialog.ods-modal.wizard .mud-dialog-title.ods-modal-head { padding: var(--space-5) var(--space-6); }
+.mud-dialog.ods-modal.wizard .mud-dialog-content.ods-modal-content { padding: var(--space-6); }
+.mud-dialog.ods-modal.wizard .mud-dialog-actions.ods-modal-foot { padding: var(--space-4) var(--space-6); flex-wrap: wrap; row-gap: var(--space-2); }
+@media (max-width: 599px) {
+  .mud-dialog.ods-modal.wizard .mud-dialog-title.ods-modal-head,
+  .mud-dialog.ods-modal.wizard .mud-dialog-actions.ods-modal-foot { padding-left: var(--space-4); padding-right: var(--space-4); }
+  .mud-dialog.ods-modal.wizard .mud-dialog-content.ods-modal-content { padding: var(--space-4); }
+}
+.mud-dialog .mud-dialog-title.ods-modal-head.has-steps { flex-wrap: wrap; row-gap: var(--space-5); }
+.ods-modal-steps { flex: 1 0 100%; min-width: 0; padding: var(--space-1) 0 0; }
+.odc-wiz { min-width: 0; }
+.odc-wiz-list { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; min-width: 0; }
+.odc-wiz-step { display: flex; align-items: flex-start; flex: 1 1 0; min-width: 0; }
+.odc-wiz-step:last-child { flex: 0 0 auto; }
+.odc-wiz-btn {
+  appearance: none; background: transparent; border: 0; font: inherit; color: var(--mud-palette-text-primary);
+  display: flex; align-items: flex-start; gap: var(--space-2); flex: 0 1 auto; min-width: 0;
+  padding: var(--space-1) var(--space-2); margin: calc(var(--space-1) * -1) calc(var(--space-2) * -1);
+  border-radius: var(--radius-md); text-align: left; cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.odc-wiz-btn.static { cursor: default; }
+.odc-wiz-btn:not(.static):hover { background: var(--mud-palette-action-default-hover); }
+.odc-wiz-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.odc-wiz-disc {
+  flex: none; box-sizing: border-box; width: 28px; height: 28px; border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: var(--border-strong) solid var(--control-border); color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-surface);
+  font: var(--fw-medium) var(--fs-label)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  transition: background var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard);
+}
+.odc-wiz-disc .material-icons { font-size: var(--icon-md); }
+.odc-wiz-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 5px; }
+.odc-wiz-label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.odc-wiz-meta { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.odc-wiz-line {
+  flex: 1 1 auto; min-width: var(--space-4); height: 2px; border-radius: 1px;
+  margin: 13px var(--space-3) 0; background: var(--mud-palette-lines-default);
+  transition: background var(--duration-base) var(--ease-standard);
+}
+/* Travelled: the line out of every step before the current one is filled. */
+.odc-wiz-step.is-travelled .odc-wiz-line { background: var(--mud-palette-primary); }
+/* Current: a filled disc and a primary-ink label. */
+.odc-wiz-step.is-current .odc-wiz-disc { background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-wiz-step.is-current .odc-wiz-label { color: var(--mud-palette-text-primary); }
+/* Done: a soft brand disc with a check. */
+.odc-wiz-step.is-done .odc-wiz-disc { background: var(--brand-soft); border-color: var(--mud-palette-primary); color: var(--brand-text); }
+.odc-wiz-step.is-done .odc-wiz-label { color: var(--mud-palette-text-primary); }
+/* Has errors: error ring, ! glyph, the status line says so. Wins over current. */
+.odc-wiz-step.is-error .odc-wiz-disc { background: var(--finance-expense-soft); border-color: var(--mud-palette-error); color: var(--finance-expense); }
+.odc-wiz-step.is-error .odc-wiz-meta { color: var(--finance-expense); }
+.odc-wiz-step.is-error.is-current .odc-wiz-label { color: var(--mud-palette-text-primary); }
+@media (max-width: 599px) {
+  .odc-wiz-btn { flex-direction: column; align-items: center; text-align: center; gap: var(--space-1); }
+  .odc-wiz-text { align-items: center; padding-top: 0; max-width: 96px; }
+  .odc-wiz-meta { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .odc-wiz-line { margin-left: var(--space-1); margin-right: var(--space-1); min-width: var(--space-2); }
 
 /* ---------- Form fields (DS components/Field — label ABOVE the box) ----------
    MudBlazor outlined fields render a *floating* label notched into the top border;

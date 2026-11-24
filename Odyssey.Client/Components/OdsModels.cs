@@ -704,3 +704,19 @@ public static class OdsRecordMeta
 /// image's set the carousel's frame ratio.
 /// </summary>
 public sealed record OdsCarouselImage(string? Id, string? Src, string? Alt = null, int? Width = null, int? Height = null);
+
+/// <summary>A step's state in <see cref="OdsWizardSteps"/>: plain (upcoming or current), done (✓ disc) or has
+/// errors (! disc, the status line reads the error text) — Odyssey Design System · WizardSteps <c>state</c>.</summary>
+public enum OdsWizardStepState
+{
+    None,
+    Done,
+    Error,
+}
+
+/// <summary>
+/// One step of a wizard dialog's path (Odyssey Design System · WizardSteps, version 1795477868-c9a2).
+/// <paramref name="Label"/> names what the step holds ("Details", "Ingredients"); <paramref name="Meta"/> is an
+/// optional status line, empty by default — use it only for what needs acting on ("84 of 100" near a cap).
+/// </summary>
+public sealed record OdsWizardStep(string Label, string? Meta = null, OdsWizardStepState State = OdsWizardStepState.None, string? Key = null);
