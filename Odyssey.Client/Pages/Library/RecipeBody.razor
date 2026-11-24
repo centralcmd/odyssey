@@ -184,8 +184,8 @@
 }
 
 @code {
-    // "500 g wheat flour, sifted": the unit abbreviation is aria-hidden beside an sr-only spoken name, so a screen
-    // reader hears "500 grams wheat flour, sifted".
+    // "500 g wheat flour": the unit abbreviation is aria-hidden beside an sr-only spoken name, so a screen
+    // reader hears "500 grams wheat flour".
     private static RenderFragment IngredientLabel(RecipeIngredientText t) =>
         @<span class="rc-ing-text">
             @if (t.Amount is not null)
@@ -198,10 +198,7 @@
                         }
                     }</span>@(" ")
             }
-            <span class="rc-ing-name">@t.Name</span>@if (t.Preparation is not null)
-            {
-                <span class="rc-ing-prep">, @t.Preparation</span>
-            }@if (t.ToTaste)
+            <span class="rc-ing-name">@t.Name</span>@if (t.ToTaste)
             {
                 <span class="rc-ing-prep">, to taste</span>
             }@if (t.Optional)

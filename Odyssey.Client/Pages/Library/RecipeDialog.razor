@@ -93,11 +93,6 @@
                                             Min="AmountMin" Max="AmountMax" Step="0.001" Error="@Err($"{key}.amount")" />
                         </div>
                         <div class="rc-c2">
-                            <OdsNumberField Id="@F($"{key}.amountmax")" Label="To" Value="row.AmountMax"
-                                            ValueChanged="@(v => Set(() => row.AmountMax = v, $"{key}.amountmax"))"
-                                            Min="AmountMin" Max="AmountMax" Step="0.001" Error="@Err($"{key}.amountmax")" />
-                        </div>
-                        <div class="rc-c2">
                             <OdsSelect id="@F($"{key}.unit")" Label="Unit" Value="@row.Unit.ToString()" Options="UnitOptions"
                                        ValueChanged="@(v => Set(() => row.Unit = Enum.TryParse<IngredientUnit>(v, out var u) ? u : IngredientUnit.None, $"{key}.unit"))"
                                        Error="@Err($"{key}.unit")" />
@@ -106,11 +101,6 @@
                             <OdsTextInputField Id="@F($"{key}.name")" Label="Ingredient" Required="true" Value="@row.Name"
                                                ValueChanged="@(v => Set(() => row.Name = v ?? string.Empty, $"{key}.name"))"
                                                MaxLength="RecipeLimits.MaxIngredientNameLength" Placeholder="e.g. wheat flour" Error="@Err($"{key}.name")" />
-                        </div>
-                        <div class="rc-c3">
-                            <OdsTextInputField Id="@F($"{key}.preparation")" Label="Preparation" Value="@row.Preparation"
-                                               ValueChanged="@(v => Set(() => row.Preparation = v ?? string.Empty, $"{key}.preparation"))"
-                                               MaxLength="RecipeLimits.MaxPreparationLength" Placeholder="e.g. sifted" Error="@Err($"{key}.preparation")" />
                         </div>
                         <div class="rc-c3">
                             <OdsTextInputField Id="@F($"{key}.section")" Label="Section" Value="@row.Section"

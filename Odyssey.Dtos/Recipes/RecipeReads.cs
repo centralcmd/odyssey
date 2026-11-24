@@ -78,13 +78,9 @@ public sealed record RecipeIngredientDto
     /// <summary>Scaled when the read was scaled and the unit is scalable.</summary>
     public decimal? Amount { get; set; }
 
-    public decimal? AmountMax { get; set; }
-
     public required IngredientUnit Unit { get; set; }
 
     public required string Name { get; set; }
-
-    public string? Preparation { get; set; }
 
     public bool Optional { get; set; }
 }

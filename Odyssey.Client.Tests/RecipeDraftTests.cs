@@ -107,13 +107,12 @@ public class RecipeDraftTests
         draft.Servings = RecipeLimits.MaxServings + 1;
         draft.PrepMinutes = RecipeLimits.MaxMinutes + 1;
         draft.Ingredients[0].Amount = 3;
-        draft.Ingredients[0].AmountMax = 2;
         draft.Ingredients.Add(new RecipeIngredientDraft { Name = "salt", Unit = IngredientUnit.ToTaste, Amount = 1 });
 
         var keys = draft.Validate().Select(e => e.Key).ToList();
 
         Assert.Equal(
-            ["title", "servings", "prepminutes", "ingredients[0].amountmax", "ingredients[0].name", "ingredients[1].amount", "steps[0].text"],
+            ["title", "servings", "prepminutes", "ingredients[0].name", "ingredients[1].amount", "steps[0].text"],
             keys);
         Assert.Contains(draft.Validate(), e => e.Value == $"Enter a number from 1 to {RecipeLimits.MaxServings}.");
     }

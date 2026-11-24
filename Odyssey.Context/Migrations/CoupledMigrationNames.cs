@@ -21,11 +21,16 @@ namespace Odyssey.Context.Migrations;
 public static class CoupledMigrationNames
 {
     /// <summary>
-    /// Empty since the November 2026 rebaseline: every coupling named a migration it folded away, and the code behind
-    /// each (the location-conversion staging, the non-positive-rate refusal, the account-type retirement report) went
-    /// with it.
+    /// The data migration that folds an ingredient's preparation and range into its name and drops both columns
+    /// (issue #595). Named by its seam test in <c>Odyssey.IntegrationTests</c>.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [];
+    public const string RemoveIngredientPreparationAndRange = nameof(RemoveIngredientPreparationAndRange);
+
+    /// <summary>
+    /// Every coupling above. The November 2026 rebaseline emptied the list: every coupling named a migration it folded
+    /// away, and the code behind each went with it.
+    /// </summary>
+    public static IReadOnlyList<string> All { get; } = [RemoveIngredientPreparationAndRange];
 
     /// <summary>Whether <paramref name="migrationId"/> is the migration named <paramref name="name"/>.</summary>
     public static bool Matches(string migrationId, string name) =>

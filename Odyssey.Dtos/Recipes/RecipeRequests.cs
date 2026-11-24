@@ -93,9 +93,6 @@ public sealed record RecipeIngredientRequest
     [Range(typeof(decimal), RecipeLimits.MinAmount, RecipeLimits.MaxAmount, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal? Amount { get; set; }
 
-    [Range(typeof(decimal), RecipeLimits.MinAmount, RecipeLimits.MaxAmount, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
-    public decimal? AmountMax { get; set; }
-
     /// <summary>Nullable so an omitted unit is a <c>400</c>, never a silent <see cref="IngredientUnit.None"/>.</summary>
     [Required]
     [EnumDataType(typeof(IngredientUnit))]
@@ -104,9 +101,6 @@ public sealed record RecipeIngredientRequest
     [Required]
     [StringLength(RecipeLimits.MaxIngredientNameLength)]
     public string Name { get; set; } = string.Empty;
-
-    [StringLength(RecipeLimits.MaxPreparationLength)]
-    public string? Preparation { get; set; }
 
     public bool Optional { get; set; }
 }

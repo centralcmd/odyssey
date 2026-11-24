@@ -102,8 +102,15 @@ public class MigrationBaselineGuardIntegrationTests(MariaDbFixture fixture)
             await ExecuteAsync(string.Concat(retired.Select(id =>
                 $"INSERT INTO `__EFMigrationsHistory` (MigrationId, ProductVersion) VALUES ('{id}', '9.0.0'); ")));
 
+            // The retired rows plus every migration this build ships: the baseline and any added after it.
+            int shipped;
+            await using (var context = Context())
+            {
+                shipped = context.Database.GetMigrations().Count();
+            }
+
             var before = await HistoryAsync();
-            Assert.Equal(95, before.Count);
+            Assert.Equal(retired.Count + shipped, before.Count);
             var tablesBefore = await TableCountAsync();
 
             await using (var context = Context())

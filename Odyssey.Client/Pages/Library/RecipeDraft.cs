@@ -16,13 +16,9 @@ public sealed class RecipeIngredientDraft : IRecipeRowDraft
 
     public decimal? Amount { get; set; }
 
-    public decimal? AmountMax { get; set; }
-
     public IngredientUnit Unit { get; set; } = IngredientUnit.None;
 
     public string Name { get; set; } = string.Empty;
-
-    public string Preparation { get; set; } = string.Empty;
 
     public string Section { get; set; } = string.Empty;
 
@@ -85,10 +81,8 @@ public sealed class RecipeDraft
         Ingredients = [.. r.Ingredients.OrderBy(i => i.Position).Select(i => new RecipeIngredientDraft
         {
             Amount = i.Amount,
-            AmountMax = i.AmountMax,
             Unit = i.Unit,
             Name = i.Name,
-            Preparation = i.Preparation ?? string.Empty,
             Section = i.Section ?? string.Empty,
             Optional = i.Optional,
         })],
@@ -99,7 +93,7 @@ public sealed class RecipeDraft
     /// <summary>A comparable snapshot of every field, for the discard-changes check.</summary>
     public string Fingerprint() => string.Join('\u001f',
         new[] { Title, Description, Servings?.ToString(), ServingsLabel, PrepMinutes?.ToString(), CookMinutes?.ToString(), Source, Notes }
-            .Concat(Ingredients.Select(i => $"{i.Amount}|{i.AmountMax}|{i.Unit}|{i.Name}|{i.Preparation}|{i.Section}|{i.Optional}"))
+            .Concat(Ingredients.Select(i => $"{i.Amount}|{i.Unit}|{i.Name}|{i.Section}|{i.Optional}"))
             .Append("§")
             .Concat(Steps.Select(s => $"{s.Section}|{s.Text}"))
             .Append("§")
@@ -111,7 +105,7 @@ public sealed class RecipeDraft
 
     /// <summary>
     /// The rules the client mirrors from the annotations, in field order: a title, servings in range, minutes in range,
-    /// a named ingredient, "To" larger than the amount, no amount on "To taste", text on every step.
+    /// a named ingredient, no amount on "To taste", text on every step.
     /// </summary>
     public IReadOnlyList<KeyValuePair<string, string>> Validate()
     {
@@ -142,11 +136,6 @@ public sealed class RecipeDraft
             if (row.Unit == IngredientUnit.ToTaste && row.Amount is not null)
             {
                 Add($"ingredients[{i}].amount", "Leave the amount empty for “To taste”.");
-            }
-
-            if (row.AmountMax is { } max && (row.Amount is not { } min || max <= min))
-            {
-                Add($"ingredients[{i}].amountmax", "Make “To” larger than the amount.");
             }
 
             if (string.IsNullOrWhiteSpace(row.Name))
@@ -204,10 +193,8 @@ public sealed class RecipeDraft
         r.Ingredients = [.. Ingredients.Select(i => new RecipeIngredientRequest
         {
             Amount = i.Amount,
-            AmountMax = i.AmountMax,
             Unit = i.Unit,
             Name = i.Name.Trim(),
-            Preparation = Clean(i.Preparation),
             Section = Clean(i.Section),
             Optional = i.Optional,
         })];
@@ -242,10 +229,8 @@ public static class RecipeWrites
         {
             Section = i.Section,
             Amount = i.Amount,
-            AmountMax = i.AmountMax,
             Unit = i.Unit,
             Name = i.Name,
-            Preparation = i.Preparation,
             Optional = i.Optional,
         })],
         Steps = [.. read.Steps.OrderBy(s => s.Position).Select(s => new RecipeStepRequest { Section = s.Section, Text = s.Text })],

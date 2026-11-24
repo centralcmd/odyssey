@@ -12,9 +12,10 @@ namespace Odyssey.TestData.Generators;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The recipes exercise the read surfaces: sections on ingredients and steps, a range ("4–6 cloves"), an unquantified
-/// "to taste" line, Pinch (never scaled), an optional line, a servings label ("Makes 12 pieces"), a web-address source,
-/// a recipe with no times, an edited recipe and an archived one.
+/// The recipes exercise the read surfaces: sections on ingredients and steps, an unquantified "to taste" line, Pinch
+/// (never scaled), an optional line, a servings label ("Makes 12 pieces"), a web-address source, a recipe with no
+/// times, an edited recipe and an archived one. Ingredient names are plain ("wheat flour"); how a thing is prepared
+/// is said in the method step that does it (issue #595).
 /// </para>
 /// <para>
 /// Like the journal, the recipe rows keep only photo and file <em>references</em>, so this generator also provisions
@@ -48,9 +49,7 @@ public static class RecipeGenerator
         new("Christmas", null, "celebration", Swatch("coral"), true),
     ];
 
-    private sealed record Line(
-        decimal? Amount, IngredientUnit Unit, string Name, string? Preparation = null, string? Section = null,
-        decimal? AmountMax = null, bool Optional = false);
+    private sealed record Line(decimal? Amount, IngredientUnit Unit, string Name, string? Section = null, bool Optional = false);
 
     private sealed record Step(string Text, string? Section = null);
 
@@ -142,10 +141,8 @@ public static class RecipeGenerator
                     Position = i,
                     Section = line.Section,
                     Amount = line.Amount,
-                    AmountMax = line.AmountMax,
                     Unit = line.Unit,
                     Name = line.Name,
-                    Preparation = line.Preparation,
                     Optional = line.Optional,
                 });
             }
@@ -235,7 +232,7 @@ public static class RecipeGenerator
             "Proving time is not in the totals: allow about 2 h at room temperature.\nThe dough is ready when a floured finger leaves a dent that springs back slowly.",
             ["Baking", "Vegetarian"],
             [
-                new(500m, IngredientUnit.Gram, "wheat flour", "sifted"),
+                new(500m, IngredientUnit.Gram, "wheat flour"),
                 new(3.5m, IngredientUnit.Decilitre, "lukewarm water"),
                 new(12m, IngredientUnit.Gram, "fresh yeast"),
                 new(1.5m, IngredientUnit.Teaspoon, "salt"),
@@ -244,7 +241,7 @@ public static class RecipeGenerator
             ],
             [
                 new("Crumble the yeast into the lukewarm water and stir until it dissolves."),
-                new("Add the oil, salt and honey, then the flour a little at a time. Knead for 10 minutes until smooth and elastic."),
+                new("Add the oil, salt and honey, then sift in the flour a little at a time. Knead for 10 minutes until smooth and elastic."),
                 new("Cover and leave to rise until doubled, about 1 hour."),
                 new("Knock back, shape into a loaf and place in a greased 1.5 litre tin. Rise again for 45 minutes."),
                 new("Bake at 220 °C for 10 minutes, then lower to 200 °C for 30 minutes. Cool on a rack before slicing."),
@@ -262,9 +259,9 @@ public static class RecipeGenerator
             "Freezes well for 3 months. Leave out the cream if freezing; add it when reheating.",
             ["Vegetarian", "Soup", "Family"],
             [
-                new(1.2m, IngredientUnit.Kilogram, "ripe tomatoes", "halved", "Roasting tray"),
-                new(1m, IngredientUnit.None, "red onion", "cut in wedges", "Roasting tray"),
-                new(4m, IngredientUnit.Clove, "garlic", "unpeeled", "Roasting tray", AmountMax: 6m),
+                new(1.2m, IngredientUnit.Kilogram, "ripe tomatoes", "Roasting tray"),
+                new(1m, IngredientUnit.None, "red onion", "Roasting tray"),
+                new(4m, IngredientUnit.Clove, "garlic", "Roasting tray"),
                 new(3m, IngredientUnit.Tablespoon, "olive oil", Section: "Roasting tray"),
                 new(7.5m, IngredientUnit.Decilitre, "vegetable stock", Section: "Pot"),
                 new(1m, IngredientUnit.Bunch, "basil", Section: "Pot"),
@@ -274,7 +271,7 @@ public static class RecipeGenerator
             ],
             [
                 new("Heat the oven to 200 °C.", "Roasting tray"),
-                new("Spread the tomatoes, onion and garlic on a tray, drizzle with oil and season.", "Roasting tray"),
+                new("Halve the tomatoes and cut the onion into wedges. Spread them on a tray with the unpeeled garlic cloves, drizzle with oil and season.", "Roasting tray"),
                 new("Roast for 40 minutes until the tomatoes collapse and catch at the edges.", "Roasting tray"),
                 new("Squeeze the garlic from its skins into a pot. Add the roasted vegetables and the stock and simmer for 10 minutes.", "Pot"),
                 new("Add the basil and blend until smooth. Stir in the cream and the sugar.", "Pot"),
@@ -290,21 +287,21 @@ public static class RecipeGenerator
             [
                 new(5m, IngredientUnit.Decilitre, "milk", Section: "Dough"),
                 new(50m, IngredientUnit.Gram, "fresh yeast", Section: "Dough"),
-                new(150m, IngredientUnit.Gram, "butter", "melted", "Dough"),
+                new(150m, IngredientUnit.Gram, "butter", "Dough"),
                 new(1m, IngredientUnit.Decilitre, "sugar", Section: "Dough"),
                 new(2m, IngredientUnit.Teaspoon, "ground cardamom", Section: "Dough"),
                 new(850m, IngredientUnit.Gram, "wheat flour", Section: "Dough"),
-                new(100m, IngredientUnit.Gram, "butter", "soft", "Filling"),
+                new(100m, IngredientUnit.Gram, "butter", "Filling"),
                 new(0.5m, IngredientUnit.Decilitre, "sugar", Section: "Filling"),
                 new(1m, IngredientUnit.Tablespoon, "ground cardamom", Section: "Filling"),
-                new(1m, IngredientUnit.None, "egg", "beaten, to brush", "Filling"),
+                new(1m, IngredientUnit.None, "egg", "Filling"),
             ],
             [
                 new("Warm the milk to 37 °C and dissolve the yeast in it.", "Dough"),
-                new("Mix in the butter, sugar, cardamom and most of the flour. Knead for 8 minutes and rise for 30 minutes.", "Dough"),
-                new("Beat the butter, sugar and cardamom together.", "Filling"),
+                new("Mix in the melted butter, sugar, cardamom and most of the flour. Knead for 8 minutes and rise for 30 minutes.", "Dough"),
+                new("Beat the soft butter, sugar and cardamom together.", "Filling"),
                 new("Roll the dough out, spread with the filling, fold in three and cut into 12 strips. Twist each strip into a knot.", "Shaping and baking"),
-                new("Rise for 30 minutes, brush with egg and bake at 225 °C for 10–12 minutes.", "Shaping and baking"),
+                new("Rise for 30 minutes, brush with beaten egg and bake at 225 °C for 10–12 minutes.", "Shaping and baking"),
             ],
             0, [], "User", null, 20, false),
         new(
@@ -313,16 +310,16 @@ public static class RecipeGenerator
             ["Weeknight", "Vegetarian"],
             [
                 new(200m, IngredientUnit.Gram, "spaghetti"),
-                new(3m, IngredientUnit.Clove, "garlic", "thinly sliced"),
+                new(3m, IngredientUnit.Clove, "garlic"),
                 new(4m, IngredientUnit.Tablespoon, "olive oil"),
                 new(1m, IngredientUnit.Pinch, "chilli flakes"),
-                new(1m, IngredientUnit.Bunch, "parsley", "chopped"),
+                new(1m, IngredientUnit.Bunch, "parsley"),
                 new(null, IngredientUnit.ToTaste, "parmesan", Optional: true),
             ],
             [
                 new("Cook the spaghetti in well-salted water."),
-                new("Meanwhile, warm the oil and garlic gently until the garlic turns pale gold. Add the chilli."),
-                new("Toss the drained pasta in the pan with a splash of the cooking water and the parsley."),
+                new("Meanwhile, slice the garlic thinly and warm it gently in the oil until pale gold. Add the chilli."),
+                new("Toss the drained pasta in the pan with a splash of the cooking water and the chopped parsley."),
             ],
             0, [], "Admin", "Owner", 200, false),
         new(
@@ -330,14 +327,14 @@ public static class RecipeGenerator
             6, null, null, null, null, "Better on day two.",
             ["Family"],
             [
-                new(1.5m, IngredientUnit.Kilogram, "lamb shoulder on the bone", "in pieces"),
-                new(1.5m, IngredientUnit.Kilogram, "white cabbage", "in wedges"),
+                new(1.5m, IngredientUnit.Kilogram, "lamb shoulder on the bone"),
+                new(1.5m, IngredientUnit.Kilogram, "white cabbage"),
                 new(1m, IngredientUnit.Tablespoon, "whole black peppercorns"),
                 new(2m, IngredientUnit.Teaspoon, "salt"),
                 new(3m, IngredientUnit.Decilitre, "water"),
             ],
             [
-                new("Layer the lamb and cabbage in a heavy pot, sprinkling salt and peppercorns between the layers."),
+                new("Cut the lamb into pieces and the cabbage into wedges. Layer them in a heavy pot, sprinkling salt and peppercorns between the layers."),
                 new("Pour in the water, bring to the boil, then simmer covered for 2½ hours until the meat falls from the bone."),
             ],
             0, [], "Owner", null, 400, true),
