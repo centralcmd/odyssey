@@ -4,8 +4,9 @@
 //
 // • Pointer drag: a press on a row's handle captures the pointer, tracks which gap the pointer is over (the
 //   slot before row i, or after the last row) from the rows' own boxes, scrolls the nearest scrolling ancestor
-//   when the pointer is within 48px of its edge, and reports the slot to .NET as it changes (DragOver) and
-//   once on release (DragEnd). Nothing in the list moves while dragging.
+//   while the pointer is within 48px of its edge — on every animation frame, so holding the pointer still at
+//   the edge keeps scrolling — and reports the slot to .NET as it changes (DragOver) and once on release
+//   (DragEnd). Nothing in the list moves while dragging.
 // • Keys: Space / Enter on a handle never activate it as a button, and ↑ / ↓ on a LIFTED handle never scroll
 //   the page (Blazor's preventDefault cannot depend on which key was pressed). Escape on a lifted handle is
 //   stopped HERE, before it bubbles to the dialog's key interceptor, so it cancels the move and does not also
@@ -47,6 +48,8 @@ export function attach(list, dotNet) {
         return null;
     }
 
+    let activeDrag = null;
+
     const onKeyDown = (e) => {
         const handle = handleOf(e.target);
         if (!handle || !list.contains(handle)) {
@@ -78,29 +81,61 @@ export function attach(list, dotNet) {
         try { handle.setPointerCapture(e.pointerId); } catch { /* not capturable; moves still arrive */ }
         const sc = scroller(list);
         let over = from;
+        let y = e.clientY;
+        let frame = 0;
         dotNet.invokeMethodAsync('DragOver', from, over).catch(() => { });
 
-        const onMove = (ev) => {
-            const next = slotAt(list, ev.clientY);
+        const track = () => {
+            const next = slotAt(list, y);
             if (next !== over) {
                 over = next;
                 dotNet.invokeMethodAsync('DragOver', from, over).catch(() => { });
             }
-            if (sc) {
-                const r = sc.getBoundingClientRect();
-                if (ev.clientY < r.top + EDGE) {
-                    sc.scrollTop -= STEP;
-                } else if (ev.clientY > r.bottom - EDGE) {
-                    sc.scrollTop += STEP;
-                }
+        };
+        // Runs while the pointer sits in an edge band: scroll one step, re-read the slot (the rows moved under the
+        // pointer), and go again next frame. It stops itself once the pointer leaves the band or the drag ends.
+        const autoScroll = () => {
+            frame = 0;
+            if (!sc) {
+                return;
+            }
+            const r = sc.getBoundingClientRect();
+            const before = sc.scrollTop;
+            if (y < r.top + EDGE) {
+                sc.scrollTop -= STEP;
+            } else if (y > r.bottom - EDGE) {
+                sc.scrollTop += STEP;
+            } else {
+                return;
+            }
+            if (sc.scrollTop !== before) {
+                track();
+                frame = requestAnimationFrame(autoScroll);
             }
         };
-        const onUp = () => {
+        const onMove = (ev) => {
+            y = ev.clientY;
+            track();
+            if (!frame) {
+                autoScroll();
+            }
+        };
+        const stop = () => {
+            if (frame) {
+                cancelAnimationFrame(frame);
+                frame = 0;
+            }
             handle.removeEventListener('pointermove', onMove);
             handle.removeEventListener('pointerup', onUp);
             handle.removeEventListener('pointercancel', onUp);
+            activeDrag = null;
+        };
+        const onUp = () => {
+            stop();
             dotNet.invokeMethodAsync('DragEnd', from, over).catch(() => { });
         };
+        // Detaching mid-drag (the dialog closed) stops the loop and the listeners without reporting a drop.
+        activeDrag = stop;
         handle.addEventListener('pointermove', onMove);
         handle.addEventListener('pointerup', onUp);
         handle.addEventListener('pointercancel', onUp);
@@ -110,6 +145,9 @@ export function attach(list, dotNet) {
     list.addEventListener('pointerdown', onPointerDown);
     return {
         dispose: () => {
+            if (activeDrag) {
+                activeDrag();
+            }
             list.removeEventListener('keydown', onKeyDown);
             list.removeEventListener('pointerdown', onPointerDown);
         },
@@ -119,12 +157,5 @@ export function attach(list, dotNet) {
 export function detach(handle) {
     if (handle && typeof handle.dispose === 'function') {
         handle.dispose();
-    }
-}
-
-export function focusHandle(id) {
-    const el = document.getElementById(id);
-    if (el && typeof el.focus === 'function') {
-        el.focus();
     }
 }

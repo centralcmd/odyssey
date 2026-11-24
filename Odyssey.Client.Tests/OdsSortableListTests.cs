@@ -235,6 +235,76 @@ public class OdsSortableListTests
         Assert.Contains("invokeMethodAsync('DragEnd'", js);
     }
 
+    [Fact]
+    public void The_module_keeps_scrolling_while_the_pointer_is_held_still_at_an_edge()
+    {
+        var js = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot/js/sortable-list.js"));
+
+        // Auto-scroll is an animation-frame loop, not a pointermove side effect, and it is cancelled on release.
+        Assert.Contains("frame = requestAnimationFrame(autoScroll);", js);
+        Assert.Contains("cancelAnimationFrame(frame);", js);
+        // The unused focus export is gone; .NET focuses a handle through the global odsFocusById.
+        Assert.DoesNotContain("focusHandle", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Tab_drops_a_lifted_row_and_says_where()
+    {
+        await using var ctx = NewContext();
+        var cut = Render(ctx);
+
+        Handle(cut, 0).KeyDown(" ");
+        Handle(cut, 0).KeyDown("ArrowDown");
+        Handle(cut, 1).KeyDown("Tab");
+
+        Assert.Equal(["flour", "salt", "water"], cut.Instance.Items);
+        Assert.Equal("false", Handle(cut, 1).GetAttribute("aria-pressed"));
+        Assert.Equal("Dropped at position 2 of 3.", List(cut).Instance.Announcement);
+        Assert.Contains("is-settled", cut.FindAll("fieldset")[1].ClassList);
+    }
+
+    [Fact]
+    public async Task A_menu_move_announces_the_new_position_in_the_same_live_region()
+    {
+        await using var ctx = NewContext();
+        var cut = Render(ctx);
+
+        var menus = cut.FindComponents<OdsMenu>();
+        await cut.InvokeAsync(() => menus[0].Instance.Items.Single(m => m.Label == "Move down").OnClick.InvokeAsync());
+        Assert.Equal(["flour", "salt", "water"], cut.Instance.Items);
+        Assert.Equal("Ingredient 1 moved to position 2 of 3.", List(cut).Instance.Announcement);
+        Assert.Equal("Ingredient 1 moved to position 2 of 3.", cut.Find("[role=status][aria-live=assertive]").TextContent.TrimEnd('\u200B'));
+        Assert.Contains("is-settled", cut.FindAll("fieldset")[1].ClassList);
+
+        menus = cut.FindComponents<OdsMenu>();
+        await cut.InvokeAsync(() => menus[2].Instance.Items.Single(m => m.Label == "Move up").OnClick.InvokeAsync());
+        Assert.Equal(["flour", "water", "salt"], cut.Instance.Items);
+        Assert.Equal("Ingredient 3 moved to position 2 of 3.", List(cut).Instance.Announcement);
+    }
+
+    [Fact]
+    public async Task A_settle_timer_outliving_the_list_does_not_throw()
+    {
+        var ctx = NewContext();
+        var cut = Render(ctx);
+        var list = List(cut).Instance;
+
+        await cut.InvokeAsync(() => list.DragEnd(0, 3));
+        await list.DisposeAsync();
+        // A late JS DragEnd after disposal: Settle must not read the disposed source's token.
+        await cut.InvokeAsync(() => list.DragEnd(0, 2));
+        await list.DisposeAsync();
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public void Get_key_is_required_because_the_item_is_not_a_safe_key()
+    {
+        var property = typeof(OdsSortableList<string>).GetProperty(nameof(OdsSortableList<string>.GetKey))!;
+
+        Assert.NotNull(property.GetCustomAttributes(typeof(EditorRequiredAttribute), inherit: false).SingleOrDefault());
+    }
+
     /// <summary>A form-style host that owns the list and reorders it on every move, as a dialog does.</summary>
     public sealed class ListHost : ComponentBase
     {
@@ -270,6 +340,8 @@ public class OdsSortableListTests
                 b.AddContent(2, row.Item);
                 b.CloseElement();
             }));
+            // The test rows are distinct strings, so the value is a unique key here; a real list passes a per-row id.
+            builder.AddComponentParameter(7, nameof(OdsSortableList<string>.GetKey), (Func<string, object>)(s => s));
             builder.CloseComponent();
         }
     }

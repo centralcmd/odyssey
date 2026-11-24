@@ -11,8 +11,11 @@ public partial class OdsSortableList<TItem>
     /// <summary>The rows, in order.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
 
-    /// <summary>A stable key per row that survives reordering. Default: the item itself.</summary>
-    [Parameter] public Func<TItem, object>? GetKey { get; set; }
+    /// <summary>A stable key per row that survives reordering, unique within the list — the row's <c>@key</c>, its
+    /// handle's id and how a lift follows the row as it moves. Required: the item itself is not a safe default, since
+    /// two equal values (two "salt" strings, two equal records) would share one key, and a value-type item's key would
+    /// change with its content. Pass a per-row id (<c>RecipeRowDraft.Key</c>).</summary>
+    [Parameter, EditorRequired] public Func<TItem, object> GetKey { get; set; } = default!;
 
     /// <summary>The row's name in lower case with its number — "ingredient 3". Used for the sr-only legend
     /// ("Ingredient 3"), the handle ("Move ingredient 3"), the menu ("Actions for ingredient 3") and the
@@ -65,6 +68,7 @@ public partial class OdsSortableList<TItem>
     private IJSObjectReference? _jsHandle;
     private DotNetObjectReference<OdsSortableList<TItem>>? _self;
     private readonly CancellationTokenSource _disposed = new();
+    private bool _isDisposed;
 
     private string HelpId => $"{_uid}-help";
 
@@ -76,7 +80,8 @@ public partial class OdsSortableList<TItem>
     /// <summary>The text of the live region (with its re-announce padding stripped) — for tests.</summary>
     internal string Announcement => _say.TrimEnd('​');
 
-    private object KeyOf(TItem item) => GetKey?.Invoke(item) ?? item!;
+    private object KeyOf(TItem item) =>
+        (GetKey ?? throw new InvalidOperationException($"{nameof(OdsSortableList<TItem>)} needs {nameof(GetKey)}: a stable, unique key per row."))(item);
 
     private string LabelOf(TItem item, int index) =>
         GetLabel?.Invoke(item, index) ?? $"item {(index + 1).ToString(CultureInfo.InvariantCulture)}";
@@ -125,8 +130,8 @@ public partial class OdsSortableList<TItem>
         var remove = RemoveLabel?.Invoke(item) ?? (Heading(item) ? "Remove heading" : "Remove");
         return
         [
-            new OdsMenuItem { Icon = "arrow_upward", Label = "Move up", Disabled = index == 0, OnClick = EventCallback.Factory.Create(this, () => MoveAsync(index, index - 1)) },
-            new OdsMenuItem { Icon = "arrow_downward", Label = "Move down", Disabled = index == Items.Count - 1, OnClick = EventCallback.Factory.Create(this, () => MoveAsync(index, index + 1)) },
+            new OdsMenuItem { Icon = "arrow_upward", Label = "Move up", Disabled = index == 0, OnClick = EventCallback.Factory.Create(this, () => MenuMoveAsync(index, index - 1, label)) },
+            new OdsMenuItem { Icon = "arrow_downward", Label = "Move down", Disabled = index == Items.Count - 1, OnClick = EventCallback.Factory.Create(this, () => MenuMoveAsync(index, index + 1, label)) },
             new OdsMenuItem { Divider = true, Disabled = !OnRemove.HasDelegate },
             new OdsMenuItem
             {
@@ -150,6 +155,22 @@ public partial class OdsSortableList<TItem>
         await OnMove.InvokeAsync(new OdsSortMove(from, to));
     }
 
+    /// <summary>A Move up / Move down from the row's ⋯ menu: the same move, announced in the same live region as the
+    /// keyboard lift (WCAG 4.1.3), since the menu is the documented alternative for assistive tech.</summary>
+    private async Task MenuMoveAsync(int from, int to, string label)
+    {
+        if (to == from || to < 0 || to >= Items.Count || from < 0 || from >= Items.Count)
+        {
+            return;
+        }
+
+        var key = KeyOf(Items[from]);
+        var n = Items.Count;
+        await MoveAsync(from, to);
+        Announce($"{Cap(label)} moved to position {to + 1} of {n}.");
+        Settle(key);
+    }
+
     private void Announce(string message)
     {
         // A live region ignores a change to identical text, so each message gets a different invisible tail.
@@ -165,11 +186,23 @@ public partial class OdsSortableList<TItem>
 
     private async Task ClearSettledAsync(object key)
     {
+        // A JS DragEnd can land after DisposeAsync has disposed the source: reading its Token then throws
+        // ObjectDisposedException inside this unobserved task, so check first and treat a disposed source as cancelled.
+        if (_isDisposed)
+        {
+            return;
+        }
+
         try
         {
             await Task.Delay(900, _disposed.Token);
         }
-        catch (TaskCanceledException)
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+        {
+            return;
+        }
+
+        if (_isDisposed)
         {
             return;
         }
@@ -236,7 +269,10 @@ public partial class OdsSortableList<TItem>
                 await CancelLift();
                 break;
             case "Tab":
+                // Tab drops the row where it is and moves on; say so, as Space does.
                 _drag = null;
+                Announce($"Dropped at position {index + 1} of {n}.");
+                Settle(key);
                 break;
         }
     }
@@ -334,6 +370,12 @@ public partial class OdsSortableList<TItem>
 
     public async ValueTask DisposeAsync()
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
         await _disposed.CancelAsync();
         _disposed.Dispose();
         try

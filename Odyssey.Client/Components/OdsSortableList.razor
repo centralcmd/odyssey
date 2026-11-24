@@ -12,7 +12,10 @@
         stops that key before MudDialog's interceptor sees it), Tab drops. Each step is announced in the
         list's own assertive live region;
       • menu — the row's ⋯ (OdsMenu): Move up · Move down · — · Remove, the single-pointer alternative
-        WCAG 2.5.7 asks of a drag. A move the row cannot make is absent (the menu's rule).
+        WCAG 2.5.7 asks of a drag. A move the row cannot make is absent (the menu's rule). A menu move is
+        announced in the same live region ("Ingredient 3 moved to position 2 of 5."), as is a Tab-drop.
+
+    GetKey is required: a stable, unique id per row (the item itself is no key for equal or value-type items).
 
     Wherever a row lands it flashes a primary ring once (none under reduced motion). Each row is a
     <fieldset data-sort-row> with an sr-only legend from GetLabel ("Ingredient 3"). A heading row
