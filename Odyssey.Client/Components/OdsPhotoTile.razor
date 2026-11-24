@@ -1,6 +1,6 @@
 @*
     OdsPhotoTile — THE library photo tile (Odyssey Design System · components/PhotoTile, version
-    1795483642-28bb). One look wherever library photos are listed: the Photos page grid and album view,
+    1795486190-6f31). One look wherever library photos are listed: the Photos page grid and album view,
     a journal entry's photos (JournalPhotoGallery), and any record that links library photos.
 
     A square image that zooms slightly on hover, a scrim, the name as a caption, and its controls
@@ -21,7 +21,12 @@
     THE control and the check is its visible state — always shown (a hollow ring, or the filled check),
     out of the tab order and aria-hidden — so each tile is one tab stop.
 
-    Disabled dims the tile and makes it inert (no open, select, heart or menu) — say why with a badge.
+    The check and the heart keep one fixed name ("Select {name}", "Favourite {name}") and carry their
+    state in aria-pressed alone, so it is said once.
+
+    Disabled dims the tile and makes it inert (no open, select, heart or menu) — say why with a badge. It
+    stays focusable (aria-disabled, not the native disabled), so a keyboard or screen-reader user meets the
+    tile and hears the reason; a click or Enter does nothing.
     Unavailable (neither source, no access — known at render) labels the placeholder "no access" and
     suffixes the accessible name " (no access)" (WCAG 1.3.1); it is ignored when a source exists.
 
@@ -31,7 +36,7 @@
 
 <div class="@RootClass">
     <button type="button" id="@Id" class="odc-phototile-open" title="@(string.IsNullOrEmpty(Name) ? null : Name)"
-            disabled="@Disabled" aria-label="@OpenLabel"
+            aria-disabled="@(Disabled ? "true" : null)" aria-label="@OpenLabel"
             aria-pressed="@(Selectable && !Disabled ? (Selected ? "true" : "false") : null)"
             @onclick="OnOpenClick">
         @if (!Image.IsEmpty)
@@ -57,7 +62,7 @@
     @if (CanSelect)
     {
         <button type="button" class="@($"odc-phototile-check{(Selected ? " on" : "")}")"
-                aria-label="@(Selected ? $"Deselect {Name}" : $"Select {Name}")"
+                aria-label="@($"Select {Name}")"
                 aria-pressed="@(Selected ? "true" : "false")"
                 tabindex="@(Selectable ? "-1" : null)" aria-hidden="@(Selectable ? "true" : null)"
                 @onclick="OnCheckClick">
@@ -67,7 +72,7 @@
     @if (OnToggleFav.HasDelegate && !Disabled)
     {
         <button type="button" class="@($"odc-phototile-fav{(Fav ? " on" : "")}")"
-                aria-label="@(Fav ? $"Unfavourite {Name}" : $"Favourite {Name}")"
+                aria-label="@($"Favourite {Name}")"
                 aria-pressed="@(Fav ? "true" : "false")"
                 @onclick="() => OnToggleFav.InvokeAsync()">
             <span class="material-icons" aria-hidden="true">@(Fav ? "favorite" : "favorite_border")</span>
@@ -120,7 +125,8 @@
     /// <summary>The menu trigger's name. Default "Actions for photo: {name}".</summary>
     [Parameter] public string? ActionsLabel { get; set; }
 
-    /// <summary>Dimmed and inert — no open, select, heart or menu (a picker's "Already added"). Say why with a badge.</summary>
+    /// <summary>Dimmed and inert — no open, select, heart or menu (a picker's "Already added"). Say why with a badge.
+    /// The image button stays focusable (<c>aria-disabled</c>), so the reason is reachable by keyboard.</summary>
     [Parameter] public bool Disabled { get; set; }
 
     /// <summary>Neither source is available to this caller (no access, known at render): the placeholder
@@ -140,7 +146,7 @@
 
     private IEnumerable<string> ShownBadges => Badges.Where(b => !string.IsNullOrEmpty(b)).Cast<string>();
 
-    // "{Open|Select} {name}{ (no access)}, {badge1}, {badge2}" (design system 1795483642-28bb): the badge row is drawn
+    // "{Open|Select} {name}{ (no access)}, {badge1}, {badge2}" (design system 1795486190-6f31): the badge row is drawn
     // for the eye only, so its words are said through this name.
     internal string OpenLabel =>
         $"{(Selectable ? "Select" : "Open")} {Name}{(NoAccess ? " (no access)" : "")}"

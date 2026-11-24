@@ -148,6 +148,88 @@ public class ControlContrastTests
         Assert.DoesNotContain("opacity", rule, StringComparison.Ordinal);
     }
 
+    // ── Photo tile overlay controls (PR #598 review; DS 1795486190-6f31) ─────────────────────────
+
+    /// <summary>The tile's overlay chips: the check and heart, the ⋯ menu, and the selection-mode hollow ring.</summary>
+    public static TheoryData<string> PhotoTileChipRules() =>
+    [
+        ".odc-phototile-check, .odc-phototile-fav",
+        ".odc-phototile-menu",
+        ".odc-phototile.is-selectable .odc-phototile-check:not(.on)",
+    ];
+
+    /// <summary>
+    /// The chips float over an arbitrary photo, so their ground is measured over the worst case, a white one. At the old
+    /// 0.58 (and 0.32 for the hollow ring) the pink heart fell to about 2.2:1 there; at 0.74 the white glyph, the white
+    /// ring and the favourited heart all clear WCAG 1.4.11's 3:1.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PhotoTileChipRules))]
+    public void A_photo_tile_chip_keeps_its_glyph_at_three_to_one_over_a_white_photo(string selector)
+    {
+        var ground = OverWhite(ChipGround(Rule(ComponentsCss, selector)));
+
+        AssertRatio("#FFFFFF", ground, NonTextContrastMinimum, $"white glyph/ring on {selector}");
+        AssertRatio(FavouriteOn(ComponentsCss), ground, NonTextContrastMinimum, $"favourited heart on {selector}");
+    }
+
+    [SkippableTheory]
+    [MemberData(nameof(PhotoTileChipRules))]
+    public void A_photo_tile_chip_ground_matches_the_design_system(string selector)
+    {
+        var design = ChipGround(Rule(DesignSystemSource.File("components/bundle.css"), selector));
+
+        Assert.Equal(design, ChipGround(Rule(ComponentsCss, selector)));
+    }
+
+    /// <summary>
+    /// The image button's focus ring is drawn above the photo as a two-tone ring (the focus colour, then a white halo)
+    /// rather than the button's own inset outline, which could vanish on a photo of the same hue (WCAG 2.4.7).
+    /// </summary>
+    [Fact]
+    public void The_photo_tile_focus_ring_is_two_toned_and_drawn_above_the_photo()
+    {
+        Assert.Matches(@"outline:\s*none", Rule(ComponentsCss, ".odc-phototile-open:focus-visible"));
+
+        var ring = Rule(ComponentsCss, ".odc-phototile:has(.odc-phototile-open:focus-visible)::before");
+        Assert.Matches(@"z-index:\s*1\b", ring);
+        Assert.Matches(@"pointer-events:\s*none", ring);
+        Assert.Matches(@"box-shadow:\s*inset 0 0 0 var\(--focus-ring-width\) var\(--focus-ring\),\s*inset 0 0 0 calc\(var\(--focus-ring-width\) \* 2\) #fff", ring);
+    }
+
+    [SkippableFact]
+    public void The_photo_tile_focus_ring_matches_the_design_system()
+    {
+        const string selector = ".odc-phototile:has(.odc-phototile-open:focus-visible)::before";
+        var design = Rule(DesignSystemSource.File("components/bundle.css"), selector);
+
+        Assert.Equal(Compact(design), Compact(Rule(ComponentsCss, selector)));
+    }
+
+    private static string Compact(string body) => Regex.Replace(body, @"\s+", " ").Trim();
+
+    /// <summary>The <c>background: rgba(r, g, b, a)</c> of a chip rule.</summary>
+    private static (int R, int G, int B, double A) ChipGround(string body)
+    {
+        var m = Regex.Match(body, @"background:\s*rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)");
+        Assert.True(m.Success, $"no rgba background in: {body}");
+        return (int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture),
+            int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture), double.Parse(m.Groups[4].Value, CultureInfo.InvariantCulture));
+    }
+
+    private static string OverWhite((int R, int G, int B, double A) c)
+    {
+        int Mix(int channel) => (int)Math.Round(c.A * channel + (1 - c.A) * 255);
+        return $"#{Mix(c.R):X2}{Mix(c.G):X2}{Mix(c.B):X2}";
+    }
+
+    private static string FavouriteOn(string cssPath)
+    {
+        var m = Regex.Match(Rule(cssPath, ".odc-phototile-fav.on"), @"color:\s*(#[0-9a-fA-F]{6})");
+        Assert.True(m.Success);
+        return m.Groups[1].Value.ToUpperInvariant();
+    }
+
     // ── 2. Control boundaries ───────────────────────────────────────────────────────────────────
 
     [Theory]

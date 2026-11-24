@@ -9,7 +9,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// <see cref="OdsPhotoTile"/> and <see cref="OdsPhotoGrid{TItem}"/> (Odyssey Design System · components/PhotoTile,
-/// version 1795477868-c9a2): the one library photo tile — its controls, their names and states, the one-tab-stop
+/// version 1795486190-6f31): the one library photo tile — its controls, their names and states, the one-tab-stop
 /// selection mode, and the disabled / unavailable states.
 /// </summary>
 public class OdsPhotoTileTests
@@ -113,7 +113,9 @@ public class OdsPhotoTileTests
         Assert.Equal("true", cut.Find(".odc-phototile-open").GetAttribute("aria-pressed"));
         var check = cut.Find(".odc-phototile-check");
         Assert.Contains("on", check.ClassList);
-        Assert.Equal("Deselect Summit", check.GetAttribute("aria-label"));
+        // The name is fixed; the state is said once, by aria-pressed (design system 1795486190-6f31).
+        Assert.Equal("Select Summit", check.GetAttribute("aria-label"));
+        Assert.Equal("true", check.GetAttribute("aria-pressed"));
     }
 
     [Fact]
@@ -127,8 +129,8 @@ public class OdsPhotoTileTests
 
     [Theory]
     [InlineData(false, "Favourite Summit", "favorite_border")]
-    [InlineData(true, "Unfavourite Summit", "favorite")]
-    public async Task The_heart_names_its_action_and_states_its_value(bool fav, string label, string glyph)
+    [InlineData(true, "Favourite Summit", "favorite")]
+    public async Task The_heart_keeps_one_name_and_states_its_value_in_aria_pressed(bool fav, string label, string glyph)
     {
         await using var ctx = NewContext();
         var toggled = 0;
@@ -172,7 +174,7 @@ public class OdsPhotoTileTests
     [Fact]
     public async Task The_badges_end_the_image_buttons_name_because_the_badge_row_is_hidden()
     {
-        // Design system 1795483642-28bb: "{Open|Select} {name}{ (no access)}, {badge1}, {badge2}".
+        // Design system 1795486190-6f31: "{Open|Select} {name}{ (no access)}, {badge1}, {badge2}".
         await using var ctx = NewContext();
 
         var open = Render(ctx, p => p.Add(t => t.Badges, ["Cover", null, "Archived"]));
@@ -215,10 +217,39 @@ public class OdsPhotoTileTests
 
         Assert.Contains("is-disabled", cut.Find(".odc-phototile").ClassList);
         Assert.DoesNotContain("has-menu", cut.Find(".odc-phototile").ClassList);
-        Assert.True(cut.Find(".odc-phototile-open").HasAttribute("disabled"));
         Assert.Empty(cut.FindAll(".odc-phototile-check, .odc-phototile-fav, .odc-phototile-menu"));
         Assert.Equal("Already added", cut.Find(".odc-phototile-badge").TextContent);
         Assert.Equal(0, calls);
+    }
+
+    [Fact]
+    public async Task A_disabled_tile_stays_focusable_and_a_click_or_enter_does_nothing()
+    {
+        // aria-disabled, not the native attribute (design system 1795486190-6f31): a keyboard user still lands on the
+        // tile and hears its reason; activating it is a no-op.
+        await using var ctx = NewContext();
+        var calls = 0;
+        var cut = Render(ctx, p => p
+            .Add(t => t.Disabled, true)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.Badges, ["Already added"])
+            .Add(t => t.OnOpen, () => calls++)
+            .Add(t => t.OnToggleSelect, () => calls++));
+
+        var open = cut.Find(".odc-phototile-open");
+        Assert.False(open.HasAttribute("disabled"));
+        Assert.False(open.HasAttribute("tabindex"));
+        Assert.Equal("true", open.GetAttribute("aria-disabled"));
+        Assert.Equal("Select Summit, Already added", open.GetAttribute("aria-label"));
+        Assert.False(open.HasAttribute("aria-pressed"));
+
+        // A button's Enter and Space arrive as a click.
+        open.Click();
+        open.Click();
+        Assert.Equal(0, calls);
+
+        cut.Render(p => p.Add(t => t.Disabled, false));
+        Assert.False(cut.Find(".odc-phototile-open").HasAttribute("aria-disabled"));
     }
 
     [Fact]

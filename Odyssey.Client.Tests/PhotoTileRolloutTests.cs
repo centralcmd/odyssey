@@ -71,7 +71,7 @@ public sealed class PhotoTileRolloutTests
         Assert.DoesNotContain(tiles[0].Badges, b => b is not null);
 
         // The heart only once the state is known: "Valley" has none, so it shows no heart rather than a guess.
-        Assert.Equal(["Unfavourite Ridge", "Favourite Cairn"], cut.FindAll(".odc-phototile-fav").Select(b => b.GetAttribute("aria-label")));
+        Assert.Equal(["Favourite Ridge", "Favourite Cairn"], cut.FindAll(".odc-phototile-fav").Select(b => b.GetAttribute("aria-label")));
         Assert.Equal("true", cut.Find(".odc-phototile-fav.on").GetAttribute("aria-pressed"));
 
         cut.FindAll(".odc-phototile-fav")[1].Click();
@@ -206,7 +206,8 @@ public sealed class PhotoTileRolloutTests
         var plain = BookImage("Back");
 
         var cut = Grid(ctx, [image, plain], canUpdate: true, fav: true);
-        Assert.Equal(["Unfavourite Front", "Favourite Back"], cut.FindAll(".odc-phototile-fav").Select(b => b.GetAttribute("aria-label")));
+        Assert.Equal(["Favourite Front", "Favourite Back"], cut.FindAll(".odc-phototile-fav").Select(b => b.GetAttribute("aria-label")));
+        Assert.Equal(["true", "false"], cut.FindAll(".odc-phototile-fav").Select(b => b.GetAttribute("aria-pressed")));
         Assert.Equal(["Cover", "Archived"], cut.FindAll(".odc-phototile-badge").Select(b => b.TextContent));
 
         // No favourite callback (no photos.update): no heart.

@@ -364,8 +364,8 @@ public class RecipesPageTests
         Assert.Equal(["Cover"], tiles[0].QuerySelectorAll(".odc-phototile-badge").Select(b => b.TextContent));
         cut.WaitForAssertion(() => Assert.Equal(["Archived"], cut.FindAll(".odc-phototile")[1].QuerySelectorAll(".odc-phototile-badge").Select(b => b.TextContent)));
         // The heart is the library favourite.
-        Assert.Equal("true", cut.Find("button[aria-label='Unfavourite Tray']").GetAttribute("aria-pressed"));
-        Assert.NotNull(cut.Find("button[aria-label='Favourite Bowl']"));
+        Assert.Equal("true", cut.Find("button[aria-label='Favourite Tray']").GetAttribute("aria-pressed"));
+        Assert.Equal("false", cut.Find("button[aria-label='Favourite Bowl']").GetAttribute("aria-pressed"));
         Assert.NotNull(cut.Find("button[aria-label='Open Bowl, Cover']"));
         Assert.NotNull(cut.Find("button[aria-label='Open Tray, Archived']"));
         Assert.NotNull(cut.Find("button[aria-label='Actions for photo: Bowl']"));

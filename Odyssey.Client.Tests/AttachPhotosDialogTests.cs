@@ -215,16 +215,19 @@ public class AttachPhotosDialogTests
 
         // The shared tile, disabled, with the reason as a visible text badge (design system 1795477868-c9a2).
         var tile = h.Tile(Fjord);
-        Assert.True(tile.HasAttribute("disabled"));
+        // aria-disabled, not the native attribute, so it stays focusable and its reason is met by keyboard (1795486190-6f31).
+        Assert.False(tile.HasAttribute("disabled"));
+        Assert.Equal("true", tile.GetAttribute("aria-disabled"));
         var root = tile.ParentElement!;
         Assert.Contains("is-disabled", root.ClassList);
         Assert.Equal("Already added", root.QuerySelector(".odc-phototile-badge")!.TextContent);
         // The badge row is hidden from assistive tech, so the reason ends the image button's name (1795483642-28bb).
         Assert.EndsWith(", Already added", tile.GetAttribute("aria-label"));
-        Assert.False(h.Tile(Cabin).HasAttribute("disabled"));
+        Assert.False(h.Tile(Cabin).HasAttribute("aria-disabled"));
         Assert.Null(h.Tile(Cabin).ParentElement!.QuerySelector(".odc-phototile-badge"));
 
         // Clicking a disabled tile picks nothing.
+        tile.Click();
         var fjord = h.Host.FindComponents<OdsPhotoTile>().Single(t => t.Instance.Name == Fjord.Title);
         Assert.True(fjord.Instance.Disabled);
         Assert.Contains("Add photo", h.SubmitButton.TextContent, StringComparison.Ordinal);
