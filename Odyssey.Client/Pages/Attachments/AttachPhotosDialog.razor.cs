@@ -16,9 +16,11 @@ namespace Odyssey.Client.Pages.Attachments;
 /// <summary>
 /// One photo the dialog hands back — the DS <c>onSubmit</c> item. Every upload is a library photo since issue #428,
 /// so <see cref="PhotoId"/> is always known. <see cref="ThumbnailsReady"/> travels with the pick so the host's own
-/// strip can show the thumbnail (issue #365 B2); a fresh upload's is always false.
+/// strip can show the thumbnail (issue #365 B2); a fresh upload's is always false. A library pick also carries the photo's
+/// own favourite and archive state, so the host's viewer shows them without reading the photo again.
 /// </summary>
-public sealed record AttachPhotoItem(AttachDocumentSource Source, Guid PhotoId, string Name, bool ThumbnailsReady = false);
+public sealed record AttachPhotoItem(AttachDocumentSource Source, Guid PhotoId, string Name, bool ThumbnailsReady = false,
+    DateTime? Favourited = null, DateTime? Archived = null);
 
 public partial class AttachPhotosDialog
 {
@@ -203,8 +205,8 @@ public partial class AttachPhotosDialog
     private static string LabelOf(PhotoSummary photo) =>
         string.IsNullOrWhiteSpace(photo.Title) ? "Photo" : photo.Title!;
 
-    private static string TileLabel(PhotoSummary photo, bool added) =>
-        added ? $"{LabelOf(photo)} — already added" : LabelOf(photo);
+    // A photo already on the record says so in visible text, not by its dimming alone (WCAG 1.4.1).
+    private static readonly IReadOnlyList<string?> AlreadyAdded = ["Already added"];
 
     private void TogglePick(PhotoSummary photo)
     {
@@ -272,7 +274,7 @@ public partial class AttachPhotosDialog
                 return;
             }
             await FinishAsync([.. _picked.Select(p =>
-                new AttachPhotoItem(AttachDocumentSource.Library, p.PhotoId, LabelOf(p), p.ThumbnailsReady))]);
+                new AttachPhotoItem(AttachDocumentSource.Library, p.PhotoId, LabelOf(p), p.ThumbnailsReady, p.Favourited, p.Archived))]);
             return;
         }
 

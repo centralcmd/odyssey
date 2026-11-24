@@ -1,32 +1,6 @@
-/* AttachmentLinkFields — the Photos field's thumbnails and the Attachments field's rows (DS Journal ·
-   AddJournalEntryModal; DS Calendar · AddCalendarEventModal .cal-ce-photos, issue #522). */
-.jef-photos {
-    list-style: none; margin: 0 0 var(--space-2); padding: 0;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
-    gap: calc(var(--space-2) - var(--space-1) / 2);
-}
-/* The tile does not clip, so the remove button's focus ring is never cut off by it (AX8); the image clips itself. */
-.jef-photo {
-    position: relative; aspect-ratio: 1; border-radius: var(--radius-md);
-    background-color: var(--mud-palette-background-gray);
-}
-.jef-photo-img { position: absolute; inset: 0; border-radius: var(--radius-md); overflow: hidden; }
-.jef-photo ::deep .odc-photoimg-ph { background-color: var(--mud-palette-background-gray); }
-.jef-photo-remove {
-    position: absolute; top: var(--space-1); right: var(--space-1);
-    display: grid; place-items: center; width: var(--icon-xl); height: var(--icon-xl);
-    border: 0; border-radius: var(--radius-pill); padding: 0; cursor: pointer;
-    background: rgba(8, 12, 24, 0.72); color: #fff;
-}
-.jef-photo-remove:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
-    outline-offset: var(--focus-ring-offset);
-    box-shadow: 0 0 0 var(--focus-ring-offset) white;
-}
-@media (forced-colors: active) {
-    .jef-photo-remove { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; }
-    .jef-photo-remove:focus-visible { outline-color: Highlight; box-shadow: none; }
-}
+/* AttachmentLinkFields — the Photos field (the shared OdsPhotoGrid / OdsPhotoTile, dense, DS Calendar ·
+   AddCalendarEventModal .cal-ce-photos, version 1795477868-c9a2) and the Attachments field's rows (issue #522). */
+.alf-photos { margin: 0 0 var(--space-2); min-width: 0; }
 .jef-files { margin-bottom: var(--space-2); min-width: 0; }
 
 /* Count-only line (no read claim), the cap help line and the loading skeleton (DS .cal-ce-countline / -caphelp / -skel). */

@@ -865,7 +865,7 @@ public static partial class OdsTypeRegistries
             [new("photo", "Photo tag") { Icon = "photo" }];
 
         public static readonly IReadOnlyList<OdsCreateKind> Recipe =
-            [new("recipe", "Recipe tag") { Icon = "restaurant_menu" }];
+            [new("recipe", "Recipe tag") { Icon = "soup_kitchen" }];
     }
 
     /// <summary>

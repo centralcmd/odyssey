@@ -82,7 +82,8 @@ public partial class CreateJournalEntryDialog
             // The label travels on the link itself since issue #428; no Files request.
             foreach (var p in entry.Photos.OrderBy(p => p.Position))
             {
-                photos.Add(new JournalDraftPhoto(p.PhotoId, PhotoMappers.Label(p.Title, p.FileName), p.ThumbnailsReady));
+                photos.Add(new JournalDraftPhoto(
+                    p.PhotoId, PhotoMappers.Label(p.Title, p.FileName), p.ThumbnailsReady, p.Favourited, p.Archived));
             }
 
             // A dangling or unreadable attachment id is carried as a placeholder row rather than

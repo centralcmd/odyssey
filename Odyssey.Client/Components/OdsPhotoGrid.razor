@@ -1,0 +1,52 @@
+@*
+    OdsPhotoGrid — the responsive grid OdsPhotoTiles sit in (Odyssey Design System · components/PhotoTile,
+    PhotoGrid; version 1795477868-c9a2). A <ul> that auto-fills columns of at least MinTile px
+    (158 by default, 112 when Dense), each child wrapped in an <li class="odc-photogrid2-item">: pass the
+    tiles through Items + ItemTemplate (keyed by ItemKey), or wrap each tile in your own
+    <li class="odc-photogrid2-item"> in ChildContent. Name the list with AriaLabel ("24 photos").
+*@
+@typeparam TItem
+
+<ul class="@RootClass" aria-label="@AriaLabel"
+    style="grid-template-columns: repeat(auto-fill, minmax(min(@(EffectiveMinTile)px, 100%), 1fr));">
+    @if (Items is not null && ItemTemplate is not null)
+    {
+        @foreach (var item in Items)
+        {
+            <li class="odc-photogrid2-item" @key="KeyOf(item)">@ItemTemplate(item)</li>
+        }
+    }
+    @ChildContent
+</ul>
+
+@code {
+    /// <summary>The photos; each is rendered by <see cref="ItemTemplate"/> inside its own <c>li</c>.</summary>
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+
+    /// <summary>One tile (normally an <see cref="OdsPhotoTile"/>) per item.</summary>
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    /// <summary>A stable key per item (survives reordering and reloads). Default: the item itself.</summary>
+    [Parameter] public Func<TItem, object>? ItemKey { get; set; }
+
+    /// <summary>Extra <c>li</c> rows after the items — e.g. a trailing "Add photos" tile.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Minimum tile width in px; columns auto-fill. Default 158 (<see cref="Dense"/>: 112).</summary>
+    [Parameter] public int? MinTile { get; set; }
+
+    /// <summary>The dense variant: 112px minimum and a tighter gap (an event's Photos field).</summary>
+    [Parameter] public bool Dense { get; set; }
+
+    /// <summary>The list's accessible name, e.g. "24 photos".</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private object? KeyOf(TItem item) => ItemKey is null ? item : ItemKey(item);
+
+    internal int EffectiveMinTile => MinTile ?? (Dense ? 112 : 158);
+
+    private string RootClass =>
+        "odc-photogrid2" + (Dense ? " dense" : "") + (string.IsNullOrEmpty(Class) ? "" : " " + Class);
+}

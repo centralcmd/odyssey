@@ -1,35 +1,37 @@
+@using Odyssey.Client.Pages.Photos
 @inject IPhotosApiClient PhotosApi
 
 @*
-    RecipePhotoGrid — a recipe's linked photos (issue #526; design system components-recipes.md · Photos): the Books
-    image tile at the JournalPhotoGallery size, every photo drawn through OdsPhotoImage (thumbnail → original →
-    placeholder), the first labelled "Cover" in visible text. With recipes.update each tile carries a ⋯ menu on a scrim:
-    Make cover · Move earlier · Move later · — · Detach. An action a tile cannot take is absent, never dimmed. Every
-    change hands the whole ordered list up; the page saves it through the recipe PUT.
+    RecipePhotoGrid — a recipe's linked photos (issue #526; design system components-recipes.md · Photos, version
+    1795477868-c9a2): THE library photo tile (OdsPhotoTile) in an OdsPhotoGrid at 132px — the photo, "Cover" on the first
+    and "Archived" as always-visible text badges, and, on hover / focus, the caption, the Favourite heart (the library
+    favourite, with photos.update) and the tile's ⋯ menu: Open, then with recipes.update — · Make cover · Move earlier ·
+    Move later · — · Detach. An action a tile cannot take is absent, never dimmed. Every reorder or detach hands the whole
+    ordered list up; the page saves it through the recipe PUT.
+
+    Opening a photo (the tile or ⋯ Open) mounts the shared PhotoViewer over this recipe's photos — the Photos page's
+    options (Edit, Download, Archive, Delete by the caller's own photo rights). Focus returns to the tile of the photo
+    last shown.
 *@
 
-<ul class="rc-images" role="list" aria-label="@RecipeFormat.Count(Photos.Count, "photo")">
+<OdsPhotoGrid TItem="RecipePhotoDto" MinTile="132" AriaLabel="@RecipeFormat.Count(Photos.Count, "photo")" Class="rc-photos">
     @for (var i = 0; i < Photos.Count; i++)
     {
         var index = i;
         var photo = Photos[index];
         var name = NameOf(photo, index);
-        <li class="rc-image-cell" @key="photo.PhotoId">
-            <span class="rc-image">
-                <OdsPhotoImage Source="@PhotoImageSources.For(photo.PhotoId, photo.ThumbnailsReady, ThumbnailSize.Small, Access, PhotosApi)"
-                               Alt="@(index == 0 ? $"{name}, cover" : name)" Fill="true" Class="rc-image-img"
-                               PlaceholderClass="rc-image-ph" />
-                @if (index == 0)
-                {
-                    <span class="rc-image-badge" aria-hidden="true">Cover</span>
-                }
-            </span>
-            @if (CanUpdate)
-            {
-                <span class="rc-image-menu">
-                    <OdsMenu Items="@BuildTileActions(Photos, index, OnChange, this)" AriaLabel="@($"Actions for photo: {name}")" />
-                </span>
-            }
+        <li class="odc-photogrid2-item" @key="photo.PhotoId">
+            <OdsPhotoTile Id="@TileId(photo.PhotoId)" Name="@name"
+                          Image="@PhotoImageSources.For(photo.PhotoId, photo.ThumbnailsReady, ThumbnailSize.Small, Access, PhotosApi)"
+                          Badges="@Badges(index, photo)"
+                          OnOpen="@(() => OpenAt(index))"
+                          Fav="@(photo.Favourited is not null)"
+                          OnToggleFav="@(_canUpdatePhotos ? EventCallback.Factory.Create(this, () => ToggleFavouriteAsync(photo.PhotoId)) : default)"
+                          Actions="@BuildTileActions(Photos, index, CanUpdate ? OnChange : default, EventCallback.Factory.Create(this, () => OpenAt(index)), this)"
+                          ActionsLabel="@($"Actions for photo: {name}")" />
         </li>
     }
-</ul>
+</OdsPhotoGrid>
+
+<PhotoViewer @ref="_viewer" Photos="_summaries" Index="_viewerIndex" IndexChanged="OnViewerIndexChanged"
+             OnChanged="OnViewerChangedAsync" ReturnFocusToId="@ReturnFocusId" />

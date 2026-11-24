@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
@@ -23,7 +24,12 @@ public partial class JournalEntryCard
     /// <summary>The entry's tags, name-ordered, each with its own icon for its chip.</summary>
     [Parameter] public IReadOnlyList<OdsTagChips.Tag> Tags { get; set; } = [];
 
-    [Parameter] public IReadOnlyList<JournalPhotoGallery.Photo> Photos { get; set; } = [];
+    /// <summary>A linked photo as the card's tile shows it. <see cref="Favourite"/> is null while the host does not
+    /// know the library state (not hydrated yet, or unreadable): the tile then shows no heart and no badge.</summary>
+    public sealed record Photo(Guid PhotoId, string Name, PhotoImageSource Image, bool Unavailable = false,
+        bool? Favourite = null, bool Archived = false);
+
+    [Parameter] public IReadOnlyList<Photo> Photos { get; set; } = [];
 
     /// <summary>Hydrated attachment metadata, or <c>null</c> while the host is still fetching it.</summary>
     [Parameter] public IReadOnlyList<FileMetadataResponse>? Attachments { get; set; }
@@ -35,7 +41,11 @@ public partial class JournalEntryCard
     /// <summary>Raised the first time the attachment disclosure opens, so the host hydrates then.</summary>
     [Parameter] public EventCallback OnFilesOpened { get; set; }
 
-    [Parameter] public EventCallback<JournalPhotoGallery.Photo> OnOpenPhoto { get; set; }
+    /// <summary>Open a photo (by id) in the host's shared <c>PhotoViewer</c>.</summary>
+    [Parameter] public EventCallback<Guid> OnOpenPhoto { get; set; }
+
+    /// <summary>Toggle a photo's library favourite (<c>photos.update</c>). Unset = no heart.</summary>
+    [Parameter] public EventCallback<Guid> OnToggleFavourite { get; set; }
 
     /// <summary>Detach a file from the entry. Unset = no Remove item on the file menus.</summary>
     [Parameter] public EventCallback<Guid>? OnRemoveFile { get; set; }
@@ -70,6 +80,17 @@ public partial class JournalEntryCard
     private string _leafAccessible = string.Empty;
 
     private bool Archived => Entry.Archived is not null;
+
+    private string PhotosLabel => $"{Photos.Count} {(Photos.Count == 1 ? "photo" : "photos")}";
+
+    // Badges are always-visible TEXT (WCAG 1.4.1).
+    private static IReadOnlyList<string?> BadgesOf(Photo p) => p.Archived ? ["Archived"] : [];
+
+    // The heart only once the library state is known, so it never states a favourite it has not read.
+    private EventCallback FavCallback(Photo p) =>
+        OnToggleFavourite.HasDelegate && p.Favourite is not null
+            ? EventCallback.Factory.Create(this, () => OnToggleFavourite.InvokeAsync(p.PhotoId))
+            : default;
 
     private string FilesListId => $"jec-files-{Entry.JournalEntryId}";
 

@@ -59,9 +59,11 @@ public sealed class JournalEntryDraft
 /// <summary>
 /// A photo on a draft entry: its library photo (uploaded through the photo API first, issue #428), a label, and its
 /// thumbnail readiness, so the form strip can show the Small thumbnail (issue #365 B2). A stale true costs one 404 and
-/// falls back to the original.
+/// falls back to the original. <see cref="Favourited"/> and <see cref="Archived"/> are the library photo's own state, as
+/// the link DTO carries it, for the shared viewer's heart and Archived label.
 /// </summary>
-public sealed record JournalDraftPhoto(Guid PhotoId, string Name, bool ThumbnailsReady = false);
+public sealed record JournalDraftPhoto(Guid PhotoId, string Name, bool ThumbnailsReady = false,
+    DateTime? Favourited = null, DateTime? Archived = null);
 
 /// <summary>
 /// The one builder per journal write DTO (issue #383 §5.2). The server's <c>PUT</c> is a full replacement and

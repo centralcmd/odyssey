@@ -508,7 +508,6 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         Assert.Equal(4, scaled.Servings);
         Assert.Equal(500m, scaled.Ingredients[0].Amount);
         Assert.Equal(1m, scaled.Ingredients[1].Amount);
-        Assert.Equal(1.5m, scaled.Ingredients[1].AmountMax);
         Assert.Null(scaled.Ingredients[2].Amount);
         Assert.Equal(1m, scaled.Ingredients[3].Amount);
         Assert.Equal(created.Steps.Select(s => s.Text), scaled.Steps.Select(s => s.Text));
@@ -549,7 +548,6 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     [InlineData("""{"title":"   ","servings":4}""")]                                             // blank title
     [InlineData("""{"title":"x","servings":4,"cookMinutes":10081}""")]
     [InlineData("""{"title":"x","servings":4,"prepMinutes":-1}""")]
-    [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"egg","unit":0,"amount":1,"amountMax":1000000}]}""")]
     [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"egg","unit":0,"section":"#S65#"}]}""")]
     [InlineData("""{"title":"x","servings":4,"servingsLabel":"#S33#"}""")]
     [InlineData("""{"title":"#S201#","servings":4}""")]
@@ -557,7 +555,6 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     [InlineData("""{"title":"x","servings":4,"source":"#S501#"}""")]
     [InlineData("""{"title":"x","servings":4,"notes":"#S8001#"}""")]
     [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"#S201#","unit":0}]}""")]
-    [InlineData("""{"title":"x","servings":4,"ingredients":[{"name":"egg","unit":0,"preparation":"#S201#"}]}""")]
     [InlineData("""{"title":"x","servings":4,"steps":[{"text":"#S4001#"}]}""")]
     [InlineData("""{"title":"x","servings":4,"photoIds":#G21#}""")]
     [InlineData("""{"title":"x","servings":4,"tagIds":#G21#}""")]
@@ -599,10 +596,8 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
             {
                 Section = new string('x', RecipeLimits.MaxSectionLength),
                 Amount = 999998.999m,
-                AmountMax = 999999m,
                 Unit = IngredientUnit.Gram,
                 Name = new string('i', RecipeLimits.MaxIngredientNameLength),
-                Preparation = new string('p', RecipeLimits.MaxPreparationLength),
             }).ToArray(),
             Steps = Enumerable.Range(0, RecipeLimits.MaxSteps)
                 .Select(_ => new RecipeStepRequest { Section = new string('x', RecipeLimits.MaxSectionLength), Text = new string('w', RecipeLimits.MaxStepTextLength) })
@@ -651,11 +646,7 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     public static TheoryData<RecipeIngredientRequest, string> RuleViolations => new()
     {
         { new() { Name = "egg", Unit = IngredientUnit.None, Amount = 1.2345m }, "ingredients[0].amount" },
-        { new() { Name = "egg", Unit = IngredientUnit.None, AmountMax = 2 }, "ingredients[0].amountMax" },
-        { new() { Name = "egg", Unit = IngredientUnit.None, Amount = 3, AmountMax = 2 }, "ingredients[0].amountMax" },
-        { new() { Name = "egg", Unit = IngredientUnit.None, Amount = 3, AmountMax = 3 }, "ingredients[0].amountMax" },
         { new() { Name = "salt", Unit = IngredientUnit.ToTaste, Amount = 1 }, "ingredients[0].amount" },
-        { new() { Name = "salt", Unit = IngredientUnit.ToTaste, AmountMax = 2 }, "ingredients[0].amount" },
     };
 
     [Theory]
@@ -963,6 +954,26 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
     }
 
     [Fact]
+    public async Task WithPhotosRead_EachPhotoCarriesItsLibraryFavouriteAndArchivedState()
+    {
+        var marked = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "marked.jpg");
+        var plain = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "plain.jpg");
+        await PhotoTestSupport.MarkLibraryStateAsync(Factory, marked);
+        using var client = Factory.ClientWith(EditorWithPhotos);
+        var request = Pancakes();
+        request.PhotoIds = [marked, plain];
+        var created = await CreateAsync(client, request);
+        var read = (await client.GetFromJsonAsync<ExistingRecipe>($"{Path}/{created.RecipeId}"))!;
+
+        foreach (var photos in new[] { created.Photos!, read.Photos! })
+        {
+            Assert.Equal(
+                [((DateTime?)PhotoTestSupport.FavouritedAt, (DateTime?)PhotoTestSupport.ArchivedAt), (null, null)],
+                photos.Select(p => (p.Favourited, p.Archived)));
+        }
+    }
+
+    [Fact]
     public async Task WithPhotosRead_TheCoverIsTheFirstPhoto_AndThumbnailReadinessComesFromTheStore()
     {
         var plain = await PhotoTestSupport.SeedPhotoAsync(Factory, ActorUserId, "plain.jpg");
@@ -1114,8 +1125,8 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         CookMinutes = 15,
         Ingredients =
         [
-            new() { Section = "Batter", Amount = 250, Unit = IngredientUnit.Gram, Name = "wheat flour", Preparation = "sifted" },
-            new() { Amount = 0.5m, AmountMax = 0.75m, Unit = IngredientUnit.Litre, Name = "milk" },
+            new() { Section = "Batter", Amount = 250, Unit = IngredientUnit.Gram, Name = "wheat flour" },
+            new() { Amount = 0.5m, Unit = IngredientUnit.Litre, Name = "milk" },
             new() { Unit = IngredientUnit.ToTaste, Name = "salt" },
         ],
         Steps = [new() { Text = "Whisk." }, new() { Text = "Fry." }],
@@ -1131,10 +1142,8 @@ public class RecipesApiTests(RecipesApiTests.Host host) : SharedApiHostTests<Rec
         {
             Section = i.Section,
             Amount = i.Amount,
-            AmountMax = i.AmountMax,
             Unit = i.Unit,
             Name = i.Name,
-            Preparation = i.Preparation,
             Optional = i.Optional,
         }).ToArray(),
         Steps = recipe.Steps.Select(s => new RecipeStepRequest { Section = s.Section, Text = s.Text }).ToArray(),

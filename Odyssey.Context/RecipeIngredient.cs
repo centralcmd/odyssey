@@ -28,18 +28,11 @@ public class RecipeIngredient
     [Precision(RecipeLimits.AmountPrecision, RecipeLimits.AmountScale)]
     public decimal? Amount { get; set; }
 
-    /// <summary>The upper end of a range ("2–3 cloves"); requires <see cref="Amount"/> and exceeds it.</summary>
-    [Precision(RecipeLimits.AmountPrecision, RecipeLimits.AmountScale)]
-    public decimal? AmountMax { get; set; }
-
     public IngredientUnit Unit { get; set; }
 
     [StringLength(RecipeLimits.MaxIngredientNameLength)]
     [Required]
     public required string Name { get; set; }
-
-    [StringLength(RecipeLimits.MaxPreparationLength)]
-    public string? Preparation { get; set; }
 
     public bool Optional { get; set; }
 

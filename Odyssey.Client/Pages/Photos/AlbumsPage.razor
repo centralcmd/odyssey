@@ -79,22 +79,22 @@
     }
     else
     {
-        <div class="pl-grid">
-            @foreach (var p in _albumPhotos)
-            {
-                <OdsPhotoTile @key="p.PhotoId" Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
-                              OnOpen="OpenDetail" OnToggleSelect="ToggleSelect" OnStartSelect="StartSelectWith"
-                              OnToggleFavourite="_ => Task.CompletedTask" />
-            }
-        </div>
+        <OdsPhotoGrid TItem="PhotoSummary" Items="_albumPhotos" ItemKey="p => p.PhotoId" Class="pl-grid"
+                      AriaLabel="@($"{_albumPhotos.Count} photo{(_albumPhotos.Count == 1 ? "" : "s")} in {album.Name}")">
+            <ItemTemplate Context="p">
+                <OdsPhotoTile Name="@PhotosCard.PhotoName(p)" Image="ImageOf(p)"
+                              Badges="@(BadgesOf(album, p))"
+                              Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
+                              OnOpen="() => OpenDetail(p.PhotoId)" OnToggleSelect="() => ToggleSelect(p.PhotoId)"
+                              OnStartSelect="() => StartSelectWith(p.PhotoId)"
+                              Fav="@(p.Favourited is not null)" OnToggleFav="FavCallback(p)" />
+            </ItemTemplate>
+        </OdsPhotoGrid>
     }
 
-    @if (_detailIndex is { } di)
-    {
-        <PhotoDetailDialog Photos="_albumPhotos" Index="di" IndexChanged="i => _detailIndex = i"
-                           OnClose="() => _detailIndex = null" CanUpdate="false" CanDelete="false"
-                           TagName="TagName" TagIcon="TagIcon" TagColor="TagColor" PersonName="PersonName" AlbumChip="AlbumChip" />
-    }
+    @* THE way a photo opens (PhotoViewer) — the same options as the library, Archive and Delete included. *@
+    <PhotoViewer @ref="_viewer" Photos="_albumPhotos" Index="_detailIndex" IndexChanged="i => _detailIndex = i"
+                 Lookups="_viewerLookups" OnChanged="OnViewerChanged" />
 }
 else
 {

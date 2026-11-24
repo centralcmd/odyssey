@@ -1,9 +1,11 @@
 /* Breathing room between the page header and the library content (Odyssey Design System · the
    .page-head scaffold carries a bottom gap). The shared client PageHeader has no bottom margin, so
    the dense full-bleed thumbnail grid otherwise butts right against the filter bar and reads as
-   cramped. Scoped to this page so table/list pages (which sit tight by design) are unaffected. */
+   cramped. The live grid is OdsPhotoGrid's own <ul>, which this page's scoped CSS cannot reach, so it
+   takes the gap from its .pl-grid-host wrapper; the skeleton .pl-grid is this page's own markup. Scoped to this page so table/list pages (which sit tight by design) are unaffected. */
 .pl-selbar,
-.pl-grid {
+.pl-grid,
+.pl-grid-host {
     margin-top: 16px;
 }
 

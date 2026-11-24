@@ -78,13 +78,9 @@ public sealed record RecipeIngredientDto
     /// <summary>Scaled when the read was scaled and the unit is scalable.</summary>
     public decimal? Amount { get; set; }
 
-    public decimal? AmountMax { get; set; }
-
     public required IngredientUnit Unit { get; set; }
 
     public required string Name { get; set; }
-
-    public string? Preparation { get; set; }
 
     public bool Optional { get; set; }
 }
@@ -114,6 +110,15 @@ public sealed record RecipePhotoDto
     public string? Title { get; set; }
 
     public string? FileName { get; set; }
+
+    /// <summary>
+    /// The library photo's own <c>Favourited</c> timestamp (UTC; null = not a favourite), so the shared photo tile can
+    /// draw its heart without a per-photo <c>GET /api/photos/{id}</c>.
+    /// </summary>
+    public DateTime? Favourited { get; set; }
+
+    /// <summary>The library photo's own <c>Archived</c> timestamp (UTC; null = live), for the tile's "Archived" badge.</summary>
+    public DateTime? Archived { get; set; }
 
     public bool ThumbnailsReady { get; set; }
 }

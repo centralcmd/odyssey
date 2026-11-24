@@ -297,7 +297,8 @@ public sealed class JournalEntriesController : ControllerBase
     /// <summary>
     /// The journal rule (issue #362 §7.3), in one place for every action that returns a photo link: a caller without
     /// <c>photos.read</c> never sees <c>ThumbnailsReady</c> true, so its client never requests a thumbnail it would be
-    /// refused. Core services carry no <c>ClaimsPrincipal</c>, so the rule lives at the controller.
+    /// refused, nor the library photo's favourite and archive state, which is photo data. Core services carry no
+    /// <c>ClaimsPrincipal</c>, so the rule lives at the controller.
     /// </summary>
     private void ApplyThumbnailRule(IEnumerable<JournalEntryPhotoDto>? photos)
     {
@@ -309,6 +310,8 @@ public sealed class JournalEntriesController : ControllerBase
         foreach (var photo in photos)
         {
             photo.ThumbnailsReady = false;
+            photo.Favourited = null;
+            photo.Archived = null;
         }
     }
 

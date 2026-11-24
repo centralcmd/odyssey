@@ -31,15 +31,19 @@ public sealed class PhotoLookup(OdysseyContext context) : IPhotoLookup
         }
 
         var ids = photoIds.Distinct().ToList();
-        var titles = await context.Photos
+        var rows = await context.Photos
             .Where(p => ids.Contains(p.PhotoId))
-            .Select(p => new { p.PhotoId, p.Title })
-            .ToDictionaryAsync(p => p.PhotoId, p => p.Title, cancellationToken);
+            .Select(p => new { p.PhotoId, p.Title, p.Favourited, p.Archived })
+            .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
         var names = await PhotoOriginalSource.Describe(context, context.Photos.Where(p => ids.Contains(p.PhotoId)))
             .Select(i => new { i.PhotoId, i.FileName })
             .ToListAsync(cancellationToken);
 
-        return names.ToDictionary(n => n.PhotoId, n => new PhotoLinkInfo(n.PhotoId, titles.GetValueOrDefault(n.PhotoId), n.FileName));
+        return names.ToDictionary(n => n.PhotoId, n =>
+        {
+            var row = rows.GetValueOrDefault(n.PhotoId);
+            return new PhotoLinkInfo(n.PhotoId, row?.Title, n.FileName, row?.Favourited, row?.Archived);
+        });
     }
 
     public async Task<IReadOnlyDictionary<Guid, Guid>> ResolveReferencesAsync(

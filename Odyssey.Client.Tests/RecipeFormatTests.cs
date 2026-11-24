@@ -11,25 +11,25 @@ namespace Odyssey.Client.Tests;
 /// </summary>
 public class RecipeFormatTests
 {
-    private static RecipeIngredientDto Line(decimal? amount, IngredientUnit unit, string name, decimal? max = null, string? prep = null, bool optional = false) =>
-        new() { RecipeIngredientId = Guid.NewGuid(), Position = 0, Amount = amount, AmountMax = max, Unit = unit, Name = name, Preparation = prep, Optional = optional };
+    private static RecipeIngredientDto Line(decimal? amount, IngredientUnit unit, string name, bool optional = false) =>
+        new() { RecipeIngredientId = Guid.NewGuid(), Position = 0, Amount = amount, Unit = unit, Name = name, Optional = optional };
 
     [Fact]
     public void A_metric_amount_shows_the_abbreviation_and_speaks_the_unit()
     {
-        var t = RecipeFormat.Ingredient(Line(500, IngredientUnit.Gram, "wheat flour", prep: "sifted"));
+        var t = RecipeFormat.Ingredient(Line(500, IngredientUnit.Gram, "wheat flour"));
 
         Assert.Equal(("500", "g", "grams"), (t.Amount, t.UnitText, t.UnitSpoken));
-        Assert.Equal("500 g wheat flour, sifted", t.Visible);
-        Assert.Equal("500 grams wheat flour, sifted", t.Spoken);
+        Assert.Equal("500 g wheat flour", t.Visible);
+        Assert.Equal("500 grams wheat flour", t.Spoken);
     }
 
     [Fact]
-    public void A_range_reads_with_an_en_dash_and_pluralises_by_its_upper_end()
+    public void A_range_a_migration_noted_in_the_name_reads_as_plain_text()
     {
-        var t = RecipeFormat.Ingredient(Line(4, IngredientUnit.Clove, "garlic", max: 6, prep: "unpeeled"));
+        var t = RecipeFormat.Ingredient(Line(4, IngredientUnit.Clove, "garlic, unpeeled (4–6)"));
 
-        Assert.Equal("4–6 cloves garlic, unpeeled", t.Visible);
+        Assert.Equal("4 cloves garlic, unpeeled (4–6)", t.Visible);
         Assert.Null(t.UnitSpoken);
     }
 

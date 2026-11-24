@@ -63,8 +63,8 @@
 /* The ⋯ wrapper — OdsMenu renders its own trigger, this is just the slot. */
 .je-cardmenu { display: inline-flex; flex: none; }
 
-/* Photos come from the shared JournalPhotoGallery (.odc-photogrid*) — no journal-side photo CSS, so
-   the card can't drift from the component. */
+/* Photos are the shared OdsPhotoGrid + OdsPhotoTile (.odc-photogrid2 / .odc-phototile) — no journal-side photo
+   CSS, so the card can't drift from the component. */
 
 /* Footer: two tracks, so the attachment count keeps a fixed slot instead of drifting to wherever the
    chips happen to wrap. Chips are uncapped. */

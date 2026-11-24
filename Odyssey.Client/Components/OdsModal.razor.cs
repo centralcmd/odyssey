@@ -81,6 +81,14 @@ public partial class OdsModal
     /// </summary>
     [Parameter] public string? DescribedById { get; set; }
 
+    /// <summary>
+    /// A wizard dialog's step path — normally one <see cref="OdsWizardSteps"/> — rendered in the header under the
+    /// title row (Odyssey Design System · Modal <c>steps</c>). Setting it widens the dialog to 760px (the
+    /// <c>wizard</c> class) and lets the footer wrap. See the design system's WizardSteps README for the footer
+    /// (Cancel · Back · Next / the verb) and per-step validation that go with it.
+    /// </summary>
+    [Parameter] public RenderFragment? Steps { get; set; }
+
     /// <summary>Wide variant — for batch grids / file analysis.</summary>
     [Parameter] public bool Wide { get; set; }
 
@@ -170,7 +178,8 @@ public partial class OdsModal
 
         _options = new DialogOptions
         {
-            MaxWidth = Wide ? MaxWidth.ExtraExtraLarge : MaxWidth.Small,
+            // A wizard's 760px cap is CSS (.mud-dialog.ods-modal.wizard); Medium lifts MudBlazor's own 600px cap.
+            MaxWidth = Wide ? MaxWidth.ExtraExtraLarge : Steps is not null ? MaxWidth.Medium : MaxWidth.Small,
             FullWidth = true,
             CloseOnEscapeKey = CanDismiss,
             BackdropClick = CanDismiss,

@@ -1,71 +1,175 @@
 @*
-    OdsPhotoTile — a single square photo tile for the library grid + album detail
-    (Odyssey Design System · Photos · library layout, "Uniform grid"). Extends the
-    Journal gallery tile: it carries the photo Title as a visible caption and as the
-    hit button's accessible name (the image itself is alt="", since the button already
-    names it), an "Archived" marker rendered as TEXT (not colour alone, WCAG 1.4.1), and
-    hover heart (favourite) + check (select) affordances. All meaning is in text/labels;
-    the icons are aria-hidden. The image is an OdsPhotoImage: the Medium thumbnail, then
-    the original, then the image-glyph placeholder (issue #365).
+    OdsPhotoTile — THE library photo tile (Odyssey Design System · components/PhotoTile, version
+    1795486190-6f31). One look wherever library photos are listed: the Photos page grid and album view,
+    a journal entry's photos (JournalPhotoGallery), and any record that links library photos.
+
+    A square image that zooms slightly on hover, a scrim, the name as a caption, and its controls
+    revealed on hover and on keyboard focus (always shown under `(hover: none)`):
+      • top-left  — Select, a check (OnToggleSelect / OnStartSelect);
+      • top-right — Favourite, a heart (OnToggleFav), and the ⋯ menu (Actions, an OdsMenu), the heart
+                    sitting left of the menu when both;
+      • bottom    — Badges ("Cover", "Archived" … always shown, in TEXT, WCAG 1.4.1), then the caption.
+    A control that is ON stays visible without hover (a selected check, a favourited heart, an open
+    menu), so state is never hidden.
+
+    Badges are said, not only shown: the badge row is aria-hidden, so its words end the image button's
+    accessible name — "Open garden_02.jpg, Cover", "Select IMG_0412.jpg, Already added".
+
+    Structure: the tile is a container, not a button. The image is its own <button> ("Open {name}"; in
+    selection mode "Select {name}" with aria-pressed; Id, when given, is its DOM id — a focus-return target), and the check, heart and menu are SIBLING buttons
+    above it, so no control is nested inside another (WCAG 4.1.2). In selection mode the image button is
+    THE control and the check is its visible state — always shown (a hollow ring, or the filled check),
+    out of the tab order and aria-hidden — so each tile is one tab stop.
+
+    The check and the heart keep one fixed name ("Select {name}", "Favourite {name}") and carry their
+    state in aria-pressed alone, so it is said once.
+
+    Disabled dims the tile and makes it inert (no open, select, heart or menu) — say why with a badge. It
+    stays focusable (aria-disabled, not the native disabled), so a keyboard or screen-reader user meets the
+    tile and hears the reason; a click or Enter does nothing.
+    Unavailable (neither source, no access — known at render) labels the placeholder "no access" and
+    suffixes the accessible name " (no access)" (WCAG 1.3.1); it is ignored when a source exists.
+
+    The image is an OdsPhotoImage: thumbnail, then original, then the striped placeholder, silently.
+    Styled by .odc-phototile (wwwroot/css/odyssey-components.css).
 *@
 
-<div class="pl-tile @(Selected ? "is-selected" : null)"
-     style="border-radius: var(--radius-md);">
-    <OdsPhotoImage Source="Photo.Image" Alt="" Fill="true" Class="pl-tile-img" PlaceholderClass="pl-tile-ph">
-        <Placeholder><span class="material-icons">image</span></Placeholder>
-    </OdsPhotoImage>
-    <div class="pl-tile-scrim" aria-hidden="true"></div>
-    @* Full-tile hit target as a real button: keyboard-operable (Enter/Space) and a sibling of the
-       check/heart controls, so there's no nested-interactive (WCAG 2.1.1 / 4.1.2). *@
-    <button type="button" class="pl-tile-hit" aria-label="@HitLabel" @onclick="OnTileClick"></button>
-    <span class="pl-tile-cap">@Photo.Label</span>
-    @if (Photo.Archived)
+<div class="@RootClass">
+    <button type="button" id="@Id" class="odc-phototile-open" title="@(string.IsNullOrEmpty(Name) ? null : Name)"
+            aria-disabled="@(Disabled ? "true" : null)" aria-label="@OpenLabel"
+            aria-pressed="@(Selectable && !Disabled ? (Selected ? "true" : "false") : null)"
+            @onclick="OnOpenClick">
+        @if (!Image.IsEmpty)
+        {
+            <OdsPhotoImage Source="Image" Alt="" Fill="true" Class="odc-phototile-img"
+                           PlaceholderClass="odc-phototile-img odc-phototile-ph">
+                <Placeholder><span class="mono">photo</span></Placeholder>
+            </OdsPhotoImage>
+        }
+        else
+        {
+            <span class="odc-phototile-img odc-phototile-ph" aria-hidden="true"><span class="mono">@(NoAccess ? "no access" : "photo")</span></span>
+        }
+    </button>
+    <span class="odc-phototile-scrim" aria-hidden="true"></span>
+    <span class="odc-phototile-foot" aria-hidden="true">
+        @foreach (var badge in ShownBadges)
+        {
+            <span class="odc-phototile-badge">@badge</span>
+        }
+        <span class="odc-phototile-cap">@Name</span>
+    </span>
+    @if (CanSelect)
     {
-        <span class="pl-tile-arch">Archived</span>
+        <button type="button" class="@($"odc-phototile-check{(Selected ? " on" : "")}")"
+                aria-label="@($"Select {Name}")"
+                aria-pressed="@(Selected ? "true" : "false")"
+                tabindex="@(Selectable ? "-1" : null)" aria-hidden="@(Selectable ? "true" : null)"
+                @onclick="OnCheckClick">
+            <span class="material-icons" aria-hidden="true">check</span>
+        </button>
     }
-    <button type="button" class="pl-check @(Selected ? "on" : null)"
-            aria-label="@(Selected ? "Deselect photo" : "Select photo")"
-            @onclick="OnCheckClick" @onclick:stopPropagation="true">
-        <span class="material-icons" aria-hidden="true">check</span>
-    </button>
-    <button type="button" class="pl-heart @(Photo.Favourite ? "on" : null)"
-            aria-label="@(Photo.Favourite ? "Remove from favourites" : "Add to favourites")"
-            aria-pressed="@(Photo.Favourite ? "true" : "false")"
-            @onclick="OnHeartClick" @onclick:stopPropagation="true">
-        <span class="material-icons" aria-hidden="true">@(Photo.Favourite ? "favorite" : "favorite_border")</span>
-    </button>
+    @if (OnToggleFav.HasDelegate && !Disabled)
+    {
+        <button type="button" class="@($"odc-phototile-fav{(Fav ? " on" : "")}")"
+                aria-label="@($"Favourite {Name}")"
+                aria-pressed="@(Fav ? "true" : "false")"
+                @onclick="() => OnToggleFav.InvokeAsync()">
+            <span class="material-icons" aria-hidden="true">@(Fav ? "favorite" : "favorite_border")</span>
+        </button>
+    }
+    @if (HasMenu)
+    {
+        <span class="odc-phototile-menu">
+            <OdsMenu Items="Actions!" AriaLabel="@(ActionsLabel ?? $"Actions for photo: {Name}")" />
+        </span>
+    }
 </div>
 
 @code {
-    /// <summary>The tile's view model: id, image sources, display label (title → filename fallback), and state.</summary>
-    public sealed record Vm(Guid Id, PhotoImageSource Image, string Label, bool Archived, bool Favourite);
+    /// <summary>The photo's title, else its file name — the caption, the tooltip and every control's name
+    /// ("Open {name}", "Favourite {name}"). A host lists an unnamed photo by its position, not its id.</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
 
-    [Parameter, EditorRequired] public Vm Photo { get; set; } = default!;
+    /// <summary>The image sources (<see cref="PhotoImageSources.For"/>): thumbnail, then original, then the
+    /// striped placeholder.</summary>
+    [Parameter] public PhotoImageSource Image { get; set; } = PhotoImageSource.None;
 
-    /// <summary>When true, clicking the tile toggles selection instead of opening it.</summary>
+    /// <summary>Always-visible text badges at the bottom-left, e.g. "Cover", "Archived". Empty entries are skipped. The
+    /// row is aria-hidden; the badges end the image button's accessible name instead ("Open {name}, Cover").</summary>
+    [Parameter] public IReadOnlyList<string?> Badges { get; set; } = [];
+
+    /// <summary>Selection mode: the image toggles selection (aria-pressed) instead of opening and is the
+    /// tile's one tab stop; the check is always shown as its visible state, out of the tab order.</summary>
     [Parameter] public bool Selectable { get; set; }
 
     [Parameter] public bool Selected { get; set; }
 
-    [Parameter] public EventCallback<Guid> OnOpen { get; set; }
+    /// <summary>Open the photo — the host mounts the shared <c>PhotoViewer</c> (Pages/Photos).</summary>
+    [Parameter] public EventCallback OnOpen { get; set; }
 
-    [Parameter] public EventCallback<Guid> OnToggleSelect { get; set; }
+    /// <summary>Toggle this photo's selection. With it (or <see cref="OnStartSelect"/>) the check is drawn.</summary>
+    [Parameter] public EventCallback OnToggleSelect { get; set; }
 
-    /// <summary>Enter selection mode seeded with this photo (the check button when not already selecting).</summary>
-    [Parameter] public EventCallback<Guid> OnStartSelect { get; set; }
+    /// <summary>Enter selection mode with this photo selected — what the check does outside selection mode.</summary>
+    [Parameter] public EventCallback OnStartSelect { get; set; }
 
-    [Parameter] public EventCallback<Guid> OnToggleFavourite { get; set; }
+    /// <summary>Favourite state; the heart is drawn only when <see cref="OnToggleFav"/> is set.</summary>
+    [Parameter] public bool Fav { get; set; }
 
-    // Accessible name for the full-tile hit button — reflects what a click does in the current mode.
-    private string HitLabel => Selectable
-        ? (Selected ? $"Deselect {Photo.Label}" : $"Select {Photo.Label}")
-        : $"Open {Photo.Label}";
+    [Parameter] public EventCallback OnToggleFav { get; set; }
 
-    private Task OnTileClick() =>
-        Selectable ? OnToggleSelect.InvokeAsync(Photo.Id) : OnOpen.InvokeAsync(Photo.Id);
+    /// <summary>This tile's ⋯ menu items (an <see cref="OdsMenu"/>), top-right. Null or empty for no menu.</summary>
+    [Parameter] public IReadOnlyList<OdsMenuItem>? Actions { get; set; }
+
+    /// <summary>The menu trigger's name. Default "Actions for photo: {name}".</summary>
+    [Parameter] public string? ActionsLabel { get; set; }
+
+    /// <summary>Dimmed and inert — no open, select, heart or menu (a picker's "Already added"). Say why with a badge.
+    /// The image button stays focusable (<c>aria-disabled</c>), so the reason is reachable by keyboard.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Neither source is available to this caller (no access, known at render): the placeholder
+    /// reads "no access" and the name gains " (no access)". Ignored when a source exists.</summary>
+    [Parameter] public bool Unavailable { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>The image button's DOM id: a host's focus-return target (the viewer hands focus back to it on close).</summary>
+    [Parameter] public string? Id { get; set; }
+
+    private bool HasMenu => !Disabled && Actions is { Count: > 0 };
+
+    private bool CanSelect => !Disabled && (OnToggleSelect.HasDelegate || OnStartSelect.HasDelegate);
+
+    private bool NoAccess => Unavailable && Image.IsEmpty;
+
+    private IEnumerable<string> ShownBadges => Badges.Where(b => !string.IsNullOrEmpty(b)).Cast<string>();
+
+    // "{Open|Select} {name}{ (no access)}, {badge1}, {badge2}" (design system 1795486190-6f31): the badge row is drawn
+    // for the eye only, so its words are said through this name.
+    internal string OpenLabel =>
+        $"{(Selectable ? "Select" : "Open")} {Name}{(NoAccess ? " (no access)" : "")}"
+        + string.Concat(ShownBadges.Select(b => $", {b}"));
+
+    private string RootClass =>
+        "odc-phototile"
+        + (Selected ? " is-selected" : "")
+        + (Selectable ? " is-selectable" : "")
+        + (Disabled ? " is-disabled" : "")
+        + (HasMenu ? " has-menu" : "")
+        + (string.IsNullOrEmpty(Class) ? "" : " " + Class);
+
+    private Task OnOpenClick()
+    {
+        if (Disabled)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Selectable && OnToggleSelect.HasDelegate ? OnToggleSelect.InvokeAsync() : OnOpen.InvokeAsync();
+    }
 
     private Task OnCheckClick() =>
-        Selectable ? OnToggleSelect.InvokeAsync(Photo.Id) : OnStartSelect.InvokeAsync(Photo.Id);
-
-    private Task OnHeartClick() => OnToggleFavourite.InvokeAsync(Photo.Id);
+        Selectable && OnToggleSelect.HasDelegate ? OnToggleSelect.InvokeAsync() : OnStartSelect.InvokeAsync();
 }

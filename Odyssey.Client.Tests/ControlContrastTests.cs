@@ -120,18 +120,19 @@ public class ControlContrastTests
         Assert.Equal(Hex(client), design, StringComparer.OrdinalIgnoreCase);
     }
 
-    // ── Journal gallery placeholder label (issue #365 A2) ───────────────────────────────────────
+    // ── Photo tile placeholder label (issue #365 A2; the shared tile since DS 1795477868-c9a2) ──────
 
     /// <summary>
     /// The "photo" / "no access" label sits on the placeholder's background fill. It was text-secondary at 0.75 opacity,
     /// about 3.9:1 in the light theme; with the opacity gone it is text-secondary as-is and clears 4.5:1 in both themes.
+    /// The label now belongs to the shared tile (<c>.odc-phototile-ph</c>), which the journal gallery draws.
     /// </summary>
     [Theory]
     [InlineData(Theme.Light)]
     [InlineData(Theme.Dark)]
     public void The_gallery_placeholder_label_clears_text_contrast_with_no_opacity(Theme theme)
     {
-        var rule = Rule(ComponentsCss, ".odc-photogrid-ph-label");
+        var rule = Rule(ComponentsCss, ".odc-phototile-ph");
         Assert.Matches(@"(?<![-\w])color:\s*var\(--mud-palette-text-secondary\)", rule);
         Assert.DoesNotContain("opacity", rule, StringComparison.Ordinal);
 
@@ -142,9 +143,107 @@ public class ControlContrastTests
     [SkippableFact]
     public void The_design_system_gallery_placeholder_label_has_no_opacity_either()
     {
-        var rule = Rule(DesignSystemSource.File("components/bundle.css"), ".odc-photogrid-ph-label");
+        var rule = Rule(DesignSystemSource.File("components/bundle.css"), ".odc-phototile-ph");
 
         Assert.DoesNotContain("opacity", rule, StringComparison.Ordinal);
+    }
+
+    // ── Photo tile overlay controls (PR #598 review; DS 1795486190-6f31) ─────────────────────────
+
+    /// <summary>The tile's overlay chips: the check and heart, the ⋯ menu, and the selection-mode hollow ring.</summary>
+    public static TheoryData<string> PhotoTileChipRules() =>
+    [
+        ".odc-phototile-check, .odc-phototile-fav",
+        ".odc-phototile-menu",
+        ".odc-phototile.is-selectable .odc-phototile-check:not(.on)",
+    ];
+
+    /// <summary>
+    /// The chips float over an arbitrary photo, so their ground is measured over the worst case, a white one. At the old
+    /// 0.58 (and 0.32 for the hollow ring) the pink heart fell to about 2.2:1 there; at 0.74 the white glyph, the white
+    /// ring and the favourited heart all clear WCAG 1.4.11's 3:1.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PhotoTileChipRules))]
+    public void A_photo_tile_chip_keeps_its_glyph_at_three_to_one_over_a_white_photo(string selector)
+    {
+        var ground = OverWhite(ChipGround(Rule(ComponentsCss, selector)));
+
+        AssertRatio("#FFFFFF", ground, NonTextContrastMinimum, $"white glyph/ring on {selector}");
+        AssertRatio(FavouriteOn(ComponentsCss), ground, NonTextContrastMinimum, $"favourited heart on {selector}");
+    }
+
+    [SkippableTheory]
+    [MemberData(nameof(PhotoTileChipRules))]
+    public void A_photo_tile_chip_ground_matches_the_design_system(string selector)
+    {
+        var design = ChipGround(Rule(DesignSystemSource.File("components/bundle.css"), selector));
+
+        Assert.Equal(design, ChipGround(Rule(ComponentsCss, selector)));
+    }
+
+    /// <summary>
+    /// The image button's focus ring is drawn above the photo as a two-tone ring (the focus colour, then a white halo)
+    /// rather than the button's own inset outline, which could vanish on a photo of the same hue (WCAG 2.4.7).
+    /// </summary>
+    [Fact]
+    public void The_photo_tile_focus_ring_is_two_toned_and_drawn_above_the_photo()
+    {
+        // The selector appears twice: the normal rule (outline: none) and the forced-colours one (a Highlight outline).
+        var open = NormaliseSelector(".odc-phototile-open:focus-visible");
+        Assert.Contains(Rules(File.ReadAllText(ComponentsCss)), r => r.Selector == open && Regex.IsMatch(r.Body, @"outline:\s*none"));
+
+        var ring = Rule(ComponentsCss, ".odc-phototile:has(.odc-phototile-open:focus-visible)::before");
+        Assert.Matches(@"z-index:\s*1\b", ring);
+        Assert.Matches(@"pointer-events:\s*none", ring);
+        Assert.Matches(@"box-shadow:\s*inset 0 0 0 var\(--focus-ring-width\) var\(--focus-ring\),\s*inset 0 0 0 calc\(var\(--focus-ring-width\) \* 2\) #fff", ring);
+    }
+
+    /// <summary>
+    /// Forced-colours modes drop box-shadows, so the two-tone ring above would leave a focused tile with no indicator;
+    /// there the image button gets a real <c>Highlight</c> outline instead (WCAG 2.4.7, 1.4.11; PR #598 round 2).
+    /// </summary>
+    [Fact]
+    public void The_photo_tile_has_a_highlight_outline_in_forced_colours()
+    {
+        var media = Regex.Match(File.ReadAllText(ComponentsCss),
+            @"@media\s*\(forced-colors:\s*active\)\s*\{\s*\.odc-phototile-open:focus-visible\s*\{([^}]*)\}");
+        Assert.True(media.Success, "no forced-colors rule for .odc-phototile-open:focus-visible");
+        Assert.Matches(@"outline:\s*3px solid Highlight", media.Groups[1].Value);
+        Assert.Matches(@"outline-offset:\s*-3px", media.Groups[1].Value);
+    }
+
+    [SkippableFact]
+    public void The_photo_tile_focus_ring_matches_the_design_system()
+    {
+        const string selector = ".odc-phototile:has(.odc-phototile-open:focus-visible)::before";
+        var design = Rule(DesignSystemSource.File("components/bundle.css"), selector);
+
+        Assert.Equal(Compact(design), Compact(Rule(ComponentsCss, selector)));
+    }
+
+    private static string Compact(string body) => Regex.Replace(body, @"\s+", " ").Trim();
+
+    /// <summary>The <c>background: rgba(r, g, b, a)</c> of a chip rule.</summary>
+    private static (int R, int G, int B, double A) ChipGround(string body)
+    {
+        var m = Regex.Match(body, @"background:\s*rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)");
+        Assert.True(m.Success, $"no rgba background in: {body}");
+        return (int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture),
+            int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture), double.Parse(m.Groups[4].Value, CultureInfo.InvariantCulture));
+    }
+
+    private static string OverWhite((int R, int G, int B, double A) c)
+    {
+        int Mix(int channel) => (int)Math.Round(c.A * channel + (1 - c.A) * 255);
+        return $"#{Mix(c.R):X2}{Mix(c.G):X2}{Mix(c.B):X2}";
+    }
+
+    private static string FavouriteOn(string cssPath)
+    {
+        var m = Regex.Match(Rule(cssPath, ".odc-phototile-fav.on"), @"color:\s*(#[0-9a-fA-F]{6})");
+        Assert.True(m.Success);
+        return m.Groups[1].Value.ToUpperInvariant();
     }
 
     // ── 2. Control boundaries ───────────────────────────────────────────────────────────────────
@@ -418,8 +517,8 @@ public class ControlContrastTests
             [("wwwroot/css/odyssey-components.css", ".odn-cmd-esc")] = "keyboard-hint chip, not a control",
             [("wwwroot/css/odyssey-components.css", ".odn-cmd-kbd")] = "keyboard-hint chip, not a control",
             [("wwwroot/css/odyssey-components.css", ".odn-cmd-foot .odn-kbd,.odn-kbd")] = "keyboard-hint chip, not a control",
-            [("wwwroot/css/odyssey-components.css", ".odc-photogrid-tile:hover")] = "hover emphasis on a tile identified by its image",
             [("wwwroot/css/odyssey-components.css", ".odc-board-card:hover")] = "hover emphasis on a card identified by its content",
+            [("wwwroot/css/odyssey-components.css", ".odc-sortable-row:hover,.odc-sortable-row:focus-within")] = "hover/focus emphasis on a row card whose controls carry their own boundaries",
             [("wwwroot/css/odyssey-components.css", ".odc-capacity-nolimit")] = "static 'No limit' stand-in, not a control",
             [("wwwroot/css/legal.css", ".lg-scroll,.lg-ver-view,.lg-admin-card .odc-input-multiline")] = "scrollbar colour",
             [("wwwroot/css/legal.css", ".lg-scroll::-webkit-scrollbar-thumb,.lg-ver-view::-webkit-scrollbar-thumb,.lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb")] = "scrollbar thumb",

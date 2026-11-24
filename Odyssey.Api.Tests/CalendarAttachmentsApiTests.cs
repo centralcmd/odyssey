@@ -271,8 +271,13 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var calendar = await CreateCalendarAsync(ownerClient);
         var file = await SeedFileAsync(owner, "agenda.txt", AgendaBytes);
         var photo = await SeedPhotoAsync(owner, title: "Fjord");
+        await PhotoTestSupport.MarkLibraryStateAsync(owner, photo);
         var created = await CreateEventAsync(ownerClient, Event(calendar.CalendarId) with { AttachmentFileIds = [file], PhotoIds = [photo] });
         Assert.Equal("Fjord", created.Photos![0].Title);
+        // The library state the shared photo tile shows travels with the link for a photos.read holder.
+        Assert.Equal(
+            ((DateTime?)PhotoTestSupport.FavouritedAt, (DateTime?)PhotoTestSupport.ArchivedAt),
+            (created.Photos[0].Favourited, created.Photos[0].Archived));
 
         var reader = Factory;
         using var client = reader.ClientFor([PermissionClaims.CalendarRead]);
@@ -284,6 +289,7 @@ public class CalendarAttachmentsApiTests(CalendarAttachmentsApiTests.Host host) 
         var photoLink = Assert.Single(seen.Photos!);
         Assert.Equal((photo, 0), (photoLink.PhotoId, photoLink.Position));
         Assert.Equal((null, null, false), (photoLink.Title, photoLink.FileName, photoLink.ThumbnailsReady));
+        Assert.Equal(((DateTime?)null, (DateTime?)null), (photoLink.Favourited, photoLink.Archived));
         Assert.Equal((1, 1), (seen.AttachmentCount, seen.PhotoCount));
     }
 

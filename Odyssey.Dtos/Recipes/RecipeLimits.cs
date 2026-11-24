@@ -17,7 +17,6 @@ public static class RecipeLimits
     public const int MaxServingsLabelLength = 32;
     public const int MaxSectionLength = 64;
     public const int MaxIngredientNameLength = 200;
-    public const int MaxPreparationLength = 200;
     public const int MaxStepTextLength = 4000;
 
     public const int MaxIngredients = 100;

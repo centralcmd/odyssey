@@ -1,6 +1,3 @@
-using System.Globalization;
-using System.Net;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Odyssey.Client.Components;
@@ -14,8 +11,19 @@ public partial class RecipeDialog
 {
     internal const string ReloadId = "rc-dlg-reload";
 
+    internal const string IngredientNoun = "ingredient";
+
+    internal const string StepNoun = "step";
+
+    private const string RowSection = "rc-sec";
+    private const string RowIngredient = "rc-ing";
+    private const string RowStep = "rc-step";
+
     private const double AmountMin = 0.001;
     private const double AmountMax = 999999;
+
+    /// <summary>The three steps' names, in order — the path's labels and the panels' accessible names.</summary>
+    internal static readonly string[] StepLabels = ["Details", "Ingredients", "Method"];
 
     [Parameter] public bool Open { get; set; }
 
@@ -24,7 +32,7 @@ public partial class RecipeDialog
     /// <summary>The recipe to edit, read unscaled; <c>null</c> for New recipe.</summary>
     [Parameter] public ExistingRecipe? Recipe { get; set; }
 
-    /// <summary><c>recipes.tags.read</c> at open: the Tags section, and whether <c>tagIds</c> is the edited list.</summary>
+    /// <summary><c>recipes.tags.read</c> at open: the Tags field, and whether <c>tagIds</c> is the edited list.</summary>
     [Parameter] public bool CanReadTags { get; set; }
 
     [Parameter] public bool CanCreateTags { get; set; }
@@ -52,24 +60,60 @@ public partial class RecipeDialog
     private bool _closing;
     private string? _focusId;
 
+    // ── The wizard ──
+    private int _step;
+
+    // Steps the person has moved through. Editing counts all three as visited: the record already holds them.
+    private bool[] _visited = [true, false, false];
+
+    /// <summary>The open step — for tests.</summary>
+    internal int Step => _step;
+
     private static readonly IReadOnlyList<OdsOption> UnitOptions =
         [.. RecipeFormat.Units.Select(u => new OdsOption(u.Unit.ToString(), u.Label))];
 
     private bool IsEdit => _read is not null;
 
-    private RenderFragment TitleFragment => b => b.AddContent(0, IsEdit ? "Edit recipe" : "New recipe");
+    private bool IsLastStep => _step == RecipeDraft.MethodStep;
 
-    private RenderFragment SubtitleFragment => b => b.AddContent(0, IsEdit
-        ? "Update the recipe, its ingredients, method and tags. Photos and files are managed from the recipe’s ⋯ menu."
-        : "A recipe the whole household can cook from. Add photos and files from its ⋯ menu once it exists.");
+    private RenderFragment TitleFragment => b => b.AddContent(0, IsEdit ? "Edit recipe" : "New recipe");
 
     private string ServingsUnit => string.IsNullOrWhiteSpace(_draft.ServingsLabel) ? "serving" : _draft.ServingsLabel.Trim();
 
     private string ServingsUnitPlural => string.IsNullOrWhiteSpace(_draft.ServingsLabel) ? "servings" : _draft.ServingsLabel.Trim();
 
-    private string? TagsMeta => _draft.TagIds.Count >= (int)Math.Ceiling(RecipeLimits.MaxTags * 0.8)
-        ? $"{_draft.TagIds.Count} of {RecipeLimits.MaxTags} tags"
-        : null;
+    private int IngredientCount => RecipeDraft.LineCount(_draft.Ingredients);
+
+    private int StepCount => RecipeDraft.LineCount(_draft.Method);
+
+    /// <summary>"n of 20 tags" as help from 80 % of the cap.</summary>
+    private string? TagsHelp => AtEighty(_draft.TagIds.Count, RecipeLimits.MaxTags) ? $"{_draft.TagIds.Count} of {RecipeLimits.MaxTags} tags" : null;
+
+    /// <summary>The step path: a ✓ once a step is left with nothing wrong in it, ! with "Has errors" while it has any,
+    /// and "n of 100" under Ingredients / Method from 80 % of the cap.</summary>
+    private IReadOnlyList<OdsWizardStep> WizardSteps =>
+    [
+        new(StepLabels[0], null, StateOf(RecipeDraft.DetailsStep), "details"),
+        new(StepLabels[1], CapMeta(IngredientCount, RecipeLimits.MaxIngredients), StateOf(RecipeDraft.IngredientsStep), "ingredients"),
+        new(StepLabels[2], CapMeta(StepCount, RecipeLimits.MaxSteps), StateOf(RecipeDraft.MethodStep), "method"),
+    ];
+
+    private OdsWizardStepState StateOf(int step)
+    {
+        if (_errors.Keys.Any(k => RecipeDraft.StepOf(k) == step))
+        {
+            return OdsWizardStepState.Error;
+        }
+
+        // "Done" only once the step has been left behind — never a guess about whether optional fields are complete.
+        var done = _visited[step] && _step != step && (step != RecipeDraft.DetailsStep || !string.IsNullOrWhiteSpace(_draft.Title));
+        return done ? OdsWizardStepState.Done : OdsWizardStepState.None;
+    }
+
+    internal static bool AtEighty(int n, int cap) => n >= (int)Math.Ceiling(cap * 0.8);
+
+    /// <summary>"84 of 100" from 80 % of the cap, else nothing.</summary>
+    internal static string? CapMeta(int n, int cap) => AtEighty(n, cap) ? $"{n} of {cap}" : null;
 
     private IReadOnlyList<OdsOption> TagOptions
     {
@@ -88,6 +132,8 @@ public partial class RecipeDialog
         if (Open && !_wasOpen)
         {
             Seed(Recipe);
+            _step = RecipeDraft.DetailsStep;
+            _visited = Recipe is null ? [true, false, false] : [true, true, true];
             _closing = false;
             _modalOpen = true;
         }
@@ -105,7 +151,9 @@ public partial class RecipeDialog
         _focusId = null;
         try
         {
-            await Js.InvokeVoidAsync("odsFocusById", id);
+            // The dialog's body is teleported into the dialog provider, which renders after this component, so the
+            // move waits two frames for a new step's (or a new row's) field to be in the DOM.
+            await Js.InvokeVoidAsync("odsFocusFirstIn", id, true, 2);
         }
         catch (Exception ex) when (ex is JSException or InvalidOperationException)
         {
@@ -126,6 +174,8 @@ public partial class RecipeDialog
     /// <summary>The field id of an error key.</summary>
     private static string F(string key) => RecipeDraft.FieldId(key);
 
+    internal static string PanelId(int step) => $"rc-wiz-panel-{step}";
+
     private string? Err(string key) => _errors.TryGetValue(key, out var message) ? message : null;
 
     private void Set(Action apply, string? key)
@@ -139,96 +189,173 @@ public partial class RecipeDialog
 
     private static string Cap(string noun) => char.ToUpperInvariant(noun[0]) + noun[1..];
 
-    /// <summary>"n of cap ingredients" from 80 % of the cap, else "n lines".</summary>
-    internal static string RowsMeta(int n, int cap, string noun, string unit) =>
-        n >= (int)Math.Ceiling(cap * 0.8) ? $"{n} of {cap} {noun}s" : RecipeFormat.Count(n, unit);
+    // ── Steps ────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// The first field of a step — where focus lands on a step change: Title; the first row's first input (a heading's
+    /// name, an ingredient's Amount, a step's text) — never its drag handle; else the Add row when the list is empty.
+    /// </summary>
+    internal string FirstFieldOf(int step)
+    {
+        if (step == RecipeDraft.DetailsStep)
+        {
+            return F("title");
+        }
+
+        var (rows, list, field, noun) = step == RecipeDraft.IngredientsStep
+            ? (_draft.Ingredients, "ingredients", "amount", IngredientNoun)
+            : (_draft.Method, "steps", "text", StepNoun);
+        return rows.Count == 0 ? AddRowId(noun) : F(RecipeDraft.RowKey(rows, 0, list, field));
+    }
+
+    /// <summary>Opens a step: focus to <paramref name="focusId"/> (an ErrorSummary jump) or the step's first field, and
+    /// the polite region says where you are — the path in the header is the only step title.</summary>
+    private async Task GoAsync(int step, string? focusId = null)
+    {
+        step = Math.Clamp(step, RecipeDraft.DetailsStep, RecipeDraft.MethodStep);
+        for (var i = 0; i <= step; i++)
+        {
+            _visited[i] = true;
+        }
+
+        var changed = step != _step;
+        _step = step;
+        _focusId = focusId ?? FirstFieldOf(step);
+        StateHasChanged();
+        if (changed)
+        {
+            await Announce(StepAnnouncement(step));
+        }
+    }
+
+    /// <summary>"Step 2 of 3: Ingredients".</summary>
+    internal static string StepAnnouncement(int step) => $"Step {step + 1} of {StepLabels.Length}: {StepLabels[step]}";
+
+    /// <summary>Next checks only the step it is on; its errors stay there and focus goes to the first.</summary>
+    private async Task NextAsync()
+    {
+        var problems = _draft.Validate(_step);
+        foreach (var key in _errors.Keys.Where(k => RecipeDraft.StepOf(k) == _step).ToList())
+        {
+            _errors.Remove(key);
+        }
+
+        if (problems.Count > 0)
+        {
+            foreach (var (key, message) in problems)
+            {
+                _errors.TryAdd(key, message);
+            }
+
+            _focusId = F(problems[0].Key);
+            return;
+        }
+
+        await GoAsync(_step + 1);
+    }
+
+    private Task BackAsync() => GoAsync(_step - 1);
+
+    /// <summary>
+    /// After Save (or a 422) found problems: stay on this step if it has one, else open the first step that does, and
+    /// focus its first invalid field.
+    /// </summary>
+    private async Task ShowErrorsAsync()
+    {
+        var keys = _errors.Keys.ToList();
+        var target = keys.FirstOrDefault(k => RecipeDraft.StepOf(k) == _step)
+            ?? keys.OrderBy(RecipeDraft.StepOf).First();
+        var step = RecipeDraft.StepOf(target);
+        if (step == _step)
+        {
+            _focusId = F(target);
+            return;
+        }
+
+        await GoAsync(step, F(target));
+    }
 
     // ── Rows ─────────────────────────────────────────────────────────────────────────
     private OdsLiveAnnouncer? _announcer;
 
     private Task Announce(string message) => _announcer?.Announce(message) ?? Task.CompletedTask;
 
-    private async Task AddIngredient()
+    private async Task AddIngredientAsync()
     {
-        if (_draft.Ingredients.Count < RecipeLimits.MaxIngredients)
-        {
-            _draft.Ingredients.Add(new RecipeIngredientDraft());
-            _focusId = F($"ingredients[{_draft.Ingredients.Count - 1}].amount");
-            if (CapMessage("ingredient", _draft.Ingredients.Count, RecipeLimits.MaxIngredients) is { } cap)
-            {
-                await Announce(cap);
-            }
-        }
-    }
-
-    private async Task AddStep()
-    {
-        if (_draft.Steps.Count < RecipeLimits.MaxSteps)
-        {
-            _draft.Steps.Add(new RecipeStepDraft());
-            _focusId = F($"steps[{_draft.Steps.Count - 1}].section");
-            if (CapMessage("step", _draft.Steps.Count, RecipeLimits.MaxSteps) is { } cap)
-            {
-                await Announce(cap);
-            }
-        }
-    }
-
-    private async Task Move<T>(List<T> rows, string noun, int from, int to, RowButton pressed) where T : IRecipeRowDraft
-    {
-        if (to < 0 || to >= rows.Count)
+        if (IngredientCount >= RecipeLimits.MaxIngredients)
         {
             return;
         }
 
-        (rows[from], rows[to]) = (rows[to], rows[from]);
-        ClearRowErrors();
-        _focusId = MoveFocusTarget(noun, rows[to].Key, pressed, to, rows.Count);
-        await Announce(MovedMessage(noun, from, to, rows.Count));
+        _draft.Ingredients.Add(new RecipeIngredientDraft());
+        _focusId = F(RecipeDraft.RowKey(_draft.Ingredients, _draft.Ingredients.Count - 1, "ingredients", "amount"));
+        if (CapMessage(IngredientNoun, IngredientCount, RecipeLimits.MaxIngredients) is { } cap)
+        {
+            await Announce(cap);
+        }
     }
 
-    private async Task Remove<T>(List<T> rows, string noun, int index) where T : IRecipeRowDraft
+    private async Task AddStepAsync()
     {
+        if (StepCount >= RecipeLimits.MaxSteps)
+        {
+            return;
+        }
+
+        _draft.Method.Add(new RecipeStepDraft());
+        _focusId = F(RecipeDraft.RowKey(_draft.Method, _draft.Method.Count - 1, "steps", "text"));
+        if (CapMessage(StepNoun, StepCount, RecipeLimits.MaxSteps) is { } cap)
+        {
+            await Announce(cap);
+        }
+    }
+
+    private void AddSection(List<RecipeRowDraft> rows, string list)
+    {
+        rows.Add(new RecipeSectionDraft());
+        _focusId = F(RecipeDraft.RowKey(rows, rows.Count - 1, list, "title"));
+    }
+
+    /// <summary>Every way of moving a row ends here. Moving a heading moves only the heading: its lines regroup under
+    /// whatever heading is then above them. The list keeps focus on the handle and announces the move.</summary>
+    private void MoveRow(List<RecipeRowDraft> rows, OdsSortMove move)
+    {
+        if (move.From < 0 || move.From >= rows.Count || move.To < 0 || move.To >= rows.Count)
+        {
+            return;
+        }
+
+        var row = rows[move.From];
+        rows.RemoveAt(move.From);
+        rows.Insert(move.To, row);
+        ClearRowErrors();
+    }
+
+    /// <summary>Removing a heading keeps its lines: they join the section above (or none). Focus goes to the row now in
+    /// its place, else the one before, else the Add row.</summary>
+    private async Task RemoveRowAsync(List<RecipeRowDraft> rows, int index, string noun)
+    {
+        if (index < 0 || index >= rows.Count)
+        {
+            return;
+        }
+
+        var label = RecipeDraft.LabelOf(rows, index, noun);
         rows.RemoveAt(index);
         ClearRowErrors();
-        _focusId = RemoveFocusTarget(noun, [.. rows.Select(r => r.Key)], index);
-        await Announce(RemovedMessage(noun, index, rows.Count));
+        var list = noun == IngredientNoun ? "ingredients" : "steps";
+        var field = noun == IngredientNoun ? "amount" : "text";
+        _focusId = rows.Count == 0
+            ? AddRowId(noun)
+            : F(RecipeDraft.RowKey(rows, Math.Min(index, rows.Count - 1), list, field));
+        await Announce(RemovedMessage(label, noun, RecipeDraft.LineCount(rows)));
     }
-
-    /// <summary>A row's Move up / Move down / Remove button.</summary>
-    internal enum RowButton { Up, Down, Remove }
-
-    /// <summary>A row button's id, stable across moves: it follows the row's key, not its position.</summary>
-    internal static string RowButtonId(string noun, Guid rowKey, RowButton button) =>
-        $"rc-{noun}-{rowKey:N}-{button.ToString().ToLowerInvariant()}";
 
     /// <summary>The closing Add row's id.</summary>
     internal static string AddRowId(string noun) => $"rc-{noun}-add";
 
-    /// <summary>
-    /// After a move, focus stays on the pressed button of the moved row; when that button is now aria-disabled (the
-    /// row reached the top or the bottom) it moves to the sibling move button instead (WCAG 2.4.3).
-    /// </summary>
-    internal static string MoveFocusTarget(string noun, Guid rowKey, RowButton pressed, int newIndex, int count)
-    {
-        var blocked = (pressed == RowButton.Up && newIndex == 0) || (pressed == RowButton.Down && newIndex == count - 1);
-        var target = !blocked ? pressed : pressed == RowButton.Up ? RowButton.Down : RowButton.Up;
-        return RowButtonId(noun, rowKey, target);
-    }
-
-    /// <summary>After a removal: the next row's Remove (now at the same index), else the previous row's, else the Add row.</summary>
-    internal static string RemoveFocusTarget(string noun, IReadOnlyList<Guid> remaining, int removedIndex) =>
-        removedIndex < remaining.Count ? RowButtonId(noun, remaining[removedIndex], RowButton.Remove)
-        : remaining.Count > 0 ? RowButtonId(noun, remaining[^1], RowButton.Remove)
-        : AddRowId(noun);
-
-    /// <summary>"Ingredient 3 moved to position 2 of 5."</summary>
-    internal static string MovedMessage(string noun, int from, int to, int count) =>
-        $"{Cap(noun)} {from + 1} moved to position {to + 1} of {count}.";
-
-    /// <summary>"Step 2 removed. 4 steps."</summary>
-    internal static string RemovedMessage(string noun, int index, int remaining) =>
-        $"{Cap(noun)} {index + 1} removed. {RecipeFormat.Count(remaining, noun)}.";
+    /// <summary>"Step 2 removed. 4 steps." / "Section 1 removed. 3 ingredients."</summary>
+    internal static string RemovedMessage(string label, string noun, int lines) =>
+        $"{Cap(label)} removed. {RecipeFormat.Count(lines, noun)}.";
 
     /// <summary>"A recipe holds at most 100 ingredients." once the list reaches its cap; otherwise nothing.</summary>
     internal static string? CapMessage(string noun, int count, int cap) =>

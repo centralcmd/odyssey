@@ -224,8 +224,8 @@ public class AlbumIconColorSurfaceTests
         Assert.Equal("true", header.GetAttribute("aria-hidden"));
         Assert.Contains("#006B5A", header.GetAttribute("style"), StringComparison.Ordinal);
 
-        cut.WaitForState(() => cut.FindAll("button.pl-check").Count == 1);
-        cut.Find("button.pl-check").Click();
+        cut.WaitForState(() => cut.FindAll("button.odc-phototile-check").Count == 1);
+        cut.Find("button.odc-phototile-check").Click();
         cut.FindAll("button").Single(b => b.TextContent.Contains("Remove from album", StringComparison.Ordinal)).Click();
         cut.WaitForState(() => sent is not null);
 

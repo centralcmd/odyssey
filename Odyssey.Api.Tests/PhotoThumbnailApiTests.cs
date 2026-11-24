@@ -182,7 +182,7 @@ public sealed class PhotoThumbnailApiTests(PhotoThumbnailApiTests.Host host) : S
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task A_journal_photo_is_thumbnail_ready_only_for_a_photos_reader_on_every_action(bool photosRead)
+    public async Task A_journal_photo_is_thumbnail_ready_and_carries_its_library_state_only_for_a_photos_reader_on_every_action(bool photosRead)
     {
         var factory = Factory;
         var photoId = await SeedPhotoAsync(factory);
@@ -194,6 +194,11 @@ public sealed class PhotoThumbnailApiTests(PhotoThumbnailApiTests.Host host) : S
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.PhotoThumbnails.AddRange(Thumbnail(photoId, ThumbnailSize.Small, Guid.NewGuid()), Thumbnail(photoId, ThumbnailSize.Medium, Guid.NewGuid()));
             var now = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+            // The library state the shared photo tile shows (heart, "Archived" badge) is photo data: only a
+            // photos.read holder sees it on the link.
+            var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
+            photo.Favourited = PhotoTestSupport.FavouritedAt;
+            photo.Archived = PhotoTestSupport.ArchivedAt;
             context.JournalEntries.Add(new JournalEntry
             {
                 JournalEntryId = entryId,
@@ -233,11 +238,21 @@ public sealed class PhotoThumbnailApiTests(PhotoThumbnailApiTests.Host host) : S
         Assert.Equal(photosRead, Assert.Single(detail!.Photos).ThumbnailsReady);
         Assert.All(list!.SelectMany(e => e.Photos), photo => Assert.Equal(photosRead, photo.ThumbnailsReady));
         Assert.Equal(photosRead, Assert.Single(updated.Photos).ThumbnailsReady);
+        AssertLibraryState(photosRead, Assert.Single(detail.Photos));
+        Assert.All(list.SelectMany(e => e.Photos).Where(p => p.PhotoId == photoId), photo => AssertLibraryState(photosRead, photo));
+        AssertLibraryState(photosRead, Assert.Single(updated.Photos));
         if (photosRead)
         {
             var created = await PostEntryAsync(client, photoId);
             Assert.True(Assert.Single(created.Photos).ThumbnailsReady);
+            AssertLibraryState(true, Assert.Single(created.Photos));
         }
+    }
+
+    private static void AssertLibraryState(bool photosRead, JournalEntryPhotoDto photo)
+    {
+        Assert.Equal(photosRead ? PhotoTestSupport.FavouritedAt : null, photo.Favourited);
+        Assert.Equal(photosRead ? PhotoTestSupport.ArchivedAt : null, photo.Archived);
     }
 
     private static async Task<ExistingJournalEntry> PostEntryAsync(HttpClient client, Guid photoId)

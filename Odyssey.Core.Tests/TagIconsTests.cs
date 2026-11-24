@@ -47,6 +47,50 @@ public class TagIconsTests
     public void Every_key_shipped_by_issue_279_is_still_selectable(string key) =>
         Assert.True(TagIcons.IsKnown(key));
 
+    /// <summary>
+    /// Issue #596 added fourteen recipe and cooking keys right after <c>restaurant_menu</c>. A tag may already store any
+    /// of them, so each must stay known under its label; and the catalogue count and their place pin a silent drop,
+    /// rename or move.
+    /// </summary>
+    public static TheoryData<string, string> Issue596Keys() => new()
+    {
+        { "soup_kitchen", "Cooking" },
+        { "breakfast_dining", "Breakfast" },
+        { "brunch_dining", "Brunch" },
+        { "egg_alt", "Eggs" },
+        { "ramen_dining", "Noodles" },
+        { "rice_bowl", "Rice" },
+        { "set_meal", "Fish" },
+        { "kebab_dining", "Kebab" },
+        { "tapas", "Snacks" },
+        { "cookie", "Baking" },
+        { "eco", "Vegetarian" },
+        { "blender", "Smoothies" },
+        { "emoji_food_beverage", "Tea" },
+        { "microwave", "Quick meals" },
+    };
+
+    [Theory]
+    [MemberData(nameof(Issue596Keys))]
+    public void Every_key_added_by_issue_596_is_selectable_with_its_label(string key, string label)
+    {
+        Assert.True(TagIcons.IsKnown(key));
+        Assert.Equal(label, TagIcons.LabelFor(key));
+        Assert.Equal(key, TagIcons.Glyph(key));
+    }
+
+    [Fact]
+    public void The_issue_596_keys_follow_restaurant_menu_in_order_and_the_catalogue_holds_172()
+    {
+        Assert.Equal(172, TagIcons.All.Count);
+
+        var keys = TagIcons.All.Select(option => option.Key).ToList();
+        var expected = Issue596Keys().Select(row => (string)row[0]).ToList();
+        var after = keys.IndexOf("restaurant_menu") + 1;
+        Assert.True(after > 0, "restaurant_menu is missing from the catalogue.");
+        Assert.Equal(expected, keys.Skip(after).Take(expected.Count));
+    }
+
     [Fact]
     public void Catalogue_keys_are_lower_case_ligature_names_within_the_column()
     {

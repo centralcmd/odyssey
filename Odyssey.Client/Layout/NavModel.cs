@@ -98,7 +98,7 @@ public static class NavModel
             new(null,
             [
                 new("books", "Books", "auto_stories", "books", PermissionClaims.BooksRead),
-                new("recipes", "Recipes", "restaurant_menu", "recipes", PermissionClaims.RecipesRead),
+                new("recipes", "Recipes", "soup_kitchen", "recipes", PermissionClaims.RecipesRead),
             ]),
             new("Reference",
             [

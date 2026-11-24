@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Client.Authorization;
 using Odyssey.Client.Pages.Attachments;
+using Odyssey.Client.Pages.Photos;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Books;
 using Odyssey.Dtos.Journal;
 
@@ -20,10 +24,7 @@ public partial class BookRecord
 
     [Inject] private IBooksApiClient Books { get; set; } = default!;
     [Inject] private IFilesApiClient FilesApi { get; set; } = default!;
-    [Inject] private IPhotosApiClient PhotosApi { get; set; } = default!;
-    [Inject] private IPhotoTagsApiClient PhotoTags { get; set; } = default!;
-    [Inject] private IAlbumsApiClient Albums { get; set; } = default!;
-    [Inject] private IReferenceDataCache ReferenceData { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider Auth { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
     [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
@@ -83,6 +84,7 @@ public partial class BookRecord
 
     protected override async Task OnInitializedAsync()
     {
+        _canUpdatePhotos = (await Auth.GetUserAsync()).HasPermission(PermissionClaims.PhotosUpdate);
         if (!OperatingSystem.IsBrowser())
         {
             return;
@@ -102,11 +104,12 @@ public partial class BookRecord
     }
 
     /// <summary>Test seam: show <paramref name="book"/> without a read, as the estimates section does.</summary>
-    internal void UseBook(ExistingBook book)
+    internal Task UseBook(ExistingBook book)
     {
         _book = book;
         _loadFailed = false;
         HandleRequests();
+        return Task.CompletedTask;
     }
 
     /// <summary>Re-reads the book. Public because <c>OnInitializedAsync</c> early-returns outside the browser.</summary>
@@ -373,68 +376,67 @@ public partial class BookRecord
         return PhotoMappers.Label(image?.Title, image?.FileName, $"Image {index + 1}");
     }
 
-    private async Task OpenImage(Guid photoId)
+    // ── The shared PhotoViewer over the images ───────────────────────────────────────────────
+    // The viewer opens over the images in display order (cover first). The heart and the Archived badge come from the
+    // book's image links themselves (BookImageDto.Favourited / Archived); the viewer's detail dialog reads the open
+    // photo for its rail.
+
+    private PhotoViewer? _viewer;
+    private BookImageGrid? _imageGrid;
+    private Guid? _lastOpenedPhoto;
+    private bool _canUpdatePhotos;
+
+    private string ImageIdPrefix => $"bk-image-{BookId:N}";
+
+    // The tile to return to on close: the photo last shown (← / → move it), by its image button — the ⋯ menu's Open
+    // item that may have opened the viewer is gone with its popover.
+    private string? ViewerReturnFocusId => _lastOpenedPhoto is { } id ? _imageGrid?.TileId(id) : null;
+
+    private void OpenImage(Guid photoId)
     {
-        await EnsurePhotoRefsAsync();
         var images = OrderedImages;
-        _photoSummaries =
-        [
-            .. images.Select(i => new PhotoSummary
-            {
-                PhotoId = i.PhotoId,
-                Title = i.Title,
-                ThumbnailsReady = i.ThumbnailsReady,
-                PersonCount = 0,
-                AlbumCount = 0,
-            }),
-        ];
+        _photoSummaries = [.. images.Select(i => PhotoMappers.LinkSummary(i.PhotoId, i.Title, i.Favourited, i.Archived, i.ThumbnailsReady))];
         var index = images.ToList().FindIndex(i => i.PhotoId == photoId);
         _photoIndex = index < 0 ? 0 : index;
+        _lastOpenedPhoto = images.Count == 0 ? null : images[_photoIndex.Value].PhotoId;
     }
 
-    // The viewer's detail rail names a photo's tags, people and albums; without these it would print raw ids.
-    // Loaded once, on the first Open; each read is the caller's own, so one it may not make leaves "—".
-    private bool _photoRefsLoaded;
-    private Dictionary<Guid, ExistingPhotoTag> _photoTagById = [];
-    private Dictionary<Guid, ExistingContact> _contactById = [];
-    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
-
-    private async Task EnsurePhotoRefsAsync()
+    private void OnViewerIndexChanged(int? index)
     {
-        if (_photoRefsLoaded)
+        _photoIndex = index;
+        if (index is { } i && i >= 0 && i < _photoSummaries.Count)
         {
-            return;
+            _lastOpenedPhoto = _photoSummaries[i].PhotoId;
         }
-
-        var tags = await PhotoTags.ListAllAsync();
-        if (tags.IsSuccess && tags.Value is { } tagRows)
-        {
-            _photoTagById = tagRows.ToDictionary(t => t.PhotoTagId);
-        }
-
-        var albums = await Albums.ListAllAsync();
-        if (albums.IsSuccess && albums.Value is { } albumRows)
-        {
-            _albumById = albumRows.ToDictionary(a => a.PhotoAlbumId);
-        }
-
-        if (CanReadContacts)
-        {
-            _contactById = (await ReferenceData.ContactsAsync()).ToDictionary(c => c.ContactId);
-        }
-
-        _photoRefsLoaded = true;
     }
 
-    private string PhotoTagName(Guid id) => _photoTagById.GetValueOrDefault(id)?.Name ?? "—";
+    // The tile heart favourites through the viewer, so a tile and the open photo do it the same way.
+    private EventCallback<Guid> FavouriteCallback =>
+        _canUpdatePhotos
+            ? EventCallback.Factory.Create<Guid>(this, id => _viewer?.ToggleFavouriteAsync(id) ?? Task.CompletedTask)
+            : default;
 
-    private string? PhotoTagIcon(Guid id) => _photoTagById.GetValueOrDefault(id)?.Icon;
+    // Favourite and archive are patched in place on the image link; an edit (the label is on the link) or a delete
+    // (the link is gone) re-reads the book.
+    internal async Task OnViewerChanged(PhotoViewerChange change)
+    {
+        var link = _book?.Images?.FirstOrDefault(i => i.PhotoId == change.PhotoId);
+        switch (change.Kind)
+        {
+            case PhotoViewerChangeKind.Favourite when link is not null:
+                link.Favourited = PhotoMappers.Toggled(link.Favourited);
+                break;
+            case PhotoViewerChangeKind.Archive when link is not null:
+                link.Archived = PhotoMappers.Toggled(link.Archived);
+                break;
+            case PhotoViewerChangeKind.Edit:
+            case PhotoViewerChangeKind.Delete:
+                await LoadAsync();
+                break;
+        }
 
-    private string? PhotoTagColor(Guid id) => _photoTagById.GetValueOrDefault(id)?.Color;
-
-    private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
-
-    private OdsTagChips.Tag? PhotoAlbumChip(Guid id) => Odyssey.Client.Pages.Photos.AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
+        StateHasChanged();
+    }
 
     // ── Files ────────────────────────────────────────────────────────────────────────────────
 

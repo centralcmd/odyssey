@@ -610,11 +610,12 @@ public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, Demo
         Assert.Equal(0, await context.RecipePhotos.CountAsync());
         Assert.Equal(0, await context.RecipeAttachments.CountAsync());
 
-        // The read surfaces each have data: an archived recipe and tag, a range, a to-taste line, Pinch, a labelled
-        // yield, a recipe with no times, an edited recipe, and recipes with photos and files to come.
+        // The read surfaces each have data: an archived recipe and tag, a to-taste line, Pinch, a labelled yield, a
+        // recipe with no times, an edited recipe, and recipes with photos and files to come. Ingredient names are plain:
+        // only the issue #595 migration folds a preparation or a range into a name, the seed says it in the method.
         Assert.Equal(1, await context.Recipes.CountAsync(r => r.Archived != null));
         Assert.Equal(1, await context.RecipeTags.CountAsync(t => t.Archived != null));
-        Assert.True(await context.RecipeIngredients.AnyAsync(i => i.AmountMax != null));
+        Assert.DoesNotContain(expected.RecipeIngredients, i => i.Name.Contains(',') || i.Name.Contains('('));
         Assert.True(await context.RecipeIngredients.AnyAsync(i => i.Unit == IngredientUnit.ToTaste && i.Amount == null));
         Assert.True(await context.RecipeIngredients.AnyAsync(i => i.Unit == IngredientUnit.Pinch));
         Assert.True(await context.Recipes.AnyAsync(r => r.ServingsLabel != null));
