@@ -25,11 +25,9 @@ public partial class AlbumsPage
     private readonly HashSet<Guid> _selected = [];
     private Guid[]? _addToAlbumIds;
 
-    private Dictionary<Guid, string> _tagNames = [];
-    private Dictionary<Guid, string?> _tagIcons = [];
-    private Dictionary<Guid, string?> _tagColors = [];
-    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
-    private Dictionary<Guid, string> _personNames = [];
+    // The viewer's names and edit options (tags, albums, people), loaded with the album list.
+    private PhotoViewerLookups _viewerLookups = PhotoViewerLookups.Empty;
+    private PhotoViewer? _viewer;
 
     // Header regions (the DS shares the Overview panel + a "Search albums…" field across both views).
     private bool _overviewOpen;
@@ -50,6 +48,7 @@ public partial class AlbumsPage
 
     private bool _canCreate;
     private bool _canUpdate;
+    private bool _canUpdatePhotos;
     private PhotoImageAccess _imageAccess = new(false);
 
     private const string PageStateKey = "albums-page";
@@ -59,6 +58,7 @@ public partial class AlbumsPage
         var user = await Auth.GetUserAsync();
         _canCreate = user.HasPermission(PermissionClaims.PhotoAlbumsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.PhotoAlbumsUpdate);
+        _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _imageAccess = PhotoImageAccess.From(user);
         await LoadAsync();
         await PageState.RestoreOrSeedAsync<AlbumsPageState>(PageStateKey, ApplyPageState, BuildPageState);
@@ -101,17 +101,13 @@ public partial class AlbumsPage
         var albums = await Albums.ListAllAsync();
         _albumList = albums.ItemsOrToast(Snackbar, "albums");
         _loadError = !albums.IsSuccess;
-        _albumById = _albumList.ToDictionary(a => a.PhotoAlbumId);
 
         var tags = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");
-        _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
-        _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
-        _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
 
         // People come from Person contacts (requires contacts.read; degrades to empty) so
-        // the album lightbox's People chips show names, not raw ids (spec §10.5).
+        // the viewer's People chips show names, not raw ids (spec §10.5).
         var people = (await Contacts.ListAllAsync(types: ["Person"])).ItemsOrToast(Snackbar, "people");
-        _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
+        _viewerLookups = PhotoViewerLookups.From(tags, _albumList, people);
         _loading = false;
     }
 
@@ -241,20 +237,43 @@ public partial class AlbumsPage
         }
     }
 
-    private OdsPhotoTile.Vm TileVm(PhotoSummary p) =>
-        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos),
-            string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
-            p.Archived is not null, p.Favourited is not null);
+    private PhotoImageSource ImageOf(PhotoSummary p) =>
+        PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos);
+
+    // Badges are always-visible TEXT (WCAG 1.4.1): the album's cover, and an archived member.
+    private static IReadOnlyList<string?> BadgesOf(ExistingPhotoAlbum album, PhotoSummary p) =>
+        [album.CoverPhotoId == p.PhotoId ? "Cover" : null, p.Archived is not null ? "Archived" : null];
+
+    // The heart goes through the viewer, so a tile and the open photo favourite the same way.
+    private EventCallback FavCallback(PhotoSummary p) =>
+        _canUpdatePhotos
+            ? EventCallback.Factory.Create(this, () => _viewer?.ToggleFavouriteAsync(p.PhotoId) ?? Task.CompletedTask)
+            : default;
+
+    // Favourite is patched in place (a reload would drop the selection); anything else reloads the album.
+    private async Task OnViewerChanged(PhotoViewerChange change)
+    {
+        if (change.Kind == PhotoViewerChangeKind.Favourite)
+        {
+            var i = _albumPhotos.FindIndex(p => p.PhotoId == change.PhotoId);
+            if (i >= 0)
+            {
+                _albumPhotos[i] = _albumPhotos[i] with { Favourited = _albumPhotos[i].Favourited is null ? DateTime.UtcNow : null };
+            }
+
+            return;
+        }
+
+        var reopen = _openAlbum?.PhotoAlbumId;
+        await LoadAsync();
+        if (reopen is { } id && _albumList.Any(a => a.PhotoAlbumId == id))
+        {
+            await OpenAlbum(id);
+        }
+    }
 
     private PhotoImageSource Cover(PhotoAlbumSummary a) =>
         PhotoImageSources.For(a.CoverPhotoId, a.CoverThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos);
-
-    private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
-    private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
-
-    private string? TagColor(Guid id) => _tagColors.GetValueOrDefault(id);
-    private OdsTagChips.Tag? AlbumChip(Guid id) => AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
-    private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 
     private RenderFragment SubFragment => builder =>
         builder.AddContent(0, _openAlbum is null

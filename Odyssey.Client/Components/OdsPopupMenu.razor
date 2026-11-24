@@ -21,7 +21,9 @@
 
     MudPopover positions against the parent of its placeholder, which is this component's box, so
     the popover anchors, flips and portals out of any overflow:hidden ancestor as before; MudOverlay
-    closes it on an outside click, as MudMenu's did.
+    closes it on an outside click, as MudMenu's did. That flip is also the DS ActionMenu's horizontal clamp
+    (1795477868-c9a2): a panel that would overflow one side of the window hangs from the trigger's other
+    edge, clamped inside the gutter (PopoverHorizontalClampTests).
 
     Keyboard (APG menu button / disclosure dialog):
       • Enter/Space (the button's own click), ↓ or ↑ on the trigger open it, and focus moves IN:

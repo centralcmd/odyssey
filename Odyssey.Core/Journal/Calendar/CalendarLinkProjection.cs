@@ -134,7 +134,8 @@ internal static class CalendarLinkProjection
             .ToList();
     }
 
-    // One query for the labels through the effective-name projection, one for thumbnail readiness.
+    // One query for the titles and library state, one for the file names through the effective-name projection,
+    // one for thumbnail readiness.
     private static async Task<List<CalendarLinkPhotoDto>> PhotosAsync(
         OdysseyContext context, IQueryable<LinkRow> links, CancellationToken cancellationToken)
     {
@@ -145,23 +146,25 @@ internal static class CalendarLinkProjection
         }
 
         var ids = rows.Select(r => r.TargetId).Distinct().ToList();
-        var titles = await context.Photos.AsNoTracking()
+        var photos = await context.Photos.AsNoTracking()
             .Where(p => ids.Contains(p.PhotoId))
-            .Select(p => new { p.PhotoId, p.Title })
-            .ToDictionaryAsync(p => p.PhotoId, p => p.Title, cancellationToken);
+            .Select(p => new { p.PhotoId, p.Title, p.Favourited, p.Archived })
+            .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
         var names = await PhotoOriginalSource.Describe(context, context.Photos.AsNoTracking().Where(p => ids.Contains(p.PhotoId)))
             .Select(p => new { p.PhotoId, p.FileName })
             .ToDictionaryAsync(p => p.PhotoId, p => p.FileName, cancellationToken);
         var ready = await PhotoThumbnailService.ReadyAsync(context, ids, cancellationToken);
-        return rows.Where(r => titles.ContainsKey(r.TargetId))
+        return rows.Where(r => photos.ContainsKey(r.TargetId))
             .OrderBy(r => r.Position).ThenBy(r => r.CreatedAt)
             .Select(r => new CalendarLinkPhotoDto
             {
                 PhotoId = r.TargetId,
                 Position = r.Position,
                 CreatedAt = r.CreatedAt,
-                Title = titles.GetValueOrDefault(r.TargetId),
+                Title = photos[r.TargetId].Title,
                 FileName = names.GetValueOrDefault(r.TargetId),
+                Favourited = photos[r.TargetId].Favourited,
+                Archived = photos[r.TargetId].Archived,
                 ThumbnailsReady = ready.Contains(r.TargetId),
             })
             .ToList();

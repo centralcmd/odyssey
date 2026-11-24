@@ -683,6 +683,8 @@ public sealed class BookService(
                     IsCover = i.IsCover,
                     Title = info[i.PhotoId].Title,
                     FileName = info[i.PhotoId].FileName,
+                    Favourited = info[i.PhotoId].Favourited,
+                    Archived = info[i.PhotoId].Archived,
                     ThumbnailsReady = ready.Contains(i.PhotoId),
                     CreatedAt = i.CreatedAt,
                 })

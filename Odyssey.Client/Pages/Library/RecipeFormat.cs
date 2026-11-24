@@ -13,31 +13,25 @@ public sealed record RecipeUnit(
     IngredientUnit Unit, string Label, string Abbr, string Spoken, bool Word = false, string? Plural = null, bool Trailing = false);
 
 /// <summary>One ingredient line, split into the parts the open card renders.</summary>
-/// <param name="Amount">"500", "4–6", or <c>null</c> for an unquantified line.</param>
+/// <param name="Amount">"500", or <c>null</c> for an unquantified line.</param>
 /// <param name="UnitText">The visible unit ("g", "cloves"), <c>aria-hidden</c>; <c>null</c> for a bare count.</param>
 /// <param name="UnitSpoken">The sr-only spoken unit ("grams"), or <c>null</c> when it reads the same as <see cref="UnitText"/>.</param>
 /// <param name="Name">The ingredient.</param>
-/// <param name="Preparation">", sifted", or <c>null</c>.</param>
 /// <param name="ToTaste">The line ends ", to taste".</param>
 /// <param name="Optional">The line ends " (optional)".</param>
 public sealed record RecipeIngredientText(
-    string? Amount, string? UnitText, string? UnitSpoken, string Name, string? Preparation, bool ToTaste, bool Optional)
+    string? Amount, string? UnitText, string? UnitSpoken, string Name, bool ToTaste, bool Optional)
 {
-    /// <summary>The line as it reads on screen: "500 g wheat flour, sifted".</summary>
+    /// <summary>The line as it reads on screen: "500 g wheat flour".</summary>
     public string Visible => Compose(UnitText);
 
-    /// <summary>The line as a screen reader hears it: "500 grams wheat flour, sifted".</summary>
+    /// <summary>The line as a screen reader hears it: "500 grams wheat flour".</summary>
     public string Spoken => Compose(UnitSpoken ?? UnitText);
 
     private string Compose(string? unit)
     {
         var lead = Amount is null ? null : unit is null ? Amount : $"{Amount} {unit}";
         var text = lead is null ? Name : $"{lead} {Name}";
-        if (Preparation is not null)
-        {
-            text += $", {Preparation}";
-        }
-
         if (ToTaste)
         {
             text += ", to taste";
@@ -84,25 +78,24 @@ public static class RecipeFormat
     /// <summary>An amount as the API returns it (at most three decimals, trailing zeros trimmed).</summary>
     public static string Number(decimal value) => value.ToString("#,0.###", CultureInfo.InvariantCulture);
 
-    /// <summary>Splits a line into what the open card renders: "4–6 cloves garlic, unpeeled".</summary>
+    /// <summary>Splits a line into what the open card renders: "500 g wheat flour".</summary>
     public static RecipeIngredientText Ingredient(RecipeIngredientDto line)
     {
         var unit = UnitOf(line.Unit);
-        var preparation = string.IsNullOrWhiteSpace(line.Preparation) ? null : line.Preparation.Trim();
         if (line.Amount is not { } amount || unit.Trailing)
         {
-            return new RecipeIngredientText(null, null, null, line.Name, preparation, unit.Trailing, line.Optional);
+            return new RecipeIngredientText(null, null, null, line.Name, unit.Trailing, line.Optional);
         }
 
-        var text = line.AmountMax is { } max ? $"{Number(amount)}–{Number(max)}" : Number(amount);
-        var plural = (line.AmountMax ?? amount) != 1m;
+        var text = Number(amount);
+        var plural = amount != 1m;
         var word = unit.Abbr.Length == 0 ? null
             : unit.Word && plural ? unit.Plural ?? unit.Abbr + "s"
             : unit.Abbr;
         var spoken = unit.Spoken.Length == 0 ? null
             : plural ? unit.Plural ?? unit.Spoken + "s"
             : unit.Spoken;
-        return new RecipeIngredientText(text, word, spoken == word ? null : spoken, line.Name, preparation, false, line.Optional);
+        return new RecipeIngredientText(text, word, spoken == word ? null : spoken, line.Name, false, line.Optional);
     }
 
     /// <summary>"45 min", "1 h", "2 h 30 min" — whole minutes, never days. <c>null</c> when unset.</summary>

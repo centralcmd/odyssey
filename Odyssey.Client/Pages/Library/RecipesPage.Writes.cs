@@ -326,6 +326,29 @@ public partial class RecipesPage
         }
     }
 
+    // ── Preview (the shared file viewer, FilePreviewDialog) ──
+    private sealed record PreviewState(string BlobUrl, string ContentType, string FileName, long SizeBytes, DateTime UploadedAtUtc);
+
+    private PreviewState? _preview;
+    private Guid _previewKey;
+    private bool _previewOpen;
+
+    private async Task PreviewAsync(RecipeAttachmentDto file)
+    {
+        var content = await Files.GetContentAsync(file.FileId);
+        if (content is null)
+        {
+            Snackbar.Add("Preview failed.", Severity.Error);
+            return;
+        }
+
+        var contentType = content.ContentType ?? file.ContentType;
+        var blobUrl = await Js.InvokeAsync<string>("createBlobUrl", content.Bytes, contentType);
+        _preview = new PreviewState(blobUrl, contentType, file.FileName, file.SizeBytes, file.CreatedAt);
+        _previewKey = Guid.NewGuid();
+        _previewOpen = true;
+    }
+
     private async Task DownloadAsync(RecipeAttachmentDto file)
     {
         await Announce($"Downloading {file.FileName}.");

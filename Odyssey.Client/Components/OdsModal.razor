@@ -15,6 +15,17 @@
     to declare it and a field that appears conditionally is picked up live. Pass
     RequiredLegend="false" to suppress it.
 
+    Steps (Odyssey Design System · Modal `steps`, version 1795477868-c9a2) makes it a WIZARD dialog: an
+    OdsWizardSteps placed in the slot renders as a full-width row under the title (`has-steps` head), the
+    surface widens to 760px with roomier padding (`wizard`), and the footer wraps (Back and an error summary
+    join Cancel and the primary). One dialog: one title, one draft, one Cancel.
+
+    Focus is set ONCE per opening (the open edge in OnParametersSet), never on a re-render, so typing in a
+    field never moves focus. Only the TOP dialog answers Esc and traps Tab: MudBlazor binds its key
+    interceptor to each dialog's own container element and its focus trap to that container's sentinels,
+    and stacked dialogs are sibling containers in the provider, so a key in the dialog on top never reaches
+    the one beneath (pinned by ModalStackTests). No extra stack is kept here.
+
     Dismissible="false" (issue #509 §4.1) takes Escape, the scrim and the close
     button away while a dialog must not close — a request in flight. It is turned
     off BEFORE MudDialog can close itself, which a guard in OnClose could not do,
@@ -26,9 +37,9 @@
 @inject IJSRuntime Js
 
 <MudDialog @ref="_dialog" @key="Wide" Visible="@Open" VisibleChanged="OnVisibleChanged" Options="_options"
-           Class="@($"ods-modal {ModalKey} {Class}".TrimEnd())"
+           Class="@($"ods-modal {ModalKey}{(Steps is null ? "" : " wizard")} {Class}".TrimEnd())"
            ContentClass="@(HideHeader ? null : "ods-modal-content")"
-           TitleClass="ods-modal-head"
+           TitleClass="@(Steps is null ? "ods-modal-head" : "ods-modal-head has-steps")"
            ActionsClass="ods-modal-foot"
            TitleContent="@(HideHeader ? null : HeaderFragment)"
            AriaLabel="@EffectiveAriaLabel">
@@ -80,6 +91,12 @@
         {
             <OdsIconButton Icon="@Icons.Material.Filled.Close" Size="OdsSize.Sm"
                            AriaLabel="Close" OnClick="CloseAsync" Class="ods-modal-x" />
+        }
+        @if (Steps is not null)
+        {
+            @* The wizard's step path: a full-width row under the title, in the header band, so it never
+               scrolls away with the body (Odyssey Design System · Modal `steps`). *@
+            <div class="ods-modal-steps">@Steps</div>
         }
     </text>;
 }

@@ -37,16 +37,13 @@ public partial class PhotosCard
 
     // Options + name maps.
     private IReadOnlyList<OdsOption> _tagOptions = [];
-    private Func<string, string?>? _tagNameBlocked;
     private IReadOnlyList<OdsOption> _albumOptions = [];
     private IReadOnlyList<OdsOption> _peopleOptions = [];
-    private bool _canCreateContacts;
-    private Dictionary<Guid, string> _tagNames = [];
-    private Dictionary<Guid, string?> _tagIcons = [];
-    private Dictionary<Guid, string?> _tagColors = [];
-    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
-    private Dictionary<Guid, string> _personNames = [];
+    private IReadOnlyList<ExistingPhotoTag> _tagList = [];
+    private IReadOnlyList<ExistingContact> _peopleList = [];
     private IReadOnlyList<PhotoAlbumSummary> _albumSummaries = [];
+    // The viewer's names and edit options, built from the same three lists as the filters (one fetch each).
+    private PhotoViewerLookups _viewerLookups = PhotoViewerLookups.Empty;
     private int _libraryTotal;
     private PhotoLibraryOverview? _overview;
 
@@ -54,7 +51,6 @@ public partial class PhotosCard
     private bool _selecting;
     private readonly HashSet<Guid> _selected = [];
     private int? _detailIndex;
-    private Guid? _editId;
     private IReadOnlyCollection<Guid>? _addToAlbumIds;
     private bool _uploadOpen;
 
@@ -63,7 +59,6 @@ public partial class PhotosCard
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canManageAlbums;
-    private bool _canCreateTags;
     private PhotoImageAccess _imageAccess = new(false);
 
     private const string PageStateKey = "photos-page";
@@ -95,9 +90,7 @@ public partial class PhotosCard
         _canUpdate = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDelete = user.HasPermission(PermissionClaims.PhotosDelete);
         _canManageAlbums = user.HasPermission(PermissionClaims.PhotoAlbumsUpdate);
-        _canCreateTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
         _imageAccess = PhotoImageAccess.From(user);
-        _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
 
         await LoadOptionsAsync();
         await PageState.RestoreOrSeedAsync<PhotosPageState>(PageStateKey, ApplyPageState, BuildPageState);
@@ -120,11 +113,8 @@ public partial class PhotosCard
         var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
         if (tagsResult.IsSuccess)
         {
+            _tagList = tags;
             _tagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
-            _tagNameBlocked = TagNameRule.For(tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Photo);
-            _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
-            _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
-            _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
         }
 
         var albumsResult = await Albums.ListAllAsync();
@@ -134,7 +124,6 @@ public partial class PhotosCard
             _albumSummaries = albums;
             // Each option carries its Overview row's glyph and tone (issue #406 surface D1).
             _albumOptions = [.. _albumSummaries.Select(AlbumVisuals.FilterOption)];
-            _albumById = _albumSummaries.ToDictionary(a => a.PhotoAlbumId);
         }
 
         // People come from the caller's Person contacts (requires contacts.read; degrades to empty).
@@ -144,9 +133,11 @@ public partial class PhotosCard
         {
             // A Person filter row wears its People Overview row's muted person glyph, not the contact
             // type's colour, so filter and Overview read alike (DS Photos peopleOpts).
+            _peopleList = people;
             _peopleOptions = [.. OdsContactOptions.Active(people).Select(o => o with { Icon = PhotoLibraryOverview.PersonGlyph, IconColor = PhotoLibraryOverview.PersonInk })];
-            _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
         }
+
+        _viewerLookups = PhotoViewerLookups.From(_tagList, _albumSummaries, _peopleList);
     }
 
     // Null when a newer fetch (a reload, or a load-more) superseded this one: the caller must return
@@ -310,17 +301,16 @@ public partial class PhotosCard
         }
     }
 
-    private OdsPhotoTile.Vm TileVm(PhotoSummary p) =>
-        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos),
-            string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
-            p.Archived is not null, p.Favourited is not null);
+    private static readonly IReadOnlyList<string?> ArchivedBadge = ["Archived"];
 
-    private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
-    private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
+    private PhotoImageSource ImageOf(PhotoSummary p) =>
+        PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos);
 
-    private string? TagColor(Guid id) => _tagColors.GetValueOrDefault(id);
-    private OdsTagChips.Tag? AlbumChip(Guid id) => AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
-    private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
+    internal static string PhotoName(PhotoSummary p) => string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!;
+
+    // The heart shows only for a caller who may change it; the handler guards on the claim as well.
+    private EventCallback FavCallback(PhotoSummary p) =>
+        _canUpdate ? EventCallback.Factory.Create(this, () => ToggleFavouriteAsync(p.PhotoId)) : default;
 
     // ── Selection ──
     private void ToggleSelect(Guid id)
@@ -349,7 +339,6 @@ public partial class PhotosCard
     }
 
     private void OpenDetail(Guid id) => _detailIndex = _photos.FindIndex(p => p.PhotoId == id);
-    private void OpenEditFromDetail(Guid id) { _detailIndex = null; _editId = id; }
     private void OpenAddToAlbum() => _addToAlbumIds = [.. _selected];
 
     // ── Single-photo mutations (full PUT, preserving other fields) ──
@@ -358,18 +347,6 @@ public partial class PhotosCard
     // rather than the boundary: it stops a handler still reachable through a stale render, a
     // keyboard path or a bulk loop from firing a request the user cannot make.
     private async Task ToggleFavouriteAsync(Guid id) => await MutateAsync(id, u => u.Favourite = !u.Favourite);
-    private async Task ToggleArchiveAsync(Guid id)
-    {
-        if (!_canUpdate)
-        {
-            return;
-        }
-
-        await MutateAsync(id, u => u.Archived = !u.Archived);
-        _detailIndex = null;
-        await RefreshAsync();
-    }
-
     private async Task<bool> MutateAsync(Guid id, Action<UpdatePhoto> mutate)
     {
         if (!_canUpdate)
@@ -392,20 +369,6 @@ public partial class PhotosCard
         }
 
         return ok;
-    }
-
-    private async Task DeleteAsync(Guid id)
-    {
-        if (!_canDelete)
-        {
-            return;
-        }
-
-        if ((await Photos.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Photo deleted."))
-        {
-            _detailIndex = null;
-            await RefreshAsync();
-        }
     }
 
     // ── Bulk actions ──
@@ -476,11 +439,22 @@ public partial class PhotosCard
         (await Photos.UpdateAsync(id, body)).Toast(Snackbar, "Update failed");
     }
 
-    // The edit dialog may have created tags or people inline; reload the name lookups so the detail
-    // view names them rather than showing "—".
+    // The viewer saved a change. An edit may have created tags or people inline, so the name lookups are
+    // reloaded too (the viewer would otherwise show "—" for them); every change refreshes the grid.
+    private async Task OnViewerChanged(PhotoViewerChange change)
+    {
+        if (change.Kind == PhotoViewerChangeKind.Edit)
+        {
+            await OnPhotoSaved();
+        }
+        else
+        {
+            await RefreshAsync();
+        }
+    }
+
     internal async Task OnPhotoSaved()
     {
-        _editId = null;
         await LoadOptionsAsync();
         await RefreshAsync();
     }

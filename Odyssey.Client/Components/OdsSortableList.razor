@@ -1,0 +1,61 @@
+@*
+    OdsSortableList — an editable, reorderable list of rows (Odyssey Design System · components/SortableList,
+    version 1795477868-c9a2), consumed by the recipe dialog's Ingredients and Method steps
+    (Pages/Library/RecipeDialog). Each row is a compact card — handle · the consumer's RenderItem cells · ⋯ —
+    moved three ways that all end in OnMove:
+
+      • drag — press the handle (drag_indicator) and drag. The row dims with a dashed outline and a 3px
+        primary line in the gap shows where it lands; nothing shifts. The nearest scrolling ancestor scrolls
+        near its edge. Pointer events (mouse, pen, touch) — the geometry is wwwroot/js/sortable-list.js;
+      • keys — on the focused handle Space / Enter lifts (aria-pressed), ↑ / ↓ move one place, Space / Enter
+        drops, Escape puts it back where it started and does NOT close an enclosing dialog (the JS module
+        stops that key before MudDialog's interceptor sees it), Tab drops. Each step is announced in the
+        list's own assertive live region;
+      • menu — the row's ⋯ (OdsMenu): Move up · Move down · — · Remove, the single-pointer alternative
+        WCAG 2.5.7 asks of a drag. A move the row cannot make is absent (the menu's rule). A menu move is
+        announced in the same live region ("Ingredient 3 moved to position 2 of 5."), as is a Tab-drop.
+
+    GetKey is required: a stable, unique id per row (the item itself is no key for equal or value-type items).
+
+    Wherever a row lands it flashes a primary ring once (none under reduced motion). Each row is a
+    <fieldset data-sort-row> with an sr-only legend from GetLabel ("Ingredient 3"). A heading row
+    (IsHeading) is a tinted band, flush left; once the list has one, every other row and the Header step in
+    one gutter. Moving a heading moves only the heading. Styled by .odc-sortable / .odc-sort-*.
+*@
+@typeparam TItem
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+<div @ref="_list" class="@RootClass">
+    <span class="odc-sr-only" id="@HelpId">@DragHint</span>
+    <div class="odc-sr-only" role="status" aria-live="assertive">@_say</div>
+    @if (Header is not null)
+    {
+        <div class="@($"odc-sortable-head {HeaderClass}".TrimEnd())" aria-hidden="true">@Header</div>
+    }
+    @for (var i = 0; i < Items.Count; i++)
+    {
+        var index = i;
+        var item = Items[i];
+        var key = KeyOf(item);
+        var label = LabelOf(item, index);
+        var keysLifted = _drag is { Mode: DragMode.Keys } d && Equals(d.Key, key);
+        <fieldset @key="key" class="@RowClassFor(item, index, key)" data-sort-row>
+            <legend class="odc-sr-only">@Cap(label)</legend>
+            <button type="button" id="@HandleId(key)" class="@(keysLifted ? "odc-sort-handle on" : "odc-sort-handle")"
+                    data-sort-handle="@index"
+                    aria-label="@($"Move {label}")" aria-describedby="@HelpId"
+                    aria-pressed="@(keysLifted ? "true" : "false")"
+                    @onkeydown="e => OnHandleKeyDownAsync(e, index)">
+                <span class="material-icons" aria-hidden="true">drag_indicator</span>
+            </button>
+            @if (RenderItem is not null)
+            {
+                @RenderItem(new OdsSortableItem<TItem>(item, index))
+            }
+            <div class="odc-sort-menu">
+                <OdsMenu Items="MenuFor(item, index, label)" AriaLabel="@($"Actions for {label}")" />
+            </div>
+        </fieldset>
+    }
+</div>

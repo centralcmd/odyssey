@@ -8,11 +8,11 @@ namespace Odyssey.Core.Tests;
 public class RecipeServingsScalerTests
 {
     [Fact]
-    public void Doubling_ScalesScalableAmountsAndRanges_AndLeavesTheRestAlone()
+    public void Doubling_ScalesScalableAmounts_AndLeavesTheRestAlone()
     {
         var recipe = Recipe(4,
             Line(IngredientUnit.Gram, 250),
-            Line(IngredientUnit.Clove, 2, 3),
+            Line(IngredientUnit.Clove, 2),
             Line(IngredientUnit.Pinch, 1),
             Line(IngredientUnit.ToTaste, null),
             Line(IngredientUnit.None, null));
@@ -23,7 +23,6 @@ public class RecipeServingsScalerTests
         Assert.Equal(8, recipe.DisplayedServings);
         Assert.Equal(4, recipe.Servings);
         Assert.Equal([500m, 4m, 1m, null, null], recipe.Ingredients.Select(i => i.Amount));
-        Assert.Equal(6m, recipe.Ingredients[1].AmountMax);
         Assert.Equal(IngredientUnit.Gram, recipe.Ingredients[0].Unit);
     }
 
@@ -50,14 +49,17 @@ public class RecipeServingsScalerTests
     }
 
     [Fact]
-    public void ARangeThatRoundsToOneValue_Collapses()
+    public void ARangeNotedInTheName_IsPlainText_AndDoesNotScale()
     {
-        var recipe = Recipe(100, Line(IngredientUnit.Gram, 0.002m, 0.003m));
+        // What the issue #595 migration leaves of a range: the lower amount, and the range as text in the name.
+        var line = Line(IngredientUnit.Clove, 4);
+        line.Name = "garlic, unpeeled (4–6)";
+        var recipe = Recipe(4, line);
 
-        RecipeServingsScaler.Apply(recipe, 1);
+        RecipeServingsScaler.Apply(recipe, 8);
 
-        Assert.Equal(0.001m, recipe.Ingredients[0].Amount);
-        Assert.Null(recipe.Ingredients[0].AmountMax);
+        Assert.Equal(8m, recipe.Ingredients[0].Amount);
+        Assert.Equal("garlic, unpeeled (4–6)", recipe.Ingredients[0].Name);
     }
 
     [Fact]
@@ -126,13 +128,12 @@ public class RecipeServingsScalerTests
         Ingredients = [.. lines],
     };
 
-    private static RecipeIngredientDto Line(IngredientUnit unit, decimal? amount, decimal? max = null) => new()
+    private static RecipeIngredientDto Line(IngredientUnit unit, decimal? amount) => new()
     {
         RecipeIngredientId = Guid.NewGuid(),
         Position = 0,
         Unit = unit,
         Name = "x",
         Amount = amount,
-        AmountMax = max,
     };
 }

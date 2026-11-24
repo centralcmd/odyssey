@@ -17,7 +17,7 @@
 
 <MudStack Spacing="4" Class="rc-page">
     <PageHeader Title="Recipes"
-                Icon="@Icons.Material.Filled.RestaurantMenu"
+                Icon="@Icons.Material.Filled.SoupKitchen"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
                 PrimaryActionText="New recipe"
                 OnPrimaryAction="NewClicked"
@@ -67,7 +67,7 @@
                          LoadingMore="_loadingMore" LoadMoreFailed="_loadMoreFailed" ResetKey="_resetKey"
                          HasFilters="HasFilters" OnClearFilters="ClearFilters"
                          FilteredEmptyTitle="No recipes match"
-                         EmptyIcon="restaurant_menu" EmptyTitle="No recipes yet"
+                         EmptyIcon="soup_kitchen" EmptyTitle="No recipes yet"
                          EmptyDescription="Keep the household’s recipes in one place — ingredients, steps, notes and photos — and scale them to any number of servings.">
             <RenderItem Context="r">
                 @Row(r)
@@ -140,10 +140,20 @@
                            OnAttached="items => OnFilesAttached(filesRecipe.RecipeId, items)" />
 }
 
+@if (_preview is { } preview)
+{
+    @* The shared file viewer every files table opens (accounts, transactions, tax statements, the Files page): a PDF
+       paged with zoom, an image with zoom and rotate, any other type its "Preview not available" state. *@
+    <Odyssey.Client.Pages.Finance.FilePreviewDialog @key="_previewKey" @bind-Open="_previewOpen"
+                                                    BlobUrl="@preview.BlobUrl" ContentType="@preview.ContentType"
+                                                    FileName="@preview.FileName" SizeBytes="preview.SizeBytes"
+                                                    UploadedAtUtc="preview.UploadedAtUtc" FileType="Odyssey.Dtos.Finance.AccountFileType.Other" />
+}
+
 @code {
     private RenderFragment Row(RecipeSummary r) =>
         @<OdsRecordCard @key="r.RecipeId" Id="@CardId(r.RecipeId)"
-                        Icon="restaurant_menu"
+                        Icon="soup_kitchen"
                         Image="@CoverOf(r)"
                         Name="@r.Title"
                         Meta="MetaFor(r)"
@@ -206,6 +216,8 @@
                              OnPhotoChange="@(change => SavePhotosAsync(r.RecipeId, change.PhotoIds, change.Message))"
                              OnDetachFile="@(f => DetachFileAsync(r.RecipeId, f))"
                              OnDownloadFile="DownloadAsync"
+                             OnPreviewFile="PreviewAsync"
+                             OnPhotosChanged="@(() => LoadDetailAsync(r.RecipeId))"
                              OnCopyFileId="@(f => CopyAsync(f.FileId.ToString(), OdsCopied.Id("File")))" />,
         };
     }

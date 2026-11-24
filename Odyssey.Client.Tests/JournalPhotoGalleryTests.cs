@@ -8,22 +8,10 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// JournalPhotoGallery (Odyssey Design System · components/JournalPhotoGallery) — the thumbnail grid
-/// over a journal entry's photos.
+/// JournalPhotoGallery (Odyssey Design System · components/JournalPhotoGallery, version 1795477868-c9a2) — a
+/// heading + count + empty line over an OdsPhotoGrid of the shared OdsPhotoTile. The tile itself is pinned by
+/// <see cref="OdsPhotoTileTests"/>; these pin what the gallery adds and what it hands each tile.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The design system removed the per-tile filename caption: the name is the tile's accessible name and
-/// its tooltip, and is <em>never</em> a visible caption. These RENDER the component, because the whole
-/// property is about what markup a tile does and does not carry — a derivation test could not tell an
-/// absent caption apart from one that is merely styled away.
-/// </para>
-/// <para>
-/// The empty-name branch is pinned separately. A photo with no name must omit <c>title</c> outright
-/// rather than carry an empty one, mirroring the design system's <c>title={p.name || undefined}</c>;
-/// that is a one-line conditional with nothing else to catch it if a later edit inverts or drops it.
-/// </para>
-/// </remarks>
 public class JournalPhotoGalleryTests
 {
     private static BunitContext NewContext()
@@ -41,15 +29,62 @@ public class JournalPhotoGalleryTests
     private static PhotoImageSource Original(string url) => new(null, url);
 
     [Fact]
+    public void The_heading_names_the_section_with_its_count_in_text()
+    {
+        using var ctx = NewContext();
+        var cut = Render(ctx,
+            new JournalPhotoGallery.Photo("1", "a.jpg", Original("/files/1")),
+            new JournalPhotoGallery.Photo("2", "b.jpg", Original("/files/2")));
+
+        Assert.Equal("Photos (2)", cut.Find("section.odc-photogrid").GetAttribute("aria-label"));
+        Assert.Equal("2", cut.Find(".odc-photogrid-count").TextContent);
+        Assert.Equal(2, cut.FindAll("ul.odc-photogrid2 > li.odc-photogrid2-item > .odc-phototile").Count);
+    }
+
+    [Fact]
+    public void With_no_title_the_grid_is_named_by_its_count()
+    {
+        using var ctx = NewContext();
+        var cut = ctx.Render<JournalPhotoGallery>(p => p
+            .Add(c => c.Photos, [new JournalPhotoGallery.Photo("1", "a.jpg", Original("/files/1"))])
+            .Add(c => c.Title, null));
+
+        Assert.Empty(cut.FindAll(".odc-photogrid-head"));
+        Assert.Null(cut.Find("section").GetAttribute("aria-label"));
+        Assert.Equal("1 photo", cut.Find("ul.odc-photogrid2").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void An_empty_gallery_shows_its_empty_line_and_no_grid()
+    {
+        using var ctx = NewContext();
+        var cut = ctx.Render<JournalPhotoGallery>(p => p.Add(c => c.Photos, []).Add(c => c.EmptyText, "Nothing yet."));
+
+        Assert.Equal("Nothing yet.", cut.Find(".odc-photogrid-empty").TextContent);
+        Assert.Empty(cut.FindAll("ul"));
+    }
+
+    [Fact]
+    public void Min_tile_reaches_the_grid_columns()
+    {
+        using var ctx = NewContext();
+        var cut = ctx.Render<JournalPhotoGallery>(p => p
+            .Add(c => c.Photos, [new JournalPhotoGallery.Photo("1", "a.jpg", Original("/files/1"))])
+            .Add(c => c.MinTile, 140));
+
+        Assert.Contains("minmax(min(140px, 100%), 1fr)", cut.Find("ul.odc-photogrid2").GetAttribute("style"));
+    }
+
+    [Fact]
     public void A_ready_thumbnail_is_tried_first_and_the_original_after_an_error()
     {
         using var ctx = NewContext();
         var cut = Render(ctx, new JournalPhotoGallery.Photo("1", "holiday.jpg", new PhotoImageSource("/thumb/1", "/files/1/content")));
 
-        Assert.Equal("/thumb/1", cut.Find("img.odc-photogrid-img").GetAttribute("src"));
+        Assert.Equal("/thumb/1", cut.Find("img.odc-phototile-img").GetAttribute("src"));
         cut.Find("img").TriggerEvent("onerror", EventArgs.Empty);
-        Assert.Equal("/files/1/content", cut.Find("img.odc-photogrid-img").GetAttribute("src"));
-        Assert.Empty(cut.FindAll(".odc-photogrid-ph-fallback"));
+        Assert.Equal("/files/1/content", cut.Find("img.odc-phototile-img").GetAttribute("src"));
+        Assert.Empty(cut.FindAll(".odc-phototile-ph"));
     }
 
     [Fact]
@@ -58,13 +93,12 @@ public class JournalPhotoGalleryTests
         using var ctx = NewContext();
         var cut = Render(ctx, new JournalPhotoGallery.Photo("7f3a", "", new PhotoImageSource("/thumb/1", "/files/1/content")));
 
-        var tile = cut.Find(".odc-photogrid-tile");
-        Assert.Equal("Open photo 1 of 1", tile.GetAttribute("aria-label"));
-        Assert.Null(tile.GetAttribute("title"));
+        Assert.Equal("Open 1 of 1", cut.Find(".odc-phototile-open").GetAttribute("aria-label"));
+        Assert.DoesNotContain("7f3a", cut.Markup);
     }
 
     [Fact]
-    public void A_tile_whose_sources_both_fail_keeps_the_img_marked_failed_with_the_fallback_after_it()
+    public void A_tile_whose_sources_both_fail_keeps_the_img_marked_failed_with_the_placeholder_after_it()
     {
         using var ctx = NewContext();
         var cut = Render(ctx, new JournalPhotoGallery.Photo("1", "holiday.jpg", new PhotoImageSource("/thumb/1", "/files/1/content")));
@@ -72,12 +106,12 @@ public class JournalPhotoGalleryTests
         cut.Find("img").TriggerEvent("onerror", EventArgs.Empty);
         cut.Find("img").TriggerEvent("onerror", EventArgs.Empty);
 
-        var img = cut.Find("img.odc-photogrid-img");
+        var img = cut.Find("img.odc-phototile-img");
         Assert.Contains("img-failed", img.ClassList);
-        Assert.Equal("odc-photogrid-ph-fallback", img.NextElementSibling!.ClassList.Last());
+        Assert.Contains("odc-phototile-ph", img.NextElementSibling!.ClassList);
         Assert.Equal("true", img.NextElementSibling!.GetAttribute("aria-hidden"));
         // A runtime fallback changes no name, and nothing is announced.
-        Assert.Equal("Open photo holiday.jpg", cut.Find(".odc-photogrid-tile").GetAttribute("aria-label"));
+        Assert.Equal("Open holiday.jpg", cut.Find(".odc-phototile-open").GetAttribute("aria-label"));
         Assert.Empty(cut.FindAll("[role=status], [role=alert], [aria-live]"));
     }
 
@@ -98,8 +132,8 @@ public class JournalPhotoGalleryTests
         var cut = Render(ctx, new JournalPhotoGallery.Photo("1", "holiday.jpg", PhotoImageSource.None, Unavailable: true));
 
         Assert.Empty(cut.FindAll("img"));
-        Assert.Equal("Open photo holiday.jpg (no access)", cut.Find(".odc-photogrid-tile").GetAttribute("aria-label"));
-        Assert.Equal("no access", cut.Find(".odc-photogrid-ph-label").TextContent);
+        Assert.Equal("Open holiday.jpg (no access)", cut.Find(".odc-phototile-open").GetAttribute("aria-label"));
+        Assert.Equal("no access", cut.Find(".odc-phototile-ph").TextContent.Trim());
     }
 
     [Fact]
@@ -119,46 +153,27 @@ public class JournalPhotoGalleryTests
     }
 
     [Fact]
-    public void A_tile_carries_no_visible_filename_caption()
+    public void Activating_a_tile_hands_the_host_that_photo()
     {
         using var ctx = NewContext();
+        JournalPhotoGallery.Photo? opened = null;
+        var b = new JournalPhotoGallery.Photo("b", "b.jpg", Original("/files/b"));
+        var cut = ctx.Render<JournalPhotoGallery>(p => p
+            .Add(c => c.Photos, [new JournalPhotoGallery.Photo("a", "a.jpg", Original("/files/a")), b])
+            .Add(c => c.OnOpen, (JournalPhotoGallery.Photo ph) => opened = ph));
 
-        var cut = Render(ctx, new JournalPhotoGallery.Photo("1", "holiday.jpg", Original("/files/1/content")));
+        cut.FindAll(".odc-phototile-open")[1].Click();
 
-        Assert.Empty(cut.FindAll(".odc-photogrid-name"));
-        // The filename must not reach the tile as text at all — the image and the placeholder are the
-        // only things a sighted reader sees.
-        Assert.DoesNotContain("holiday.jpg", cut.Find(".odc-photogrid-tile").TextContent);
+        Assert.Equal(b, opened);
     }
 
     [Fact]
-    public void A_named_photo_puts_its_filename_in_the_tiles_tooltip()
+    public void The_gallery_tile_has_no_select_heart_or_menu()
     {
         using var ctx = NewContext();
-
         var cut = Render(ctx, new JournalPhotoGallery.Photo("1", "holiday.jpg", Original("/files/1/content")));
 
-        Assert.Equal("holiday.jpg", cut.Find(".odc-photogrid-tile").GetAttribute("title"));
-    }
-
-    [Fact]
-    public void An_unnamed_photo_omits_the_tooltip_rather_than_carrying_an_empty_one()
-    {
-        using var ctx = NewContext();
-
-        var cut = Render(ctx, new JournalPhotoGallery.Photo("1", "", Original("/files/1/content")));
-
-        Assert.False(cut.Find(".odc-photogrid-tile").HasAttribute("title"));
-    }
-
-    [Fact]
-    public void The_accessible_name_survives_the_caption_removal()
-    {
-        using var ctx = NewContext();
-
-        var cut = Render(ctx, new JournalPhotoGallery.Photo("1", "holiday.jpg", Original("/files/1/content")));
-
-        // With no visible caption left, aria-label is the only thing naming the tile.
-        Assert.Equal("Open photo holiday.jpg", cut.Find(".odc-photogrid-tile").GetAttribute("aria-label"));
+        Assert.Empty(cut.FindAll(".odc-phototile-check, .odc-phototile-fav, .odc-phototile-menu"));
+        Assert.Equal("holiday.jpg", cut.Find(".odc-phototile-open").GetAttribute("title"));
     }
 }

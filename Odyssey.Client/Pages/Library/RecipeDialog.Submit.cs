@@ -7,7 +7,7 @@ namespace Odyssey.Client.Pages.Library;
 
 public partial class RecipeDialog
 {
-    private static readonly Regex RowKey = new(@"^(ingredients|steps)\[(\d+)\]\.(\w+)$", RegexOptions.Compiled);
+    private static readonly Regex RowKey = new(@"^(ingredients|steps|ingredientsections|stepsections)\[(\d+)\]\.(\w+)$", RegexOptions.Compiled);
 
     private static readonly Dictionary<string, string> DetailLabels = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -22,20 +22,26 @@ public partial class RecipeDialog
         ["tagids"] = "Tags",
     };
 
-    /// <summary>The footer ErrorSummary's entries, each jumping to its field ("Ingredient 3 · Name the ingredient.").</summary>
-    private IReadOnlyList<OdsErrorSummaryProblem> Problems => [.. _errors.Select(e => ProblemFor(e.Key, e.Value))];
+    /// <summary>The footer ErrorSummary's entries, each jumping to its field ("Ingredient 3 · Name the ingredient.") —
+    /// every step's, in step order, so a jump to another step's field opens that step first.</summary>
+    private IReadOnlyList<OdsErrorSummaryProblem> Problems => [.. _errors.OrderBy(e => RecipeDraft.StepOf(e.Key)).Select(e => ProblemFor(e.Key, e.Value))];
 
     internal static OdsErrorSummaryProblem ProblemFor(string key, string message)
     {
         if (RowKey.Match(key) is { Success: true } m)
         {
             var row = int.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture) + 1;
-            var section = m.Groups[1].Value == "ingredients" ? $"Ingredient {row}" : $"Step {row}";
+            var section = m.Groups[1].Value switch
+            {
+                "ingredients" => $"Ingredient {row}",
+                "steps" => $"Step {row}",
+                _ => $"Section {row}",
+            };
             return new OdsErrorSummaryProblem(message, section, RecipeDraft.FieldId(key));
         }
 
         var label = DetailLabels.GetValueOrDefault(key, key);
-        return new OdsErrorSummaryProblem($"{label} — {message}", key == "tagids" ? "Tags" : "Details", RecipeDraft.FieldId(key));
+        return new OdsErrorSummaryProblem($"{label} — {message}", "Details", RecipeDraft.FieldId(key));
     }
 
     /// <summary>A server field key (<c>Ingredients[2].Name</c>, <c>$.ingredients[2].name</c>) in the dialog's own form.</summary>
@@ -50,11 +56,51 @@ public partial class RecipeDialog
         return k.ToLowerInvariant();
     }
 
-    private Task JumpAsync(OdsErrorSummaryProblem problem)
+    private static readonly Regex LineSectionKey = new(@"^(ingredients|steps)\[(\d+)\]\.section$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// A server key in the dialog's form, on the draft as it is: a line's <c>section</c> is not a field of the line any
+    /// more, so <c>ingredients[3].section</c> lands on the heading above line 3 (<c>ingredientsections[h].title</c>).
+    /// </summary>
+    internal static string DraftKey(RecipeDraft draft, string serverKey)
     {
+        var key = NormalizeKey(serverKey);
+        if (LineSectionKey.Match(key) is not { Success: true } m)
+        {
+            return key;
+        }
+
+        var rows = m.Groups[1].Value == "ingredients" ? draft.Ingredients : draft.Method;
+        var line = int.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture);
+        var seen = -1;
+        var heading = -1;
+        foreach (var row in rows)
+        {
+            if (row is RecipeSectionDraft)
+            {
+                heading++;
+            }
+            else if (++seen == line)
+            {
+                break;
+            }
+        }
+
+        return heading < 0 ? key : $"{(m.Groups[1].Value == "ingredients" ? "ingredient" : "step")}sections[{heading}].title";
+    }
+
+    // A jump to another step's field opens that step and focuses the field.
+    private async Task JumpAsync(OdsErrorSummaryProblem problem)
+    {
+        var step = RecipeDraft.StepOf(problem.TargetId ?? string.Empty);
+        if (step != _step)
+        {
+            await GoAsync(step, problem.TargetId);
+            return;
+        }
+
         _focusId = problem.TargetId;
         StateHasChanged();
-        return Task.CompletedTask;
     }
 
     private async Task SubmitAsync()
@@ -73,7 +119,7 @@ public partial class RecipeDialog
 
         if (_errors.Count > 0)
         {
-            _focusId = F(_errors.Keys.First());
+            await ShowErrorsAsync();
             return;
         }
 
@@ -96,7 +142,10 @@ public partial class RecipeDialog
                 return;
             }
 
-            Refused(result.Status, result.Problem);
+            if (Refused(result.Status, result.Problem))
+            {
+                await ShowErrorsAsync();
+            }
         }
         finally
         {
@@ -104,36 +153,37 @@ public partial class RecipeDialog
         }
     }
 
-    private void Refused(HttpStatusCode status, Odyssey.ApiClient.ApiProblem? problem)
+    /// <summary>A refused save: the conflict alert, the deleted alert, or field errors (true) on their steps.</summary>
+    private bool Refused(HttpStatusCode status, Odyssey.ApiClient.ApiProblem? problem)
     {
         if (status == HttpStatusCode.Conflict && problem?.Code == RecipeErrorCodes.VersionConflict)
         {
             _conflict = true;
             _focusId = ReloadId;
-            return;
+            return false;
         }
 
         if (status == HttpStatusCode.NotFound && IsEdit)
         {
             _formAlert = "This recipe was deleted while you were editing it. Copy anything you want to keep, then close.";
-            return;
+            return false;
         }
 
         foreach (var (key, messages) in problem?.Errors ?? new Dictionary<string, string[]>())
         {
             if (messages.Length > 0)
             {
-                _errors.TryAdd(NormalizeKey(key), messages[0]);
+                _errors.TryAdd(DraftKey(_draft, key), messages[0]);
             }
         }
 
         if (_errors.Count > 0)
         {
-            _focusId = F(_errors.Keys.First());
-            return;
+            return true;
         }
 
         _formAlert = problem?.Message ?? "The recipe couldn’t be saved. Try again.";
+        return false;
     }
 
     // ── Conflict ─────────────────────────────────────────────────────────────────────
@@ -153,7 +203,7 @@ public partial class RecipeDialog
             if (latest.IsSuccess && latest.Value is { } fresh)
             {
                 Seed(fresh);
-                _focusId = F("title");
+                _focusId = FirstFieldOf(_step);
                 // The submit is the confirm dialog's event, so this component re-renders only when asked.
                 StateHasChanged();
                 return true;

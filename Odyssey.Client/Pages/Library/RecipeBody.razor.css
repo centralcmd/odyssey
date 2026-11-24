@@ -21,60 +21,70 @@
 
 .rc-cook ::deep .rc-cook-card { min-width: 0; }
 
-.rc-card-h { margin: 0; font: var(--fw-medium) var(--fs-h6)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
-
-.rc-card-h-meta { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); margin-left: var(--space-2); }
-
-.rc-h4 {
-    margin: var(--space-4) 0 var(--space-2);
-    font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--mud-palette-text-secondary);
+/* The card title: a 32px soft-brand icon tile (decorative), the name, then its meta. */
+.rc-card-h {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 var(--space-2);
+    font: var(--fw-medium) var(--fs-h6)/1.3 var(--font-sans);
+    color: var(--mud-palette-text-primary);
 }
 
-.rc-group:first-child .rc-h4 { margin-top: 0; }
+.rc-card-ic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: var(--space-8);
+    height: var(--space-8);
+    margin-right: var(--space-1);
+    border-radius: var(--radius-md);
+    background: var(--brand-soft);
+    color: var(--brand-text);
+    font-size: var(--icon-lg);
+}
+
+.rc-card-h-meta { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* A section is the shared OdsSectionDivider — name · rule · count — with room above. */
+.rc-group + .rc-group ::deep .odc-sectiondivider { margin-top: var(--space-4); }
+
+.rc-group ::deep .odc-sectiondivider { margin-bottom: var(--space-2); }
 
 .rc-ing-list, .rc-step-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
-.rc-ing-list { gap: var(--space-1); }
+/* Ingredient lines and method steps share one rhythm: gap, row padding, type and box offset. A label wraps under its
+   own text, not under the box. */
+.rc-ing-list, .rc-step-list { gap: var(--space-1); }
 
-.rc-ing-list li { padding: var(--space-1) 0; min-height: var(--space-6); }
+.rc-ing-list li, .rc-step-list li { padding: var(--space-1) 0; min-height: var(--space-6); }
 
-/* The label is the whole line; a long name wraps under the text, not the box. */
-.rc-ing-list ::deep .odc-check { align-items: flex-start; }
+.rc-ing-list ::deep .odc-check, .rc-step-list ::deep .odc-check { align-items: flex-start; }
 
-.rc-ing-list ::deep .odc-check-box { flex: none; }
+.rc-ing-list ::deep .odc-check-box, .rc-step-list ::deep .odc-check-box { margin-top: 1px; flex: none; }
 
 ::deep .rc-ing-text { font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); }
 
 ::deep .rc-amt { font-variant-numeric: tabular-nums; font-weight: var(--fw-medium); }
 
-::deep .rc-ing-prep, ::deep .rc-ing-opt { color: var(--mud-palette-text-secondary); }
+/* The trailing ", to taste" and " (optional)" — not the dialog's .rc-ing-opt cell. */
+::deep .rc-ing-totaste, ::deep .rc-ing-optional { color: var(--mud-palette-text-secondary); }
+
+::deep .rc-step-text {
+    display: block;
+    font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+    max-width: 72ch;
+}
 
 /* A checked line is struck through AND muted — never colour alone. */
 .rc-ing-list li.done ::deep .rc-ing-text,
-.rc-step-list li.done .rc-step-text {
+.rc-step-list li.done ::deep .rc-step-text {
     text-decoration: line-through;
     text-decoration-thickness: 1px;
     color: var(--mud-palette-text-secondary);
 }
 
 .rc-ing-groups.busy ::deep .rc-amt { opacity: 0.45; }
-
-.rc-step-list { gap: var(--space-4); }
-
-.rc-step-list li { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
-
-.rc-step-n { font: var(--fw-medium) var(--fs-label)/1.3 var(--font-mono); letter-spacing: 0.02em; color: var(--brand-text); }
-
-.rc-step-text {
-    margin: 0 0 0 calc(var(--space-6) + var(--space-1));
-    font: var(--fw-regular) var(--fs-body1)/1.6 var(--font-sans);
-    color: var(--mud-palette-text-primary);
-    max-width: 72ch;
-}
-
-@media (max-width: 599px) {
-    .rc-step-text { margin-left: 0; }
-}

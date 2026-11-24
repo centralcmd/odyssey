@@ -19,7 +19,7 @@ public class RecipeServiceTests
         { r => r.Title = "   ", "title" },
         { r => r.Ingredients = [new() { Name = "  ", Unit = IngredientUnit.None }], "ingredients[0].name" },
         { r => r.Steps = [new() { Text = "\t" }], "steps[0].text" },
-        { r => r.Ingredients = [new() { Name = "salt", Unit = IngredientUnit.ToTaste, AmountMax = 2 }], "ingredients[0].amount" },
+        { r => r.Ingredients = [new() { Name = "salt", Unit = IngredientUnit.ToTaste, Amount = 2 }], "ingredients[0].amount" },
         { r => r.Ingredients = [new() { Name = "egg", Unit = (IngredientUnit)99 }], "ingredients[0].unit" },
         { r => r.Servings = 0, "servings" },
         { r => r.PrepMinutes = -1, "prepMinutes" },

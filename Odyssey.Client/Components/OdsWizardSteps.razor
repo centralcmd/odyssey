@@ -1,0 +1,104 @@
+@*
+    OdsWizardSteps — the step path of a multi-step dialog (Odyssey Design System · components/WizardSteps,
+    version 1795486190-6f31): numbered discs joined by a line that is filled up to the current step and
+    plain after it, each with its label and an optional status line. Put it in the dialog HEADER through
+    OdsModal's Steps slot (never in the body, where it would scroll away with the fields). The recipe dialog
+    (Pages/Library/RecipeDialog) is its consumer.
+
+    Navigation, not tabs: a <nav aria-label> holding an <ol>; the current step carries aria-current="step";
+    each item reads "Step 2 of 3: Ingredients, 12 lines". With OnStep every step is a button and can be
+    opened at any time (steps hold independent data; Next validates only the step you are on); without it
+    the path is a read-only indicator. State is always in words as well as the glyph and colour: an error
+    step's status line reads ErrorText, and a finished (done) step's text ends with an sr-only ", completed"
+    (its check disc alone would say nothing, WCAG 1.3.1). Discs and the line are aria-hidden. Styled by .odc-wiz-*.
+
+    Phone (< 600px): labels sit under their discs and the status line becomes sr-only.
+*@
+
+<nav class="@($"odc-wiz {Class}".TrimEnd())" aria-label="@AriaLabel">
+    <ol class="odc-wiz-list">
+        @for (var i = 0; i < Steps.Count; i++)
+        {
+            var index = i;
+            var step = Steps[i];
+            var on = index == Current;
+            var meta = step.State == OdsWizardStepState.Error ? ErrorText : step.Meta;
+            <li class="@StepClass(step, index)" @key="step.Key ?? index.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                @if (OnStep.HasDelegate)
+                {
+                    <button type="button" class="odc-wiz-btn" aria-current="@(on ? "step" : null)" @onclick="() => OnStep.InvokeAsync(index)">
+                        @Inner(step, index, meta)
+                    </button>
+                }
+                else
+                {
+                    <span class="odc-wiz-btn static" aria-current="@(on ? "step" : null)">@Inner(step, index, meta)</span>
+                }
+                @if (index < Steps.Count - 1)
+                {
+                    <span class="odc-wiz-line" aria-hidden="true"></span>
+                }
+            </li>
+        }
+    </ol>
+</nav>
+
+@code {
+    /// <summary>The steps, in order (2–5; more means the record needs a page, not a dialog).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsWizardStep> Steps { get; set; } = [];
+
+    /// <summary>Index of the current step (<c>aria-current="step"</c>). The line is filled up to it.</summary>
+    [Parameter] public int Current { get; set; }
+
+    /// <summary>Makes every step a button that opens it. Omit for a read-only indicator.</summary>
+    [Parameter] public EventCallback<int> OnStep { get; set; }
+
+    /// <summary>The nav's accessible name, e.g. "Recipe steps". Default "Steps".</summary>
+    [Parameter] public string AriaLabel { get; set; } = "Steps";
+
+    /// <summary>Status line of a step in the error state. Default "Has errors".</summary>
+    [Parameter] public string ErrorText { get; set; } = "Has errors";
+
+    [Parameter] public string? Class { get; set; }
+
+    private string StepClass(OdsWizardStep step, int index)
+    {
+        var on = index == Current;
+        var err = step.State == OdsWizardStepState.Error;
+        // A done step that is the current one reads as current (its disc shows the number, filled).
+        var done = step.State == OdsWizardStepState.Done && !on;
+        return "odc-wiz-step"
+            + (on ? " is-current" : "")
+            + (done ? " is-done" : "")
+            + (err ? " is-error" : "")
+            + (index < Current ? " is-travelled" : "");
+    }
+
+    private RenderFragment Inner(OdsWizardStep step, int index, string? meta) => __builder =>
+    {
+        var on = index == Current;
+        var glyph = step.State == OdsWizardStepState.Error ? "priority_high"
+            : step.State == OdsWizardStepState.Done && !on ? "check" : null;
+        <span class="odc-wiz-disc" aria-hidden="true">
+            @if (glyph is not null)
+            {
+                <span class="material-icons">@glyph</span>
+            }
+            else
+            {
+                @(index + 1)
+            }
+        </span>
+        <span class="odc-wiz-text">
+            <span class="odc-wiz-label"><span class="odc-sr-only">@($"Step {index + 1} of {Steps.Count}: ")</span>@step.Label</span>
+            @if (step.State == OdsWizardStepState.Done && !on)
+            {
+                <span class="odc-sr-only">, completed</span>
+            }
+            @if (!string.IsNullOrEmpty(meta))
+            {
+                <span class="odc-wiz-meta"><span class="odc-sr-only">, </span>@meta</span>
+            }
+        </span>
+    };
+}

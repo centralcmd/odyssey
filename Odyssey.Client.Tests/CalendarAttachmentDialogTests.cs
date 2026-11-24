@@ -228,6 +228,18 @@ public class CalendarAttachmentDialogTests
         public IReadOnlyList<IElement> Buttons(string label) =>
             [.. Cut.FindAll("button").Where(b => ImportCalendarDialogTests.Harness.Label(b) == label || b.GetAttribute("aria-label") == label)];
 
+        /// <summary>The Photos field's tiles (the shared OdsPhotoTile), in order.</summary>
+        public IReadOnlyList<Odyssey.Client.Components.OdsPhotoTile> Tiles =>
+            [.. Cut.FindComponents<Odyssey.Client.Components.OdsPhotoTile>().Select(t => t.Instance)];
+
+        /// <summary>The tile's ⋯ menu item labels, in order (dividers skipped).</summary>
+        public IReadOnlyList<string?> MenuOf(string name) =>
+            [.. Tiles.Single(t => t.Name == name).Actions!.Where(a => !a.Divider).Select(a => a.Label)];
+
+        /// <summary>Removes a photo through its tile's ⋯ menu item (invoked directly: the menu is a MudBlazor popover).</summary>
+        public Task RemovePhoto(string name) =>
+            Cut.InvokeAsync(() => Tiles.Single(t => t.Name == name).Actions!.Single(a => a.Label == "Remove from event").OnClick.InvokeAsync());
+
         /// <summary>Every message the dialog's one announcer was asked to speak.</summary>
         public string Announced => Cut.FindAll("div.sr-only[aria-live=polite]").First().TextContent;
 
@@ -301,7 +313,7 @@ public class CalendarAttachmentDialogTests
         var drop = Photo("Drop", 1);
         h.OpenEvent(Standalone([File("lease.pdf")], [keep, drop]));
 
-        h.Button("Remove Drop").Click();
+        await h.RemovePhoto("Drop");
         h.Save();
 
         h.Cut.WaitForAssertion(() => Assert.Single(h.EventWrites));
@@ -405,7 +417,7 @@ public class CalendarAttachmentDialogTests
         {
             Assert.Contains("1 photo attached. You don't have permission to view photos.", lines);
             Assert.Empty(h.Buttons("Add photos"));
-            Assert.Empty(h.Cut.FindAll(".jef-photo"));
+            Assert.Empty(h.Tiles);
         }
 
         await h.SetTitle("Renamed");
@@ -428,8 +440,9 @@ public class CalendarAttachmentDialogTests
         var section = h.Cut.Find("section.cal-ce-fromseries");
         Assert.Equal("From the series", section.QuerySelector("h3")!.TextContent);
         Assert.Equal(CalendarEventLinks.HeadingId, section.GetAttribute("aria-labelledby"));
-        Assert.Equal(["Stage", "Hall"], section.QuerySelectorAll("ul.jef-photos > li img").Select(i => i.GetAttribute("alt")));
-        Assert.Empty(section.QuerySelectorAll(".jef-photo-remove"));
+        Assert.Equal(["Open Stage", "Open Hall"], section.QuerySelectorAll("ul.odc-photogrid2 > li .odc-phototile-open").Select(i => i.GetAttribute("aria-label")));
+        Assert.Equal(["Open"], h.MenuOf("Stage"));
+        Assert.Equal(["Open"], h.MenuOf("Hall"));
         Assert.Equal("agenda.pdf", section.QuerySelector(".jec-file-name")!.TextContent);
         Assert.Contains("Attachments belong to the whole series.", section.QuerySelector(".cal-ce-fromseries-help")!.TextContent);
         Assert.Empty(h.Buttons("Add photos"));
@@ -553,7 +566,7 @@ public class CalendarAttachmentDialogTests
 
         await h.PickPhotosAsync(3);
 
-        Assert.Equal(3, h.Cut.FindAll(".jef-photo").Count);
+        Assert.Equal(3, h.Tiles.Count);
         h.Cut.WaitForAssertion(() => Assert.Equal("Added 1. Photo limit reached: 3.", h.Announced));
     }
 
@@ -582,7 +595,7 @@ public class CalendarAttachmentDialogTests
         await using var h = new Harness();
         h.OpenEvent(Standalone([File("lease.pdf")], [Photo("Beach", 0)]));
 
-        h.Button("Remove Beach").Click();
+        await h.RemovePhoto("Beach");
         h.Save();
 
         h.Cut.WaitForAssertion(() => Assert.Single(h.EventWrites));
@@ -661,13 +674,47 @@ public class CalendarAttachmentDialogTests
         var c = Photo("Third", 2);
         h.OpenEvent(Standalone(photos: [a, b, c]));
 
-        h.Button("Remove Second").Click();
+        await h.RemovePhoto("Second");
 
         h.Cut.WaitForAssertion(() => Assert.Equal("Removed Second.", h.Announced));
         h.Cut.WaitForAssertion(() => Assert.NotEmpty(h.FocusReturn.Invocations["focusFirstLater"]));
         var chain = h.FocusReturn.Invocations["focusFirstLater"].Last().Arguments.Select(x => x as string).ToList();
-        Assert.EndsWith(c.PhotoId.ToString(), chain[0]);
+        Assert.EndsWith($"{c.PhotoId:N}", chain[0]);
+        Assert.NotNull(h.Cut.Find(chain[0]!));
         Assert.StartsWith("#jef-add-photos-", chain[^1]);
+    }
+
+    [Fact] // design system 1795477868-c9a2: removing the last tile lands on the previous tile's image, the only one on Add
+    public async Task Removing_the_last_tile_lands_on_the_previous_and_the_only_one_on_add()
+    {
+        await using var h = new Harness();
+        var a = Photo("First", 0);
+        h.OpenEvent(Standalone(photos: [a, Photo("Second", 1)]));
+
+        await h.RemovePhoto("Second");
+        h.Cut.WaitForAssertion(() => Assert.NotEmpty(h.FocusReturn.Invocations["focusFirstLater"]));
+        var chain = h.FocusReturn.Invocations["focusFirstLater"].Last().Arguments.Select(x => x as string).ToList();
+        Assert.EndsWith($"{a.PhotoId:N}", chain[0]);
+
+        await h.RemovePhoto("First");
+        h.Cut.WaitForAssertion(() =>
+        {
+            var last = h.FocusReturn.Invocations["focusFirstLater"].Last().Arguments.Select(x => x as string).ToList();
+            Assert.Null(last[0]);
+            Assert.StartsWith("#jef-add-photos-", last[1]);
+        });
+    }
+
+    [Fact] // design system 1795477868-c9a2: an editable field's tile menu is Open · — · Remove from event
+    public async Task An_editable_tile_offers_open_and_remove_from_event()
+    {
+        await using var h = new Harness();
+        h.OpenEvent(Standalone(photos: [Photo("Beach", 0), Photo("Dunes", 1)]));
+
+        Assert.Equal(["Open", "Remove from event"], h.MenuOf("Beach"));
+        Assert.True(h.Tiles.Single(t => t.Name == "Beach").Actions![1].Divider);
+        Assert.Contains("dense", h.Cut.Find(".alf-photos ul.odc-photogrid2").ClassList);
+        Assert.Equal(96, h.Cut.FindComponents<Odyssey.Client.Components.OdsPhotoGrid<JournalDraftPhoto>>().Single().Instance.EffectiveMinTile);
     }
 
     [Fact] // AC 6: removing a file announces its name; focus falls back to Attach documents when none is left
@@ -698,8 +745,12 @@ public class CalendarAttachmentDialogTests
         await using var h = new Harness();
         h.OpenEvent(Standalone([File("lease.pdf")], [Photo("Beach", 0)]));
 
-        Assert.Equal("Beach", h.Cut.Find(".jef-photo img").GetAttribute("alt"));
-        Assert.Equal("Remove Beach", h.Cut.Find(".jef-photo-remove").GetAttribute("aria-label"));
+        Assert.Equal("Open Beach", h.Cut.Find(".odc-phototile-open").GetAttribute("aria-label"));
+        Assert.Equal("Actions for photo: Beach", h.Tiles.Single().ActionsLabel);
+        var remove = h.Tiles.Single().Actions!.Single(a => a.Label == "Remove from event");
+        Assert.Equal("Remove Beach from event", remove.AriaLabel);
+        Assert.True(remove.Danger);
+        Assert.Equal("1 photo", h.Cut.Find(".alf-photos ul.odc-photogrid2").GetAttribute("aria-label"));
         Assert.Equal("Actions for file lease.pdf", h.Cut.Find(".je-cardmenu [aria-label]").GetAttribute("aria-label"));
 
         await h.PickPhotosAsync(0);
@@ -743,8 +794,9 @@ public class CalendarAttachmentDialogTests
 
         Assert.Empty(h.Cut.FindAll(".cal-ce-fromseries h3"));
         Assert.Equal(["Photos", "Attachments"], h.Cut.FindAll(".alf-sublabel").Select(s => s.TextContent));
-        Assert.Equal("Beach", h.Cut.Find(".jef-photo img").GetAttribute("alt"));
-        Assert.Empty(h.Cut.FindAll(".jef-photo-remove"));
+        // Read-only: the tile's ⋯ menu offers Open only.
+        Assert.Equal("Open Beach", h.Cut.Find(".odc-phototile-open").GetAttribute("aria-label"));
+        Assert.Equal(["Open"], h.MenuOf("Beach"));
         Assert.Empty(h.Buttons("Add photos"));
         Assert.Empty(h.Buttons("Attach documents"));
         Assert.Null(h.Cut.FindComponent<JournalFileRows>().Instance.OnRemove);
@@ -775,11 +827,11 @@ public class CalendarAttachmentDialogTests
                 Errors = new Dictionary<string, string[]> { ["photoIds"] = ["Unknown photo(s)."] },
             }));
 
-        h.Button("Remove Drop").Click();
+        await h.RemovePhoto("Drop");
         h.Save();
 
         h.Cut.WaitForAssertion(() => Assert.Contains("Unknown photo(s).", h.Cut.Find("#" + CalendarEventDialog.AlertId).TextContent));
-        Assert.Single(h.Cut.FindAll(".jef-photo"));
+        Assert.Single(h.Tiles);
     }
 
     // ── v4 "Defensive mapping" ───────────────────────────────────────────────

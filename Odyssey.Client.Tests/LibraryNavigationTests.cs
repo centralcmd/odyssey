@@ -21,7 +21,7 @@ public class LibraryNavigationTests
         Assert.Equal([null, "Reference"], module.Groups.Select(g => g.Label));
         Assert.Equal(
             [("books", "Books", "auto_stories", "books", PermissionClaims.BooksRead),
-                ("recipes", "Recipes", "restaurant_menu", "recipes", PermissionClaims.RecipesRead),
+                ("recipes", "Recipes", "soup_kitchen", "recipes", PermissionClaims.RecipesRead),
                 ("book-tags", "Book Tags", "local_offer", "book-tags", PermissionClaims.BookTagsRead),
                 ("recipe-tags", "Recipe Tags", "local_offer", "recipe-tags", PermissionClaims.RecipeTagsRead)],
             module.Groups.SelectMany(g => g.Items).Select(p => (p.Key, p.Label, p.Icon, p.Href, p.Claim)));

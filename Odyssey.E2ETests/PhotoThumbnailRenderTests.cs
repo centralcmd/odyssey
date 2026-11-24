@@ -28,7 +28,7 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
     /// <summary>The worker writes the demo photos and renders them in the background; this is how long the first visit waits.</summary>
     private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(180);
 
-    private const string ThumbnailTile = "img.pl-tile-img[src*='/thumbnail?size=Medium']";
+    private const string ThumbnailTile = "img.odc-phototile-img[src*='/thumbnail?size=Medium']";
 
     public async Task InitializeAsync()
     {
@@ -74,7 +74,7 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
             // reason to keep polling, not a failure.
             try
             {
-                await page.Locator(".pl-tile").First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
+                await page.Locator(".odc-phototile").First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
             }
             catch (TimeoutException)
             {
@@ -142,10 +142,10 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
 
         // Every tile showing a thumbnail kept it: none fell back to its original.
         var shownThumbnails = await page.Locator(ThumbnailTile).CountAsync();
-        var failed = await page.Locator("img.pl-tile-img.img-failed").CountAsync();
+        var failed = await page.Locator("img.odc-phototile-img.img-failed").CountAsync();
         Assert.Equal(0, failed);
         Assert.True(shownThumbnails > 0);
-        var tileOriginals = await page.Locator("img.pl-tile-img[src*='/api/files/']").CountAsync();
+        var tileOriginals = await page.Locator("img.odc-phototile-img[src*='/api/files/']").CountAsync();
         Assert.True(originals.Count <= tileOriginals,
             $"{originals.Count} originals requested, but only {tileOriginals} tiles show an original: a thumbnail fell back.");
     }
@@ -166,7 +166,7 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
         await page.SetViewportSizeAsync(width, 900);
         try
         {
-            foreach (var (route, box) in new[] { ("/photos", ".pl-tile"), ("/albums", ".pl-albcover-cell") })
+            foreach (var (route, box) in new[] { ("/photos", ".odc-phototile"), ("/albums", ".pl-albcover-cell") })
             {
                 await page.GotoAsync(route, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
                 await page.Locator(box).First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
@@ -211,8 +211,8 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
 
         // Element handles, not locators: a locator filtered on the thumbnail would re-resolve to the NEXT tile once this
         // one falls back to its original.
-        var tile = await page.Locator(".pl-tile", new PageLocatorOptions { Has = page.Locator(ThumbnailTile) }).First.ElementHandleAsync();
-        var hit = (await tile.QuerySelectorAsync("button.pl-tile-hit"))!;
+        var tile = await page.Locator(".odc-phototile", new PageLocatorOptions { Has = page.Locator(ThumbnailTile) }).First.ElementHandleAsync();
+        var hit = (await tile.QuerySelectorAsync("button.odc-phototile-open"))!;
         var image = (await tile.QuerySelectorAsync("img"))!;
         await hit.FocusAsync();
         var label = await hit.GetAttributeAsync("aria-label");

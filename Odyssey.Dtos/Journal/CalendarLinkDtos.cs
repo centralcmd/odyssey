@@ -36,6 +36,16 @@ public sealed record CalendarLinkPhotoDto
 
     public string? FileName { get; set; }
 
+    /// <summary>
+    /// The library photo's own <c>Favourited</c> timestamp (UTC; null = not a favourite), so the shared photo tile can
+    /// draw its heart without a per-photo <c>GET /api/photos/{id}</c>. Null without
+    /// <c>photos.read</c> (<c>CalendarLinkVisibility</c>).
+    /// </summary>
+    public DateTime? Favourited { get; set; }
+
+    /// <summary>The library photo's own <c>Archived</c> timestamp (UTC; null = live), for the tile's "Archived" badge. Null without <c>photos.read</c>.</summary>
+    public DateTime? Archived { get; set; }
+
     public bool ThumbnailsReady { get; set; }
 }
 

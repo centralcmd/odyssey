@@ -97,7 +97,8 @@ public class RecipesPageTests
         Assert.Contains("Serves 4", page.Markup, StringComparison.Ordinal);
         Assert.Contains("Prep 15 min · Cook 50 min", page.Markup, StringComparison.Ordinal);
         Assert.Contains("Total 1 h 5 min", page.Markup, StringComparison.Ordinal);
-        Assert.Contains("restaurant_menu", page.Markup, StringComparison.Ordinal);
+        Assert.Contains("soup_kitchen", page.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("restaurant_menu", page.Markup, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -111,7 +112,13 @@ public class RecipesPageTests
         page.Find($"#{RecipesPage.CardId(SoupId)} button[aria-expanded]").Click();
 
         page.WaitForAssertion(() => Assert.Contains("ripe tomatoes", page.Markup, StringComparison.Ordinal));
-        Assert.Contains("Roasting tray", page.Find("h4.rc-h4").TextContent, StringComparison.Ordinal);
+        // A section is the shared divider — name · rule · count — as a level-4 heading.
+        var divider = page.Find(".rc-ing-groups .odc-sectiondivider");
+        Assert.Equal("Roasting tray", divider.QuerySelector(".odc-sectiondivider-l")!.TextContent);
+        Assert.Equal("4", divider.QuerySelector("[role=heading]")!.GetAttribute("aria-level"));
+        Assert.Equal("1 ingredient", divider.QuerySelector(".odc-sectiondivider-meta")!.TextContent);
+        Assert.Equal(["Roast", "Pot"], page.FindAll(".rc-cook-card section[aria-labelledby$='-method'] .odc-sectiondivider-l").Select(d => d.TextContent));
+        Assert.Equal(["1 step", "1 step"], page.FindAll(".rc-cook-card section[aria-labelledby$='-method'] .odc-sectiondivider-meta").Select(d => d.TextContent));
         var amount = page.Find(".rc-amt");
         Assert.Equal("g", amount.QuerySelector("[aria-hidden=true]")!.TextContent);
         Assert.Equal("grams", amount.QuerySelector(".odc-sr-only")!.TextContent);
@@ -328,14 +335,20 @@ public class RecipesPageTests
     }
 
     [Fact]
-    public async Task The_photo_grid_labels_the_cover_and_omits_the_moves_a_tile_cannot_make()
+    public async Task The_photo_grid_is_the_library_tile_grid_with_cover_and_archived_badges()
     {
-        await using var ctx = PageTestContext.Create(PermissionClaims.PhotosRead);
+        await using var ctx = PageTestContext.Create(PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate);
+        var bowl = Guid.NewGuid();
+        var tray = Guid.NewGuid();
+        var photosApi = new Mock<IPhotosApiClient>();
+        ctx.Services.AddSingleton(photosApi.Object);
         ctx.Render<MudPopoverProvider>();
+        ctx.Render<MudDialogProvider>();
+        // The favourite and archived state travel on the link itself: no photo is read for the tiles.
         IReadOnlyList<RecipePhotoDto> photos =
         [
-            new() { RecipePhotoId = Guid.NewGuid(), PhotoId = Guid.NewGuid(), Position = 0, Title = "Bowl", ThumbnailsReady = true },
-            new() { RecipePhotoId = Guid.NewGuid(), PhotoId = Guid.NewGuid(), Position = 1, Title = "Tray" },
+            new() { RecipePhotoId = Guid.NewGuid(), PhotoId = bowl, Position = 0, Title = "Bowl", ThumbnailsReady = true },
+            new() { RecipePhotoId = Guid.NewGuid(), PhotoId = tray, Position = 1, Title = "Tray", Archived = DateTime.UtcNow, Favourited = DateTime.UtcNow },
         ];
 
         var cut = ctx.Render<RecipePhotoGrid>(p => p
@@ -343,16 +356,122 @@ public class RecipesPageTests
             .Add(x => x.Access, new Odyssey.Client.Services.PhotoImageAccess(true))
             .Add(x => x.CanUpdate, true));
 
-        Assert.Equal("list", cut.Find("ul.rc-images").GetAttribute("role"));
-        var cells = cut.FindAll("li.rc-image-cell");
-        Assert.Equal(2, cells.Count);
-        Assert.Equal("Cover", cells[0].QuerySelector(".rc-image-badge")!.TextContent);
-        Assert.Null(cells[1].QuerySelector(".rc-image-badge"));
+        var grid = cut.Find("ul.odc-photogrid2");
+        Assert.Contains("132px", grid.GetAttribute("style"), StringComparison.Ordinal);
+        Assert.Equal("2 photos", grid.GetAttribute("aria-label"));
+        var tiles = cut.FindAll(".odc-phototile");
+        Assert.Equal(2, tiles.Count);
+        Assert.Equal(["Cover"], tiles[0].QuerySelectorAll(".odc-phototile-badge").Select(b => b.TextContent));
+        cut.WaitForAssertion(() => Assert.Equal(["Archived"], cut.FindAll(".odc-phototile")[1].QuerySelectorAll(".odc-phototile-badge").Select(b => b.TextContent)));
+        // The heart is the library favourite.
+        Assert.Equal("true", cut.Find("button[aria-label='Favourite Tray']").GetAttribute("aria-pressed"));
+        Assert.Equal("false", cut.Find("button[aria-label='Favourite Bowl']").GetAttribute("aria-pressed"));
+        Assert.NotNull(cut.Find("button[aria-label='Open Bowl, Cover']"));
+        Assert.NotNull(cut.Find("button[aria-label='Open Tray, Archived']"));
         Assert.NotNull(cut.Find("button[aria-label='Actions for photo: Bowl']"));
-        var coverMenu = RecipePhotoGrid.BuildTileActions(photos, 0, default, new object()).Select(i => i.Label).ToList();
-        Assert.DoesNotContain("Make cover", coverMenu);
-        Assert.DoesNotContain("Move earlier", coverMenu);
-        Assert.Contains("Move later", coverMenu);
+        Assert.Equal(RecipePhotoGrid.TileId(bowl), tiles[0].QuerySelector(".odc-phototile-open")!.Id);
+        Assert.Empty(cut.FindAll(".rc-images"));
+        photosApi.Verify(a => a.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task The_open_card_puts_description_above_notes_leads_each_card_with_its_icon_and_labels_a_step_by_its_text()
+    {
+        var (ctx, api, dialogs) = Create(Owner);
+        await using var _ctx = ctx;
+        api.Setup(a => a.GetAsync(SoupId, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExistingRecipe>.Success(Detail() with
+            {
+                Description = "A summer soup.",
+                Notes = "Freeze half.",
+                UpdatedAt = new DateTime(2026, 4, 1, 9, 0, 0, DateTimeKind.Utc),
+                UpdatedByName = "Kari",
+                Ingredients =
+                [
+                    new() { RecipeIngredientId = Guid.NewGuid(), Position = 0, Amount = 1, Unit = IngredientUnit.Gram, Name = "cream", Optional = true },
+                    new() { RecipeIngredientId = Guid.NewGuid(), Position = 1, Unit = IngredientUnit.ToTaste, Name = "salt" },
+                ],
+            }, HttpStatusCode.OK));
+        var page = RenderOpen(ctx);
+        page.WaitForAssertion(() => Assert.Contains("A summer soup.", page.Markup, StringComparison.Ordinal));
+
+        var labels = page.FindAll(".odc-infotile-label, .odc-infotile .odc-infotile-l").Select(l => l.TextContent.Trim()).ToList();
+        var tileText = page.FindAll(".odc-infotile").Select(t => t.TextContent).ToList();
+        var description = tileText.FindIndex(t => t.Contains("A summer soup.", StringComparison.Ordinal));
+        var notes = tileText.FindIndex(t => t.Contains("Freeze half.", StringComparison.Ordinal));
+        var updated = tileText.FindIndex(t => t.Contains("Kari", StringComparison.Ordinal));
+        Assert.Equal(description + 1, notes);
+        Assert.True(updated < description);
+
+        Assert.Equal(["egg_alt", "menu_book"], page.FindAll(".rc-card-h .rc-card-ic").Select(i => i.TextContent));
+        Assert.All(page.FindAll(".rc-card-h .rc-card-ic"), i => Assert.Equal("true", i.GetAttribute("aria-hidden")));
+
+        var cream = page.FindAll(".rc-ing-list li")[0];
+        Assert.Equal(" (optional)", cream.QuerySelector(".rc-ing-optional")!.TextContent);
+        Assert.Equal("rc-ing-name", cream.QuerySelector(".rc-ing-optional")!.PreviousElementSibling!.ClassName);
+        Assert.Empty(page.FindAll(".rc-cook .rc-ing-opt"));
+        Assert.Equal(", to taste", page.Find(".rc-ing-totaste").TextContent);
+
+        var step = page.Find(".rc-step-list li .odc-check-label");
+        Assert.Equal("Step 1 of 2: ", step.QuerySelector(".odc-sr-only")!.TextContent);
+        Assert.Equal("Step 1 of 2: Roast.", step.TextContent);
+        Assert.Empty(page.FindAll(".rc-step-n"));
+        Assert.DoesNotContain("aria-describedby", page.Find(".rc-step-list li input").OuterHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_files_row_menu_is_preview_download_copy_id_then_detach()
+    {
+        await using var ctx = PageTestContext.Create(Owner);
+        var api = new Mock<IRecipesApiClient>();
+        api.Setup(a => a.ListAsync(It.IsAny<RecipeListFilter?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<RecipeSummary>>.Success(
+                new PagedResult<RecipeSummary> { Items = [Summary()], Offset = 0, Limit = 25, TotalCount = 1 }, HttpStatusCode.OK));
+        api.Setup(a => a.GetAsync(SoupId, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExistingRecipe>.Success(Detail(), HttpStatusCode.OK));
+        ctx.Services.AddSingleton(api.Object);
+        var popovers = ctx.Render<MudPopoverProvider>();
+        ctx.Render<MudDialogProvider>();
+        var page = RenderOpen(ctx);
+        page.WaitForAssertion(() => Assert.Contains("original.pdf", page.Markup, StringComparison.Ordinal));
+
+        page.Find(".con-files button[aria-label='Row actions']").Click();
+
+        popovers.WaitForAssertion(() => Assert.NotEmpty(popovers.FindAll("[role=menuitem]")));
+        var items = popovers.FindAll("[role=menuitem]").Select(i => i.TextContent).ToList();
+        Assert.Equal(4, items.Count);
+        Assert.Contains("Preview", items[0], StringComparison.Ordinal);
+        Assert.Contains("Download", items[1], StringComparison.Ordinal);
+        Assert.Contains("Copy ID", items[2], StringComparison.Ordinal);
+        Assert.Contains("Detach", items[3], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Attach_files_is_in_the_record_menu_until_the_servers_attachment_cap()
+    {
+        var (ctx, api, dialogs) = Create(Owner);
+        await using var _ctx = ctx;
+        var page = RenderOpen(ctx);
+        page.WaitForAssertion(() => Assert.Contains("original.pdf", page.Markup, StringComparison.Ordinal));
+        Assert.Contains("Attach files", page.Instance.RowActions(Summary()).Select(i => i.Label));
+
+        var full = Detail() with
+        {
+            Attachments = [.. Enumerable.Range(0, RecipeLimits.MaxAttachments).Select(i => new RecipeAttachmentDto
+            {
+                RecipeAttachmentId = Guid.NewGuid(),
+                FileId = Guid.NewGuid(),
+                FileName = $"f{i}.pdf",
+                ContentType = "application/pdf",
+                CreatedAt = DateTime.UtcNow,
+            })],
+        };
+        api.Setup(a => a.GetAsync(SoupId, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExistingRecipe>.Success(full, HttpStatusCode.OK));
+        page.Find($"#{RecipesPage.CardId(SoupId)} button[aria-expanded]").Click();
+        page.Find($"#{RecipesPage.CardId(SoupId)} button[aria-expanded]").Click();
+
+        page.WaitForAssertion(() => Assert.DoesNotContain("Attach files", page.Instance.RowActions(Summary()).Select(i => i.Label)));
     }
 
     [Fact]

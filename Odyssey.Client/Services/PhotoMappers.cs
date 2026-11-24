@@ -66,6 +66,27 @@ public static class PhotoMappers
     };
 
     /// <summary>
+    /// The viewer's row for a photo a record links (a journal entry's, a book's, a recipe's, a calendar event's): the
+    /// link DTO carries the title and the library photo's own favourite and archive state, which is everything the
+    /// shared <c>PhotoViewer</c> shows before its detail dialog reads the photo itself. So no surface reads
+    /// <c>GET /api/photos/{id}</c> per photo for the heart or the "Archived" badge.
+    /// </summary>
+    public static PhotoSummary LinkSummary(Guid photoId, string? title, DateTime? favourited, DateTime? archived,
+        bool thumbnailsReady = false) => new()
+        {
+            PhotoId = photoId,
+            Title = title,
+            Favourited = favourited,
+            Archived = archived,
+            ThumbnailsReady = thumbnailsReady,
+            PersonCount = 0,
+            AlbumCount = 0,
+        };
+
+    /// <summary>Flip a timestamp toggle the viewer just saved (favourite, archive) on a link DTO's copy of it.</summary>
+    public static DateTime? Toggled(DateTime? stamp) => stamp is null ? DateTime.UtcNow : null;
+
+    /// <summary>
     /// A photo's label (issue #428): its title, else its file name, else <paramref name="fallback"/> — the first that is
     /// not blank. The one rule every surface labels a photo by.
     /// </summary>

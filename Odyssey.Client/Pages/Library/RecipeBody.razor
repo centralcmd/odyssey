@@ -1,7 +1,8 @@
 @*
     RecipeBody — an open recipe card (issue #526; design system components-recipes.md · The open card). In reading
-    order: the tiles (no section label — the open card IS the recipe), Ingredients | Method as two outlined cards
-    (Ingredients ~1/3 from 960 px, stacked below), then Photos (photos.read) and Files (files.read). The record holds
+    order: the tiles (no section label — the open card IS the recipe; Description directly above Notes), Ingredients |
+    Method as two outlined cards led by a soft-brand icon tile (egg_alt, menu_book — the wizard's glyphs), each section an
+    OdsSectionDivider (name · rule · count, a level-4 heading), Ingredients ~1/3 from 960 px and stacked below, then Photos (photos.read) and Files (files.read; row menu Preview · Download · Copy ID · — · Detach). The record holds
     no controls beyond the check-offs: every action is in the card's ⋯ menu. A checked line is struck through AND
     muted, never colour alone. Amounts are the server's; nothing here does arithmetic on one.
 *@
@@ -21,12 +22,6 @@
         <OdsInfoTile Icon="timer" Label="Total" ValueVariant="OdsInfoTileVariant.Text">
             <Value>@(RecipeFormat.Duration(Recipe.TotalMinutes) ?? "—")</Value>
         </OdsInfoTile>
-        @if (!string.IsNullOrWhiteSpace(Recipe.Description))
-        {
-            <OdsInfoTile Icon="notes" Label="Description" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
-                <Value><span class="rc-prose">@Recipe.Description</span></Value>
-            </OdsInfoTile>
-        }
         @if (!string.IsNullOrWhiteSpace(Recipe.Source))
         {
             var link = OdsExternalLink.Target(Recipe.Source);
@@ -54,6 +49,12 @@
                 <Value>@(Recipe.UpdatedByName ?? RemovedUser)</Value>
             </OdsInfoTile>
         }
+        @if (!string.IsNullOrWhiteSpace(Recipe.Description))
+        {
+            <OdsInfoTile Icon="notes" Label="Description" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
+                <Value><span class="rc-prose">@Recipe.Description</span></Value>
+            </OdsInfoTile>
+        }
         @if (!string.IsNullOrWhiteSpace(Recipe.Notes))
         {
             <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
@@ -77,7 +78,7 @@
     <OdsCard Outlined="true" Class="rc-cook-card">
         <OdsCardHeader>
             <h3 class="odc-card-header-ttl rc-card-h" id="@($"{IdPrefix}-ing")">
-                Ingredients <span class="rc-card-h-meta">@RecipeFormat.ForServings(Recipe.DisplayedServings, Recipe.ServingsLabel)</span>
+                <span class="material-icons rc-card-ic" aria-hidden="true">egg_alt</span>Ingredients <span class="rc-card-h-meta">@RecipeFormat.ForServings(Recipe.DisplayedServings, Recipe.ServingsLabel)</span>
             </h3>
         </OdsCardHeader>
         <OdsCardBody>
@@ -88,7 +89,8 @@
                     <div class="rc-group">
                         @if (group.Section is not null)
                         {
-                            <h4 class="rc-h4">@group.Section</h4>
+                            <OdsSectionDivider Label="@group.Section" HeadingLevel="4" HeadingId="@($"{IdPrefix}-ig-{group.Rows[0].Index}")"
+                                               Meta="@RecipeFormat.Count(group.Rows.Count, "ingredient")" />
                         }
                         <ul class="rc-ing-list" role="list">
                             @foreach (var (line, index) in group.Rows)
@@ -115,7 +117,7 @@
     <OdsCard Outlined="true" Class="rc-cook-card">
         <OdsCardHeader>
             <h3 class="odc-card-header-ttl rc-card-h" id="@($"{IdPrefix}-method")">
-                Method <span class="rc-card-h-meta">@RecipeFormat.Count(Recipe.Steps.Count, "step")</span>
+                <span class="material-icons rc-card-ic" aria-hidden="true">menu_book</span>Method <span class="rc-card-h-meta">@RecipeFormat.Count(Recipe.Steps.Count, "step")</span>
             </h3>
         </OdsCardHeader>
         <OdsCardBody>
@@ -125,20 +127,19 @@
                     <div class="rc-group">
                         @if (group.Section is not null)
                         {
-                            <h4 class="rc-h4">@group.Section</h4>
+                            <OdsSectionDivider Label="@group.Section" HeadingLevel="4" HeadingId="@($"{IdPrefix}-sg-{group.Rows[0].Index}")"
+                                               Meta="@RecipeFormat.Count(group.Rows.Count, "step")" />
                         }
                         @* Numbering runs on across sections: each group's list starts where the last ended. *@
                         <ol class="rc-step-list" role="list" start="@(group.Rows[0].Index + 1)">
                             @foreach (var (step, index) in group.Rows)
                             {
                                 var done = Cook.CheckedSteps.Contains(index);
-                                var textId = $"{IdPrefix}-st-{index}";
                                 <li class="@(done ? "done" : null)" @key="index">
-                                    <OdsCheckbox Checked="done" aria-describedby="@textId"
-                                                 CheckedChanged="@(on => OnToggleStep.InvokeAsync(new RecipeCheck(index, on)))">
-                                        <span class="rc-step-n">Step @(index + 1)<span class="odc-sr-only"> of @Recipe.Steps.Count</span></span>
+                                    @* The step text IS the label; its number is said, not shown ("Step 3 of 6: …"). *@
+                                    <OdsCheckbox Checked="done" CheckedChanged="@(on => OnToggleStep.InvokeAsync(new RecipeCheck(index, on)))">
+                                        <span class="rc-step-text"><span class="odc-sr-only">@StepPrefix(index, Recipe.Steps.Count)</span>@step.Text</span>
                                     </OdsCheckbox>
-                                    <p class="rc-step-text" id="@textId">@step.Text</p>
                                 </li>
                             }
                         </ol>
@@ -159,7 +160,8 @@
                       Meta="@(photos.Count == 0 ? "none" : $"{RecipeFormat.Count(photos.Count, "photo")} · first is the cover")"
                       Empty="@(photos.Count == 0)"
                       EmptyText="@Text(CanUpdate ? "No photos yet — add one of the finished dish from the recipe’s ⋯ menu." : "No photos yet.")">
-        <RecipePhotoGrid Photos="@([.. photos.OrderBy(p => p.Position)])" Access="PhotoAccess" CanUpdate="CanUpdate" OnChange="OnPhotoChange" />
+        <RecipePhotoGrid Photos="@([.. photos.OrderBy(p => p.Position)])" Access="PhotoAccess" CanUpdate="CanUpdate" OnChange="OnPhotoChange"
+                         OnLibraryChanged="OnPhotosChanged" />
     </OdsRecordSection>
 }
 
@@ -184,8 +186,8 @@
 }
 
 @code {
-    // "500 g wheat flour, sifted": the unit abbreviation is aria-hidden beside an sr-only spoken name, so a screen
-    // reader hears "500 grams wheat flour, sifted".
+    // "500 g wheat flour": the unit abbreviation is aria-hidden beside an sr-only spoken name, so a screen
+    // reader hears "500 grams wheat flour".
     private static RenderFragment IngredientLabel(RecipeIngredientText t) =>
         @<span class="rc-ing-text">
             @if (t.Amount is not null)
@@ -198,15 +200,12 @@
                         }
                     }</span>@(" ")
             }
-            <span class="rc-ing-name">@t.Name</span>@if (t.Preparation is not null)
+            <span class="rc-ing-name">@t.Name</span>@if (t.ToTaste)
             {
-                <span class="rc-ing-prep">, @t.Preparation</span>
-            }@if (t.ToTaste)
-            {
-                <span class="rc-ing-prep">, to taste</span>
+                <span class="rc-ing-totaste">, to taste</span>
             }@if (t.Optional)
             {
-                <span class="rc-ing-opt"> (optional)</span>
+                <span class="rc-ing-optional"> (optional)</span>
             }
         </span>;
 }

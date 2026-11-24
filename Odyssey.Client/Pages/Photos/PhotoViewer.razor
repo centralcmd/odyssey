@@ -1,0 +1,22 @@
+@*
+    PhotoViewer — THE way a library photo is opened (Odyssey Design System · ui_kits/web/Photos.jsx
+    PhotoViewer, version 1795477868-c9a2). See the class's XML doc for how a page mounts it.
+*@
+@using Odyssey.Dtos
+
+<PhotoDetailDialog Open="IsOpen" Photos="_photos" Index="@(Index ?? -1)" IndexChanged="OnIndexChanged"
+                   OnClose="CloseAsync" ReturnFocusToId="@ReturnFocusToId"
+                   OnEdit="BeginEdit" OnToggleFavourite="ToggleFavouriteAsync"
+                   OnToggleArchive="ToggleArchiveAsync" OnDelete="DeleteAsync"
+                   CanUpdate="_canUpdate" CanDelete="_canDelete"
+                   TagName="Effective.TagName" TagIcon="Effective.TagIcon" TagColor="Effective.TagColor"
+                   PersonName="Effective.PersonName" AlbumChip="Effective.AlbumChip" />
+
+@* Mounted throughout and toggled via Open (an inline MudDialog @if-unmounted mid-open is orphaned);
+   @key gives each edited photo fresh form state. *@
+<EditPhotoDialog @key="_editId" Open="_editId is not null" OpenChanged="v => { if (!v) _editId = null; }"
+                 PhotoId="@(_editId ?? Guid.Empty)"
+                 TagOptions="Effective.TagOptions" TagNameBlocked="Effective.TagNameBlocked"
+                 PeopleOptions="Effective.PeopleOptions" AlbumOptions="Effective.AlbumOptions"
+                 CanCreateTags="_canCreateTags" CanCreateContacts="_canCreateContacts"
+                 OnSaved="OnEditSavedAsync" />

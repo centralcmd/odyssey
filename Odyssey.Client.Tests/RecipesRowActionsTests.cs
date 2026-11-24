@@ -113,14 +113,17 @@ public class RecipesRowActionsTests
     ];
 
     [Fact]
-    public void A_photo_tiles_menu_omits_the_moves_it_cannot_make()
+    public void A_photo_tiles_menu_opens_first_and_omits_the_moves_it_cannot_make()
     {
         var photos = ThreePhotos();
         var receiver = new object();
+        var onChange = EventCallback.Factory.Create<RecipePhotoChange>(receiver, _ => { });
 
-        Assert.Equal(["Move later", "—", "Detach"], Labels(RecipePhotoGrid.BuildTileActions(photos, 0, default, receiver)));
-        Assert.Equal(["Make cover", "Move earlier", "Move later", "—", "Detach"], Labels(RecipePhotoGrid.BuildTileActions(photos, 1, default, receiver)));
-        Assert.Equal(["Make cover", "Move earlier", "—", "Detach"], Labels(RecipePhotoGrid.BuildTileActions(photos, 2, default, receiver)));
+        Assert.Equal(["Open", "—", "Move later", "—", "Detach"], Labels(RecipePhotoGrid.BuildTileActions(photos, 0, onChange, default, receiver)));
+        Assert.Equal(["Open", "—", "Make cover", "Move earlier", "Move later", "—", "Detach"], Labels(RecipePhotoGrid.BuildTileActions(photos, 1, onChange, default, receiver)));
+        Assert.Equal(["Open", "—", "Make cover", "Move earlier", "—", "Detach"], Labels(RecipePhotoGrid.BuildTileActions(photos, 2, onChange, default, receiver)));
+        // Without recipes.update a tile only opens.
+        Assert.Equal(["Open"], Labels(RecipePhotoGrid.BuildTileActions(photos, 1, default, default, receiver)));
         Assert.Equal("Photo 3", RecipePhotoGrid.NameOf(photos[2], 2));
     }
 
@@ -132,12 +135,12 @@ public class RecipesRowActionsTests
         var receiver = new object();
         var onChange = EventCallback.Factory.Create<RecipePhotoChange>(receiver, c => change = c);
 
-        await RecipePhotoGrid.BuildTileActions(photos, 1, onChange, receiver).Single(i => i.Label == "Make cover").OnClick.InvokeAsync();
+        await RecipePhotoGrid.BuildTileActions(photos, 1, onChange, default, receiver).Single(i => i.Label == "Make cover").OnClick.InvokeAsync();
 
         Assert.Equal([photos[1].PhotoId, photos[0].PhotoId, photos[2].PhotoId], change!.PhotoIds);
         Assert.Equal("garden_02.jpg is now the cover.", change.Message);
 
-        await RecipePhotoGrid.BuildTileActions(photos, 0, onChange, receiver).Single(i => i.Label == "Detach").OnClick.InvokeAsync();
+        await RecipePhotoGrid.BuildTileActions(photos, 0, onChange, default, receiver).Single(i => i.Label == "Detach").OnClick.InvokeAsync();
         Assert.Equal([photos[1].PhotoId, photos[2].PhotoId], change.PhotoIds);
         Assert.Equal("Photo detached. garden_02.jpg is now the cover.", change.Message);
     }

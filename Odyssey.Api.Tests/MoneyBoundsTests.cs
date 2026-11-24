@@ -95,7 +95,6 @@ public class MoneyBoundsTests(MoneyBoundsTests.Host host) : SharedApiHostTests<M
         // Ingredient quantities, decimal(12,3) — not money; bounded by [Range(RecipeLimits.MinAmount/MaxAmount)] on
         // RecipeIngredientRequest and a 3-decimal check in RecipeService (issue #525 §8.1).
         (typeof(Context.RecipeIngredient), nameof(Context.RecipeIngredient.Amount)),
-        (typeof(Context.RecipeIngredient), nameof(Context.RecipeIngredient.AmountMax)),
         // Weather (issue #348): never written from a request body. Site coordinates are the rounded copies a
         // weather-point write (issue #387, range-checked on NewWeatherPoint/UpdateWeatherPoint) produces; the run, step, observation and day values are parsed from MET/Frost responses and
         // range-checked by the parsers (WeatherHttp.InRange) before they are stored.
@@ -262,8 +261,6 @@ public class MoneyBoundsTests(MoneyBoundsTests.Host host) : SharedApiHostTests<M
     {
         [$"{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest)}.{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest.Amount)}"] =
             "An ingredient quantity, decimal(12,3); bounded by [Range(RecipeLimits.MinAmount, RecipeLimits.MaxAmount)] (issue #525).",
-        [$"{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest)}.{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest.AmountMax)}"] =
-            "An ingredient range end, decimal(12,3); bounded by [Range(RecipeLimits.MinAmount, RecipeLimits.MaxAmount)] (issue #525).",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.LivingAreaSqm)}"] =
             "An area in square metres, decimal(18,2); bounded by its own [Range(0, 1_000_000)].",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.PlotAreaSqm)}"] =

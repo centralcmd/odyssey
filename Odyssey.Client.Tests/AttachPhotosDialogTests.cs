@@ -60,7 +60,7 @@ public class AttachPhotosDialogTests
         public AngleSharp.Dom.IElement Footer => Host.FindAll(".ods-modal-foot button").Last();
 
         public AngleSharp.Dom.IElement Tile(PhotoSummary p) =>
-            Host.FindAll("button.apd-tile").Single(t => t.GetAttribute("title") == p.Title);
+            Host.FindAll("button.odc-phototile-open").Single(t => t.GetAttribute("title") == p.Title);
 
         public AngleSharp.Dom.IElement SubmitButton =>
             Host.FindAll("button").Last(b => b.TextContent.Contains("Add photo", StringComparison.Ordinal)
@@ -119,7 +119,7 @@ public class AttachPhotosDialogTests
 
         if (!canUpload && canBrowse)
         {
-            cut.WaitForState(() => cut.FindAll("button.apd-tile").Count == 3);
+            cut.WaitForState(() => cut.FindAll("button.odc-phototile-open").Count == 3);
         }
 
         return new Harness(cut, photos, files, submitted, ctx.Services.GetRequiredService<ISnackbar>());
@@ -205,7 +205,7 @@ public class AttachPhotosDialogTests
 
         Assert.Empty(h.Host.FindComponents<OdsSegmentedControl>());
         Assert.Empty(h.Host.FindComponents<OdsFileUpload>());
-        Assert.Equal(3, h.Host.FindAll("button.apd-tile").Count);
+        Assert.Equal(3, h.Host.FindAll("button.odc-phototile-open").Count);
     }
 
     [Fact]
@@ -213,11 +213,52 @@ public class AttachPhotosDialogTests
     {
         var h = Render(attached: [Fjord.PhotoId]);
 
+        // The shared tile, disabled, with the reason as a visible text badge (design system 1795477868-c9a2).
         var tile = h.Tile(Fjord);
-        Assert.True(tile.HasAttribute("disabled"));
-        Assert.Equal("Already added", tile.QuerySelector(".apd-added")!.TextContent);
-        Assert.Contains("already added", tile.GetAttribute("aria-label"), StringComparison.Ordinal);
-        Assert.False(h.Tile(Cabin).HasAttribute("disabled"));
+        // aria-disabled, not the native attribute, so it stays focusable and its reason is met by keyboard (1795486190-6f31).
+        Assert.False(tile.HasAttribute("disabled"));
+        Assert.Equal("true", tile.GetAttribute("aria-disabled"));
+        var root = tile.ParentElement!;
+        Assert.Contains("is-disabled", root.ClassList);
+        Assert.Equal("Already added", root.QuerySelector(".odc-phototile-badge")!.TextContent);
+        // The badge row is hidden from assistive tech, so the reason ends the image button's name (1795483642-28bb).
+        Assert.EndsWith(", Already added", tile.GetAttribute("aria-label"));
+        Assert.False(h.Tile(Cabin).HasAttribute("aria-disabled"));
+        Assert.Null(h.Tile(Cabin).ParentElement!.QuerySelector(".odc-phototile-badge"));
+
+        // Clicking a disabled tile picks nothing.
+        tile.Click();
+        var fjord = h.Host.FindComponents<OdsPhotoTile>().Single(t => t.Instance.Name == Fjord.Title);
+        Assert.True(fjord.Instance.Disabled);
+        Assert.Contains("Add photo", h.SubmitButton.TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Selection mode: each tile is ONE tab stop — the image button, "Select {name}", aria-pressed — and
+    /// the check is its visible state, out of the tab order (a hollow ring, then the filled check).</summary>
+    [Fact]
+    public void Each_tile_is_one_tab_stop_named_select_with_its_pressed_state()
+    {
+        var h = Render();
+
+        var cabin = h.Tile(Cabin);
+        Assert.Equal("Select Cabin at dusk", cabin.GetAttribute("aria-label"));
+        Assert.Equal("false", cabin.GetAttribute("aria-pressed"));
+        var root = cabin.ParentElement!;
+        Assert.Contains("is-selectable", root.ClassList);
+        var check = root.QuerySelector(".odc-phototile-check")!;
+        Assert.Equal("-1", check.GetAttribute("tabindex"));
+        Assert.Equal("true", check.GetAttribute("aria-hidden"));
+        Assert.DoesNotContain("on", check.ClassList);
+
+        // Every other control in the tile is out of the tab order: only the image button is reachable.
+        var tabbable = root.QuerySelectorAll("button").Where(b => b.GetAttribute("tabindex") != "-1").ToList();
+        Assert.Equal([cabin], tabbable);
+
+        cabin.Click();
+        Assert.Equal("true", h.Tile(Cabin).GetAttribute("aria-pressed"));
+        Assert.Contains("on", h.Tile(Cabin).ParentElement!.QuerySelector(".odc-phototile-check")!.ClassList);
+        Assert.Equal("Photos, 1 selected", h.Host.Find("ul.odc-photogrid2").GetAttribute("aria-label"));
+        Assert.Contains("dense", h.Host.Find("ul.odc-photogrid2").ClassList);
     }
 
     [Fact]
@@ -280,7 +321,7 @@ public class AttachPhotosDialogTests
 
         h.Tile(Fjord).Click();
         await h.Search("fish");
-        h.Host.WaitForAssertion(() => Assert.Single(h.Host.FindAll("button.apd-tile")));
+        h.Host.WaitForAssertion(() => Assert.Single(h.Host.FindAll("button.odc-phototile-open")));
         h.Tile(Market).Click();
         h.Footer.Click();
 
@@ -304,7 +345,7 @@ public class AttachPhotosDialogTests
         slow.SetResult(Page(Cabin));
         await first;
 
-        h.Host.WaitForAssertion(() => Assert.Equal([Market.Title], h.Host.FindAll("button.apd-tile").Select(t => t.GetAttribute("title"))));
+        h.Host.WaitForAssertion(() => Assert.Equal([Market.Title], h.Host.FindAll("button.odc-phototile-open").Select(t => t.GetAttribute("title"))));
     }
 
     /// <summary>The result count is announced, so a screen-reader user hears what the search did (WCAG 4.1.3).</summary>

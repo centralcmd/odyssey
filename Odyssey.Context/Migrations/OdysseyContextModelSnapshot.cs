@@ -5973,10 +5973,6 @@ namespace Odyssey.Context.Migrations
                         .HasPrecision(12, 3)
                         .HasColumnType("decimal(12,3)");
 
-                    b.Property<decimal?>("AmountMax")
-                        .HasPrecision(12, 3)
-                        .HasColumnType("decimal(12,3)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -5987,10 +5983,6 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<int>("Position")
                         .HasColumnType("int");
-
-                    b.Property<string>("Preparation")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
 
                     b.Property<Guid>("RecipeId")
                         .HasColumnType("char(36)");

@@ -14,8 +14,8 @@ public static class RecipeServingsScaler
     /// Scales <paramref name="recipe"/> to <paramref name="servings"/>. Equal to the stored servings, it only stamps
     /// <see cref="ExistingRecipe.DisplayedServings"/>; otherwise each scalable, non-null amount is multiplied by
     /// <c>servings / recipe.Servings</c>, rounded half away from zero to <see cref="RecipeLimits.AmountScale"/> places
-    /// and floored at <see cref="RecipeLimits.MinAmount"/>. A range whose rounded end no longer exceeds its start
-    /// collapses (<c>AmountMax</c> becomes null). Units never change.
+    /// and floored at <see cref="RecipeLimits.MinAmount"/>. Units never change, and text in a name (such as a range a
+    /// migration noted there, "garlic (4–6)") is never scaled.
     /// </summary>
     public static ExistingRecipe Apply(ExistingRecipe recipe, int servings)
     {
@@ -35,13 +35,7 @@ public static class RecipeServingsScaler
                 continue;
             }
 
-            var scaled = Scale(amount, factor);
-            ingredient.Amount = scaled;
-            if (ingredient.AmountMax is { } max)
-            {
-                var scaledMax = Scale(max, factor);
-                ingredient.AmountMax = scaledMax > scaled ? scaledMax : null;
-            }
+            ingredient.Amount = Scale(amount, factor);
         }
 
         recipe.Scaled = true;

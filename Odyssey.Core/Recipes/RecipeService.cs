@@ -458,39 +458,21 @@ public sealed class RecipeService(
 
         var name = Required(line.Name, $"{key}.name", $"Ingredient {index + 1}: enter a name.");
 
-        if (unit == IngredientUnit.ToTaste && (line.Amount is not null || line.AmountMax is not null))
+        if (unit == IngredientUnit.ToTaste && line.Amount is not null)
         {
             throw new DomainUnprocessableException(
                 $"Ingredient {index + 1}: an ingredient added to taste has no amount.", $"{key}.amount");
         }
 
         CheckAmount(line.Amount, index, $"{key}.amount");
-        CheckAmount(line.AmountMax, index, $"{key}.amountMax");
-
-        if (line.AmountMax is { } max)
-        {
-            if (line.Amount is not { } amount)
-            {
-                throw new DomainUnprocessableException(
-                    $"Ingredient {index + 1}: enter the amount before the range end.", $"{key}.amountMax");
-            }
-
-            if (max <= amount)
-            {
-                throw new DomainUnprocessableException(
-                    $"Ingredient {index + 1}: the range end must be larger than the amount.", $"{key}.amountMax");
-            }
-        }
 
         return new RecipeIngredient
         {
             Position = index,
             Section = Optional(line.Section),
             Amount = line.Amount,
-            AmountMax = line.AmountMax,
             Unit = unit,
             Name = name,
-            Preparation = Optional(line.Preparation),
             Optional = line.Optional,
         };
     }
@@ -780,10 +762,8 @@ public sealed class RecipeService(
                     Position = i.Position,
                     Section = i.Section,
                     Amount = RecipeAmounts.Trim(i.Amount),
-                    AmountMax = RecipeAmounts.Trim(i.AmountMax),
                     Unit = i.Unit,
                     Name = i.Name,
-                    Preparation = i.Preparation,
                     Optional = i.Optional,
                 })
                 .ToList(),
@@ -817,6 +797,8 @@ public sealed class RecipeService(
                     Position = p.Position,
                     Title = info[p.PhotoId].Title,
                     FileName = info[p.PhotoId].FileName,
+                    Favourited = info[p.PhotoId].Favourited,
+                    Archived = info[p.PhotoId].Archived,
                     ThumbnailsReady = ready.Contains(p.PhotoId),
                 })
                 .ToList();

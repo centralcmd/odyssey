@@ -770,6 +770,72 @@
 .mud-dialog:has(.mud-dialog-content :is(.odc-field-req, .mud-input-required)) .mud-dialog-actions.ods-modal-foot > .ods-modal-legend { display: inline-flex; }
 .ods-modal-legend .odc-field-req { margin-left: 0; }
 
+/* ---------- OdsModal wizard + OdsWizardSteps (DS Modal `steps` / WizardSteps, 1795477868-c9a2) ----------
+   A wizard (OdsModal Steps) is wider than the standard dialog and roomier: the step path needs width, and a
+   step holds rows rather than a few fields. The path is a full-width row in the header band under the title;
+   the footer carries Back and an error summary as well as Cancel and the primary, so it wraps. Selectors
+   keep the `.mud-dialog` prefix so they outrank MudBlazor's own dialog rules (see the Modal block above). */
+.mud-dialog.ods-modal.wizard { max-width: 760px; }
+.mud-dialog.ods-modal.wizard .mud-dialog-title.ods-modal-head { padding: var(--space-5) var(--space-6); }
+.mud-dialog.ods-modal.wizard .mud-dialog-content.ods-modal-content { padding: var(--space-6); }
+.mud-dialog.ods-modal.wizard .mud-dialog-actions.ods-modal-foot { padding: var(--space-4) var(--space-6); flex-wrap: wrap; row-gap: var(--space-2); }
+@media (max-width: 599px) {
+  .mud-dialog.ods-modal.wizard .mud-dialog-title.ods-modal-head,
+  .mud-dialog.ods-modal.wizard .mud-dialog-actions.ods-modal-foot { padding-left: var(--space-4); padding-right: var(--space-4); }
+  .mud-dialog.ods-modal.wizard .mud-dialog-content.ods-modal-content { padding: var(--space-4); }
+}
+.mud-dialog .mud-dialog-title.ods-modal-head.has-steps { flex-wrap: wrap; row-gap: var(--space-5); }
+.ods-modal-steps { flex: 1 0 100%; min-width: 0; padding: var(--space-1) 0 0; }
+.odc-wiz { min-width: 0; }
+.odc-wiz-list { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; min-width: 0; }
+.odc-wiz-step { display: flex; align-items: flex-start; flex: 1 1 0; min-width: 0; }
+.odc-wiz-step:last-child { flex: 0 0 auto; }
+.odc-wiz-btn {
+  appearance: none; background: transparent; border: 0; font: inherit; color: var(--mud-palette-text-primary);
+  display: flex; align-items: flex-start; gap: var(--space-2); flex: 0 1 auto; min-width: 0;
+  padding: var(--space-1) var(--space-2); margin: calc(var(--space-1) * -1) calc(var(--space-2) * -1);
+  border-radius: var(--radius-md); text-align: left; cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.odc-wiz-btn.static { cursor: default; }
+.odc-wiz-btn:not(.static):hover { background: var(--mud-palette-action-default-hover); }
+.odc-wiz-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.odc-wiz-disc {
+  flex: none; box-sizing: border-box; width: 28px; height: 28px; border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: var(--border-strong) solid var(--control-border); color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-surface);
+  font: var(--fw-medium) var(--fs-label)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  transition: background var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard);
+}
+.odc-wiz-disc .material-icons { font-size: var(--icon-md); }
+.odc-wiz-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 5px; }
+.odc-wiz-label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.odc-wiz-meta { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.odc-wiz-line {
+  flex: 1 1 auto; min-width: var(--space-4); height: 2px; border-radius: 1px;
+  margin: 13px var(--space-3) 0; background: var(--mud-palette-lines-default);
+  transition: background var(--duration-base) var(--ease-standard);
+}
+/* Travelled: the line out of every step before the current one is filled. */
+.odc-wiz-step.is-travelled .odc-wiz-line { background: var(--mud-palette-primary); }
+/* Current: a filled disc and a primary-ink label. */
+.odc-wiz-step.is-current .odc-wiz-disc { background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-wiz-step.is-current .odc-wiz-label { color: var(--mud-palette-text-primary); }
+/* Done: a soft brand disc with a check. */
+.odc-wiz-step.is-done .odc-wiz-disc { background: var(--brand-soft); border-color: var(--mud-palette-primary); color: var(--brand-text); }
+.odc-wiz-step.is-done .odc-wiz-label { color: var(--mud-palette-text-primary); }
+/* Has errors: error ring, ! glyph, the status line says so. Wins over current. */
+.odc-wiz-step.is-error .odc-wiz-disc { background: var(--finance-expense-soft); border-color: var(--mud-palette-error); color: var(--finance-expense); }
+.odc-wiz-step.is-error .odc-wiz-meta { color: var(--finance-expense); }
+.odc-wiz-step.is-error.is-current .odc-wiz-label { color: var(--mud-palette-text-primary); }
+@media (max-width: 599px) {
+  .odc-wiz-btn { flex-direction: column; align-items: center; text-align: center; gap: var(--space-1); }
+  .odc-wiz-text { align-items: center; padding-top: 0; max-width: 96px; }
+  .odc-wiz-meta { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .odc-wiz-line { margin-left: var(--space-1); margin-right: var(--space-1); min-width: var(--space-2); }
+}
+
 /* ---------- Form fields (DS components/Field — label ABOVE the box) ----------
    MudBlazor outlined fields render a *floating* label notched into the top border;
    the DS Field puts the label above the box (it turns primary on focus, error on
@@ -3076,9 +3142,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ---------- PhotoImage (thumbnail → original → placeholder; issue #365) ----------
    The host sizes the box; the image never does, so a fallback swap shifts nothing.
-   `fill` is for aspect-ratio hosts. Never a crossorigin attribute. Declared BEFORE the gallery
-   rules on purpose: the gallery's fallback placeholder carries both .odc-photoimg-ph and
-   .odc-photogrid-ph, and the gallery's striped background must win the tie by source order. */
+   `fill` is for aspect-ratio hosts. Never a crossorigin attribute. */
 .odc-photoimg {
   display: block; width: 100%; height: 100%; min-width: 0; min-height: 0;
   object-fit: cover;
@@ -3090,7 +3154,119 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-photoimg.fill, .odc-photoimg-ph.fill { position: absolute; inset: 0; }
 
-/* ---------- JournalPhotoGallery ---------- */
+/* ---------- OdsPhotoTile + OdsPhotoGrid (THE library photo tile; DS PhotoTile/PhotoGrid, 1795486190-6f31) ----------
+   Declared AFTER the PhotoImage rules on purpose: the tile's placeholder carries both .odc-photoimg-ph and
+   .odc-phototile-ph, and the striped background must win the tie by source order.
+   One tile wherever photos are listed (the Photos page, an album, a recipe's
+   Photos). The image zooms slightly on hover; the controls — check top-left,
+   heart and ⋯ top-right — and the caption are revealed on hover and on
+   keyboard focus, always shown on touch screens, and a control that is ON
+   stays shown. Badges ("Cover", "Archived") are always visible, in text. The
+   controls sit on a dark scrim so they read on any photo, in either theme. */
+.odc-photogrid2 { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.odc-photogrid2.dense { gap: 6px; }
+.odc-photogrid2-item { min-width: 0; }
+.odc-phototile {
+  position: relative; overflow: hidden; aspect-ratio: 1 / 1; border-radius: var(--radius-md);
+  background: var(--mud-palette-surface);
+}
+.odc-phototile-open {
+  appearance: none; border: 0; padding: 0; margin: 0; background: transparent; cursor: pointer;
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: inherit;
+}
+.odc-phototile-open:focus-visible { outline: none; }
+/* The image's focus ring is drawn above the photo, two-toned (ring + white halo), so it reads on any picture —
+   a single-colour inset outline could vanish on a photo of the same hue (WCAG 2.4.7). The chips' dark ground
+   (0.74) keeps their white glyphs and the pink heart at 3:1 or better over the brightest photo (WCAG 1.4.11). */
+.odc-phototile:has(.odc-phototile-open:focus-visible)::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit;
+  box-shadow: inset 0 0 0 var(--focus-ring-width) var(--focus-ring), inset 0 0 0 calc(var(--focus-ring-width) * 2) #fff;
+}
+/* Forced colours drop box-shadows: give the focused image a real Highlight outline there. */
+@media (forced-colors: active) {
+  .odc-phototile-open:focus-visible { outline: 3px solid Highlight; outline-offset: -3px; }
+}
+.odc-phototile-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.odc-phototile-ph {
+  display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(45deg, var(--mud-palette-action-default-hover) 0 8px, transparent 8px 16px), var(--mud-palette-background);
+  color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
+}
+.odc-phototile:hover .odc-phototile-img { transform: scale(1.05); }
+.odc-phototile-scrim {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0%, transparent 28%, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+.odc-phototile-foot {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none;
+  display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2);
+}
+.odc-phototile-badge {
+  flex: none; padding: 3px var(--space-2); border-radius: var(--radius-pill);
+  background: rgba(8, 12, 24, 0.74); color: #fff; font: var(--fw-bold) var(--fs-caption)/1.2 var(--font-sans);
+}
+.odc-phototile-cap {
+  min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); opacity: 0; transition: opacity var(--duration-base) var(--ease-standard);
+}
+.odc-phototile-check, .odc-phototile-fav {
+  position: absolute; top: var(--space-2); z-index: 2; width: 28px; height: 28px; border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  border: 0; color: #fff; background: rgba(10, 12, 18, 0.74); backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+.odc-phototile-check { left: var(--space-2); }
+.odc-phototile-fav { right: var(--space-2); }
+.odc-phototile.has-menu .odc-phototile-fav { right: calc(var(--space-2) + 36px); }
+.odc-phototile-check .material-icons, .odc-phototile-fav .material-icons { font-size: var(--icon-sm); }
+.odc-phototile-check:hover, .odc-phototile-fav:hover { transform: scale(1.08); }
+.odc-phototile-check:focus-visible, .odc-phototile-fav:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
+.odc-phototile-check.on { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-phototile-fav.on { color: #ff8fab; }
+.odc-phototile-menu {
+  position: absolute; top: 4px; right: 4px; z-index: 2; border-radius: var(--radius-pill);
+  background: rgba(10, 12, 18, 0.74); backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.odc-phototile-menu .mud-icon-button, .odc-phototile-menu .odc-iconbtn { color: #fff; }
+/* The selection ring sits above the image (an outline would be painted under it). */
+.odc-phototile.is-selected::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  border: 3px solid var(--mud-palette-primary); border-radius: inherit;
+}
+/* Reveal on hover and keyboard focus; ON controls and an open menu stay. */
+.odc-phototile:hover .odc-phototile-scrim, .odc-phototile:focus-within .odc-phototile-scrim,
+.odc-phototile:hover .odc-phototile-cap, .odc-phototile:focus-within .odc-phototile-cap,
+.odc-phototile:hover .odc-phototile-check, .odc-phototile:focus-within .odc-phototile-check,
+.odc-phototile:hover .odc-phototile-fav, .odc-phototile:focus-within .odc-phototile-fav,
+.odc-phototile:hover .odc-phototile-menu, .odc-phototile:focus-within .odc-phototile-menu,
+.odc-phototile-check.on, .odc-phototile-fav.on,
+.odc-phototile-menu:has([aria-expanded="true"]) { opacity: 1; }
+/* Selection mode: the check is the tile's visible state, always shown — a hollow
+   ring when not selected, the filled check when selected. */
+.odc-phototile.is-selectable .odc-phototile-check { opacity: 1; }
+.odc-phototile.is-selectable .odc-phototile-check:not(.on) { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92); background: rgba(10, 12, 18, 0.74); }
+.odc-phototile.is-selectable .odc-phototile-check:not(.on) .material-icons { opacity: 0; }
+/* Disabled (e.g. "Already added" in a picker): dimmed and inert but still focusable (aria-disabled); the reason is a badge. */
+.odc-phototile.is-disabled .odc-phototile-open { cursor: not-allowed; }
+.odc-phototile.is-disabled .odc-phototile-img { opacity: 0.45; }
+.odc-phototile.is-disabled:hover .odc-phototile-img { transform: none; }
+/* No hover on a touch screen: the controls are always there. */
+@media (hover: none) {
+  .odc-phototile-check, .odc-phototile-fav, .odc-phototile-menu { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .odc-phototile:hover .odc-phototile-img { transform: none; }
+}
+
+/* ---------- JournalPhotoGallery (DS 1795477868-c9a2) ----------
+   A heading + count over an OdsPhotoGrid of OdsPhotoTiles: the tiles are styled by .odc-phototile; only
+   the heading and the empty line live here. */
 .odc-photogrid { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-photogrid-head { display: flex; align-items: center; gap: 8px; color: var(--mud-palette-text-secondary); }
 .odc-photogrid-head .material-icons { font-size: var(--icon-md); }
@@ -3101,28 +3277,66 @@ tr:focus-within > .odc-rowactions.reveal,
   padding: 3px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
 }
 .odc-photogrid-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.odc-photogrid-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
-.odc-photogrid-item { min-width: 0; }
-.odc-photogrid-tile {
-  display: flex; flex-direction: column; width: 100%; padding: 0; cursor: pointer;
-  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
-  border-radius: var(--radius-sm); overflow: hidden; transition: border-color var(--duration-base) var(--ease-standard);
+
+/* ---------- OdsSortableList (DS SortableList, 1795477868-c9a2: a reorderable list of editable rows) ----------
+   Each row is a compact card — handle · the consumer's fields · ⋯ — moved by
+   dragging the handle, by a keyboard lift, or from the ⋯ menu. A heading row
+   is a tinted band, flush left; once a list has one, the other rows (and the
+   header) step in one gutter. While dragging: the moved row dims with a dashed
+   outline and a primary line in the gap marks where it lands; nothing shifts.
+   A keyboard-lifted row is raised instead. Where a row lands it flashes once. */
+.odc-sortable { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.odc-sortable-head {
+  display: grid; gap: var(--space-2); padding: 0 var(--space-2) 0 var(--space-1); border: 1px solid transparent;
+  font: var(--fw-medium) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary);
 }
-.odc-photogrid-tile:hover { border-color: var(--mud-palette-lines-inputs); }
-.odc-photogrid-tile:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-photogrid-img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--mud-palette-background); }
-/* Striped placeholder — the sanctioned "drop a photo here" mock texture. */
-.odc-photogrid-ph {
-  display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3;
-  background-color: var(--mud-palette-background);
-  background-image: repeating-linear-gradient(45deg,
-    var(--mud-palette-action-default-hover) 0, var(--mud-palette-action-default-hover) 1px,
-    transparent 1px, transparent 9px);
+.odc-sortable-row {
+  position: relative; margin: 0; min-width: 0;
+  display: grid; grid-template-columns: 32px minmax(0, 1fr) 36px; align-items: start; gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-1);
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
 }
-.odc-photogrid-ph-label {
-  font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono);
-  text-transform: uppercase; letter-spacing: var(--tracking-caps);
-  color: var(--mud-palette-text-secondary);
+.odc-sortable-row:hover, .odc-sortable-row:focus-within { border-color: var(--mud-palette-lines-inputs); }
+.odc-sortable-row.heading { background: var(--brand-soft); border-color: var(--brand-border); }
+.odc-sortable-row.heading:hover, .odc-sortable-row.heading:focus-within { border-color: var(--mud-palette-primary); }
+.odc-sortable.has-headings > .odc-sortable-row:not(.heading),
+.odc-sortable.has-headings > .odc-sortable-head { margin-left: var(--space-6); }
+.odc-sortable-row .odc-field { gap: var(--space-1); }
+
+.odc-sort-handle {
+  appearance: none; border: 0; background: transparent; padding: 0; margin: 0;
+  width: 32px; height: var(--control-h); border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--mud-palette-text-secondary); cursor: grab; touch-action: none;
+  transition: color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+.odc-sort-handle:hover, .odc-sortable-row:focus-within .odc-sort-handle { color: var(--mud-palette-text-primary); }
+.odc-sort-handle:hover { background: var(--mud-palette-action-default-hover); }
+.odc-sort-handle:active { cursor: grabbing; }
+.odc-sort-handle:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 0; }
+.odc-sort-handle.on { color: var(--mud-palette-primary-text); background: var(--mud-palette-primary); cursor: grabbing; }
+.odc-sort-menu { display: flex; align-items: center; justify-content: center; height: var(--control-h); }
+
+.odc-sortable-row.is-lifted { border-style: dashed; border-color: var(--mud-palette-primary); opacity: 0.5; }
+.odc-sortable-row.is-raised { opacity: 1; border-style: solid; box-shadow: var(--mud-elevation-8); }
+.odc-sortable-row.drop-before::before, .odc-sortable-row.drop-after::after {
+  content: ''; position: absolute; left: -1px; right: -1px; height: 3px; border-radius: 2px;
+  background: var(--mud-palette-primary); box-shadow: 0 0 0 3px var(--brand-soft); pointer-events: none;
+}
+.odc-sortable-row.drop-before::before { top: calc(var(--space-1) * -1 - 2.5px); }
+.odc-sortable-row.drop-after::after { bottom: calc(var(--space-1) * -1 - 2.5px); }
+@media (prefers-reduced-motion: no-preference) {
+  .odc-sortable-row.is-settled { animation: odc-sort-settle 900ms var(--ease-decelerate); }
+}
+@keyframes odc-sort-settle {
+  0% { box-shadow: 0 0 0 3px var(--brand-border); border-color: var(--mud-palette-primary); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (max-width: 599px) {
+  .odc-sortable-head { display: none; }
+  .odc-sortable.has-headings > .odc-sortable-row:not(.heading) { margin-left: var(--space-3); }
 }
 
 /* ---------- OdsTaskBoard (kanban) ---------- */
@@ -3176,12 +3390,6 @@ tr:focus-within > .odc-rowactions.reveal,
 @media (max-width: 900px) { .odc-board { grid-template-columns: 1fr; } }
 
 /* Journal attachment table empty note (JournalFilesTable child component) */
-
-/* Photo gallery image fallback — if a streamed <img> fails to load (e.g. cross-origin under a
-   split-port dev stack), reveal the placeholder instead of a broken-image icon (issue #315 review). */
-.odc-photogrid-ph-fallback { display: none; }
-.odc-photogrid-img.img-failed { display: none; }
-.odc-photogrid-img.img-failed + .odc-photogrid-ph-fallback { display: grid; }
 
 /* ── DS sync ca4a9c4 — new component atoms ────────────────────────────────────
    StepperField, DateRangePicker, ColorSwatchSelect, RevealPanel. CoordinateField needs no rules

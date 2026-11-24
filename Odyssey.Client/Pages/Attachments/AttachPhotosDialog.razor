@@ -59,25 +59,19 @@
                     }
                     else
                     {
-                        <div class="apd-grid" role="group" aria-label="Photos">
-                            @foreach (var photo in _library)
-                            {
-                                var added = IsAttached(photo);
-                                var picked = IsPicked(photo);
-                                <button type="button" class="apd-tile @(picked ? "on" : null)" @key="photo.PhotoId"
-                                        disabled="@added" aria-pressed="@(picked ? "true" : "false")"
-                                        aria-label="@TileLabel(photo, added)" title="@LabelOf(photo)"
-                                        @onclick="@(() => TogglePick(photo))">
-                                    <OdsPhotoImage Source="ImageOf(photo)" Alt="" Fill="true" Class="apd-img" />
-                                    <span class="apd-check" aria-hidden="true">
-                                        <OdsMIcon Name="@(added ? "link" : picked ? "check_box" : "check_box_outline_blank")" Size="18" />
-                                    </span>
-                                    @if (added)
-                                    {
-                                        <span class="apd-added" aria-hidden="true">Already added</span>
-                                    }
-                                </button>
-                            }
+                        @* THE library tile in selection mode (design system · AttachPhotosModal.jsx, version
+                           1795477868-c9a2): one tab stop per tile ("Select {name}", aria-pressed), a hollow ring or the
+                           filled check; a photo already on the record is Disabled with an "Already added" badge. *@
+                        <div class="odc-scroll apd-pool">
+                            <OdsPhotoGrid TItem="PhotoSummary" Items="_library" ItemKey="p => p.PhotoId" Dense="true" MinTile="104"
+                                          AriaLabel="@($"Photos, {_picked.Count} selected")">
+                                <ItemTemplate Context="photo">
+                                    <OdsPhotoTile Name="@LabelOf(photo)" Image="ImageOf(photo)"
+                                                  Selectable="true" Selected="IsPicked(photo)" Disabled="IsAttached(photo)"
+                                                  Badges="@(IsAttached(photo) ? AlreadyAdded : [])"
+                                                  OnToggleSelect="() => TogglePick(photo)" />
+                                </ItemTemplate>
+                            </OdsPhotoGrid>
                         </div>
                     }
                     @if (_error is not null)
