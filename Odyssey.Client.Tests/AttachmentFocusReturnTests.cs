@@ -76,7 +76,7 @@ public class AttachmentFocusReturnTests
 
         cut.WaitForAssertion(() => Assert.True(module.Invocations["focusFirstLater"].Count > 0));
         var chain = LastCandidates(module, "focusFirstLater");
-        Assert.Equal($"#{cut.Find($"li[id$=\"{next.PhotoId:N}\"]").Id} .odc-phototile-open", chain[0]);
+        Assert.Equal($"#{cut.Find($".odc-phototile-open[id$=\"{next.PhotoId:N}\"]").Id}", chain[0]);
         Assert.EndsWith(" button", chain[^1]);
         Assert.Equal(2, draft.Photos.Count);
         Assert.Contains(cut.FindAll("[role=status].sr-only"), r => r.TextContent == "photo-2.jpg removed from the entry.");
@@ -91,7 +91,7 @@ public class AttachmentFocusReturnTests
 
         await RemovePhoto(cut, 1);
 
-        cut.WaitForAssertion(() => Assert.Contains($"{previous.PhotoId:N} .odc-phototile-open", LastCandidates(module, "focusFirstLater")[0]));
+        cut.WaitForAssertion(() => Assert.EndsWith($"{previous.PhotoId:N}", LastCandidates(module, "focusFirstLater")[0]));
     }
 
     [Fact]

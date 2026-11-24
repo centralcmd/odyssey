@@ -21,8 +21,8 @@
         var img = image;
         var name = NameOf(img, index);
         var source = PhotoImageSources.For(img.PhotoId, img.ThumbnailsReady, ThumbnailSize.Small, new PhotoImageAccess(true), PhotosApi);
-        <li class="odc-photogrid2-item" id="@TileId(img.PhotoId)" @key="img.PhotoId">
-            <OdsPhotoTile Name="@name" Image="source"
+        <li class="odc-photogrid2-item" @key="img.PhotoId">
+            <OdsPhotoTile Id="@TileId(img.PhotoId)" Name="@name" Image="source"
                           Badges="@([img.IsCover ? "Cover" : null, img.Archived is not null ? "Archived" : null])"
                           OnOpen="() => OnOpen.InvokeAsync(img.PhotoId)"
                           Fav="@(img.Favourited is not null)" OnToggleFav="FavCallback(img)"
@@ -48,10 +48,10 @@
     /// <summary>Toggle the library favourite (<c>photos.update</c>). Unset = no heart.</summary>
     [Parameter] public EventCallback<Guid> OnToggleFavourite { get; set; }
 
-    /// <summary>The DOM id prefix of the tiles' list items (unique per record on the page).</summary>
+    /// <summary>The DOM id prefix of the tiles' image buttons (unique per record on the page).</summary>
     [Parameter] public string IdPrefix { get; set; } = "bk-image";
 
-    /// <summary>A tile's list-item id — a focus-return target whose first control is the tile's image button.</summary>
+    /// <summary>A tile's image-button id — the viewer's focus-return target.</summary>
     public string TileId(Guid photoId) => $"{IdPrefix}-{photoId:N}";
 
     internal static string NameOf(BookImageDto image, int index) => PhotoMappers.Label(image.Title, image.FileName, $"Image {index + 1}");

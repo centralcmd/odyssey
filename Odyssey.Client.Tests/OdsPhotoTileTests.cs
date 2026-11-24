@@ -170,6 +170,37 @@ public class OdsPhotoTileTests
     }
 
     [Fact]
+    public async Task The_badges_end_the_image_buttons_name_because_the_badge_row_is_hidden()
+    {
+        // Design system 1795483642-28bb: "{Open|Select} {name}{ (no access)}, {badge1}, {badge2}".
+        await using var ctx = NewContext();
+
+        var open = Render(ctx, p => p.Add(t => t.Badges, ["Cover", null, "Archived"]));
+        Assert.Equal("Open Summit, Cover, Archived", open.Find(".odc-phototile-open").GetAttribute("aria-label"));
+
+        var select = Render(ctx, p => p.Add(t => t.Selectable, true).Add(t => t.Badges, ["Already added"]));
+        Assert.Equal("Select Summit, Already added", select.Find(".odc-phototile-open").GetAttribute("aria-label"));
+
+        var noAccess = ctx.Render<OdsPhotoTile>(p => p.Add(t => t.Name, "Summit").Add(t => t.Unavailable, true).Add(t => t.Badges, ["Cover"]));
+        Assert.Equal("Open Summit (no access), Cover", noAccess.Find(".odc-phototile-open").GetAttribute("aria-label"));
+
+        // The other controls keep the bare photo name.
+        var heart = Render(ctx, p => p.Add(t => t.Badges, ["Cover"]).Add(t => t.OnToggleFav, () => { }));
+        Assert.Equal("Favourite Summit", heart.Find(".odc-phototile-fav").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public async Task Id_names_the_image_button_and_nothing_else()
+    {
+        await using var ctx = NewContext();
+
+        var cut = Render(ctx, p => p.Add(t => t.Id, "tile-1"));
+        Assert.Equal("tile-1", cut.Find(".odc-phototile-open").Id);
+        Assert.Single(cut.FindAll("[id]"));
+        Assert.False(Render(ctx).Find(".odc-phototile-open").HasAttribute("id"));
+    }
+
+    [Fact]
     public async Task A_disabled_tile_is_dimmed_and_inert()
     {
         await using var ctx = NewContext();

@@ -57,7 +57,7 @@ public partial class RecipePhotoGrid
         }
     }
 
-    /// <summary>A tile's id — the li that holds it; focus returns to its open button when the viewer closes.</summary>
+    /// <summary>A tile's image-button id; focus returns to it when the viewer closes.</summary>
     internal static string TileId(Guid photoId) => $"rc-photo-{photoId:N}";
 
     private string? ReturnFocusId => _lastShown >= 0 && _lastShown < Photos.Count ? TileId(Photos[_lastShown].PhotoId) : null;

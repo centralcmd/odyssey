@@ -219,6 +219,8 @@ public class AttachPhotosDialogTests
         var root = tile.ParentElement!;
         Assert.Contains("is-disabled", root.ClassList);
         Assert.Equal("Already added", root.QuerySelector(".odc-phototile-badge")!.TextContent);
+        // The badge row is hidden from assistive tech, so the reason ends the image button's name (1795483642-28bb).
+        Assert.EndsWith(", Already added", tile.GetAttribute("aria-label"));
         Assert.False(h.Tile(Cabin).HasAttribute("disabled"));
         Assert.Null(h.Tile(Cabin).ParentElement!.QuerySelector(".odc-phototile-badge"));
 

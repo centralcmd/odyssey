@@ -20,8 +20,8 @@
         var index = i;
         var photo = Photos[index];
         var name = NameOf(photo, index);
-        <li class="odc-photogrid2-item" id="@TileId(photo.PhotoId)" @key="photo.PhotoId">
-            <OdsPhotoTile Name="@name"
+        <li class="odc-photogrid2-item" @key="photo.PhotoId">
+            <OdsPhotoTile Id="@TileId(photo.PhotoId)" Name="@name"
                           Image="@PhotoImageSources.For(photo.PhotoId, photo.ThumbnailsReady, ThumbnailSize.Small, Access, PhotosApi)"
                           Badges="@Badges(index, photo)"
                           OnOpen="@(() => OpenAt(index))"

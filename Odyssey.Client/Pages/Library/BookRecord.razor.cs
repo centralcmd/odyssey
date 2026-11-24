@@ -388,7 +388,7 @@ public partial class BookRecord
 
     private string ImageIdPrefix => $"bk-image-{BookId:N}";
 
-    // The tile to return to on close: the photo last shown (← / → move it), by its list item — the ⋯ menu's Open
+    // The tile to return to on close: the photo last shown (← / → move it), by its image button — the ⋯ menu's Open
     // item that may have opened the viewer is gone with its popover.
     private string? ViewerReturnFocusId => _lastOpenedPhoto is { } id ? _imageGrid?.TileId(id) : null;
 

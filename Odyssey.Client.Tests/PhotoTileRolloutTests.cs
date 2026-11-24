@@ -171,7 +171,7 @@ public sealed class PhotoTileRolloutTests
 
         Assert.Equal(132, cut.FindComponent<OdsPhotoGrid<BookImageDto>>().Instance.EffectiveMinTile);
         Assert.Equal("2 images", cut.Find("ul.odc-photogrid2").GetAttribute("aria-label"));
-        Assert.Equal([$"bk-{cover.PhotoId:N}", $"bk-{back.PhotoId:N}"], cut.FindAll("li.odc-photogrid2-item").Select(li => li.Id));
+        Assert.Equal([$"bk-{cover.PhotoId:N}", $"bk-{back.PhotoId:N}"], cut.FindAll(".odc-phototile-open").Select(b => b.Id));
 
         var tiles = cut.FindComponents<OdsPhotoTile>().Select(t => t.Instance).ToList();
         Assert.Equal(["Cover"], tiles[0].Badges.Where(b => b is not null));
@@ -248,7 +248,7 @@ public sealed class PhotoTileRolloutTests
         Assert.Equal(1, viewer.Index);
         Assert.Equal([cover.PhotoId, first.PhotoId, last.PhotoId], viewer.Photos.Select(p => p.PhotoId));
         Assert.Equal(["Cover photo", "First", "Last"], viewer.Photos.Select(p => p.Title));
-        // Focus goes back to the opened image's tile, named by its list item.
+        // Focus goes back to the opened image's tile, by its image button's id.
         Assert.EndsWith($"{first.PhotoId:N}", viewer.ReturnFocusToId);
 
         // The viewer's favourite and archive are patched on the image link itself — no photo is re-read.

@@ -366,9 +366,10 @@ public class RecipesPageTests
         // The heart is the library favourite.
         Assert.Equal("true", cut.Find("button[aria-label='Unfavourite Tray']").GetAttribute("aria-pressed"));
         Assert.NotNull(cut.Find("button[aria-label='Favourite Bowl']"));
-        Assert.NotNull(cut.Find("button[aria-label='Open Bowl']"));
+        Assert.NotNull(cut.Find("button[aria-label='Open Bowl, Cover']"));
+        Assert.NotNull(cut.Find("button[aria-label='Open Tray, Archived']"));
         Assert.NotNull(cut.Find("button[aria-label='Actions for photo: Bowl']"));
-        Assert.Equal(RecipePhotoGrid.TileId(bowl), tiles[0].ParentElement!.Id);
+        Assert.Equal(RecipePhotoGrid.TileId(bowl), tiles[0].QuerySelector(".odc-phototile-open")!.Id);
         Assert.Empty(cut.FindAll(".rc-images"));
         photosApi.Verify(a => a.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }

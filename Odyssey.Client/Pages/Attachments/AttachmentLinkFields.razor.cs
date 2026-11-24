@@ -108,7 +108,7 @@ public partial class AttachmentLinkFields
     private Guid? _lastShownPhoto;
     private bool _viewerMounted;
 
-    // The tile list item the viewer hands focus back to: its first control is the tile's image button.
+    // The tile image button the viewer hands focus back to.
     private string? ViewerReturnFocusId => _lastShownPhoto is { } id && Photos.Any(p => p.PhotoId == id) ? PhotoTileId(id) : null;
 
     /// <summary>"Remove from event" → "Remove Beach from event": the item's accessible name carries the photo.</summary>
@@ -328,7 +328,7 @@ public partial class AttachmentLinkFields
             : null;
         Photos.RemoveAt(index);
         // The ⋯ menu that removed it is gone: the next tile's image, else the previous one's, else Add photos.
-        _focusAfter = [neighbour is null ? null : $"#{PhotoTileId(neighbour.PhotoId)} .odc-phototile-open", $"#jef-add-photos-{_uid} button"];
+        _focusAfter = [neighbour is null ? null : $"#{PhotoTileId(neighbour.PhotoId)}", $"#jef-add-photos-{_uid} button"];
         await ChangedAsync(AttachmentLinkKind.Photos);
         await AnnounceAsync(Voice == AttachmentLinkVoice.Journal ? $"{photo.Name} removed from the {Noun}." : $"Removed {photo.Name}.");
     }

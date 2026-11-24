@@ -1,6 +1,6 @@
 @*
     OdsPhotoTile — THE library photo tile (Odyssey Design System · components/PhotoTile, version
-    1795477868-c9a2). One look wherever library photos are listed: the Photos page grid and album view,
+    1795483642-28bb). One look wherever library photos are listed: the Photos page grid and album view,
     a journal entry's photos (JournalPhotoGallery), and any record that links library photos.
 
     A square image that zooms slightly on hover, a scrim, the name as a caption, and its controls
@@ -12,8 +12,11 @@
     A control that is ON stays visible without hover (a selected check, a favourited heart, an open
     menu), so state is never hidden.
 
+    Badges are said, not only shown: the badge row is aria-hidden, so its words end the image button's
+    accessible name — "Open garden_02.jpg, Cover", "Select IMG_0412.jpg, Already added".
+
     Structure: the tile is a container, not a button. The image is its own <button> ("Open {name}"; in
-    selection mode "Select {name}" with aria-pressed), and the check, heart and menu are SIBLING buttons
+    selection mode "Select {name}" with aria-pressed; Id, when given, is its DOM id — a focus-return target), and the check, heart and menu are SIBLING buttons
     above it, so no control is nested inside another (WCAG 4.1.2). In selection mode the image button is
     THE control and the check is its visible state — always shown (a hollow ring, or the filled check),
     out of the tab order and aria-hidden — so each tile is one tab stop.
@@ -27,7 +30,7 @@
 *@
 
 <div class="@RootClass">
-    <button type="button" class="odc-phototile-open" title="@(string.IsNullOrEmpty(Name) ? null : Name)"
+    <button type="button" id="@Id" class="odc-phototile-open" title="@(string.IsNullOrEmpty(Name) ? null : Name)"
             disabled="@Disabled" aria-label="@OpenLabel"
             aria-pressed="@(Selectable && !Disabled ? (Selected ? "true" : "false") : null)"
             @onclick="OnOpenClick">
@@ -45,7 +48,7 @@
     </button>
     <span class="odc-phototile-scrim" aria-hidden="true"></span>
     <span class="odc-phototile-foot" aria-hidden="true">
-        @foreach (var badge in Badges.Where(b => !string.IsNullOrEmpty(b)))
+        @foreach (var badge in ShownBadges)
         {
             <span class="odc-phototile-badge">@badge</span>
         }
@@ -87,7 +90,8 @@
     /// striped placeholder.</summary>
     [Parameter] public PhotoImageSource Image { get; set; } = PhotoImageSource.None;
 
-    /// <summary>Always-visible text badges at the bottom-left, e.g. "Cover", "Archived". Empty entries are skipped.</summary>
+    /// <summary>Always-visible text badges at the bottom-left, e.g. "Cover", "Archived". Empty entries are skipped. The
+    /// row is aria-hidden; the badges end the image button's accessible name instead ("Open {name}, Cover").</summary>
     [Parameter] public IReadOnlyList<string?> Badges { get; set; } = [];
 
     /// <summary>Selection mode: the image toggles selection (aria-pressed) instead of opening and is the
@@ -125,13 +129,22 @@
 
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>The image button's DOM id: a host's focus-return target (the viewer hands focus back to it on close).</summary>
+    [Parameter] public string? Id { get; set; }
+
     private bool HasMenu => !Disabled && Actions is { Count: > 0 };
 
     private bool CanSelect => !Disabled && (OnToggleSelect.HasDelegate || OnStartSelect.HasDelegate);
 
     private bool NoAccess => Unavailable && Image.IsEmpty;
 
-    internal string OpenLabel => $"{(Selectable ? "Select" : "Open")} {Name}{(NoAccess ? " (no access)" : "")}";
+    private IEnumerable<string> ShownBadges => Badges.Where(b => !string.IsNullOrEmpty(b)).Cast<string>();
+
+    // "{Open|Select} {name}{ (no access)}, {badge1}, {badge2}" (design system 1795483642-28bb): the badge row is drawn
+    // for the eye only, so its words are said through this name.
+    internal string OpenLabel =>
+        $"{(Selectable ? "Select" : "Open")} {Name}{(NoAccess ? " (no access)" : "")}"
+        + string.Concat(ShownBadges.Select(b => $", {b}"));
 
     private string RootClass =>
         "odc-phototile"

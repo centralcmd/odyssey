@@ -202,8 +202,8 @@ else
                 @foreach (var p in Photos)
                 {
                     var photo = p;
-                    <li class="odc-photogrid2-item" id="@PhotoTileId(photo.PhotoId)" @key="photo.PhotoId">
-                        <OdsPhotoTile Name="@photo.Name" Image="ImageOf(photo)" Unavailable="ImageOf(photo).IsEmpty"
+                    <li class="odc-photogrid2-item" @key="photo.PhotoId">
+                        <OdsPhotoTile Id="@PhotoTileId(photo.PhotoId)" Name="@photo.Name" Image="ImageOf(photo)" Unavailable="ImageOf(photo).IsEmpty"
                                       OnOpen="() => OpenPhoto(photo)"
                                       Actions="PhotoMenu(photo, removable)" ActionsLabel="@($"Actions for photo: {photo.Name}")" />
                     </li>

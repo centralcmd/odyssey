@@ -679,7 +679,7 @@ public class CalendarAttachmentDialogTests
         h.Cut.WaitForAssertion(() => Assert.Equal("Removed Second.", h.Announced));
         h.Cut.WaitForAssertion(() => Assert.NotEmpty(h.FocusReturn.Invocations["focusFirstLater"]));
         var chain = h.FocusReturn.Invocations["focusFirstLater"].Last().Arguments.Select(x => x as string).ToList();
-        Assert.EndsWith($"{c.PhotoId:N} .odc-phototile-open", chain[0]);
+        Assert.EndsWith($"{c.PhotoId:N}", chain[0]);
         Assert.NotNull(h.Cut.Find(chain[0]!));
         Assert.StartsWith("#jef-add-photos-", chain[^1]);
     }
@@ -694,7 +694,7 @@ public class CalendarAttachmentDialogTests
         await h.RemovePhoto("Second");
         h.Cut.WaitForAssertion(() => Assert.NotEmpty(h.FocusReturn.Invocations["focusFirstLater"]));
         var chain = h.FocusReturn.Invocations["focusFirstLater"].Last().Arguments.Select(x => x as string).ToList();
-        Assert.EndsWith($"{a.PhotoId:N} .odc-phototile-open", chain[0]);
+        Assert.EndsWith($"{a.PhotoId:N}", chain[0]);
 
         await h.RemovePhoto("First");
         h.Cut.WaitForAssertion(() =>
