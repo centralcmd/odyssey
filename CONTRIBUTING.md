@@ -85,7 +85,8 @@ Two conventions catch people out:
   constant and adding it to `RolePermissions.AllClaims` — no migration, since `RoleClaimSeeder`
   reconciles the rows at runtime. `AuthorizationPolicyTests` fails if you miss the second step.
 - **No runtime feature toggles for new features.** Gate capabilities with permission
-  claims, not config flags.
+  claims, not config flags. The exception is an on/off setting for an integration with a
+  third-party system (Claude, a rates feed) — see `docs/architecture/settings.md`.
 
 ### The design system is not in the repository
 

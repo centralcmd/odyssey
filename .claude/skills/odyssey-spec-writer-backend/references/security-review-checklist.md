@@ -102,7 +102,9 @@ collapse into `NotSet`. State which way the consumer fails.
 An operator-adjustable **non-secret** value is a row in the `SystemSettings` store, admin-editable at
 `/settings`, with its own `[Range]`, bound pair and registry descriptor. It is **not** an
 `appsettings.json` key, and it is **not** a per-feature kill switch — Odyssey gates capabilities with
-permission claims.
+permission claims. The exception is an **integration switch** for a third-party system (Claude, a rates
+feed), per `docs/architecture/settings.md`: it ships off when it sends data, is read uncached, and is
+re-checked by the worker before sending.
 
 ---
 
