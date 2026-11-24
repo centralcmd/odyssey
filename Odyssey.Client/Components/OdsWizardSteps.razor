@@ -1,9 +1,9 @@
-@* DS parity — no consumer yet: the recipe dialog adopts it in the design-system rollout. *@
 @*
     OdsWizardSteps — the step path of a multi-step dialog (Odyssey Design System · components/WizardSteps,
     version 1795477868-c9a2): numbered discs joined by a line that is filled up to the current step and
     plain after it, each with its label and an optional status line. Put it in the dialog HEADER through
-    OdsModal's Steps slot (never in the body, where it would scroll away with the fields).
+    OdsModal's Steps slot (never in the body, where it would scroll away with the fields). The recipe dialog
+    (Pages/Library/RecipeDialog) is its consumer.
 
     Navigation, not tabs: a <nav aria-label> holding an <ol>; the current step carries aria-current="step";
     each item reads "Step 2 of 3: Ingredients, 12 lines". With OnStep every step is a button and can be
