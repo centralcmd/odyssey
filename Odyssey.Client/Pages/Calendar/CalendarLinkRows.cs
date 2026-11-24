@@ -34,7 +34,8 @@ internal static class CalendarLinkRows
     public static List<JournalDraftPhoto> Photos(IEnumerable<CalendarLinkPhotoDto>? photos) =>
         photos is null
             ? []
-            : [.. photos.OrderBy(p => p.Position).Select(p => new JournalDraftPhoto(p.PhotoId, PhotoName(p.Title, p.FileName), p.ThumbnailsReady))];
+            : [.. photos.OrderBy(p => p.Position).Select(p => new JournalDraftPhoto(
+                p.PhotoId, PhotoName(p.Title, p.FileName), p.ThumbnailsReady, p.Favourited, p.Archived))];
 
     public static string PhotoName(string? title, string? fileName) =>
         !string.IsNullOrWhiteSpace(title) ? title : !string.IsNullOrWhiteSpace(fileName) ? fileName : UntitledPhoto;

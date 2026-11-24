@@ -49,13 +49,11 @@ public partial class JournalCard
     // from hydrating every attachment on every card.
     private readonly Dictionary<Guid, IReadOnlyList<FileMetadataResponse>> _attachments = new();
 
-    // The shared PhotoViewer over the open entry's photos (null index = closed), and the library state — heart,
-    // Archived badge — of every shown entry's photos, which the link DTO does not carry.
+    // The shared PhotoViewer over the open entry's photos (null index = closed). The heart and the Archived badge
+    // come from the link DTO itself (JournalEntryPhotoDto.Favourited / Archived).
     private PhotoViewer? _viewer;
     private IReadOnlyList<PhotoSummary> _viewerPhotos = [];
     private int? _viewerIndex;
-    private readonly LinkedPhotoStates _photoStates = new();
-    private bool _canReadPhotos;
     private bool _canUpdatePhotos;
 
     // ── Permissions ────────────────────────────────────────────────────────────
@@ -142,30 +140,6 @@ public partial class JournalCard
     {
         _shownIds = [.. shown.Select(e => e.JournalEntryId)];
         _ = WeatherLoader.ShowAsync(_shownIds);
-        _ = HydratePhotoStatesAsync(shown);
-    }
-
-    // The heart and the Archived badge need each shown photo's library state, which the link DTO does not carry:
-    // read once per photo, for the entries on screen only, and redraw when any arrived (photos.read).
-    private async Task HydratePhotoStatesAsync(IReadOnlyList<JournalEntrySummary> shown)
-    {
-        if (!_canReadPhotos)
-        {
-            return;
-        }
-
-        try
-        {
-            if (await _photoStates.EnsureAsync(Photos, shown.SelectMany(e => e.Photos).Select(p => p.PhotoId)))
-            {
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception ex)
-        {
-            // Supplementary: without the state the tiles simply show no heart and no badge.
-            Log.LogDebug(ex, "Could not read the journal photos' library state.");
-        }
     }
 
     // A sign-out, a different user or a changed claim set: start over from nothing.
@@ -175,7 +149,6 @@ public partial class JournalCard
         {
             var user = (await state).User;
             WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
-            _photoStates.Clear();
             await InvokeAsync(StateHasChanged);
             await WeatherLoader.ShowAsync(_shownIds);
         }
@@ -210,7 +183,6 @@ public partial class JournalCard
         // The gallery's thumbnail needs photos.read, read once here rather than per tile (issue #365 B5).
         _imageAccess = PhotoImageAccess.From(user);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
-        _canReadPhotos = user.HasPermission(PermissionClaims.PhotosRead);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
@@ -469,24 +441,23 @@ public partial class JournalCard
     }
 
     private IReadOnlyList<JournalEntryCard.Photo> GalleryPhotos(JournalEntrySummary e) =>
-        GalleryPhotos(e.Photos, _imageAccess, Photos, _photoStates);
+        GalleryPhotos(e.Photos, _imageAccess, Photos);
 
     /// <summary>
     /// The tiles' sources (issue #365 B5, issue #428): both the Small thumbnail and the original are photo data
     /// under <c>photos.read</c>, and the label travels on the link. "No access" is the case with neither source. The
-    /// heart and the "Archived" badge come from <paramref name="states"/> once a photo's library state is read.
-    /// Static so the rule is tested without rendering the page.
+    /// heart and the "Archived" badge come from the link's own <see cref="JournalEntryPhotoDto.Favourited"/> /
+    /// <see cref="JournalEntryPhotoDto.Archived"/>, which the server withholds without <c>photos.read</c>; a tile with
+    /// no access shows neither. Static so the rule is tested without rendering the page.
     /// </summary>
     internal static IReadOnlyList<JournalEntryCard.Photo> GalleryPhotos(
-        IEnumerable<JournalEntryPhotoDto> photos, PhotoImageAccess access, IPhotosApiClient photoClient,
-        LinkedPhotoStates? states = null) =>
+        IEnumerable<JournalEntryPhotoDto> photos, PhotoImageAccess access, IPhotosApiClient photoClient) =>
         [.. photos.OrderBy(p => p.Position).Select((p, i) =>
         {
             var image = PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient);
-            var state = states?.Get(p.PhotoId);
             return new JournalEntryCard.Photo(
                 p.PhotoId, PhotoMappers.Label(p.Title, p.FileName, $"Photo {i + 1}"), image, Unavailable: image.IsEmpty,
-                Favourite: state is null ? null : state.Favourited is not null, Archived: state?.Archived is not null);
+                Favourite: image.IsEmpty ? null : p.Favourited is not null, Archived: !image.IsEmpty && p.Archived is not null);
         })];
 
     private IReadOnlyList<FileMetadataResponse> ResolvedAttachments(ExistingJournalEntry e) =>
@@ -496,18 +467,13 @@ public partial class JournalCard
             .Cast<FileMetadataResponse>()];
 
     // A tile opens the shared PhotoViewer over its entry's photos, in the entry's link order (Position), so ← / →
-    // walk the card's tiles. A photo whose state could not be read opens as a minimal summary (image + navigation).
-    // Focus returns to the tile on close: the viewer's dialog captures its opener.
-    private async Task OpenPhoto(JournalEntrySummary e, Guid photoId)
+    // walk the card's tiles; the rows come from the links (title, favourite, archived), and the detail dialog reads
+    // the open photo itself. Focus returns to the tile on close: the viewer's dialog captures its opener.
+    private void OpenPhoto(JournalEntrySummary e, Guid photoId)
     {
-        var ordered = e.Photos.OrderBy(p => p.Position).Select(p => p.PhotoId).ToList();
-        if (_canReadPhotos)
-        {
-            await _photoStates.EnsureAsync(Photos, ordered);
-        }
-
-        _viewerPhotos = _photoStates.Summaries(ordered);
-        var index = ordered.IndexOf(photoId);
+        var ordered = e.Photos.OrderBy(p => p.Position).ToList();
+        _viewerPhotos = [.. ordered.Select(p => PhotoMappers.LinkSummary(p.PhotoId, p.Title, p.Favourited, p.Archived, p.ThumbnailsReady))];
+        var index = ordered.FindIndex(p => p.PhotoId == photoId);
         _viewerIndex = index < 0 ? 0 : index;
     }
 
@@ -517,30 +483,38 @@ public partial class JournalCard
             ? EventCallback.Factory.Create<Guid>(this, id => _viewer?.ToggleFavouriteAsync(id) ?? Task.CompletedTask)
             : default;
 
-    // Favourite is patched in place; an archive re-reads the photo; an edit (a new title is on the link) or a
-    // delete (the link is gone) reloads the list.
+    // Favourite and archive are patched in place on every loaded link to the photo (the list and the cached details);
+    // an edit (a new title is on the link) or a delete (the link is gone) reloads the list.
     internal async Task OnViewerChanged(PhotoViewerChange change)
     {
         switch (change.Kind)
         {
             case PhotoViewerChangeKind.Favourite:
-                _photoStates.ToggleFavourite(change.PhotoId);
+                foreach (var link in LoadedLinks(change.PhotoId))
+                {
+                    link.Favourited = PhotoMappers.Toggled(link.Favourited);
+                }
+
                 break;
             case PhotoViewerChangeKind.Archive:
-                await _photoStates.RefreshAsync(Photos, change.PhotoId);
+                foreach (var link in LoadedLinks(change.PhotoId))
+                {
+                    link.Archived = PhotoMappers.Toggled(link.Archived);
+                }
+
                 break;
             case PhotoViewerChangeKind.Edit:
-                await _photoStates.RefreshAsync(Photos, change.PhotoId);
-                _details.Clear();
-                await LoadEntries();
-                break;
             case PhotoViewerChangeKind.Delete:
-                _photoStates.Forget(change.PhotoId);
                 _details.Clear();
                 await LoadEntries();
                 break;
         }
     }
+
+    // A detail may share its link instances with the list row or hold its own copies; patch each instance once.
+    private IEnumerable<JournalEntryPhotoDto> LoadedLinks(Guid photoId) =>
+        _entries.SelectMany(e => e.Photos).Concat(_details.Values.SelectMany(d => d.Photos))
+            .Where(p => p.PhotoId == photoId).Distinct(ReferenceEqualityComparer.Instance).Cast<JournalEntryPhotoDto>();
 
     // ── Contact chip helper (rendered inline in the markup) ─────────────────
 

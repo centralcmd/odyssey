@@ -20,19 +20,18 @@
         var index = i;
         var photo = Photos[index];
         var name = NameOf(photo, index);
-        var summary = SummaryOf(photo.PhotoId);
         <li class="odc-photogrid2-item" id="@TileId(photo.PhotoId)" @key="photo.PhotoId">
             <OdsPhotoTile Name="@name"
                           Image="@PhotoImageSources.For(photo.PhotoId, photo.ThumbnailsReady, ThumbnailSize.Small, Access, PhotosApi)"
-                          Badges="@Badges(index, summary)"
+                          Badges="@Badges(index, photo)"
                           OnOpen="@(() => OpenAt(index))"
-                          Fav="@(summary?.Favourited is not null)"
-                          OnToggleFav="@(_canUpdatePhotos && summary is not null ? EventCallback.Factory.Create(this, () => ToggleFavouriteAsync(photo.PhotoId)) : default)"
+                          Fav="@(photo.Favourited is not null)"
+                          OnToggleFav="@(_canUpdatePhotos ? EventCallback.Factory.Create(this, () => ToggleFavouriteAsync(photo.PhotoId)) : default)"
                           Actions="@BuildTileActions(Photos, index, CanUpdate ? OnChange : default, EventCallback.Factory.Create(this, () => OpenAt(index)), this)"
                           ActionsLabel="@($"Actions for photo: {name}")" />
         </li>
     }
 </OdsPhotoGrid>
 
-<PhotoViewer Photos="_summaries" Index="_viewerIndex" IndexChanged="OnViewerIndexChanged"
+<PhotoViewer @ref="_viewer" Photos="_summaries" Index="_viewerIndex" IndexChanged="OnViewerIndexChanged"
              OnChanged="OnViewerChangedAsync" ReturnFocusToId="@ReturnFocusId" />

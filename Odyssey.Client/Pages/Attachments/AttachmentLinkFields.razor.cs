@@ -100,10 +100,9 @@ public partial class AttachmentLinkFields
     private string FilesCapId => $"jef-files-cap-{_uid}";
     private string PhotoTileId(Guid photoId) => $"alf-ph-{_uid}-{photoId:N}";
 
-    // The shared viewer over the field's photos. Their library state is read on first Open (the draft carries only
-    // the label); one that cannot be read opens as a minimal summary.
+    // The shared viewer over the field's photos. Its rows come from the drafts, which carry the label and the library
+    // photo's favourite and archive state from the link DTO; the detail dialog reads the open photo itself.
     private PhotoViewer? _viewer;
-    private readonly LinkedPhotoStates _photoStates = new();
     private IReadOnlyList<PhotoSummary> _viewerPhotos = [];
     private int? _viewerIndex;
     private Guid? _lastShownPhoto;
@@ -120,7 +119,7 @@ public partial class AttachmentLinkFields
     {
         var items = new List<OdsMenuItem>
         {
-            new() { Icon = "open_in_full", Label = "Open", AriaLabel = $"Open {photo.Name}", OnClick = EventCallback.Factory.Create(this, () => OpenPhotoAsync(photo)) },
+            new() { Icon = "open_in_full", Label = "Open", AriaLabel = $"Open {photo.Name}", OnClick = EventCallback.Factory.Create(this, () => OpenPhoto(photo)) },
         };
         if (removable)
         {
@@ -138,15 +137,13 @@ public partial class AttachmentLinkFields
         return items;
     }
 
-    private async Task OpenPhotoAsync(JournalDraftPhoto photo)
+    private void OpenPhoto(JournalDraftPhoto photo)
     {
-        var ids = Photos.Select(p => p.PhotoId).ToList();
-        await _photoStates.EnsureAsync(PhotosApi, ids);
-        _viewerPhotos = _photoStates.Summaries(ids);
+        _viewerPhotos = [.. Photos.Select(p => PhotoMappers.LinkSummary(p.PhotoId, p.Name, p.Favourited, p.Archived, p.ThumbnailsReady))];
         _viewerMounted = true;
-        var index = ids.IndexOf(photo.PhotoId);
+        var index = Photos.FindIndex(p => p.PhotoId == photo.PhotoId);
         _viewerIndex = index < 0 ? 0 : index;
-        _lastShownPhoto = ids.Count == 0 ? null : ids[_viewerIndex.Value];
+        _lastShownPhoto = Photos.Count == 0 ? null : Photos[_viewerIndex.Value].PhotoId;
     }
 
     private void OnViewerIndexChanged(int? index)
@@ -158,27 +155,40 @@ public partial class AttachmentLinkFields
         }
     }
 
-    // A photo deleted from the library leaves the field (its link is gone with it); an edit may have renamed it.
+    // A photo deleted from the library leaves the field (its link is gone with it); favourite and archive are patched
+    // on the draft in place. An edit may have renamed the photo: the record's dialog re-reads its links on its next
+    // open, and the one read here is the edited photo's own, for its new label.
     private async Task OnViewerChangedAsync(PhotoViewerChange change)
     {
         var index = Photos.FindIndex(p => p.PhotoId == change.PhotoId);
+        if (index < 0)
+        {
+            return;
+        }
+
         switch (change.Kind)
         {
-            case PhotoViewerChangeKind.Delete when index >= 0:
-                _photoStates.Forget(change.PhotoId);
+            case PhotoViewerChangeKind.Delete:
                 Photos.RemoveAt(index);
                 await ChangedAsync(AttachmentLinkKind.Photos);
                 break;
-            case PhotoViewerChangeKind.Edit or PhotoViewerChangeKind.Archive:
-                await _photoStates.RefreshAsync(PhotosApi, change.PhotoId);
-                if (change.Kind == PhotoViewerChangeKind.Edit && index >= 0 && _photoStates.Get(change.PhotoId) is { } fresh)
-                {
-                    Photos[index] = Photos[index] with { Name = PhotoMappers.Label(fresh.Title, null, Photos[index].Name) };
-                }
-
+            case PhotoViewerChangeKind.Archive:
+                Photos[index] = Photos[index] with { Archived = PhotoMappers.Toggled(Photos[index].Archived) };
                 break;
             case PhotoViewerChangeKind.Favourite:
-                _photoStates.ToggleFavourite(change.PhotoId);
+                Photos[index] = Photos[index] with { Favourited = PhotoMappers.Toggled(Photos[index].Favourited) };
+                break;
+            case PhotoViewerChangeKind.Edit:
+                if (await PhotosApi.GetAsync(change.PhotoId) is { } fresh)
+                {
+                    Photos[index] = Photos[index] with
+                    {
+                        Name = PhotoMappers.Label(fresh.Title, fresh.FileName, Photos[index].Name),
+                        Favourited = fresh.Favourited,
+                        Archived = fresh.Archived,
+                    };
+                }
+
                 break;
         }
     }
@@ -277,7 +287,7 @@ public partial class AttachmentLinkFields
         var take = fresh.Take(room).ToList();
         foreach (var item in take)
         {
-            Photos.Add(new JournalDraftPhoto(item.PhotoId, item.Name, item.ThumbnailsReady));
+            Photos.Add(new JournalDraftPhoto(item.PhotoId, item.Name, item.ThumbnailsReady, item.Favourited, item.Archived));
         }
 
         if (take.Count > 0)

@@ -341,22 +341,14 @@ public class RecipesPageTests
         var bowl = Guid.NewGuid();
         var tray = Guid.NewGuid();
         var photosApi = new Mock<IPhotosApiClient>();
-        photosApi.Setup(a => a.GetAsync(tray, It.IsAny<CancellationToken>())).ReturnsAsync(new Odyssey.Dtos.Journal.ExistingPhoto
-        {
-            PhotoId = tray,
-            Title = "Tray",
-            Archived = DateTime.UtcNow,
-            Favourited = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-        });
         ctx.Services.AddSingleton(photosApi.Object);
         ctx.Render<MudPopoverProvider>();
         ctx.Render<MudDialogProvider>();
+        // The favourite and archived state travel on the link itself: no photo is read for the tiles.
         IReadOnlyList<RecipePhotoDto> photos =
         [
             new() { RecipePhotoId = Guid.NewGuid(), PhotoId = bowl, Position = 0, Title = "Bowl", ThumbnailsReady = true },
-            new() { RecipePhotoId = Guid.NewGuid(), PhotoId = tray, Position = 1, Title = "Tray" },
+            new() { RecipePhotoId = Guid.NewGuid(), PhotoId = tray, Position = 1, Title = "Tray", Archived = DateTime.UtcNow, Favourited = DateTime.UtcNow },
         ];
 
         var cut = ctx.Render<RecipePhotoGrid>(p => p
@@ -378,6 +370,7 @@ public class RecipesPageTests
         Assert.NotNull(cut.Find("button[aria-label='Actions for photo: Bowl']"));
         Assert.Equal(RecipePhotoGrid.TileId(bowl), tiles[0].ParentElement!.Id);
         Assert.Empty(cut.FindAll(".rc-images"));
+        photosApi.Verify(a => a.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Photos;
@@ -17,7 +16,6 @@ public sealed record RecipePhotoChange(Guid[] PhotoIds, string Message);
 public partial class RecipePhotoGrid
 {
     [Inject] private AuthenticationStateProvider Auth { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     /// <summary>The recipe's photos in gallery order; the first is the cover.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<RecipePhotoDto> Photos { get; set; } = [];
@@ -33,10 +31,11 @@ public partial class RecipePhotoGrid
     /// <summary>The viewer archived, deleted or edited a library photo: the host re-reads the recipe.</summary>
     [Parameter] public EventCallback OnLibraryChanged { get; set; }
 
-    // The library photos behind the links — favourite, archived and the viewer's details. A link the caller cannot
-    // fetch falls back to a minimal summary so the image and the viewer's navigation still work.
-    private List<PhotoSummary> _summaries = [];
-    private Guid[] _loadedIds = [];
+    // The viewer's rows, built from the links themselves: each RecipePhotoDto carries the title and the library photo's
+    // own favourite and archive state, so no photo is read per tile. The viewer's detail dialog reads the open photo.
+    private IReadOnlyList<PhotoSummary> _summaries = [];
+    private (Guid, string?, DateTime?, DateTime?, bool)[] _builtFrom = [];
+    private PhotoViewer? _viewer;
     private bool _canUpdatePhotos;
     private int? _viewerIndex;
     private int _lastShown;
@@ -44,46 +43,31 @@ public partial class RecipePhotoGrid
     protected override async Task OnInitializedAsync() =>
         _canUpdatePhotos = (await Auth.GetUserAsync()).HasPermission(PermissionClaims.PhotosUpdate);
 
-    protected override async Task OnParametersSetAsync()
+    // The host hands a fresh list on every render; rebuild the rows only when what they show changed, so the viewer
+    // keeps its own copy (and its in-place favourite patch) between real changes.
+    protected override void OnParametersSet() => Rebuild();
+
+    private void Rebuild()
     {
-        var ids = Photos.Select(p => p.PhotoId).ToArray();
-        if (!ids.SequenceEqual(_loadedIds))
+        var key = Photos.Select(p => (p.PhotoId, p.Title, p.Favourited, p.Archived, p.ThumbnailsReady)).ToArray();
+        if (!key.SequenceEqual(_builtFrom))
         {
-            _loadedIds = ids;
-            await HydrateAsync();
+            _builtFrom = key;
+            _summaries = [.. Photos.Select(p => PhotoMappers.LinkSummary(p.PhotoId, p.Title, p.Favourited, p.Archived, p.ThumbnailsReady))];
         }
     }
-
-    private async Task HydrateAsync()
-    {
-        var ids = _loadedIds;
-        var fulls = await Task.WhenAll(ids.Select(id => PhotosApi.GetAsync(id)));
-        if (!ReferenceEquals(ids, _loadedIds))
-        {
-            return;
-        }
-
-        _summaries = [.. ids.Select((id, i) => fulls[i] is { } full ? PhotoMappers.ToSummary(full) : PhotoMappers.MinimalSummary(id))];
-    }
-
-    private PhotoSummary? SummaryOf(Guid id) => _summaries.FirstOrDefault(s => s.PhotoId == id);
 
     /// <summary>A tile's id — the li that holds it; focus returns to its open button when the viewer closes.</summary>
     internal static string TileId(Guid photoId) => $"rc-photo-{photoId:N}";
 
     private string? ReturnFocusId => _lastShown >= 0 && _lastShown < Photos.Count ? TileId(Photos[_lastShown].PhotoId) : null;
 
-    /// <summary>"Cover" on the first, "Archived" on an archived photo — always visible, in text.</summary>
-    internal static IReadOnlyList<string?> Badges(int index, PhotoSummary? summary) =>
-        [index == 0 ? "Cover" : null, summary?.Archived is not null ? "Archived" : null];
+    /// <summary>"Cover" on the first, "Archived" on an archived photo (the link's own state) — always visible, in text.</summary>
+    internal static IReadOnlyList<string?> Badges(int index, RecipePhotoDto photo) =>
+        [index == 0 ? "Cover" : null, photo.Archived is not null ? "Archived" : null];
 
     private void OpenAt(int index)
     {
-        if (_summaries.Count != Photos.Count)
-        {
-            return;
-        }
-
         _lastShown = index;
         _viewerIndex = index;
     }
@@ -98,35 +82,27 @@ public partial class RecipePhotoGrid
         _viewerIndex = index;
     }
 
+    // A favourite (from the tile heart or the open photo) is patched on the link in place; an archive, a delete or an
+    // edit changes what the recipe read returns, so the host re-reads the recipe.
     private async Task OnViewerChangedAsync(PhotoViewerChange change)
     {
-        await HydrateAsync();
-        if (change.Kind != PhotoViewerChangeKind.Favourite)
+        if (change.Kind == PhotoViewerChangeKind.Favourite)
         {
-            await OnLibraryChanged.InvokeAsync();
-        }
-    }
+            foreach (var link in Photos.Where(p => p.PhotoId == change.PhotoId))
+            {
+                link.Favourited = PhotoMappers.Toggled(link.Favourited);
+            }
 
-    // The heart is the LIBRARY favourite: it changes the photo everywhere it is used.
-    private async Task ToggleFavouriteAsync(Guid id)
-    {
-        var full = await PhotosApi.GetAsync(id);
-        if (full is null)
-        {
+            Rebuild();
             return;
         }
 
-        var body = PhotoMappers.ToUpdate(full);
-        body.Favourite = full.Favourited is null;
-        if ((await PhotosApi.UpdateAsync(id, body)).Toast(Snackbar, "Could not update favourite"))
-        {
-            var i = _summaries.FindIndex(p => p.PhotoId == id);
-            if (i >= 0)
-            {
-                _summaries[i] = _summaries[i] with { Favourited = body.Favourite ? DateTime.UtcNow : null };
-            }
-        }
+        await OnLibraryChanged.InvokeAsync();
     }
+
+    // The heart is the LIBRARY favourite: it changes the photo everywhere it is used. It goes through the viewer, so a
+    // tile and the open photo favourite the same way.
+    private Task ToggleFavouriteAsync(Guid id) => _viewer?.ToggleFavouriteAsync(id) ?? Task.CompletedTask;
 
     /// <summary>A tile's name: the photo's title, else its file name, else its position.</summary>
     internal static string NameOf(RecipePhotoDto photo, int index) =>

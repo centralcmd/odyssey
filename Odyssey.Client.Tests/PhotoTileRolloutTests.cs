@@ -94,49 +94,67 @@ public sealed class PhotoTileRolloutTests
     }
 
     [Fact]
-    public async Task The_journal_tiles_take_their_heart_and_badge_from_the_hydrated_library_state()
+    public void The_journal_tiles_take_their_heart_and_badge_from_the_link_dto_without_reading_any_photo()
     {
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
         var photos = new Mock<IPhotosApiClient>();
-        photos.Setup(p => p.GetAsync(a, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ExistingPhoto { PhotoId = a, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, Favourited = DateTime.UtcNow });
-        photos.Setup(p => p.GetAsync(b, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ExistingPhoto { PhotoId = b, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, Archived = DateTime.UtcNow });
-        var states = new LinkedPhotoStates();
-        JournalEntryPhotoDto Link(Guid id, int position) => new()
+        photos.Setup(p => p.ContentUrl(It.IsAny<Guid>())).Returns((Guid id) => $"/photos/{id}");
+        JournalEntryPhotoDto Link(Guid id, int position, DateTime? favourited = null, DateTime? archived = null) => new()
         {
             JournalEntryPhotoId = Guid.NewGuid(),
             PhotoId = id,
             Position = position,
             CreatedAt = DateTime.UtcNow,
+            Favourited = favourited,
+            Archived = archived,
         };
-        var links = new[] { Link(b, 1), Link(a, 0) };
+        var links = new[] { Link(b, 1, archived: DateTime.UtcNow), Link(a, 0, favourited: DateTime.UtcNow) };
 
-        var before = JournalCard.GalleryPhotos(links, new PhotoImageAccess(true), photos.Object, states);
-        Assert.All(before, p => Assert.Null(p.Favourite));
+        var tiles = JournalCard.GalleryPhotos(links, new PhotoImageAccess(true), photos.Object);
 
-        Assert.True(await states.EnsureAsync(photos.Object, [a, b]));
-        var after = JournalCard.GalleryPhotos(links, new PhotoImageAccess(true), photos.Object, states);
-        Assert.Equal([a, b], after.Select(p => p.PhotoId));
-        Assert.Equal([true, false], after.Select(p => p.Favourite));
-        Assert.Equal([false, true], after.Select(p => p.Archived));
+        Assert.Equal([a, b], tiles.Select(p => p.PhotoId));
+        Assert.Equal([true, false], tiles.Select(p => p.Favourite));
+        Assert.Equal([false, true], tiles.Select(p => p.Archived));
+        // Without photos.read the tile has no image and shows no heart and no badge.
+        var noAccess = JournalCard.GalleryPhotos(links, new PhotoImageAccess(false), photos.Object);
+        Assert.All(noAccess, p => Assert.Equal((true, (bool?)null, false), (p.Unavailable, p.Favourite, p.Archived)));
+        photos.Verify(p => p.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
-        // Asked once per photo, however often the entries are shown.
-        Assert.False(await states.EnsureAsync(photos.Object, [a, b]));
-        photos.Verify(p => p.GetAsync(a, It.IsAny<CancellationToken>()), Times.Once);
+    [Theory]
+    [InlineData("Pages/Journal/JournalCard.razor.cs")]
+    [InlineData("Pages/Library/BookRecord.razor.cs")]
+    [InlineData("Pages/Library/BookImageGrid.razor")]
+    [InlineData("Pages/Library/RecipePhotoGrid.razor.cs")]
+    public void A_surface_listing_linked_photos_reads_no_photo_for_its_tiles(string path)
+    {
+        // The link DTOs carry the library photo's favourite and archive state; a per-photo GET /api/photos/{id} for the
+        // heart or the badge is the N+1 they replaced.
+        var source = Odyssey.Testing.SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, path)));
+        Assert.DoesNotMatch(@"Photos(Api)?\.GetAsync\(", source);
+        Assert.False(File.Exists(Path.Combine(ClientSource.Root, "Services/LinkedPhotoStates.cs")));
     }
 
     // ── Books ────────────────────────────────────────────────────────────────────────────────
 
-    private static BookImageDto BookImage(string title, bool cover = false) =>
-        new() { BookImageId = Guid.NewGuid(), PhotoId = Guid.NewGuid(), Title = title, IsCover = cover, ThumbnailsReady = true };
+    private static BookImageDto BookImage(string title, bool cover = false, DateTime? favourited = null, DateTime? archived = null) =>
+        new()
+        {
+            BookImageId = Guid.NewGuid(),
+            PhotoId = Guid.NewGuid(),
+            Title = title,
+            IsCover = cover,
+            ThumbnailsReady = true,
+            Favourited = favourited,
+            Archived = archived,
+        };
 
     private static IRenderedComponent<BookImageGrid> Grid(BunitContext ctx, IReadOnlyList<BookImageDto> images, bool canUpdate,
-        LinkedPhotoStates? states = null, bool fav = false) =>
+        bool fav = false) =>
         ctx.Render<BookImageGrid>(p =>
         {
-            p.Add(g => g.Images, images).Add(g => g.CanUpdate, canUpdate).Add(g => g.States, states).Add(g => g.IdPrefix, "bk");
+            p.Add(g => g.Images, images).Add(g => g.CanUpdate, canUpdate).Add(g => g.IdPrefix, "bk");
             if (fav)
             {
                 p.Add(g => g.OnToggleFavourite, (Guid _) => { });
@@ -181,24 +199,18 @@ public sealed class PhotoTileRolloutTests
     }
 
     [Fact]
-    public async Task A_book_image_shows_the_heart_and_archived_badge_once_its_state_is_read()
+    public async Task A_book_image_shows_the_heart_and_archived_badge_from_its_link()
     {
         await using var ctx = PageTestContext.Create();
-        var image = BookImage("Front", cover: true);
-        var photos = new Mock<IPhotosApiClient>();
-        photos.Setup(p => p.GetAsync(image.PhotoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ExistingPhoto { PhotoId = image.PhotoId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, Archived = DateTime.UtcNow, Favourited = DateTime.UtcNow });
-        var states = new LinkedPhotoStates();
+        var image = BookImage("Front", cover: true, favourited: DateTime.UtcNow, archived: DateTime.UtcNow);
+        var plain = BookImage("Back");
 
-        Assert.Empty(Grid(ctx, [image], canUpdate: true, states, fav: true).FindAll(".odc-phototile-fav"));
-
-        await states.EnsureAsync(photos.Object, [image.PhotoId]);
-        var cut = Grid(ctx, [image], canUpdate: true, states, fav: true);
-        Assert.Equal("Unfavourite Front", cut.Find(".odc-phototile-fav").GetAttribute("aria-label"));
+        var cut = Grid(ctx, [image, plain], canUpdate: true, fav: true);
+        Assert.Equal(["Unfavourite Front", "Favourite Back"], cut.FindAll(".odc-phototile-fav").Select(b => b.GetAttribute("aria-label")));
         Assert.Equal(["Cover", "Archived"], cut.FindAll(".odc-phototile-badge").Select(b => b.TextContent));
 
-        // No favourite callback (no photos.update): no heart even with the state known.
-        Assert.Empty(Grid(ctx, [image], canUpdate: true, states, fav: false).FindAll(".odc-phototile-fav"));
+        // No favourite callback (no photos.update): no heart.
+        Assert.Empty(Grid(ctx, [image], canUpdate: true, fav: false).FindAll(".odc-phototile-fav"));
     }
 
     [Fact]
@@ -235,8 +247,15 @@ public sealed class PhotoTileRolloutTests
         var viewer = cut.FindComponent<PhotoViewer>().Instance;
         Assert.Equal(1, viewer.Index);
         Assert.Equal([cover.PhotoId, first.PhotoId, last.PhotoId], viewer.Photos.Select(p => p.PhotoId));
+        Assert.Equal(["Cover photo", "First", "Last"], viewer.Photos.Select(p => p.Title));
         // Focus goes back to the opened image's tile, named by its list item.
         Assert.EndsWith($"{first.PhotoId:N}", viewer.ReturnFocusToId);
+
+        // The viewer's favourite and archive are patched on the image link itself — no photo is re-read.
+        await cut.InvokeAsync(() => cut.Instance.OnViewerChanged(new PhotoViewerChange(first.PhotoId, PhotoViewerChangeKind.Favourite)));
+        await cut.InvokeAsync(() => cut.Instance.OnViewerChanged(new PhotoViewerChange(first.PhotoId, PhotoViewerChangeKind.Archive)));
+        Assert.NotNull(first.Favourited);
+        Assert.Equal(["Cover", "Archived"], cut.FindAll(".odc-phototile-badge").Select(b => b.TextContent));
     }
 
     // ── Calendar: the viewer over the event dialog ───────────────────────────────────────────

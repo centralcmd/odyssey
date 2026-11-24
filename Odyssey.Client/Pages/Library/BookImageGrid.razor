@@ -8,7 +8,7 @@
     BookImageGrid — a book's images (Odyssey Design System · Books.jsx BookImageGrid, version 1795477868-c9a2): THE
     library tile (OdsPhotoTile) in a 132px OdsPhotoGrid, cover first. The cover is labelled by a VISIBLE "Cover" badge
     (and an archived photo by "Archived") — text, never position or colour alone. Hover and focus reveal the caption,
-    the heart (the library favourite, photos.update, once the photo's state is read) and the ⋯ menu:
+    the heart (the library favourite from the link's own state, photos.update) and the ⋯ menu:
     Open · — · Make cover / Remove cover · — · Detach — cover and detach only with books.update; Detach removes the
     link only, the photo stays in the library. Open (the image or the menu item) raises OnOpen; the host mounts the
     shared PhotoViewer over the images and returns focus to the tile through TileId.
@@ -20,13 +20,12 @@
     {
         var img = image;
         var name = NameOf(img, index);
-        var state = States?.Get(img.PhotoId);
         var source = PhotoImageSources.For(img.PhotoId, img.ThumbnailsReady, ThumbnailSize.Small, new PhotoImageAccess(true), PhotosApi);
         <li class="odc-photogrid2-item" id="@TileId(img.PhotoId)" @key="img.PhotoId">
             <OdsPhotoTile Name="@name" Image="source"
-                          Badges="@([img.IsCover ? "Cover" : null, state?.Archived is not null ? "Archived" : null])"
+                          Badges="@([img.IsCover ? "Cover" : null, img.Archived is not null ? "Archived" : null])"
                           OnOpen="() => OnOpen.InvokeAsync(img.PhotoId)"
-                          Fav="@(state?.Favourited is not null)" OnToggleFav="FavCallback(img, state)"
+                          Fav="@(img.Favourited is not null)" OnToggleFav="FavCallback(img)"
                           Actions="MenuFor(img, name)" ActionsLabel="@($"Actions for image: {name}")" />
         </li>
     }
@@ -35,9 +34,6 @@
 @code {
     /// <summary>The images, already in display order (cover first).</summary>
     [Parameter, EditorRequired] public IReadOnlyList<BookImageDto> Images { get; set; } = [];
-
-    /// <summary>The photos' library state (heart, Archived badge); null or not yet read = no heart, no badge.</summary>
-    [Parameter] public LinkedPhotoStates? States { get; set; }
 
     [Parameter] public EventCallback<Guid> OnOpen { get; set; }
 
@@ -60,8 +56,8 @@
 
     internal static string NameOf(BookImageDto image, int index) => PhotoMappers.Label(image.Title, image.FileName, $"Image {index + 1}");
 
-    private EventCallback FavCallback(BookImageDto image, PhotoSummary? state) =>
-        OnToggleFavourite.HasDelegate && state is not null
+    private EventCallback FavCallback(BookImageDto image) =>
+        OnToggleFavourite.HasDelegate
             ? EventCallback.Factory.Create(this, () => OnToggleFavourite.InvokeAsync(image.PhotoId))
             : default;
 

@@ -204,7 +204,7 @@ else
                     var photo = p;
                     <li class="odc-photogrid2-item" id="@PhotoTileId(photo.PhotoId)" @key="photo.PhotoId">
                         <OdsPhotoTile Name="@photo.Name" Image="ImageOf(photo)" Unavailable="ImageOf(photo).IsEmpty"
-                                      OnOpen="() => OpenPhotoAsync(photo)"
+                                      OnOpen="() => OpenPhoto(photo)"
                                       Actions="PhotoMenu(photo, removable)" ActionsLabel="@($"Actions for photo: {photo.Name}")" />
                     </li>
                 }

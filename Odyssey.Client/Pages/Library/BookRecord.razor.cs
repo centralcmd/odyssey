@@ -24,7 +24,6 @@ public partial class BookRecord
 
     [Inject] private IBooksApiClient Books { get; set; } = default!;
     [Inject] private IFilesApiClient FilesApi { get; set; } = default!;
-    [Inject] private IPhotosApiClient PhotosApi { get; set; } = default!;
     [Inject] private AuthenticationStateProvider Auth { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
@@ -110,7 +109,7 @@ public partial class BookRecord
         _book = book;
         _loadFailed = false;
         HandleRequests();
-        return HydrateImagesAsync();
+        return Task.CompletedTask;
     }
 
     /// <summary>Re-reads the book. Public because <c>OnInitializedAsync</c> early-returns outside the browser.</summary>
@@ -126,7 +125,6 @@ public partial class BookRecord
         }
 
         StateHasChanged();
-        await HydrateImagesAsync();
     }
 
     // A request that arrived while the book was still loading is honoured once it is in.
@@ -204,7 +202,6 @@ public partial class BookRecord
             await OnLoaded.InvokeAsync(saved);
             await OnAnnounce.InvokeAsync(said);
             StateHasChanged();
-            await HydrateImagesAsync();
             return true;
         }
 
@@ -380,12 +377,12 @@ public partial class BookRecord
     }
 
     // ── The shared PhotoViewer over the images ───────────────────────────────────────────────
-    // The viewer opens over the images in display order (cover first). The photos' library state — the heart, the
-    // Archived badge, the viewer's rail — is read once per image (photos.read); the book DTO carries only the label.
+    // The viewer opens over the images in display order (cover first). The heart and the Archived badge come from the
+    // book's image links themselves (BookImageDto.Favourited / Archived); the viewer's detail dialog reads the open
+    // photo for its rail.
 
     private PhotoViewer? _viewer;
     private BookImageGrid? _imageGrid;
-    private readonly LinkedPhotoStates _photoStates = new();
     private Guid? _lastOpenedPhoto;
     private bool _canUpdatePhotos;
 
@@ -395,27 +392,13 @@ public partial class BookRecord
     // item that may have opened the viewer is gone with its popover.
     private string? ViewerReturnFocusId => _lastOpenedPhoto is { } id ? _imageGrid?.TileId(id) : null;
 
-    private async Task HydrateImagesAsync()
+    private void OpenImage(Guid photoId)
     {
-        if (!CanReadPhotos || _book?.Images is not { Count: > 0 } images)
-        {
-            return;
-        }
-
-        if (await _photoStates.EnsureAsync(PhotosApi, images.Select(i => i.PhotoId)))
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task OpenImage(Guid photoId)
-    {
-        var ids = OrderedImages.Select(i => i.PhotoId).ToList();
-        await _photoStates.EnsureAsync(PhotosApi, ids);
-        _photoSummaries = _photoStates.Summaries(ids);
-        var index = ids.IndexOf(photoId);
+        var images = OrderedImages;
+        _photoSummaries = [.. images.Select(i => PhotoMappers.LinkSummary(i.PhotoId, i.Title, i.Favourited, i.Archived, i.ThumbnailsReady))];
+        var index = images.ToList().FindIndex(i => i.PhotoId == photoId);
         _photoIndex = index < 0 ? 0 : index;
-        _lastOpenedPhoto = ids.Count == 0 ? null : ids[_photoIndex.Value];
+        _lastOpenedPhoto = images.Count == 0 ? null : images[_photoIndex.Value].PhotoId;
     }
 
     private void OnViewerIndexChanged(int? index)
@@ -433,24 +416,21 @@ public partial class BookRecord
             ? EventCallback.Factory.Create<Guid>(this, id => _viewer?.ToggleFavouriteAsync(id) ?? Task.CompletedTask)
             : default;
 
-    // Favourite is patched in place; an archive re-reads the photo; an edit (the label is on the link) or a delete
+    // Favourite and archive are patched in place on the image link; an edit (the label is on the link) or a delete
     // (the link is gone) re-reads the book.
     internal async Task OnViewerChanged(PhotoViewerChange change)
     {
+        var link = _book?.Images?.FirstOrDefault(i => i.PhotoId == change.PhotoId);
         switch (change.Kind)
         {
-            case PhotoViewerChangeKind.Favourite:
-                _photoStates.ToggleFavourite(change.PhotoId);
+            case PhotoViewerChangeKind.Favourite when link is not null:
+                link.Favourited = PhotoMappers.Toggled(link.Favourited);
                 break;
-            case PhotoViewerChangeKind.Archive:
-                await _photoStates.RefreshAsync(PhotosApi, change.PhotoId);
+            case PhotoViewerChangeKind.Archive when link is not null:
+                link.Archived = PhotoMappers.Toggled(link.Archived);
                 break;
             case PhotoViewerChangeKind.Edit:
-                await _photoStates.RefreshAsync(PhotosApi, change.PhotoId);
-                await LoadAsync();
-                break;
             case PhotoViewerChangeKind.Delete:
-                _photoStates.Forget(change.PhotoId);
                 await LoadAsync();
                 break;
         }
