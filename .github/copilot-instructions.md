@@ -213,7 +213,8 @@ otherwise the context binds to InMemory and no usable migration comes out.
 [`docs/architecture/`](../docs/architecture/) holds the per-area rules (file storage, settings,
 background jobs, contracts, …). The ones most often broken:
 
-- **Gate features with permission claims, never a config kill-switch.** A new claim goes in
+- **Gate features with permission claims, never a config kill-switch** — except an on/off setting in the
+  `SystemSettings` store for an integration with a third-party system (`docs/architecture/settings.md`). A new claim goes in
   `PermissionClaims` (`Odyssey.Dtos`) **and** `RolePermissions.AllClaims` (`Odyssey.Context`).
 - **Admin-editable policy lives in the `SystemSettings` store**, not a new `appsettings.json` key;
   secrets go in the encrypted secret store. Never copy a server cap into the client as a constant.
