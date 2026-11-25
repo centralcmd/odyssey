@@ -71,6 +71,8 @@ public static class RecipeImportText
         RecipeImportStatus.Running => new("reading", "Reading", OdsChipTone.Info, "auto_awesome"),
         RecipeImportStatus.Failed => new("failed", "Failed", OdsChipTone.Error, "error_outline"),
         RecipeImportStatus.Cancelled => new("cancelled", "Cancelled", OdsChipTone.Outline, "block"),
+        // A draft recipe left pending until retention removed its content can no longer be reviewed or created.
+        _ when summary.PendingDraftCount > 0 && summary.ContentPurged => new("expired", "Draft removed", OdsChipTone.Outline, "auto_delete"),
         _ when summary.PendingDraftCount > 0 => new("ready", "Ready to review", OdsChipTone.Income, "rate_review"),
         _ when summary.AcceptedDraftCount > 0 => new("created", "Recipe created", OdsChipTone.Outline, "task_alt"),
         _ => new("discarded", "Draft discarded", OdsChipTone.Outline, "delete_sweep"),

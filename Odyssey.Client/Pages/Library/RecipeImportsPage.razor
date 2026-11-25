@@ -20,8 +20,7 @@
     <PageHeader Title="Recipe imports" Icon="@Icons.Material.Filled.AutoAwesome"
                 SearchOpenByDefault="true"
                 InfoContent="HowItWorks" InfoLabel="How it works" InfoIcon="@Icons.Material.Filled.HelpOutline"
-                PrimaryActionText="Import with AI" PrimaryActionIcon="@Icons.Material.Filled.AutoAwesome"
-                OnPrimaryAction="StartImport" ShowPrimaryAction="@(_canCreate && Enabled)">
+                ShowPrimaryAction="false">
         <SubLine>@SubLineText</SubLine>
         <SearchContent>
             <div class="ph-filter-bar">
@@ -30,9 +29,11 @@
             </div>
         </SearchContent>
         <PrimaryAction>
-            @if (_canCreate && !Enabled)
+            @* One button in both states: switched off it stays focusable and aria-disabled, with the reason as visible text. *@
+            @if (_canCreate)
             {
-                <OdsButton Variant="OdsButtonVariant.Filled" Icon="auto_awesome" AriaDisabled="true" aria-describedby="ri-off-reason">Import with AI</OdsButton>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="auto_awesome" AriaDisabled="@(!Enabled)"
+                           aria-describedby="@(Enabled ? null : "ri-off-reason")" OnClick="StartImport">Import with AI</OdsButton>
             }
         </PrimaryAction>
         <Actions>

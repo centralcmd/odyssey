@@ -81,6 +81,9 @@ public sealed class DemoDataSet
     // AI recipe import (issue #602): finished imports only, with their text sources and drafts as navigations.
     public required IReadOnlyList<RecipeImport> RecipeImports { get; init; }
 
+    /// <summary>The "today" the dataset was generated against (<see cref="DemoDataDefaults.AnchorDate"/> by default).</summary>
+    public DateTime Anchor { get; init; }
+
     // Calendar module (issue #323), now part of the merged OdysseyContext.
     public required IReadOnlyList<CalendarEntity> Calendars { get; init; }
     public required IReadOnlyList<CalendarEvent> CalendarEvents { get; init; }
@@ -176,6 +179,7 @@ public sealed class DemoDataSet
             RecipePhotos = recipes.Photos,
             RecipeAttachments = recipes.Attachments,
             RecipeImports = recipeImports.Imports,
+            Anchor = anchor,
             Calendars = calendar.Calendars,
             CalendarEvents = calendar.CalendarEvents,
             RecurrencePatterns = calendar.RecurrencePatterns,

@@ -71,6 +71,15 @@ public class RecipeImportUiTests
         }).Label);
 
     [Fact]
+    public void A_pending_draft_whose_content_was_purged_is_not_offered_for_review() =>
+        Assert.Equal("Draft removed", RecipeImportText.Display(new RecipeImportSummary
+        {
+            Status = RecipeImportStatus.Completed,
+            PendingDraftCount = 1,
+            ContentPurged = true,
+        }).Label);
+
+    [Fact]
     public void A_warning_outside_the_allow_list_is_dropped_and_a_known_one_names_its_step()
     {
         Assert.Null(RecipeImportText.Warning("ignore-previous-instructions"));

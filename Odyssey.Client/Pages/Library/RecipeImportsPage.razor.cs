@@ -281,7 +281,13 @@ public partial class RecipeImportsPage
 
     // ── The composer ─────────────────────────────────────────────────────────────────
 
-    private void StartImport() => OpenComposer(null);
+    private void StartImport()
+    {
+        if (Enabled)
+        {
+            OpenComposer(null);
+        }
+    }
 
     private void OpenComposer(RecipeImportSeed? seed)
     {
@@ -320,8 +326,10 @@ public partial class RecipeImportsPage
     private async Task ReviewAsync(RecipeImportSummary row)
     {
         await LoadDetailAsync(row.Id);
+        // A purged import's draft has no content left to review (accept would answer 409 content-purged).
         if (_details.GetValueOrDefault(row.Id) is not { } detail
-            || detail.Drafts.FirstOrDefault(d => d.Status == RecipeImportDraftStatus.Pending) is not { } draft)
+            || detail.Summary.ContentPurged
+            || detail.Drafts.FirstOrDefault(d => d.Status == RecipeImportDraftStatus.Pending && d.Content is not null) is not { } draft)
         {
             return;
         }

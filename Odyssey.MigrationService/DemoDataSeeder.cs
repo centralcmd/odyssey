@@ -509,6 +509,22 @@ public sealed class DemoDataSeeder(
             return;
         }
 
+        // The generator's dates are deterministic, but retention purges a finished import after 30 days by the wall
+        // clock: rebase each import so its newest timestamp keeps its distance from the anchor, measured from now.
+        var shift = DateTime.UtcNow - data.Anchor;
+        foreach (var import in data.RecipeImports)
+        {
+            import.QueuedAt += shift;
+            import.ClaimedAt += shift;
+            import.TransferStartedAt += shift;
+            import.CompletedAt += shift;
+            import.FinishedAt += shift;
+            foreach (var draft in import.Drafts)
+            {
+                draft.AcceptedAt += shift;
+            }
+        }
+
         await context.RecipeImports.AddRangeAsync(data.RecipeImports, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Seeded {Imports} recipe imports.", data.RecipeImports.Count);

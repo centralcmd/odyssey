@@ -519,7 +519,9 @@ public sealed class RecipeImportService(
 
         if (query.HasPendingDraft is { } pending)
         {
-            imports = imports.Where(i => i.Drafts.Any(d => d.Status == RecipeImportDraftStatus.Pending) == pending);
+            // "Ready to review" means a draft that can still be reviewed: a purged import's pending draft has no content.
+            imports = imports.Where(i =>
+                (i.ContentPurgedAt == null && i.Drafts.Any(d => d.Status == RecipeImportDraftStatus.Pending)) == pending);
         }
 
         var ascending = query.SortDir == SortDirection.Asc;
