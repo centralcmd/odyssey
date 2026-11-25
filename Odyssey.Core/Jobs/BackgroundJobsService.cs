@@ -746,6 +746,11 @@ public sealed class BackgroundJobsService(
                 return await Odyssey.Core.Internet.News.Jobs.NewsFeedJob.HasWorkAsync(context, Now, cancellationToken);
             case JobType.RecurrenceKeyBackfill:
                 return await context.RecurrencePatterns.AnyAsync(p => p.KeysBackfilledAt == null, cancellationToken);
+            case JobType.RecipeImportRetention:
+                var days = await new Odyssey.Core.Recipes.Import.RecipeImportSettingsLookup(
+                    context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Odyssey.Core.Recipes.Import.RecipeImportSettingsLookup>.Instance)
+                    .GetRetentionDaysAsync(cancellationToken);
+                return await Odyssey.Core.Recipes.Import.RecipeImportRetentionJob.Due(context, Now.AddDays(-days)).AnyAsync(cancellationToken);
             default:
                 return true;
         }
@@ -761,6 +766,7 @@ public sealed class BackgroundJobsService(
             JobType.InstrumentPriceSync => new InstrumentPriceSyncJobRun(),
             JobType.NewsFeedFetch => new NewsFeedJobRun(),
             JobType.RecurrenceKeyBackfill => new RecurrenceKeyBackfillJobRun(),
+            JobType.RecipeImportRetention => new RecipeImportRetentionJobRun(),
             _ => throw new ArgumentOutOfRangeException(nameof(jobType)),
         };
         run.JobRunId = Guid.NewGuid();

@@ -322,6 +322,7 @@ builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 // The geocoding search proxy's per-user and instance-wide limits (issue #350). Same composition rules.
 builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
 builder.Services.AddFileAnalysisRateLimiter(builder.Configuration);
+builder.Services.AddRecipeImportRateLimiter(builder.Configuration);
 // The weather read and Admin-action limits (issue #348). Same composition rules.
 builder.Services.AddWeatherRateLimiter(builder.Configuration);
 // The background-jobs manual run's per-user limit (issue #409 §3.5). Same composition rules.
@@ -480,6 +481,10 @@ builder.Services.AddScoped<Odyssey.Core.Journal.IContactBookCredits, Odyssey.Cor
 // Recipes (issue #525). No feature toggle — gated by the recipes.* claims only; links library photos through
 // IPhotoLookup above.
 builder.Services.AddScoped<Odyssey.Core.Recipes.RecipeService>();
+// AI recipe import (issue #602): the API enqueues, reads and accepts; the worker sends. AddFileAnalysis (below) supplies
+// the shared processor settings and transport timeout this graph reads.
+Odyssey.Core.Recipes.Import.RecipeImportServiceCollectionExtensions.AddRecipeImport(builder.Services);
+builder.Services.AddScoped<Odyssey.Core.Recipes.Import.RecipeImportService>();
 builder.Services.AddScoped<Odyssey.Core.Recipes.RecipeTagService>();
 
 // Calendar module (issue #323). No feature toggle — capability is gated by claims only.
@@ -823,6 +828,9 @@ if (app.Environment.IsProduction())
     // In production, we want to redirect to HTTPS when certificates are configured.
     app.UseHttpsRedirection();
 }
+
+// Before authorization, so a refused request on a no-store endpoint carries the header too (issue #602 §5).
+app.UseMiddleware<NoStoreMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

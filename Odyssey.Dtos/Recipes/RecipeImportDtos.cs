@@ -119,7 +119,7 @@ public sealed record RecipeImportOptions
 }
 
 /// <summary><c>POST /api/recipe-imports</c> (JSON): text and/or existing Library files.</summary>
-public sealed record CreateRecipeImport : IValidatableObject
+public sealed record CreateRecipeImport
 {
     [Required]
     public Guid? ClientRequestId { get; set; }
@@ -134,17 +134,6 @@ public sealed record CreateRecipeImport : IValidatableObject
 
     [StringLength(16)]
     public string? DisclosureVersion { get; set; }
-
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (string.IsNullOrWhiteSpace(Text) && ExistingFileIds.Length == 0 && validationContext.Items.ContainsKey(UploadCountKey) is false)
-        {
-            yield return new ValidationResult("Paste recipe text or add a file.", [nameof(Text)]);
-        }
-    }
-
-    /// <summary>Set by the multipart endpoint, which carries files the binder does not see.</summary>
-    public const string UploadCountKey = "recipe-import-upload-count";
 }
 
 /// <summary>A recipe-import list row (§5).</summary>

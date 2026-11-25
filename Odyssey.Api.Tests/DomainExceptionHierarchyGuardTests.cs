@@ -26,6 +26,10 @@ public class DomainExceptionHierarchyGuardTests
         // flow wraps the first in FileAnalysisProviderException; the recipe-import worker records both on the import.
         "Odyssey.Core.Ai.ClaudeTransportException",
         "Odyssey.Core.Ai.AiCredentialUnavailableException",
+        // Recipe import's worker-side failures (issue #602 §9): caught by RecipeImportRunner and recorded as a failure
+        // code on the import, or turned into a 413 by RecipeImportService. Neither reaches GlobalExceptionHandler.
+        "Odyssey.Core.Recipes.Import.RecipeExtractionException",
+        "Odyssey.Core.Recipes.Import.ImageTooLargeAfterStripException",
         // Internal to the geocoding clients and never escapes them: each client turns it into a
         // GeocodingUnavailableException (a 503) or a partial result (issue #350).
         "Odyssey.Core.Journal.Geocoding.GeocodingProviderException",
