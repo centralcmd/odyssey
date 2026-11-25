@@ -126,7 +126,7 @@
 @if (_dialogKey != Guid.Empty)
 {
     <NewsFeedDialog @key="_dialogKey" Open="_dialogOpen" OpenChanged="OnDialogOpenChanged"
-                    Feed="_dialogFeed" Tags="_tags" InitialConflict="_dialogConflict" InitialUrl="_dialogUrl"
+                    Feed="_dialogFeed" Tags="_tags" InitialConflict="_dialogConflict" InitialUrl="@_dialogUrl"
                     Saved="OnFeedSavedAsync" GoToFeed="GoToFeedAsync" Deleted="OnFeedGoneInDialog"
                     Refreshed="Replace" />
 }
