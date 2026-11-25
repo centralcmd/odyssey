@@ -118,4 +118,22 @@ public static class NewsVisuals
         return [.. tags.Where(t => t.Archived is null || keep.Contains(t.NewsTagId))
             .OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
     }
+
+    /// <summary>
+    /// The Overview's "By feed" / "By podcast" rows (Odyssey Design System · ui_kits/web/News.jsx, NewsFeeds.jsx,
+    /// Podcasts.jsx): one row per feed the caller passes — the pages pass only active ones — with what it holds,
+    /// most first, then by name. Every feed is listed: no cap and no "Other" row. Display only.
+    /// </summary>
+    public static IReadOnlyList<OdsBreakdownRow> CountByFeedRows(IEnumerable<(Guid Id, string Title, int Count, string Icon)> feeds) =>
+    [
+        .. feeds.OrderByDescending(f => f.Count).ThenBy(f => f.Title, StringComparer.CurrentCultureIgnoreCase)
+            .Select(f => new OdsBreakdownRow
+            {
+                Key = f.Id,
+                Label = f.Title,
+                Icon = f.Icon,
+                IconColor = OdsBreakdown.Tone("outline"),
+                Count = Math.Max(0, f.Count),
+            }),
+    ];
 }

@@ -279,6 +279,24 @@ public class NewsFeedsPageTests
     }
 
     [Fact]
+    public async Task By_feed_lists_active_feeds_with_articles_or_episodes_and_no_total()
+    {
+        await using var context = Context(
+        [
+            Feed("Articles feed", f => f.ArticleCount = 5),
+            Feed("Show", f => { f.Kind = NewsFeedKind.Podcast; f.ArticleCount = 99; f.Podcast = new NewsFeedPodcast { EpisodeCount = 12 }; }),
+            Feed("Paused feed", f => { f.IsActive = false; f.ArticleCount = 50; }),
+            Feed("Archived feed", f => { f.ArchivedAtUtc = DateTime.UtcNow; f.IsActive = false; f.ArticleCount = 60; }),
+        ]);
+        var cut = context.Render<NewsFeedsPage>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(CardNames(cut)));
+        var tile = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "By feed");
+        Assert.Equal([("Show", 12, "podcasts"), ("Articles feed", 5, "rss_feed")], tile.Instance.Rows.Select(r => (r.Label, (int)r.Count, r.Icon)));
+        Assert.Empty(tile.FindAll(".odc-breakdown-total"));
+    }
+
+    [Fact]
     public async Task Search_matches_the_name_or_the_site_host()
     {
         await using var context = Context([Feed("Fjord Weather", f => f.SiteUrl = "https://yr.no/"), Feed("Tech Daily")]);

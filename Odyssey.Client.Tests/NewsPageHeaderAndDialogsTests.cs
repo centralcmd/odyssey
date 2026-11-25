@@ -50,6 +50,27 @@ public class NewsPageHeaderAndDialogsTests
     }
 
     [Fact]
+    public async Task By_feed_lists_every_active_feed_by_its_stored_articles_most_first_and_totals_them()
+    {
+        await using var context = Context([Article("A")], catalogue:
+        [
+            CatalogueFeed("Example News", f => f.ArticleCount = 10, FeedId),
+            CatalogueFeed("Alpha", f => f.ArticleCount = 25),
+            CatalogueFeed("Beta", f => f.ArticleCount = 10),
+            CatalogueFeed("Broken", f => { f.Health = NewsFeedHealth.Gone; f.ArticleCount = 2; }),
+            CatalogueFeed("Resting", f => { f.State = NewsFeedState.Paused; f.Health = NewsFeedHealth.Paused; f.ArticleCount = 30; }),
+            CatalogueFeed("Old", f => { f.State = NewsFeedState.Archived; f.Health = NewsFeedHealth.Archived; f.ArticleCount = 40; }),
+        ]);
+
+        var cut = Rendered(context);
+
+        var tile = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "By feed");
+        Assert.Equal([("Alpha", 25), ("Beta", 10), ("Example News", 10), ("Broken", 2)], tile.Instance.Rows.Select(r => (r.Label, (int)r.Count)));
+        Assert.Contains("47", tile.Find(".odc-breakdown-total").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Articles", tile.Find(".odc-breakdown-total").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Attention_lists_exactly_the_feeds_that_need_it_with_their_severity_and_a_review_link()
     {
         await using var context = Context([Article("A")], catalogue:

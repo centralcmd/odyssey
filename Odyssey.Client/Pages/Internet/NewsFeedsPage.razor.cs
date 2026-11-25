@@ -127,6 +127,15 @@ public partial class NewsFeedsPage
         }),
     ];
 
+    /// <summary>
+    /// By feed: what each active feed holds — articles for an article feed, episodes for a podcast — with the
+    /// kind's glyph. The units differ, so the tile has no total.
+    /// </summary>
+    private IReadOnlyList<OdsBreakdownRow> ByFeedRows => NewsVisuals.CountByFeedRows(
+        _feeds.Where(f => NewsVisuals.StatusOf(f) == NewsFeedStatus.Active).Select(f => f.Kind == NewsFeedKind.Podcast
+            ? (f.Id, f.DisplayTitle, f.Podcast?.EpisodeCount ?? 0, "podcasts")
+            : (f.Id, f.DisplayTitle, f.ArticleCount, "rss_feed")));
+
     private string? ArtworkFor(ExistingNewsFeed feed) =>
         feed.Podcast?.ArtworkId is { } art ? Podcasts.ArtworkUrl(art, PodcastArtworkSize.Small) : null;
 
