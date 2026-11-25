@@ -1,0 +1,86 @@
+@*
+    DocumentSourcePanel — the inside of the Attach documents dialog (Odyssey Design System ·
+    ui_kits/web/AttachDocumentsModal.jsx, DocumentSourcePanel): the two ways a file arrives, Upload new ·
+    From Files, as one controlled panel. AttachDocumentsDialog is this panel in a modal with a submit; a
+    surface that already is a dialog (the AI recipe import composer, issue #604) shows it inline instead of
+    opening a dialog on top. The host owns the tab, the upload rows and the picked set and gets every change
+    back; the panel owns only its search box. With Counts, each tab's label carries how many files it holds,
+    so what was chosen on one tab stays in sight from the other.
+*@
+
+<div class="dsp">
+    @if (ShowUpload && ShowLibrary)
+    {
+        <OdsSegmentedControl Full="true" AriaLabel="Where the document comes from"
+                             Options="TabOptions" Value="@Tab" ValueChanged="OnTabChanged" />
+    }
+
+    @if (ActiveTab == UploadTab)
+    {
+        <OdsFileUpload Files="Uploads" FilesChanged="OnUploadsChanged"
+                       Accept="@Accept"
+                       Kinds="Kinds" ShowKinds="@(Kinds is not null)"
+                       GuessKind="GuessKind" DefaultKind="@DefaultKind"
+                       Error="@Error"
+                       Hint="@UploadHint"
+                       RenderFileExtra="@RenderFileExtra" />
+    }
+    else
+    {
+        <div class="prop-lib">
+            <OdsSearchField Value="@_query" ValueChanged="@(v => _query = v ?? string.Empty)"
+                            Placeholder="Search files by name…" AriaLabel="Search files by name" />
+            @if (LibraryLoading)
+            {
+                <div role="status" aria-live="polite" aria-busy="true">
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                    <span class="sr-only">Loading files…</span>
+                </div>
+            }
+            else if (LibraryFailed)
+            {
+                <OdsEmptyLine>Couldn’t load your files. <OdsButton Variant="OdsButtonVariant.Text" OnClick="OnRetry">Try again</OdsButton></OdsEmptyLine>
+            }
+            else
+            {
+                <div class="prop-lib-list" role="group" aria-label="Files" aria-describedby="@DescribedBy">
+                    @if (Rows.Count == 0)
+                    {
+                        <OdsEmptyLine>@EmptyText</OdsEmptyLine>
+                    }
+                    @foreach (var file in Rows)
+                    {
+                        var state = StateFor(file);
+                        var picked = PickedIds.Contains(file.Id);
+                        var disabled = state != DocumentSourceState.Available;
+                        <div class="prop-lib-row @(picked ? "on" : null) @(disabled ? "off" : null)" @key="file.Id">
+                            <button type="button" class="prop-lib-main" disabled="@disabled"
+                                    aria-pressed="@(picked ? "true" : "false")"
+                                    @onclick="@(() => OnToggle.InvokeAsync(file))">
+                                <span class="prop-lib-check"><OdsMIcon Name="@CheckIcon(state, picked)" Size="20" /></span>
+                                <span class="prop-lib-ic"><OdsMIcon Name="@ContentTypeIcon(file.ContentType)" Size="16" /></span>
+                                <span class="prop-lib-text">
+                                    <span class="prop-lib-name">@file.FileName</span>
+                                    <span class="prop-lib-meta">@TypeLabelOf(file.ContentType) · @OdsFileUploadDefaults.FmtSize(file.SizeBytes) · uploaded @OdsDates.Long(file.UploadedAtUtc)</span>
+                                </span>
+                                @if (ReasonOf(state, file) is { } reason)
+                                {
+                                    <span class="prop-lib-reason">@reason</span>
+                                }
+                            </button>
+                            @if (picked && PickedExtra is not null)
+                            {
+                                <div class="prop-lib-extra">@PickedExtra(file)</div>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (Error is not null)
+                {
+                    <div class="helper aam-err" role="alert">@Error</div>
+                }
+            }
+            @Footnote
+        </div>
+    }
+</div>

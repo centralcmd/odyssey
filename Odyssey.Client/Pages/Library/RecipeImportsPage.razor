@@ -1,0 +1,181 @@
+@page "/recipe-imports"
+@attribute [Authorize(Policy = PermissionClaims.RecipesImport)]
+@implements IAsyncDisposable
+@using Odyssey.Dtos.Recipes
+
+@*
+    /recipe-imports (issue #604; design system components-recipes.md · The page, ui_kits/web/RecipeImports.jsx) — the
+    Analysis log / Recipes pattern: PageHeader (a running tally, a server-backed Show filter, sort, How it works) with
+    Import with AI as its primary, and an expandable OdsRecordCard list, one open at a time. The open card IS the
+    import: why it is in its state (alert), its details, its sources in order, and a pending draft recipe with Things
+    to check. Every action is in the card's ⋯ menu, by state; each destructive one confirms first and says, for that
+    import, what goes and what stays. A Waiting or Reading import is re-read every few seconds while it is open.
+*@
+
+<PageTitle>Recipe imports</PageTitle>
+
+<OdsLiveAnnouncer @ref="_announcer" />
+
+<MudStack Spacing="4" Class="ri-page">
+    <PageHeader Title="Recipe imports" Icon="@Icons.Material.Filled.AutoAwesome"
+                SearchOpenByDefault="true"
+                InfoContent="HowItWorks" InfoLabel="How it works" InfoIcon="@Icons.Material.Filled.HelpOutline"
+                PrimaryActionText="Import with AI" PrimaryActionIcon="@Icons.Material.Filled.AutoAwesome"
+                OnPrimaryAction="StartImport" ShowPrimaryAction="@(_canCreate && Enabled)">
+        <SubLine>@SubLineText</SubLine>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSelect Prefix="Show" AriaLabel="Show" Value="@_show" ValueChanged="OnShowChanged" Options="ShowOptions" Class="ph-select" />
+                <OdsSortSelect TRow="RecipeImportSummary" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+            </div>
+        </SearchContent>
+        <PrimaryAction>
+            @if (_canCreate && !Enabled)
+            {
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="auto_awesome" AriaDisabled="true" aria-describedby="ri-off-reason">Import with AI</OdsButton>
+            }
+        </PrimaryAction>
+        <Actions>
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="soup_kitchen" Href="/recipes">Recipes</OdsButton>
+        </Actions>
+    </PageHeader>
+
+    @if (_options is { Enabled: false })
+    {
+        <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.Status" id="ri-off-reason">AI recipe import is turned off by an administrator. Imports already here stay readable.</OdsAlert>
+    }
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="RecipeImportSummary" Items="_rows" Noun="imports"
+                         ItemKey="@(r => (object)r.Id)" BatchSize="25"
+                         Loading="_isLoading" Error="_loadError" OnRetry="LoadAsync"
+                         ErrorDescription="Something went wrong reaching Odyssey. Your recipes are unaffected."
+                         HasFilters="@(_show != ShowAll)" OnClearFilters="@(() => OnShowChanged(ShowAll))"
+                         FilteredEmptyTitle="No imports match this filter"
+                         EmptyIcon="auto_awesome" EmptyTitle="No recipe imports yet"
+                         EmptyDescription="Paste a recipe or add a PDF or photo of one, and the AI drafts it for you to check. Nothing becomes a recipe until you create it.">
+            <RenderItem Context="r">
+                @Card(r)
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate && Enabled)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="auto_awesome" OnClick="StartImport">Import with AI</OdsButton>
+                }
+            </CreateAction>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+
+@if (_composerKey != Guid.Empty)
+{
+    <RecipeImportDialog @key="_composerKey" Open="_composerOpen" OpenChanged="v => _composerOpen = v"
+                        Seed="_composerSeed" OnSent="OnImportSentAsync" />
+}
+
+@if (_review is { } review)
+{
+    <RecipeDialog @key="_reviewKey" Open="_reviewOpen" OpenChanged="OnReviewOpenChanged"
+                  ImportReview="review" CanReadTags="_canTags" CanCreateTags="_canCreateTags" Tags="_tags"
+                  ReturnFocusToId="@MenuId(review.ImportId)"
+                  OnImportSaved="OnDraftSavedAsync" OnImportAccepted="OnDraftAcceptedAsync" />
+}
+
+@if (_confirm is { } confirm)
+{
+    <OdsFormDialog @key="_confirmKey" @bind-Open="_confirmOpen"
+                   Icon="@confirm.Icon" IconTone="@confirm.Tone" Title="@confirm.Title"
+                   RequiredLegend="false" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+                   DescribedById="ri-confirm-body" ReturnFocusToId="@MenuId(confirm.Import.Id)"
+                   CancelLabel="Keep it" SubmitLabel="@confirm.Verb" SubmitIcon="@confirm.Icon" SubmitVariant="OdsButtonVariant.Danger"
+                   OnSubmit="ConfirmAsync">
+        <div id="ri-confirm-body">
+            @for (var i = 0; i < confirm.Lines.Count; i++)
+            {
+                <p class="rc-confirm-p @(i > 0 ? "muted" : null)">@confirm.Lines[i]</p>
+            }
+        </div>
+        @if (_confirmError is { } error)
+        {
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@error</OdsAlert>
+        }
+    </OdsFormDialog>
+}
+
+@code {
+    private RenderFragment HowItWorks => @<dl class="ri-how">
+        <div><dt>Import</dt><dd>One send to the AI: the text and files you gave it, and what it made from them. Imports live here, not in Recipes.</dd></div>
+        <div><dt>Draft recipe</dt><dd>The AI’s suggestion, kept on the import. It is not a recipe yet — it becomes one only when you review it and select <b>Create recipe</b>.</dd></div>
+        <div><dt>Save and finish later</dt><dd>Keeps your edits on the draft recipe so you, or anyone in the household, can finish it later. Nothing is added to Recipes.</dd></div>
+        <div><dt>Delete import</dt><dd>Removes the import and what you sent. A recipe you already created from it stays in Recipes.</dd></div>
+        @if (_options is { } o)
+        {
+            <div><dt>Kept for @o.RetentionDays days</dt><dd>After that, what you sent and any draft recipe are removed; the import stays as a record that something was sent.</dd></div>
+        }
+    </dl>;
+
+    private RenderFragment Card(RecipeImportSummary r)
+    {
+        var display = RecipeImportText.Display(r);
+        var detail = _details.GetValueOrDefault(r.Id);
+        return @<OdsRecordCard @key="r.Id" Id="@CardId(r.Id)" Icon="@display.Icon" Name="@TitleOf(r, detail)"
+                               Meta="MetaFor(r)" Counts="CountsFor(detail)"
+                               Dimmed="@(display.Key is "discarded" or "cancelled" || r.ContentPurged)"
+                               Open="@(_openId == r.Id)" OnToggle="@(open => ToggleAsync(r, open))">
+            <Chips>
+                <OdsChip Tone="@display.Tone" Icon="@display.Icon" Class="sm">@display.Label</OdsChip>
+                @if (r.ContentPurged)
+                {
+                    <OdsChip Tone="OdsChipTone.Outline" Icon="auto_delete" Class="sm">Content removed</OdsChip>
+                }
+            </Chips>
+            <Actions>
+                @if (MenuFor(r) is { Count: > 0 } items)
+                {
+                    <span id="@MenuId(r.Id)">
+                        <OdsMenu Items="items" AriaLabel="@($"Actions for {TitleOf(r, detail)}")" />
+                    </span>
+                }
+            </Actions>
+            <Alert>@AlertFor(r, detail)</Alert>
+            <Details>
+                <RecipeImportRecord Summary="r" Detail="detail" Options="_options" CanFiles="_canFiles" Tags="_tags" Now="Now" />
+            </Details>
+        </OdsRecordCard>;
+    }
+
+    private RenderFragment? AlertFor(RecipeImportSummary r, RecipeImportDetail? detail)
+    {
+        var display = RecipeImportText.Display(r);
+        var processor = _options?.Processor ?? "The AI service";
+        var draft = detail?.Drafts.FirstOrDefault();
+        return display.Key switch
+        {
+            "ready" when _canCreate => @<OdsProblemAlert Severity="OdsSeverity.Info" Title="A draft recipe is ready to review"
+                                                         Detail="@ReadyDetail(draft)"
+                                                         ActionLabel="Review and create recipe" ActionIcon="rate_review"
+                                                         OnAction="@(() => ReviewAsync(r))" />,
+            "ready" => @<OdsProblemAlert Severity="OdsSeverity.Info" Title="A draft recipe is ready to review"
+                                         Detail="The AI’s suggestion, made from your sources. Creating recipes needs the recipe-create permission." />,
+            "reading" => @<div class="ri-progress">
+                    <OdsSpinner Size="OdsSize.Md" AriaLabel="Reading your recipe" />
+                    <div>
+                        <div class="ri-progress-t">@processor is reading your recipe…</div>
+                        <div class="ri-progress-s">You can leave this page — the draft recipe will wait here.</div>
+                    </div>
+                </div>,
+            "waiting" => @<OdsProblemAlert Severity="OdsSeverity.Info" Title="@($"Waiting to be sent to {processor}")"
+                                           Detail="It starts within a few seconds. You can cancel it until then." />,
+            "failed" when _canCreate => @<OdsProblemAlert Severity="OdsSeverity.Error" Title="The import failed"
+                                                          Detail="@FailedDetail(r, detail)"
+                                                          ActionLabel="Start a new import" ActionIcon="restart_alt"
+                                                          OnAction="@(() => RestartAsync(r))" />,
+            "failed" => @<OdsProblemAlert Severity="OdsSeverity.Error" Title="The import failed" Detail="@FailedDetail(r, detail)" />,
+            "created" => @<OdsProblemAlert Severity="OdsSeverity.Info" Title="@CreatedTitle(r)"
+                                           Detail="It’s in Recipes now, with the source files you chose to attach. Deleting this import won’t touch the recipe."
+                                           ActionLabel="Open recipe" ActionIcon="arrow_forward"
+                                           OnAction="@(() => OpenRecipe(r))" />,
+            _ => null,
+        };
+    }
+}

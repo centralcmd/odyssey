@@ -108,6 +108,67 @@ public sealed class RecipeDraft
     };
 
     /// <summary>
+    /// A draft seeded from a draft recipe an AI import made (issue #604). Sections become heading rows; a null servings
+    /// stays empty — the new-recipe default of 4 is not applied — and so does any other missing field.
+    /// </summary>
+    public static RecipeDraft FromImport(RecipeImportDraftContent c) => new()
+    {
+        Title = c.Title ?? string.Empty,
+        Description = c.Description ?? string.Empty,
+        Servings = c.Servings,
+        ServingsLabel = c.ServingsLabel ?? string.Empty,
+        PrepMinutes = c.PrepMinutes,
+        CookMinutes = c.CookMinutes,
+        Source = c.Source ?? string.Empty,
+        Notes = c.Notes ?? string.Empty,
+        Ingredients = c.Ingredients.Length == 0
+            ? [new RecipeIngredientDraft()]
+            : ToGrouped(c.Ingredients, i => i.Section, i => new RecipeIngredientDraft
+            {
+                Amount = i.Amount,
+                Unit = i.Unit,
+                Name = i.Name,
+                Optional = i.Optional,
+            }),
+        Method = c.Steps.Length == 0
+            ? [new RecipeStepDraft()]
+            : ToGrouped(c.Steps, s => s.Section, s => new RecipeStepDraft { Text = s.Text }),
+        TagIds = [.. (c.TagIds ?? []).Select(id => id.ToString())],
+    };
+
+    /// <summary>
+    /// The draft recipe as Save and finish later stores it (<c>PUT …/drafts/{id}</c>): no wizard validation, so an
+    /// empty line is left out rather than refused. Without <c>recipes.tags.read</c> <c>tagIds</c> is <c>null</c>, which
+    /// keeps the stored suggestions for everyone else.
+    /// </summary>
+    public RecipeImportDraftContent ToImportContent(bool canReadTags) => new()
+    {
+        SchemaVersion = RecipeImportLimits.DraftSchemaVersion,
+        Title = Clean(Title),
+        Description = Clean(Description),
+        Notes = Clean(Notes),
+        Source = Clean(Source),
+        Servings = Servings,
+        ServingsLabel = Clean(ServingsLabel),
+        PrepMinutes = PrepMinutes is { } p ? (int)p : null,
+        CookMinutes = CookMinutes is { } c ? (int)c : null,
+        Ingredients = [.. FromGrouped<RecipeIngredientDraft>(Ingredients)
+            .Where(x => !string.IsNullOrWhiteSpace(x.Line.Name))
+            .Select(x => new RecipeImportIngredient
+            {
+                Section = x.Section,
+                Amount = x.Line.Amount,
+                Unit = x.Line.Unit,
+                Name = x.Line.Name.Trim(),
+                Optional = x.Line.Optional,
+            })],
+        Steps = [.. FromGrouped<RecipeStepDraft>(Method)
+            .Where(x => !string.IsNullOrWhiteSpace(x.Line.Text))
+            .Select(x => new RecipeImportStep { Section = x.Section, Text = x.Line.Text.Trim() })],
+        TagIds = canReadTags ? ParsedTags() : null,
+    };
+
+    /// <summary>
     /// Stored lines → one list of headings and lines: a heading wherever the section changes to a new non-empty value.
     /// A line with no section after a sectioned one cannot be shown without ending the section, so it joins the
     /// section above — visible before saving (the kit's <c>rcToGrouped</c>).

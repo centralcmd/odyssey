@@ -100,7 +100,7 @@ public partial class RecipesPage
         _photoAccess = PhotoImageAccess.From(user);
 
         await PageState.RestoreOrSeedAsync<RecipesPageState>(PageStateKey, ApplyPageState, BuildPageState);
-        await Task.WhenAll(LoadTagsAsync(), ResetAsync(), LoadCountsAsync());
+        await Task.WhenAll(LoadTagsAsync(), ResetAsync(), LoadCountsAsync(), LoadImportSignalAsync());
     }
 
     private void ApplyPageState(RecipesPageState state)

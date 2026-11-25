@@ -89,6 +89,18 @@ public interface IOdysseyApi
         string? contentTypeOverride = null,
         CancellationToken ct = default,
         IReadOnlyList<KeyValuePair<string, string>>? fields = null);
+
+    /// <summary>
+    /// POSTs a multipart body with several files under one form field (<paramref name="fieldName"/>, repeated) and
+    /// the plain <paramref name="fields"/> (a repeated name is sent once per value), and deserializes the response as
+    /// <typeparamref name="T"/>. Each part keeps its file's own content type.
+    /// </summary>
+    Task<ApiResult<T>> UploadManyAsync<T>(
+        string url,
+        IReadOnlyList<ApiUpload> files,
+        string fieldName,
+        IReadOnlyList<KeyValuePair<string, string>> fields,
+        CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IOdysseyApi" />
@@ -352,6 +364,56 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         catch (Exception ex)
         {
             return ApiResult<T>.Failure(ex);
+        }
+    }
+
+    public async Task<ApiResult<T>> UploadManyAsync<T>(
+        string url,
+        IReadOnlyList<ApiUpload> files,
+        string fieldName,
+        IReadOnlyList<KeyValuePair<string, string>> fields,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(fields);
+        var streams = new List<Stream>();
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            foreach (var (name, value) in fields)
+            {
+                content.Add(new StringContent(value), name);
+            }
+
+            foreach (var file in files)
+            {
+                var stream = file.OpenRead();
+                streams.Add(stream);
+                var part = new StreamContent(stream);
+                part.Headers.ContentType = new MediaTypeHeaderValue(
+                    string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType);
+                content.Add(part, fieldName, file.FileName);
+            }
+
+            using var response = await http.PostAsync(url, content, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+            }
+
+            return ApiResult<T>.Success(
+                await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location);
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<T>.Failure(ex);
+        }
+        finally
+        {
+            foreach (var stream in streams)
+            {
+                await stream.DisposeAsync();
+            }
         }
     }
 
