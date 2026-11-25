@@ -6,6 +6,10 @@
     author and tags — NOT contributors, images or files, which are linked from the record's ⋯ menu (the subtitle says
     so). Standard width: `Wide` is for batch grids.
 
+    Tags: with books.tags.create the field offers one inline "Create ‘…’ · Book tag" row, as every tag field does; the
+    POST runs behind a temporary id that Save resolves first, and a name an active or archived book tag holds is
+    refused at the field (TagNameRule).
+
     Arrays sent: tagIds follows the claim snapshot at open (the edited list with books.tags.read; without it null on
     PUT, [] on POST). contributors, photoIds, coverPhotoId and attachmentFileIds are never edited here — null on PUT,
     empty on POST. A stale version (409 book-version-conflict) shows an alert with Reload, which confirms and reseeds
@@ -66,7 +70,10 @@
         <OdsSectionDivider Label="Tags" HeadingLevel="0" />
         <OdsTagMultiSelect Label="Tags" Value="_tagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
                            Placeholder="No tags" AddLabel="Add tag" UnknownLabel="Unavailable tag"
-                           PreserveOnClear="PreserveTag" Help="@TagHelp" Error="@Err("tagIds")" />
+                           PreserveOnClear="PreserveTag" Help="@TagHelp" Error="@Err("tagIds")"
+                           OnCreate="@(_canCreateTags ? CreateTagOption : null)"
+                           CreateKinds="OdsTypeRegistries.TagCreateKinds.Book"
+                           CreateBlocked="BlockedTagName" />
     }
 </OdsFormDialog>
 

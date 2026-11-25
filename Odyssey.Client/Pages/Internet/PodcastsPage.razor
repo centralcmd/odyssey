@@ -168,7 +168,7 @@
 @if (_feedDialogKey != Guid.Empty)
 {
     <NewsFeedDialog @key="_feedDialogKey" Open="_feedDialogOpen" OpenChanged="v => _feedDialogOpen = v"
-                    Tags="_tags" InitialKind="NewsFeedKind.Podcast" Saved="OnPodcastCreatedAsync" />
+                    Tags="_tags" CanCreateTags="_canCreateTags" InitialKind="NewsFeedKind.Podcast" Saved="OnPodcastCreatedAsync" />
 }
 
 @code {

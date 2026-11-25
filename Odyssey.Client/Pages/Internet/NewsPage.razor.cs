@@ -76,6 +76,8 @@ public partial class NewsPage : IDisposable
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
 
+    [Inject] private ITagQuickCreate<ExistingNewsTag> TagCreator { get; set; } = default!;
+
     /// <summary><c>?feedId=</c> preselects that one feed and clears the other filters except Status (§3.1).</summary>
     [SupplyParameterFromQuery(Name = "feedId")] public Guid? FeedIdQuery { get; set; }
 
@@ -105,6 +107,7 @@ public partial class NewsPage : IDisposable
     private bool _canCreateFeeds;
     private bool _canReadSettings;
     private bool _canReadFileStorage;
+    private bool _canCreateTags;
 
     // ── Reference data ─────────────────────────────────────────────────────────────────────────────
     private List<NewsFeedCatalogueEntry> _catalogue = [];
@@ -315,6 +318,7 @@ public partial class NewsPage : IDisposable
         var user = await Auth.GetUserAsync();
         _canUpdate = user.HasPermission(PermissionClaims.NewsUpdate);
         _canCreateFeeds = user.HasPermission(PermissionClaims.NewsFeedsCreate);
+        _canCreateTags = user.HasPermission(PermissionClaims.NewsTagsCreate);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
         _canReadFileStorage = user.HasPermission(PermissionClaims.FileStorageRead);
 

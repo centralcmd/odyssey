@@ -2,6 +2,7 @@ using MudBlazor;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Internet;
 
 namespace Odyssey.Client.Services;
 
@@ -51,9 +52,14 @@ public interface ITagQuickCreate<TTag>
 public sealed class TagQuickCreate<TTag>(
     ITagsApiClient<TTag> tags,
     IReferenceDataCache referenceData,
+    INewsCatalogueCache newsCatalogue,
     ISnackbar snackbar) : ITagQuickCreate<TTag>
 {
     private readonly QuickCreateLedger ledger = new();
+
+    // Temporary ids whose create has already failed — a create that fails before Begin returns (a synchronous
+    // refusal) has fired OnCreateFailed for an option the host has not added yet, so Begin must not hand it out.
+    private readonly HashSet<string> failed = new(StringComparer.Ordinal);
 
     public Action<string>? OnCreateFailed { get; set; }
 
@@ -65,7 +71,7 @@ public sealed class TagQuickCreate<TTag>(
         }
 
         var tempId = ledger.Stage(id => CreateAsync(clean, id));
-        return new OdsOption(tempId, clean);
+        return failed.Contains(tempId) ? null : new OdsOption(tempId, clean);
     }
 
     public Task WhenSettledAsync() => ledger.WhenSettledAsync();
@@ -92,24 +98,47 @@ public sealed class TagQuickCreate<TTag>(
                 ? "that name is already taken by a tag this field can't offer."
                 : result.Error;
             snackbar.Add($"Couldn’t create “{name}”: {reason}", Severity.Error);
+            failed.Add(tempId);
             OnCreateFailed?.Invoke(tempId);
         }
         catch (Exception ex)
         {
             snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
+            failed.Add(tempId);
             OnCreateFailed?.Invoke(tempId);
         }
     }
 
     // Transaction tags are cached for the whole session (issue #372), so a tag minted here would be
     // missing from every later picker and the Transactions filter until a reload — and the picker
-    // would offer to create it again (issue #251). The other tag resources aren't cached; this is the
-    // same type test OdsTagAdmin makes, so the two write paths into the vocabulary agree.
+    // would offer to create it again (issue #251). News tags are cached the same way by the news
+    // catalogue (the News tags page drops that cache on every write). The other tag resources aren't
+    // cached.
     private void InvalidateCachedTags()
     {
         if (typeof(TTag) == typeof(ExistingTransactionTag))
         {
             referenceData.InvalidateTransactionTags();
         }
+        else if (typeof(TTag) == typeof(ExistingNewsTag))
+        {
+            newsCatalogue.InvalidateTags();
+        }
     }
+}
+
+/// <summary>What every host of an inline tag create does around its save.</summary>
+public static class TagQuickCreateHost
+{
+    /// <summary>
+    /// The created options re-keyed to their real ids once the creates settled (a failed create drops out), so a
+    /// field whose save then fails still offers the tags it minted — under the ids the selection now carries —
+    /// instead of showing them as unavailable until a reload.
+    /// </summary>
+    public static List<OdsOption> ResolveCreated<TTag>(this ITagQuickCreate<TTag> creator, IEnumerable<OdsOption> created) =>
+        [.. created.Select(o => creator.Resolve(o.Value) is { } id ? o with { Value = id } : null).OfType<OdsOption>()];
+
+    /// <summary>True when a saved record carries a tag id the page's list does not hold — a tag created inline.</summary>
+    public static bool NeedsTagReload<TValue>(IEnumerable<Guid> savedTagIds, IReadOnlyDictionary<Guid, TValue> known) =>
+        savedTagIds.Any(id => !known.ContainsKey(id));
 }

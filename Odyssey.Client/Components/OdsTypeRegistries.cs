@@ -866,6 +866,12 @@ public static partial class OdsTypeRegistries
 
         public static readonly IReadOnlyList<OdsCreateKind> Recipe =
             [new("recipe", "Recipe tag") { Icon = "soup_kitchen" }];
+
+        public static readonly IReadOnlyList<OdsCreateKind> Book =
+            [new("book", "Book tag") { Icon = "auto_stories" }];
+
+        public static readonly IReadOnlyList<OdsCreateKind> News =
+            [new("news", "News tag") { Icon = "feed" }];
     }
 
     /// <summary>

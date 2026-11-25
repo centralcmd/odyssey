@@ -3,6 +3,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Odyssey.ApiClient;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Internet;
 using Odyssey.Dtos;
@@ -192,6 +193,67 @@ public class NewsPageHeaderAndDialogsTests
         context.News.Verify(n => n.AddArticleTagAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         cut.WaitForAssertion(() => Assert.DoesNotContain("Drop", cut.Find($"#nwa-{article.Id} .odc-record-namerow").TextContent, StringComparison.Ordinal));
         cut.WaitForAssertion(() => Assert.Contains("Tags saved for Story", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_tag_created_inline_in_the_tags_dialog_is_saved_with_its_real_id()
+    {
+        var tagId = Guid.NewGuid();
+        var article = Article("Story");
+        IReadOnlyCollection<Guid>? sent = null;
+        await using var context = Context([article]);
+        var lists = 0;
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++lists == 1 ? Ok(new List<ExistingNewsTag>()) : Ok(new List<ExistingNewsTag> { new() { NewsTagId = tagId, Name = "Climate" } }));
+        context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/news-tags/{tagId}")));
+        context.News.Setup(n => n.SetArticleTagsAsync(article.Id, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, IReadOnlyCollection<Guid> ids, CancellationToken _) => sent = ids)
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        var cut = Rendered(context);
+        ClickMenu(cut, article, "Tags…");
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsTagMultiSelect>()));
+
+        cut.FindComponent<OdsTagMultiSelect>().Find("button.odc-tagms-trigger").Click();
+        cut.WaitForElement(".odc-tagms-search input").Input("Climate");
+        cut.Find("button.odc-tagms-create").Click();
+        cut.FindAll(".ods-modal button").Single(b => b.TextContent.Contains("Save", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([tagId], sent));
+        context.NewsTags.Verify(t => t.CreateAsync(It.Is<TagWrite>(w => w.Name == "Climate"), It.IsAny<CancellationToken>()), Times.Once);
+        // The page re-read its tags, so the card's chips show the new tag by name.
+        cut.WaitForAssertion(() => Assert.Contains("Climate", cut.Find($"#nwa-{article.Id} .odc-record-namerow").TextContent, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_failed_inline_create_in_the_tags_dialog_is_rolled_back_and_saves_no_phantom_id()
+    {
+        var article = Article("Story");
+        IReadOnlyCollection<Guid>? sent = null;
+        await using var context = Context([article]);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .Returns(async (TagWrite _, CancellationToken _) =>
+            {
+                await release.Task;
+                return ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" });
+            });
+        context.News.Setup(n => n.SetArticleTagsAsync(article.Id, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, IReadOnlyCollection<Guid> ids, CancellationToken _) => sent = ids)
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        var cut = Rendered(context);
+        ClickMenu(cut, article, "Tags…");
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsTagMultiSelect>()));
+
+        cut.FindComponent<OdsTagMultiSelect>().Find("button.odc-tagms-trigger").Click();
+        cut.WaitForElement(".odc-tagms-search input").Input("Climate");
+        cut.Find("button.odc-tagms-create").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
+        release.SetResult();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
+        cut.FindAll(".ods-modal button").Single(b => b.TextContent.Contains("Save", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.Empty(sent!));
     }
 
     [Fact]

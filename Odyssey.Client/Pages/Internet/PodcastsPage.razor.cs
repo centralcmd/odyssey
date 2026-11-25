@@ -93,6 +93,7 @@ public partial class PodcastsPage : IDisposable
     private bool _canUpdateFeeds;
     private bool _canReadSettings;
     private bool _canReadFileStorage;
+    private bool _canCreateTags;
 
     // ── Reference data ─────────────────────────────────────────────────────────────────────────────
     private List<ExistingNewsFeed> _feeds = [];
@@ -285,6 +286,7 @@ public partial class PodcastsPage : IDisposable
         _canDelete = user.HasPermission(PermissionClaims.PodcastAudioDelete);
         _canSavePlayback = user.HasPermission(PermissionClaims.NewsUpdate);
         _canCreateFeeds = user.HasPermission(PermissionClaims.NewsFeedsCreate);
+        _canCreateTags = user.HasPermission(PermissionClaims.NewsTagsCreate);
         _canUpdateFeeds = user.HasPermission(PermissionClaims.NewsFeedsUpdate);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
         _canReadFileStorage = user.HasPermission(PermissionClaims.FileStorageRead);

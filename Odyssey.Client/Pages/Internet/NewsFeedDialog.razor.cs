@@ -5,6 +5,7 @@ using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 
@@ -29,6 +30,8 @@ public partial class NewsFeedDialog
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
+    [Inject] private ITagQuickCreate<ExistingNewsTag> TagCreator { get; set; } = default!;
+
     [Parameter] public bool Open { get; set; }
 
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
@@ -38,6 +41,9 @@ public partial class NewsFeedDialog
 
     /// <summary>The news tags, for the Tags picker.</summary>
     [Parameter] public IReadOnlyList<ExistingNewsTag> Tags { get; set; } = [];
+
+    /// <summary><c>news-tags.create</c>: the Tags field offers an inline "Create ‘…’ · News tag" row.</summary>
+    [Parameter] public bool CanCreateTags { get; set; }
 
     /// <summary>Raised with the server's feed after a create or a save — the row shows the server's <c>url</c>.</summary>
     [Parameter] public EventCallback<ExistingNewsFeed> Saved { get; set; }
@@ -171,8 +177,52 @@ public partial class NewsFeedDialog
     private IReadOnlyList<string> _updatedFields = [];
     private bool _reloading;
 
-    private IReadOnlyList<OdsOption> TagOptions =>
-        NewsVisuals.TagPickerOptions(Tags, _tagIds.Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty));
+    /// <summary>Tags minted from the field in this dialog, under their temporary ids until the save resolves them.</summary>
+    private List<OdsOption> _createdTags = [];
+
+    private IReadOnlyList<OdsOption> TagOptions
+    {
+        get
+        {
+            var known = NewsVisuals.TagPickerOptions(Tags, _tagIds.Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty));
+            return [.. _createdTags.Where(c => known.All(o => o.Value != c.Value)), .. known];
+        }
+    }
+
+    private OdsOption? CreateTagOption(string text, string? kind)
+    {
+        var option = TagCreator.Begin(text);
+        if (option is not null)
+        {
+            _createdTags.Add(option);
+            StateHasChanged();
+        }
+
+        return option;
+    }
+
+    private void OnTagCreateFailed(string tempId)
+    {
+        _createdTags.RemoveAll(o => o.Value == tempId);
+        _tagIds = [.. _tagIds.Where(id => id != tempId)];
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // A news tag name is unique across active and archived tags.
+    private string? BlockedTagName(string text) => NewsVisuals.BlockedTagName(Tags, _createdTags, text);
+
+    /// <summary>Waits for the inline creates and swaps each temporary id for the real one (a failed create drops out).</summary>
+    private async Task ResolveCreatedTagsAsync()
+    {
+        if (_createdTags.Count == 0)
+        {
+            return;
+        }
+
+        await TagCreator.WhenSettledAsync();
+        _tagIds = [.. _tagIds.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
+        _createdTags = TagCreator.ResolveCreated(_createdTags);
+    }
 
     internal string ReloadedText => _updatedFields.Count == 0
         ? "Reloaded. Nothing changed on the server."
@@ -204,6 +254,8 @@ public partial class NewsFeedDialog
     }
 
     private bool _focusConflict;
+
+    protected override void OnInitialized() => TagCreator.OnCreateFailed = OnTagCreateFailed;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -314,6 +366,7 @@ public partial class NewsFeedDialog
 
     private async Task<bool> SaveAsync()
     {
+        await ResolveCreatedTagsAsync();
         var url = _url!.Trim();
         var title = string.IsNullOrWhiteSpace(_title) ? null : _title.Trim();
         var interval = _interval is { } minutes ? (int?)(int)minutes : null;
