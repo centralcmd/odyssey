@@ -93,6 +93,14 @@ public partial class RecipeImportsPage
 
     private CancellationTokenSource? _poll;
 
+    private bool _initialized;
+    private (Guid?, bool)? _appliedLink;
+
+    /// <summary>Bumped per list load, so a slower earlier response never overwrites a later filter or sort.</summary>
+    private int _loadGeneration;
+
+    private readonly Dictionary<Guid, string> _acceptedTitles = [];
+
     private DateTime Now => Clock.GetUtcNow().UtcDateTime;
 
     private bool Enabled => _options is { Enabled: true };
@@ -125,6 +133,28 @@ public partial class RecipeImportsPage
             _tags = tagsResult.IsSuccess ? tagsResult.Value ?? [] : [];
         }
 
+        _initialized = true;
+        await ApplyDeepLinkAsync();
+    }
+
+    /// <summary>A link to this page while it is already open (the Recipes signal) changes only the query.</summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_initialized)
+        {
+            await ApplyDeepLinkAsync();
+        }
+    }
+
+    private async Task ApplyDeepLinkAsync()
+    {
+        var link = (OpenQuery, ReviewQuery);
+        if (link == _appliedLink)
+        {
+            return;
+        }
+
+        _appliedLink = link;
         if (OpenQuery is { } id && _rows.FirstOrDefault(r => r.Id == id) is { } row)
         {
             await ToggleAsync(row, true);
@@ -158,6 +188,7 @@ public partial class RecipeImportsPage
 
     private async Task LoadAsync()
     {
+        var generation = ++_loadGeneration;
         _isLoading = _rows.Count == 0;
         _loadError = false;
         var list = Imports.ListAsync(Filter, 1, Window);
@@ -165,6 +196,11 @@ public partial class RecipeImportsPage
         var progress = Imports.ListAsync(new RecipeImportListFilter { Status = [RecipeImportStatus.Queued, RecipeImportStatus.Running] }, 1, 1);
         var all = Imports.ListAsync(new RecipeImportListFilter { IncludePurged = true }, 1, 1);
         var result = await list;
+        if (generation != _loadGeneration)
+        {
+            return;
+        }
+
         _loadError = !result.IsSuccess;
         _rows = [.. result.ValueOr(new()).Items];
         _readyCount = (await ready).ValueOr(new()).TotalCount;
@@ -363,7 +399,11 @@ public partial class RecipeImportsPage
     private async Task OnDraftAcceptedAsync(RecipeImportAccepted accepted)
     {
         var id = _review?.ImportId;
-        _acceptedTitles[id ?? Guid.Empty] = accepted.Title;
+        if (id is { } acceptedId)
+        {
+            _acceptedTitles[acceptedId] = accepted.Title;
+        }
+
         await LoadAsync();
         if (id is { } importId)
         {
@@ -376,14 +416,12 @@ public partial class RecipeImportsPage
         await AnnounceAsync($"Recipe {accepted.Title} created.{files}");
     }
 
-    private readonly Dictionary<Guid, string> _acceptedTitles = [];
-
     private string CreatedTitle(RecipeImportSummary r) =>
         (_acceptedTitles.GetValueOrDefault(r.Id) ?? r.DraftTitle) is { Length: > 0 } title
             ? $"Created as the recipe {title}"
             : "Created as a recipe";
 
-    private void OpenRecipe(RecipeImportSummary r) => Navigation.NavigateTo("/recipes");
+    private void GoToRecipes() => Navigation.NavigateTo("/recipes");
 
     // ── Menu and confirmations ──────────────────────────────────────────────────────────
 
@@ -480,7 +518,7 @@ public partial class RecipeImportsPage
         var result = confirm.Kind switch
         {
             "cancel" => await Imports.CancelAsync(id),
-            "discard" => await Imports.DiscardAsync(id, _details.GetValueOrDefault(id)?.Drafts.FirstOrDefault()?.Id ?? Guid.Empty),
+            "discard" => await DiscardAsync(id),
             _ => await Imports.DeleteAsync(id),
         };
         if (!result.IsSuccess)
@@ -515,6 +553,20 @@ public partial class RecipeImportsPage
             _ => "Import deleted.",
         });
         return true;
+    }
+
+    /// <summary>The ⋯ menu works on a closed card too, whose detail (and so its draft id) is not loaded yet.</summary>
+    private async Task<Odyssey.ApiClient.ApiResult> DiscardAsync(Guid id)
+    {
+        if (!_details.ContainsKey(id))
+        {
+            await LoadDetailAsync(id);
+        }
+
+        return _details.GetValueOrDefault(id)?.Drafts.FirstOrDefault() is { } draft
+            ? await Imports.DiscardAsync(id, draft.Id)
+            : Odyssey.ApiClient.ApiResult.Failure(System.Net.HttpStatusCode.Conflict,
+                new Odyssey.ApiClient.ApiProblem { Code = RecipeImportErrorCodes.DraftNotPending, Detail = "There is no draft recipe left to discard." });
     }
 
     // ── Card text ────────────────────────────────────────────────────────────────────

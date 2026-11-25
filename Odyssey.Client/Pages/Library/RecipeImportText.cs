@@ -118,6 +118,7 @@ public static class RecipeImportText
         RecipeImportFailureCodes.DocumentRejected => "The AI service couldn’t read one of the documents — too many pages, password-protected or damaged.",
         RecipeImportFailureCodes.Truncated => "The recipe was too long for one draft. Try sending fewer pages.",
         RecipeImportFailureCodes.NoRecipeFound => "No recipe was found in what you sent.",
+        RecipeImportFailureCodes.PreparationFailed => "Odyssey couldn’t prepare the import, so nothing was sent. Start a new import to try again.",
         RecipeImportFailureCodes.MalformedOutput => "The AI’s answer couldn’t be read. Start a new import to try again.",
         _ => "The AI service didn’t answer. Start a new import to try again.",
     };

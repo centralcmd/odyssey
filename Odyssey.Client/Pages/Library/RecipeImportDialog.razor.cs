@@ -21,6 +21,7 @@ public partial class RecipeImportDialog
 {
     private const string TextId = "ri-f-text";
     private const string FilesId = "ri-f-upload";
+    private const string FilesLabelId = "ri-f-upload-label";
     private const string PhotoNoteId = "ri-photo-note";
     private const string ConsentHeadingId = "ri-consent-h";
 
@@ -78,7 +79,10 @@ public partial class RecipeImportDialog
     ];
 
     private IReadOnlyList<OdsErrorSummaryProblem> Problems =>
-        [.. _errors.Select(e => new OdsErrorSummaryProblem(e.Value, e.Key == "text" ? "Recipe text" : "Files", e.Key == "text" ? TextId : FilesId))];
+        [.. _errors.Select(e => new OdsErrorSummaryProblem(e.Value, e.Key == "text" ? "Recipe text" : "Files", e.Key == "text" || !_canReadFiles ? TextId : FilesId))];
+
+    /// <summary>Send needs consent and an import that is switched on; after a "turned off" refusal it stays off.</summary>
+    private bool CanSend => _agree && _options is { Enabled: true };
 
     private string? ErrorOf(string key) => _errors.GetValueOrDefault(key);
 
@@ -248,14 +252,14 @@ public partial class RecipeImportDialog
         CheckSources();
         if (_errors.Count > 0)
         {
-            await Js.InvokeVoidAsync("odsFocusFirstIn", _errors.ContainsKey("text") ? TextId : FilesId, true, 2);
+            await Js.InvokeVoidAsync("odsFocusFirstIn", _errors.ContainsKey("text") || !_canReadFiles ? TextId : FilesId, true, 2);
             return;
         }
 
         await MoveToAsync(1);
     }
 
-    private Task GoToAsync(int step) => step == 1 ? NextAsync() : MoveToAsync(0);
+    private Task GoToAsync(int step) => _sending ? Task.CompletedTask : step == 1 ? NextAsync() : MoveToAsync(0);
 
     private async Task MoveToAsync(int step)
     {
@@ -284,7 +288,7 @@ public partial class RecipeImportDialog
     /// </summary>
     private async Task SendAsync()
     {
-        if (!_agree || _sending || _options is null)
+        if (_sending || !CanSend)
         {
             return;
         }
@@ -305,13 +309,13 @@ public partial class RecipeImportDialog
 
         _sending = true;
         StateHasChanged();
-        var maxUpload = _options.MaxFileBytes.Values.DefaultIfEmpty(0).Max();
+        var maxUpload = _options!.MaxFileBytes.Values.DefaultIfEmpty(0).Max();
         var uploads = _uploads
             .Where(f => f.Source is not null)
             .Select(f => f.Source!.ToApiUpload(maxUpload) with { ContentType = RecipeImportText.ContentTypeFor(f.Name) })
             .ToList();
         var result = await Imports.CreateAsync(new RecipeImportSubmission(
-            _clientRequestId, _text.Trim().Length > 0 ? _text : null, [.. _picked], uploads, _shownVersion!));
+            _clientRequestId, _text.Trim().Length > 0 ? _text : null, [.. _picked], uploads, _shownVersion!, ConsentAcknowledged: _agree));
         _sending = false;
 
         if (result.IsSuccess && result.Value is { } created)
@@ -385,5 +389,6 @@ public partial class RecipeImportDialog
     private static bool IsHttps(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
 
-    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+    /// <summary>Closing mid-send would lose the answer to a post the server may still accept, so it waits.</summary>
+    private Task CloseAsync() => _sending ? Task.CompletedTask : OpenChanged.InvokeAsync(false);
 }

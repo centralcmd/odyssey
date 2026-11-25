@@ -174,8 +174,8 @@
             "failed" => @<OdsProblemAlert Severity="OdsSeverity.Error" Title="The import failed" Detail="@FailedDetail(r, detail)" />,
             "created" => @<OdsProblemAlert Severity="OdsSeverity.Info" Title="@CreatedTitle(r)"
                                            Detail="It’s in Recipes now, with the source files you chose to attach. Deleting this import won’t touch the recipe."
-                                           ActionLabel="Open recipe" ActionIcon="arrow_forward"
-                                           OnAction="@(() => OpenRecipe(r))" />,
+                                           ActionLabel="Go to Recipes" ActionIcon="arrow_forward"
+                                           OnAction="GoToRecipes" />,
             _ => null,
         };
     }

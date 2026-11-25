@@ -341,6 +341,42 @@ public class RecipeImportUiTests
         Assert.Contains("How it works", page.Markup, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Discarding_from_a_closed_card_loads_the_import_and_sends_its_real_draft_id()
+    {
+        await using var ctx = PageTestContext.Create(Importer);
+        var api = new Mock<IRecipeImportsApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
+        var row = Row(RecipeImportStatus.Completed, pending: 1);
+        var draftId = Guid.NewGuid();
+        api.Setup(a => a.ListAsync(It.IsAny<RecipeImportListFilter?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new PagedResult<RecipeImportSummary> { Items = [row], TotalCount = 1 }));
+        api.Setup(a => a.GetOptionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(Options()));
+        api.Setup(a => a.GetAsync(row.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new RecipeImportDetail
+        {
+            Summary = row,
+            Drafts = [Draft() with { Id = draftId }],
+        }));
+        api.Setup(a => a.DiscardAsync(row.Id, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        ctx.Services.AddSingleton(api.Object);
+        var popovers = ctx.Render<MudPopoverProvider>();
+        var dialogs = ctx.Render<MudDialogProvider>();
+        var page = ctx.Render<RecipeImportsPage>();
+        page.WaitForAssertion(() => Assert.NotNull(page.Find($"#{RecipeImportsPage.MenuId(row.Id)} button")));
+
+        await page.InvokeAsync(() => page.Find($"#{RecipeImportsPage.MenuId(row.Id)} button").Click());
+        popovers.WaitForAssertion(() => Assert.Contains("Discard draft recipe…", popovers.Markup, StringComparison.Ordinal));
+        var item = popovers.FindAll("*").Last(e => e.TextContent.Trim() == "Discard draft recipe…");
+        await popovers.InvokeAsync(() => item.Click());
+        AngleSharp.Dom.IElement ConfirmButton() =>
+            dialogs.FindAll("button").Concat(page.FindAll("button")).Last(b => b.TextContent.Trim().EndsWith("Discard draft recipe", StringComparison.Ordinal));
+        dialogs.WaitForAssertion(() => Assert.NotNull(ConfirmButton()));
+        await dialogs.InvokeAsync(() => ConfirmButton().Click());
+
+        dialogs.WaitForAssertion(() => api.Verify(a => a.DiscardAsync(row.Id, It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once));
+        api.Verify(a => a.DiscardAsync(row.Id, draftId, It.IsAny<CancellationToken>()), Times.Once);
+        api.Verify(a => a.DiscardAsync(It.IsAny<Guid>(), Guid.Empty, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── DocumentSourcePanel ──────────────────────────────────────────────────────────
 
     [Fact]

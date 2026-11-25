@@ -39,14 +39,14 @@
             {
                 <section class="ri-compose rc-wiz-panel" aria-label="Recipe">
                     <OdsNoteField Id="@TextId" Label="Recipe text" Value="@_text" ValueChanged="OnTextChanged"
-                                  CounterMax="@_options?.MaxSourceTextLength" Rows="6" Error="@ErrorOf("text")"
+                                  CounterMax="@_options?.MaxSourceTextLength" Rows="6" Error="@(ErrorOf("text") ?? (_canReadFiles ? null : ErrorOf("sources")))"
                                   Placeholder="Paste the recipe — the ingredients, the steps, any notes. Or add the recipe as files below."
                                   Help="Everyone in your household who can import recipes can read this text." />
 
                     @if (_canReadFiles)
                     {
-                        <div class="ri-files" id="@FilesId" tabindex="-1">
-                            <div class="ri-files-t">Recipe files</div>
+                        <div class="ri-files" id="@FilesId" tabindex="-1" role="group" aria-labelledby="@FilesLabelId">
+                            <div class="ri-files-t" id="@FilesLabelId">Recipe files</div>
                             <DocumentSourcePanel Tab="@_fileTab" TabChanged="@(t => _fileTab = t)" Counts="true"
                                                  ShowUpload="_canUpload" ShowLibrary="true"
                                                  Uploads="_uploads" UploadsChanged="OnUploadsChanged"
@@ -148,22 +148,20 @@
         {
             <OdsErrorSummary Problems="Problems" OnJump="JumpAsync" />
         }
-        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Text" AriaDisabled="_sending" OnClick="CloseAsync">Cancel</OdsButton>
         @if (_step > 0)
         {
-            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="arrow_back" OnClick="@(() => GoToAsync(0))">Back</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="arrow_back" AriaDisabled="_sending" OnClick="@(() => GoToAsync(0))">Back</OdsButton>
         }
         @if (_step == 0)
         {
             <OdsButton Variant="OdsButtonVariant.Filled" IconRight="arrow_forward" AriaDisabled="@(!CanProceed)" OnClick="NextAsync">Next</OdsButton>
         }
-        else if (_sending)
-        {
-            <OdsButton Variant="OdsButtonVariant.Filled" Icon="cloud_upload" AriaDisabled="true">Sending…</OdsButton>
-        }
         else
         {
-            <OdsButton Variant="OdsButtonVariant.Filled" Icon="cloud_upload" Disabled="@(!_agree || _options is null)" OnClick="SendAsync">Send &amp; draft</OdsButton>
+            @* One button across the send, so focus stays on it while the request runs (WCAG 2.4.3). *@
+            <OdsButton Variant="OdsButtonVariant.Filled" Icon="cloud_upload" Loading="_sending"
+                       Disabled="@(!CanSend)" AriaDisabled="_sending" OnClick="SendAsync">@(_sending ? "Sending…" : "Send & draft")</OdsButton>
         }
     </Footer>
 </OdsModal>
