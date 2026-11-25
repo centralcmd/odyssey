@@ -568,6 +568,20 @@ public class NewsFeedsPageTests
         Assert.Contains("Healthy", cut.Find($"#nf-{created.Id} .odc-newshealth").TextContent, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task New_feed_opens_with_an_empty_feed_url()
+    {
+        // A bare InitialUrl="_dialogUrl" binds the literal text "_dialogUrl" to a string parameter.
+        await using var context = Context([Feed("Other")]);
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+
+        Assert.Null(cut.FindComponent<NewsFeedDialog>().Instance.InitialUrl);
+        Assert.Equal(string.Empty, cut.Find($"input#{NewsFeedDialog.UrlId}, #{NewsFeedDialog.UrlId} input").GetAttribute("value") ?? string.Empty);
+    }
+
     private static void CheckAgain(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, ExistingNewsFeed feed) =>
         cut.FindAll($"#nf-{feed.Id} button").First(b => b.TextContent.Contains("Check again", StringComparison.Ordinal)).Click();
 
