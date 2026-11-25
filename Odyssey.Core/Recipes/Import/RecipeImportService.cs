@@ -116,6 +116,7 @@ public sealed class RecipeImportService(
 
         if (await ExistingForKeyAsync(caller.UserId, request.ClientRequestId, cancellationToken) is { } repeat)
         {
+            ThrowIfTombstone(repeat);
             return new RecipeImportCreated(await DetailAsync(repeat, caller, names, cancellationToken), Created: false);
         }
 
@@ -223,6 +224,7 @@ public sealed class RecipeImportService(
                 throw;
             }
 
+            ThrowIfTombstone(winner);
             return new RecipeImportCreated(await DetailAsync(winner, caller, names, cancellationToken), Created: false);
         }
         catch (RetryLimitExceededException)
@@ -480,8 +482,20 @@ public sealed class RecipeImportService(
     {
         context.ChangeTracker.Clear();
         return await context.RecipeImports.AsNoTracking()
-            .FirstOrDefaultAsync(i => i.RequestedByUserId == userId && i.ClientRequestId == clientRequestId && i.DeletedAt == null,
-                cancellationToken);
+            .FirstOrDefaultAsync(i => i.RequestedByUserId == userId && i.ClientRequestId == clientRequestId, cancellationToken);
+    }
+
+    /// <summary>
+    /// The unique key covers tombstones too, so a deleted import's id can never be reused: say so with a <c>409</c>
+    /// rather than answer with a deleted import or fail on the duplicate key.
+    /// </summary>
+    private static void ThrowIfTombstone(RecipeImport import)
+    {
+        if (import.DeletedAt is not null)
+        {
+            throw new RecipeImportException(HttpStatusCode.Conflict, RecipeImportErrorCodes.RequestIdUsed,
+                "This request id belongs to an import that was deleted. Start a new import.");
+        }
     }
 
     /// <summary>

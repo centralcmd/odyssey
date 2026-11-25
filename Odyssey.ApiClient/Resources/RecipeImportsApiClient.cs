@@ -25,7 +25,8 @@ public sealed record RecipeImportSubmission(
     string? Text,
     IReadOnlyList<Guid> ExistingFileIds,
     IReadOnlyList<ApiUpload> Uploads,
-    string DisclosureVersion);
+    string DisclosureVersion,
+    bool ConsentAcknowledged);
 
 /// <summary>
 /// Typed client for AI recipe import (issue #602). A submission with new files goes multipart to <c>…/uploads</c>, one
@@ -79,7 +80,7 @@ public sealed class RecipeImportsApiClient(IOdysseyApi api) : IRecipeImportsApiC
                 ClientRequestId = submission.ClientRequestId,
                 Text = submission.Text,
                 ExistingFileIds = [.. submission.ExistingFileIds],
-                ConsentAcknowledged = true,
+                ConsentAcknowledged = submission.ConsentAcknowledged,
                 DisclosureVersion = submission.DisclosureVersion,
             }, ct);
         }
@@ -87,7 +88,7 @@ public sealed class RecipeImportsApiClient(IOdysseyApi api) : IRecipeImportsApiC
         var fields = new List<KeyValuePair<string, string>>
         {
             new("clientRequestId", submission.ClientRequestId.ToString()),
-            new("consentAcknowledged", "true"),
+            new("consentAcknowledged", submission.ConsentAcknowledged ? "true" : "false"),
             new("disclosureVersion", submission.DisclosureVersion),
         };
         if (!string.IsNullOrEmpty(submission.Text))

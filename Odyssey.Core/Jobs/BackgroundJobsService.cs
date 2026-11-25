@@ -63,6 +63,7 @@ public sealed class BackgroundJobsService(
     JobRunSweeper sweeper,
     Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncService instrumentPriceSync,
     Odyssey.Core.Finance.Instruments.IInstrumentPriceSettingsLookup instrumentPriceSettings,
+    Odyssey.Core.Recipes.Import.IRecipeImportSettingsLookup recipeImportSettings,
     TimeProvider time)
 {
     private static readonly TimeSpan Day = TimeSpan.FromDays(1);
@@ -747,9 +748,7 @@ public sealed class BackgroundJobsService(
             case JobType.RecurrenceKeyBackfill:
                 return await context.RecurrencePatterns.AnyAsync(p => p.KeysBackfilledAt == null, cancellationToken);
             case JobType.RecipeImportRetention:
-                var days = await new Odyssey.Core.Recipes.Import.RecipeImportSettingsLookup(
-                    context, Microsoft.Extensions.Logging.Abstractions.NullLogger<Odyssey.Core.Recipes.Import.RecipeImportSettingsLookup>.Instance)
-                    .GetRetentionDaysAsync(cancellationToken);
+                var days = await recipeImportSettings.GetRetentionDaysAsync(cancellationToken);
                 return await Odyssey.Core.Recipes.Import.RecipeImportRetentionJob.Due(context, Now.AddDays(-days)).AnyAsync(cancellationToken);
             default:
                 return true;

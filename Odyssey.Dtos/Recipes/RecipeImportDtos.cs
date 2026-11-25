@@ -329,6 +329,9 @@ public static class RecipeImportErrorCodes
     public const string ContentPurged = "recipe-import-content-purged";
     public const string AlreadySent = "recipe-import-already-sent";
     public const string InProgress = "recipe-import-in-progress";
+
+    /// <summary>The <c>clientRequestId</c> belongs to an import that was deleted; a new import needs a new id.</summary>
+    public const string RequestIdUsed = "recipe-import-request-id-used";
 }
 
 /// <summary>Worker failure codes recorded on an import (#602 §9). Ordinals are not used: the string is stored.</summary>
@@ -348,6 +351,9 @@ public static class RecipeImportFailureCodes
     public const string Truncated = "truncated";
     public const string NoRecipeFound = "no_recipe_found";
     public const string MalformedOutput = "malformed_output";
+
+    /// <summary>Odyssey itself failed before anything was sent (a database or file-store error), not the AI service.</summary>
+    public const string PreparationFailed = "preparation_failed";
 
     /// <summary>The codes a failure was decided before anything was sent.</summary>
     public static readonly IReadOnlySet<string> BeforeSend = new HashSet<string>(StringComparer.Ordinal)

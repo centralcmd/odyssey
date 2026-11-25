@@ -68,6 +68,8 @@ public sealed class RecipeImportRunner(
                 AiCredentialUnavailableException => RecipeImportFailureCodes.CredentialUnavailable,
                 RecipeExtractionException { Failure: RecipeExtractionFailure.DocumentRejected } => RecipeImportFailureCodes.DocumentRejected,
                 OperationCanceledException when cancellationToken.IsCancellationRequested => RecipeImportFailureCodes.Interrupted,
+                // Before the transfer stamp nothing reached the AI service, so it is not the provider's error.
+                _ when import.TransferStartedAt is null => RecipeImportFailureCodes.PreparationFailed,
                 _ => RecipeImportFailureCodes.ProviderError,
             };
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Odyssey.Core.Ai;
 using Odyssey.Dtos.Recipes;
@@ -13,7 +14,7 @@ namespace Odyssey.Core.Recipes.Import;
 /// vocabulary untrusted data. The only output channel is the forced <c>store_recipes</c> tool. Nothing of the request
 /// or the response is logged — the shared transport logs status, error type and request id only.
 /// </summary>
-public sealed class ClaudeRecipeExtractionProvider(HttpClient httpClient, ILogger<ClaudeRecipeExtractionProvider> logger)
+public sealed partial class ClaudeRecipeExtractionProvider(HttpClient httpClient, ILogger<ClaudeRecipeExtractionProvider> logger)
     : IRecipeExtractionProvider
 {
     public const string ToolName = "store_recipes";
@@ -151,7 +152,7 @@ public sealed class ClaudeRecipeExtractionProvider(HttpClient httpClient, ILogge
             index++;
             if (source.Kind == RecipeImportSourceKind.Text || source.Bytes is null)
             {
-                blocks.Add(new ClaudeTextContent($"<source_document index=\"{index}\">\n{source.Text}\n</source_document>"));
+                blocks.Add(new ClaudeTextContent($"<source_document index=\"{index}\">\n{NeutraliseWrappers(source.Text)}\n</source_document>"));
                 continue;
             }
 
@@ -167,7 +168,7 @@ public sealed class ClaudeRecipeExtractionProvider(HttpClient httpClient, ILogge
             prompt.Append("<tag_vocabulary>\n");
             foreach (var tag in request.Tags)
             {
-                prompt.Append(tag.Ref).Append(": ").Append(tag.Name).Append('\n');
+                prompt.Append(tag.Ref).Append(": ").Append(NeutraliseWrappers(tag.Name)).Append('\n');
             }
 
             prompt.Append("</tag_vocabulary>\n\n");
@@ -177,6 +178,17 @@ public sealed class ClaudeRecipeExtractionProvider(HttpClient httpClient, ILogge
         blocks.Add(new ClaudeTextContent(prompt.ToString()));
         return blocks;
     }
+
+    /// <summary>
+    /// Untrusted text must not be able to close (or open) the wrapper it sits in, so a source cannot step outside
+    /// <c>&lt;source_document&gt;</c> and pose as instructions. Only the wrapper names are touched: a recipe's own
+    /// "&lt;" or "&amp;" reaches the model as written, so ingredient names are not mangled into entities.
+    /// </summary>
+    internal static string NeutraliseWrappers(string? text) =>
+        string.IsNullOrEmpty(text) ? string.Empty : WrapperTag().Replace(text, "&lt;$1");
+
+    [GeneratedRegex(@"<(\s*/?\s*(?:source_document|tag_vocabulary))", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex WrapperTag();
 
     /// <summary>Schema-validates the tool input; <c>null</c> on any violation, so nothing partial is stored.</summary>
     internal static List<ExtractedRecipe>? Parse(JsonElement input)

@@ -169,6 +169,7 @@ public static class RecipeImportTerminal
         [RecipeImportFailureCodes.Truncated] = "The recipe was too long for one draft.",
         [RecipeImportFailureCodes.NoRecipeFound] = "No recipe was found in the sources.",
         [RecipeImportFailureCodes.MalformedOutput] = "The AI service's answer could not be read.",
+        [RecipeImportFailureCodes.PreparationFailed] = "Odyssey could not prepare the import, so nothing was sent.",
     };
 
     /// <summary>Writes Failed with the code and its curated message, clears the claim and bumps the generation.</summary>
