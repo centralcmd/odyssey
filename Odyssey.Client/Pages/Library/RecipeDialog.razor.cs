@@ -76,7 +76,7 @@ public partial class RecipeDialog
 
     private bool IsLastStep => _step == RecipeDraft.MethodStep;
 
-    private RenderFragment TitleFragment => b => b.AddContent(0, IsEdit ? "Edit recipe" : "New recipe");
+    private RenderFragment TitleFragment => b => b.AddContent(0, IsImport ? "Review imported recipe" : IsEdit ? "Edit recipe" : "New recipe");
 
     private string ServingsUnit => string.IsNullOrWhiteSpace(_draft.ServingsLabel) ? "serving" : _draft.ServingsLabel.Trim();
 
@@ -131,9 +131,17 @@ public partial class RecipeDialog
     {
         if (Open && !_wasOpen)
         {
-            Seed(Recipe);
+            if (ImportReview is { } review)
+            {
+                SeedImport(review);
+            }
+            else
+            {
+                Seed(Recipe);
+            }
+
             _step = RecipeDraft.DetailsStep;
-            _visited = Recipe is null ? [true, false, false] : [true, true, true];
+            _visited = Recipe is null && ImportReview is null ? [true, false, false] : [true, true, true];
             _closing = false;
             _modalOpen = true;
         }

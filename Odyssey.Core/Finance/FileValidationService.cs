@@ -32,6 +32,9 @@ public class FileValidationService
     {
     }
 
+    /// <summary>Whether the administrator's upload allow-list accepts <paramref name="contentType"/> (issue #602 A9).</summary>
+    public bool IsAllowedContentType(string contentType) => allowedMimeTypes.Contains(contentType);
+
     public async Task ValidateFileAsync(FileUpload file, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(file);

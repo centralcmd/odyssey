@@ -43,6 +43,10 @@ public enum JobType : byte
     /// <summary>The daily podcast audio auto-delete (issue #556 §3.7).</summary>
     PodcastAudioRetention = 12,
 
+    RecipeImport = 13,
+
+    RecipeImportRetention = 14,
+
     Unknown = byte.MaxValue,
 }
 
@@ -377,6 +381,8 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.RecurrenceKeyBackfill)] = typeof(RecurrenceKeyBackfillJobRunDetail),
         [nameof(Application.JobType.PodcastAudioDownload)] = typeof(PodcastAudioDownloadJobRunDetail),
         [nameof(Application.JobType.PodcastAudioRetention)] = typeof(PodcastAudioRetentionJobRunDetail),
+        [nameof(Application.JobType.RecipeImport)] = typeof(RecipeImportJobRunDetail),
+        [nameof(Application.JobType.RecipeImportRetention)] = typeof(RecipeImportRetentionJobRunDetail),
     };
 
     public override JobRunDetail? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -758,6 +764,27 @@ public sealed record PodcastAudioRetentionJobRunDetail : JobRunDetail
     public int? AudioReleased { get; set; }
 
     public long? AudioBytesReleased { get; set; }
+}
+
+/// <summary>
+/// A burst of the AI recipe import queue (issue #602 §11): imports drafted, failed after sending, and refused before
+/// anything was sent. Counts only; <c>null</c> without <c>recipes.import</c>.
+/// </summary>
+public sealed record RecipeImportJobRunDetail : JobRunDetail
+{
+    public int? ImportsCompleted { get; set; }
+
+    public int? ImportsFailed { get; set; }
+
+    public int? ImportsRefused { get; set; }
+}
+
+/// <summary>A recipe import retention pass (issue #602 §4): imports purged and files released. Counts only.</summary>
+public sealed record RecipeImportRetentionJobRunDetail : JobRunDetail
+{
+    public int? ImportsPurged { get; set; }
+
+    public int? ImportFilesReleased { get; set; }
 }
 
 /// <summary>

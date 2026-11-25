@@ -18,6 +18,12 @@ public enum ImportSurface
 
     /// <summary>The news OPML import (issue #508). Its arm also sets the upload-rate floor.</summary>
     NewsOpml,
+
+    /// <summary>
+    /// The AI recipe import's multipart create (issue #602 A17): the per-import raw total, capped by the upload limit
+    /// for each file in the service.
+    /// </summary>
+    RecipeImports,
 }
 
 /// <summary>
@@ -140,6 +146,7 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
                 ImportSurface.Tasks => limits.TaskIcsMaxImportBytes,
                 ImportSurface.JournalEntries => limits.JournalIcsMaxImportBytes,
                 ImportSurface.NewsOpml => limits.NewsOpmlMaxImportBytes,
+                ImportSurface.RecipeImports => Math.Min(Odyssey.Dtos.Recipes.RecipeImportLimits.MaxTotalBytes, fileStorageOptions.Value.MaxFileSizeBytes),
                 _ => throw new InvalidOperationException($"Unhandled import surface '{importAttribute.Surface}'."),
             };
         }

@@ -261,6 +261,8 @@ public class MoneyBoundsTests(MoneyBoundsTests.Host host) : SharedApiHostTests<M
     {
         [$"{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest)}.{nameof(Odyssey.Dtos.Recipes.RecipeIngredientRequest.Amount)}"] =
             "An ingredient quantity, decimal(12,3); bounded by [Range(RecipeLimits.MinAmount, RecipeLimits.MaxAmount)] (issue #525).",
+        [$"{nameof(Odyssey.Dtos.Recipes.RecipeImportIngredient)}.{nameof(Odyssey.Dtos.Recipes.RecipeImportIngredient.Amount)}"] =
+            "A draft recipe's ingredient quantity; the same RecipeLimits bounds as the recipe request it becomes (issue #602).",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.LivingAreaSqm)}"] =
             "An area in square metres, decimal(18,2); bounded by its own [Range(0, 1_000_000)].",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.PlotAreaSqm)}"] =

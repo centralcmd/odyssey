@@ -391,6 +391,30 @@ public partial class Settings
                 Write: (p, req) => req.JobRunRetentionDays = p.IntRequest("jobRunRetentionDays"),
                 Unit: "days"),
         ]),
+        // ── AI recipe import (issue #602). The switch is an integration switch (settings.md): its own row,
+        // independent of AI document analysis, with the security claim because it authorises sending recipe
+        // sources to the processor configured under File analysis. Retention is a plain count.
+        new("AI recipe import", Icons.Material.Filled.AutoAwesome,
+        [
+            new("recipeImportEnabled", "auto_awesome", "AI recipe import",
+                "When off, no recipe text or file is sent to the AI processor: Import with AI is unavailable and "
+                + "imports still waiting fail without sending. Imports already made stay readable. It uses the "
+                + "processor, model, address and API key set under File analysis. Read live on every request. "
+                + "Every change is written to the audit log.",
+                SettingClaim.Security,
+                Field: nameof(SystemSettingsUpdate.RecipeImportEnabled),
+                Load: (p, dto) => p.SetBoolLoaded("recipeImportEnabled", dto.RecipeImportEnabled),
+                Write: (p, req) => req.RecipeImportEnabled = p.BoolRequest("recipeImportEnabled")),
+            new("recipeImportRetentionDays", "auto_delete", "Keep imports for",
+                "How long a finished recipe import keeps the text and files that were sent and its draft recipe. "
+                + "After that they are removed; a record that something was sent stays. Recipes already created are never affected.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.RecipeImportRetentionDaysMin, Max: SystemSettingsBounds.RecipeImportRetentionDaysMax,
+                Field: nameof(SystemSettingsUpdate.RecipeImportRetentionDays),
+                Load: (p, dto) => p.SetIntLoaded("recipeImportRetentionDays", dto.RecipeImportRetentionDays),
+                Write: (p, req) => req.RecipeImportRetentionDays = p.IntRequest("recipeImportRetentionDays"),
+                Unit: "days"),
+        ]),
         // ── Weather (issue #348). Nothing is fetched until the contact is set: MET Norway's terms ask
         // every client for one, and it travels in the User-Agent of every request. The Frost client id
         // joins this card from SecretCatalogue.

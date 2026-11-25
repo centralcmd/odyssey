@@ -630,5 +630,32 @@ internal static partial class SystemSettingsRegistry
             Read = r => r.JobRunRetentionDays,
             Write = (dto, v) => dto.JobRunRetentionDays = v,
         },
+
+        // ── AI recipe import (issue #602) ────────────────────────────────────────────────────────
+        //
+        // The switch is an integration switch (settings.md) with the security claim, like the
+        // file-analysis one: it authorises sending recipe sources to a third party. Read LIVE and uncached
+        // by the recipe-import service and worker, so there is no cache to evict. The retention is read
+        // uncached hourly by the worker's retention job, so neither has a cache key.
+        new BoolSetting
+        {
+            Key = SystemSettingsKeys.RecipeImportEnabled,
+            FieldName = nameof(SystemSettingsUpdate.RecipeImportEnabled),
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            DefaultValue = Bool(SystemSettingsDefaults.RecipeImportEnabled),
+            Read = r => r.RecipeImportEnabled,
+            Write = (dto, v) => dto.RecipeImportEnabled = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.RecipeImportRetentionDays,
+            Min = SystemSettingsBounds.RecipeImportRetentionDaysMin,
+            Max = SystemSettingsBounds.RecipeImportRetentionDaysMax,
+            FieldName = nameof(SystemSettingsUpdate.RecipeImportRetentionDays),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.RecipeImportRetentionDays),
+            Read = r => r.RecipeImportRetentionDays,
+            Write = (dto, v) => dto.RecipeImportRetentionDays = v,
+        },
     ];
 }

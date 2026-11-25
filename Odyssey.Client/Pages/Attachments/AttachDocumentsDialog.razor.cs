@@ -55,12 +55,6 @@ public partial class AttachDocumentsDialog
         TypeNotAllowed,
     }
 
-    private static readonly IReadOnlyList<OdsSegmentedOption> Tabs =
-    [
-        new() { Value = UploadTab, Label = "Upload new", Icon = "upload_file" },
-        new() { Value = LibraryTab, Label = "From Files", Icon = "folder" },
-    ];
-
     private static readonly IReadOnlyList<string> DocumentExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
 
     [Inject] private IFilesApiClient FilesApi { get; set; } = default!;
@@ -158,7 +152,6 @@ public partial class AttachDocumentsDialog
     private bool _libraryLoaded;
     private bool _libraryLoading;
     private bool _libraryFailed;
-    private string _query = string.Empty;
 
     private HashSet<Guid> _loadedAttachedIds = [];
 
@@ -185,8 +178,6 @@ public partial class AttachDocumentsDialog
     // Seeded with the shipped fallback so a render that beats the fetch still validates sanely.
     private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback;
 
-    private bool ShowTabs => _canUpload && _canBrowse;
-
     private string Title => _canUpload ? "Attach documents" : "Choose from Files";
 
     private IReadOnlyList<string> Extensions =>
@@ -200,17 +191,24 @@ public partial class AttachDocumentsDialog
     private string ExtensionLabel =>
         string.Join(", ", Extensions.Where(e => e != ".jpeg").Select(e => e.TrimStart('.').ToUpperInvariant()));
 
-    private string EmptyLibraryText => string.IsNullOrWhiteSpace(_query)
-        ? (_canUpload ? "Files is empty — upload a document instead." : "Files is empty.")
-        : $"No files match “{_query}”.";
+    // The panel adds "No files match …" for a search; this is the unsearched sentence.
+    private string EmptyLibraryText => _canUpload ? "Files is empty — upload a document instead." : "Files is empty.";
 
     private string SubmitText => _tab == UploadTab
         ? (_uploads.Count > 1 ? $"Upload and attach {_uploads.Count}" : "Upload and attach")
         : (_picked.Count > 1 ? $"Attach {_picked.Count} documents" : "Attach document");
 
-    private IReadOnlyList<FileListItem> LibraryRows => string.IsNullOrWhiteSpace(_query)
-        ? _library
-        : [.. _library.Where(f => f.FileName.Contains(_query.Trim(), StringComparison.OrdinalIgnoreCase))];
+    private IReadOnlyList<DocumentSourceFile> LibraryRows =>
+        [.. _library.Select(f => new DocumentSourceFile(f.Id, f.FileName, f.ContentType, f.SizeBytes, f.UploadedAtUtc))];
+
+    private IReadOnlySet<Guid> PickedIds => _picked.Keys.ToHashSet();
+
+    private DocumentSourceState PanelStateOf(DocumentSourceFile file) => StateOf(file.Id, file.ContentType) switch
+    {
+        LibraryState.AlreadyAttached => DocumentSourceState.AlreadyAttached,
+        LibraryState.TypeNotAllowed => DocumentSourceState.TypeNotAllowed,
+        _ => DocumentSourceState.Available,
+    };
 
     protected override void OnParametersSet()
     {
@@ -273,7 +271,7 @@ public partial class AttachDocumentsDialog
 
     private string GuessKindOrDefault(string fileName) => GuessKind?.Invoke(fileName) ?? DefaultKind;
 
-    private async Task OnTabChanged(string? tab)
+    private async Task OnTabChanged(string tab)
     {
         _tab = tab == LibraryTab ? LibraryTab : UploadTab;
         _error = null;
@@ -302,44 +300,24 @@ public partial class AttachDocumentsDialog
         StateHasChanged();
     }
 
-    internal LibraryState StateOf(FileListItem file) =>
-        AttachedIds.Contains(file.Id) || _loadedAttachedIds.Contains(file.Id) ? LibraryState.AlreadyAttached
-        : RestrictToDocumentTypes && !DocumentContentTypes.IsAllowed(file.ContentType) ? LibraryState.TypeNotAllowed
+    internal LibraryState StateOf(FileListItem file) => StateOf(file.Id, file.ContentType);
+
+    private LibraryState StateOf(Guid id, string? contentType) =>
+        AttachedIds.Contains(id) || _loadedAttachedIds.Contains(id) ? LibraryState.AlreadyAttached
+        : RestrictToDocumentTypes && !DocumentContentTypes.IsAllowed(contentType) ? LibraryState.TypeNotAllowed
         : LibraryState.Available;
 
-    private static string? ReasonOf(LibraryState state, FileListItem file) => state switch
+    internal static string ContentTypeIcon(string? contentType) => DocumentSourcePanel.ContentTypeIcon(contentType);
+
+    internal static string ContentTypeShort(string? contentType) => DocumentSourcePanel.ContentTypeShort(contentType);
+
+    private void TogglePick(DocumentSourceFile row)
     {
-        LibraryState.AlreadyAttached => "Already attached",
-        LibraryState.TypeNotAllowed => $"{ContentTypeShort(file.ContentType)} not accepted",
-        _ => null,
-    };
-
-    private static string CheckIcon(LibraryState state, bool picked) => state switch
-    {
-        LibraryState.AlreadyAttached => "link",
-        LibraryState.TypeNotAllowed => "block",
-        _ => picked ? "check_box" : "check_box_outline_blank",
-    };
-
-    internal static string ContentTypeIcon(string? contentType) =>
-        contentType == "application/pdf" ? "picture_as_pdf"
-        : contentType == "application/epub+zip" ? "menu_book"
-        : contentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true ? "image"
-        : contentType == "text/html" ? "code"
-        : "description";
-
-    internal static string ContentTypeShort(string? contentType) => contentType?.ToLowerInvariant() switch
-    {
-        "application/pdf" => "PDF",
-        "application/epub+zip" => "EPUB",
-        "image/png" => "PNG",
-        "image/jpeg" => "JPEG",
-        "image/webp" => "WebP",
-        "text/html" => "HTML",
-        null or "" => "Unknown type",
-        var other => other.Split('/')[^1].Split('.')[^1].ToUpperInvariant(),
-    };
-
+        if (_library.FirstOrDefault(f => f.Id == row.Id) is { } file)
+        {
+            TogglePick(file);
+        }
+    }
 
     private void TogglePick(FileListItem file)
     {

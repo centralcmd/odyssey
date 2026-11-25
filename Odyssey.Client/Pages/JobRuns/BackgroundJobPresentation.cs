@@ -31,7 +31,7 @@ public static class BackgroundJobPresentation
     public static readonly IReadOnlyList<JobType> Jobs =
         [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
             JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload,
-            JobType.PodcastAudioRetention];
+            JobType.PodcastAudioRetention, JobType.RecipeImport, JobType.RecipeImportRetention];
 
     public static readonly IReadOnlyDictionary<JobType, JobVisual> JobVisuals = new Dictionary<JobType, JobVisual>
     {
@@ -51,6 +51,10 @@ public static class BackgroundJobPresentation
         // podcast's automation asked for, and the server refuses a manual run.
         [JobType.PodcastAudioDownload] = new("Podcast downloads", "podcast downloads", "cloud_download", "episode", null, null),
         [JobType.PodcastAudioRetention] = new("Podcast audio clean-up", "podcast audio clean-up", "auto_delete", "episode", "Run podcast audio clean-up", MudBlazor.Icons.Material.Filled.AutoDelete),
+        // AI recipe import (issue #602). The queue has no Run item: it only sends what a user consented to, and the server
+        // refuses a manual run. Retention may run on demand.
+        [JobType.RecipeImport] = new("Recipe import", "recipe import", "auto_awesome", "recipe import", null, null),
+        [JobType.RecipeImportRetention] = new("Recipe import clean-up", "recipe import clean-up", "auto_delete", "recipe import", "Run recipe import clean-up", MudBlazor.Icons.Material.Filled.AutoDelete),
     };
 
     public static readonly JobVisual OtherJob = new("Other job", "other job", "work_outline", null, null, null);

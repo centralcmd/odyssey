@@ -151,6 +151,19 @@ public static class JobCatalogue
             StaleAfter: Odyssey.Core.Internet.News.Podcasts.PodcastTiming.RetentionStaleAfter,
             ManualRunClaims: [PermissionClaims.NewsFeedsUpdate],
             DetailReadClaim: PermissionClaims.NewsRead),
+        // AI recipe import (issue #602 §11, R2-N2). The queue only sends what a user consented to, so no manual run; its
+        // stale window is above the lease at the largest timeout. Retention may run on demand by a recipes.import holder.
+        new(JobType.RecipeImport, typeof(Odyssey.Core.Recipes.Import.RecipeImportQueueJob), Odyssey.Core.Recipes.Import.RecipeImportJobTiming.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: Odyssey.Core.Recipes.Import.RecipeImportJobTiming.Lease(Odyssey.Core.Recipes.Import.RecipeImportJobTiming.MaxTimeoutSeconds) + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.RecipesImport],
+            DetailReadClaim: PermissionClaims.RecipesImport,
+            ManualRunSupported: false),
+        new(JobType.RecipeImportRetention, typeof(Odyssey.Core.Recipes.Import.RecipeImportRetentionJob), Odyssey.Core.Recipes.Import.RecipeImportJobTiming.RetentionPoll,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: TimeSpan.FromHours(3),
+            ManualRunClaims: [PermissionClaims.RecipesImport],
+            DetailReadClaim: PermissionClaims.RecipesImport),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>

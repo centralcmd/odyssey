@@ -368,6 +368,38 @@ public class PodcastAudioRetentionJobRun : JobRun
 }
 
 /// <summary>
+/// A burst of the AI recipe import queue (issue #602 §11). Each claimed import ends as one of the three counts.
+/// </summary>
+public class RecipeImportJobRun : JobRun
+{
+    public RecipeImportJobRun() : base(Dtos.Application.JobType.RecipeImport)
+    {
+    }
+
+    public int ImportsCompleted { get; set; }
+
+    public int ImportsFailed { get; set; }
+
+    public int ImportsRefused { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (ImportsCompleted, ImportsFailed);
+}
+
+/// <summary>A recipe import retention pass (issue #602 §4), recorded only when it purged something.</summary>
+public class RecipeImportRetentionJobRun : JobRun
+{
+    public RecipeImportRetentionJobRun() : base(Dtos.Application.JobType.RecipeImportRetention)
+    {
+    }
+
+    public int ImportsPurged { get; set; }
+
+    public int ImportFilesReleased { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (ImportsPurged, 0);
+}
+
+/// <summary>
 /// A burst or manual run of the recurrence key backfill (issue #519 §11). Each series is keyed in its own locked
 /// transaction; a failing one is counted in <see cref="SeriesKeyFailures"/> and retried on the next tick.
 /// </summary>

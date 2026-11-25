@@ -1,0 +1,16 @@
+@*
+    A recipe-import queue run's detail (issue #602): the imports the burst completed, the ones that failed after the
+    sources may have left, and the ones refused before anything was sent. Counts only — never a recipe, file or user.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Completed")">@N(Import.ImportsCompleted)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Failed")">@N(Import.ImportsFailed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Refused before sending")">@N(Import.ImportsRefused)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private RecipeImportJobRunDetail Import => (RecipeImportJobRunDetail)Run;
+}

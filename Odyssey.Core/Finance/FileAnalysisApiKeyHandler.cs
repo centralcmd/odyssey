@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context.Secrets;
+using Odyssey.Core.Ai;
 using Odyssey.Dtos.Application;
 
 namespace Odyssey.Core.Finance;
@@ -58,21 +59,13 @@ public sealed class FileAnalysisApiKeyHandler(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        // A scope per send: this handler is pooled for the client's handler lifetime, so it must not
-        // capture the scoped reader (or the OdysseyContext behind it) in a field.
-        using var scope = scopeFactory.CreateScope();
-        var reader = scope.ServiceProvider.GetRequiredService<ISecretSettingsReader>();
+        // The shared key read (Odyssey.Core.Ai.ClaudeApiKey): a scope per send, the header replaced, the
+        // read state returned. This handler keeps its own messages and exception type.
+        var state = await ClaudeApiKey.ApplyAsync(request, scopeFactory, cancellationToken);
 
-        var secret = await reader.GetAsync(SecretSettingKeys.FileAnalysisApiKey, cancellationToken);
-
-        // Removed unconditionally, before the branch: a request the resilience pipeline re-sends must
-        // not carry two values, and the "no key" paths must not inherit one from an earlier attempt.
-        request.Headers.Remove(HeaderName);
-
-        switch (secret.State)
+        switch (state)
         {
-            case SecretReadState.Found when secret.TryGetValue(out var apiKey):
-                request.Headers.TryAddWithoutValidation(HeaderName, apiKey);
+            case SecretReadState.Found:
                 break;
 
             case SecretReadState.Unreadable:

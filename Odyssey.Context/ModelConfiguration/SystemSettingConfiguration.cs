@@ -165,7 +165,10 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // Filesystem object storage (issue #346): a day's grace before a released file leaves the disk.
             new SystemSetting { Key = SystemSettingsKeys.FileStorageDeletionGraceHours, Value = "24", UpdatedAt = seededAt },
             // Background jobs (issue #409): ninety days of finished runs in the shared run log.
-            new SystemSetting { Key = SystemSettingsKeys.JobRunRetentionDays, Value = "90", UpdatedAt = seededAt }
+            new SystemSetting { Key = SystemSettingsKeys.JobRunRetentionDays, Value = "90", UpdatedAt = seededAt },
+            // AI recipe import (issue #602): the integration switch ships off; thirty days of retention.
+            new SystemSetting { Key = SystemSettingsKeys.RecipeImportEnabled, Value = "false", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.RecipeImportRetentionDays, Value = "30", UpdatedAt = seededAt }
         );
     }
 }

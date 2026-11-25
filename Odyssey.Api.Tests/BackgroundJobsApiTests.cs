@@ -40,7 +40,7 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
         PermissionClaims.FileStorageRead,
         PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate,
         PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisCreate,
-        PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsRead,
+        PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsRead, PermissionClaims.RecipesImport,
         PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate,
     ];
 
@@ -116,14 +116,15 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
 
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
-                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload, JobType.PodcastAudioRetention],
+                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload, JobType.PodcastAudioRetention,
+                JobType.RecipeImport, JobType.RecipeImportRetention],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
             Assert.Equal(JobHealth.NotTicking, job.Health);
             Assert.Equal(300, job.NotTickingAfterSeconds);
             // The file-analysis queue has no manual run (issue #444): it only runs work a user consented to.
-            Assert.Equal(job.JobType is not (JobType.FileAnalysis or JobType.PodcastAudioDownload), job.CanRunNow);
+            Assert.Equal(job.JobType is not (JobType.FileAnalysis or JobType.PodcastAudioDownload or JobType.RecipeImport), job.CanRunNow);
             Assert.True(job.CanReadDetail);
         });
         Assert.Null(overview.Jobs.Single(job => job.JobType == JobType.Weather).OverdueAfterSeconds);

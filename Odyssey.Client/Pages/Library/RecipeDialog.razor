@@ -1,4 +1,5 @@
 @inject IRecipesApiClient Recipes
+@inject IRecipeImportsApiClient Imports
 @inject ITagQuickCreate<ExistingRecipeTag> TagCreator
 @inject IJSRuntime Js
 
@@ -22,7 +23,7 @@
 *@
 
 <OdsModal Open="_modalOpen" OpenChanged="OnModalOpenChanged" OnClose="OnModalClosed" ReturnFocusToId="@ReturnFocusToId"
-          Icon="@(IsEdit ? "edit" : "soup_kitchen")" TitleLevel="2" Class="rc-dialog" Title="@TitleFragment">
+          Icon="@(IsImport ? "auto_awesome" : IsEdit ? "edit" : "soup_kitchen")" TitleLevel="2" Class="rc-dialog" Title="@TitleFragment">
     <Steps>
         <OdsWizardSteps Steps="WizardSteps" Current="_step" OnStep="i => GoAsync(i)" AriaLabel="Recipe steps" />
     </Steps>
@@ -43,10 +44,45 @@
             {
                 <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@alert</OdsAlert>
             }
+            @if (IsImport)
+            {
+                @* Persistent, on every step, and not a live region: read on open (focus lands on its heading). *@
+                <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None" Class="rc-import-banner">
+                    <h3 id="@ImportBannerId" tabindex="-1">Draft recipe, made by AI — not in Recipes yet</h3>
+                    <p>Check every field — the AI can misread amounts and units. <b>Create recipe</b> adds it to Recipes. <b>Save and finish later</b> keeps your edits on the import, for you or anyone in the household to finish; nothing is added to Recipes.</p>
+                </OdsAlert>
+                @if (_step > RecipeDraft.DetailsStep && WarningsFor(_step).Count > 0)
+                {
+                    <ul class="rc-field-warn-list">
+                        @foreach (var warning in WarningsFor(_step))
+                        {
+                            <li class="rc-field-warn"><OdsMIcon Name="fact_check" Size="14" /><span>@warning</span></li>
+                        }
+                    </ul>
+                }
+            }
 
             @if (_step == RecipeDraft.DetailsStep)
             {
                 <section class="rc-wiz-panel" aria-label="Details" id="@PanelId(RecipeDraft.DetailsStep)">
+                    @if (IsImport && _importWarnings.Count > 0)
+                    {
+                        <div class="ri-warn">
+                            <div class="ri-warn-t"><OdsMIcon Name="fact_check" Size="16" />Things to check</div>
+                            <ul>
+                                @foreach (var (text, step) in _importWarnings)
+                                {
+                                    <li>
+                                        @text
+                                        @if (step is { } target && target != RecipeDraft.DetailsStep)
+                                        {
+                                            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Class="ri-go" OnClick="@(() => GoAsync(target))">Go to @StepLabels[target]</OdsButton>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
                     <div class="rc-dlg-grid">
                         <div class="rc-span">
                             <OdsField id="@F("title")" Label="Title" Required="true" Value="@_draft.Title"
@@ -62,7 +98,7 @@
                                          ValueChanged="@(v => Set(() => _draft.Servings = v, "servings"))"
                                          Min="RecipeLimits.MinServings" Max="RecipeLimits.MaxServings"
                                          Unit="@ServingsUnit" UnitPlural="@ServingsUnitPlural"
-                                         Help="How many the amounts in Ingredients are written for." Error="@Err("servings")" />
+                                         Help="@ServingsHelp" Error="@Err("servings")" />
                         <OdsTextInputField Id="@F("servingslabel")" Label="Servings label" Value="@_draft.ServingsLabel"
                                            ValueChanged="@(v => Set(() => _draft.ServingsLabel = v ?? string.Empty, "servingslabel"))"
                                            MaxLength="RecipeLimits.MaxServingsLabelLength" Placeholder="e.g. pieces, loaf"
@@ -92,6 +128,20 @@
                                                    Placeholder="No tags" AddLabel="Add tag" Noun="recipe tag" NounPlural="recipe tags" Help="@TagsHelp"
                                                    OnCreate="@(CanCreateTags ? CreateTagOption : null)" CreateKinds="OdsTypeRegistries.TagCreateKinds.Recipe"
                                                    CreateBlocked="BlockedTagName" Error="@Err("tagids")" />
+                            </div>
+                        }
+                        @if (ImportReview is { SourceFileCount: > 0 } review)
+                        {
+                            <div class="rc-span">
+                                @if (review.CanFiles)
+                                {
+                                    <OdsCheckbox Checked="_attachSources" CheckedChanged="@(v => _attachSources = v)"
+                                                 Label="@($"Attach the source {(review.SourceFileCount == 1 ? "file" : "files")} to this recipe ({review.SourceFileCount})")" />
+                                }
+                                else
+                                {
+                                    <div class="ri-note"><OdsMIcon Name="lock" Size="14" />Source files won’t be attached — attaching needs file access.</div>
+                                }
                             </div>
                         }
                     </div>
@@ -195,6 +245,10 @@
         {
             <OdsButton Variant="OdsButtonVariant.Outlined" Icon="arrow_back" OnClick="BackAsync">Back</OdsButton>
         }
+        @if (IsImport)
+        {
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="bookmark_border" Loading="_savingLater" AriaDisabled="@(_saving || _savingLater)" OnClick="SaveForLaterAsync">Save and finish later</OdsButton>
+        }
         @if (IsLastStep)
         {
             <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")" Loading="_saving" AriaDisabled="_saving" OnClick="SubmitAsync">
@@ -208,7 +262,25 @@
     </Footer>
 </OdsModal>
 
-<OdsFormDialog Open="_discardOpen" OpenChanged="OnDiscardOpenChanged"
+@if (IsImport)
+{
+    <OdsModal Open="_discardOpen" OpenChanged="OnDiscardOpenChanged" Icon="warning" IconTone="OdsModalTone.Warning"
+              Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel" RequiredLegend="false"
+              Title="@LeaveTitle">
+        <ChildContent>
+            <div class="ods-modal-body">
+                <p class="rc-confirm-p">Your edits since you last selected Save and finish later are lost. The draft recipe stays on the import in Recipe imports, as it was; nothing is added to Recipes.</p>
+            </div>
+        </ChildContent>
+        <Footer>
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => OnDiscardOpenChanged(false))">Keep editing</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="bookmark_border" OnClick="SaveFromLeaveAsync">Save and finish later</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Danger" OnClick="@(async () => await DiscardAsync())">Leave without saving</OdsButton>
+        </Footer>
+    </OdsModal>
+}
+
+<OdsFormDialog Open="@(_discardOpen && !IsImport)" OpenChanged="OnDiscardOpenChanged"
                Icon="warning" IconTone="OdsModalTone.Warning" Title="Discard changes to this recipe?"
                RequiredLegend="false" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
                CancelLabel="Keep editing" SubmitLabel="Discard changes" SubmitIcon="delete" SubmitVariant="OdsButtonVariant.Danger"
@@ -226,6 +298,8 @@
 </OdsFormDialog>
 
 @code {
+    private RenderFragment LeaveTitle => @<text>Leave without saving your edits?</text>;
+
     // Labels are drawn once, above the lines; each field keeps its own label for assistive tech (aria-hidden head).
     private static readonly RenderFragment IngredientHead =
         @<text><span></span><span>Amount</span><span>Unit</span><span>Ingredient<span class="odc-field-req">*</span></span><span></span><span></span></text>;
