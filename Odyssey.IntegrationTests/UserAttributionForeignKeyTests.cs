@@ -45,6 +45,9 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("Books", "CreatedByUserId"), ("Books", "UpdatedByUserId"),
         // Recipes (issue #525): shared household data that outlives its author.
         ("Recipes", "CreatedByUserId"), ("Recipes", "UpdatedByUserId"),
+        // AI recipe import (issue #602): the transfer record and its actors outlive the requester.
+        ("RecipeImports", "RequestedByUserId"), ("RecipeImports", "CancelledByUserId"), ("RecipeImports", "DeletedByUserId"),
+        ("RecipeImportDrafts", "UpdatedByUserId"), ("RecipeImportDrafts", "AcceptedByUserId"), ("RecipeImportDrafts", "DiscardedByUserId"),
         ("RecurrencePatterns", "CreatedByUserId"), ("RecurrencePatterns", "UpdatedByUserId"),
         // Who deleted an occurrence of a series (issue #519 §4): shared calendar data, like the rows themselves.
         ("RecurrenceExclusions", "CreatedByUserId"),

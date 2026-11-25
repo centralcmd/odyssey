@@ -342,6 +342,14 @@ public sealed record SystemSettingsDto
     /// <summary>Days a finished background-job run stays in the run log.</summary>
     public int JobRunRetentionDays { get; set; }
 
+    // ── AI recipe import (issue #602) ────────────────────────────────────────────────────────────
+
+    /// <summary>Whether AI recipe import may send sources to the processor. Read live, never from a cache.</summary>
+    public bool RecipeImportEnabled { get; set; }
+
+    /// <summary>Days a finished recipe import keeps what was sent and its draft recipe.</summary>
+    public int RecipeImportRetentionDays { get; set; }
+
     // ── The six bound projections (issue #434 §6) ────────────────────────────────────────────────
     //
     // These stay even though the server-side ceiling VALIDATORS for these keys were deleted (§9 —

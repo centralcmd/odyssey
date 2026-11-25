@@ -359,6 +359,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<PhotoAlbum>(modelBuilder, nameof(PhotoAlbum.CreatedByUserId), nameof(PhotoAlbum.UpdatedByUserId));
         DeclareUserAttribution<Book>(modelBuilder, nameof(Book.CreatedByUserId), nameof(Book.UpdatedByUserId));
         DeclareUserAttribution<Recipe>(modelBuilder, nameof(Recipe.CreatedByUserId), nameof(Recipe.UpdatedByUserId));
+        // AI recipe import (issue #602 §4): who started, cancelled, deleted, edited, accepted or discarded.
+        DeclareUserAttribution<RecipeImport>(modelBuilder, nameof(RecipeImport.RequestedByUserId), nameof(RecipeImport.CancelledByUserId), nameof(RecipeImport.DeletedByUserId));
+        DeclareUserAttribution<RecipeImportDraft>(modelBuilder, nameof(RecipeImportDraft.UpdatedByUserId), nameof(RecipeImportDraft.AcceptedByUserId), nameof(RecipeImportDraft.DiscardedByUserId));
         DeclareUserAttribution<RecurrencePattern>(modelBuilder, nameof(RecurrencePattern.CreatedByUserId), nameof(RecurrencePattern.UpdatedByUserId));
         DeclareUserAttribution<RecurrenceExclusion>(modelBuilder, nameof(RecurrenceExclusion.CreatedByUserId));
 
@@ -501,6 +504,11 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<RecipeAttachment> RecipeAttachments { get; set; }
     public DbSet<RecipeTag> RecipeTags { get; set; }
     public DbSet<RecipeTagLink> RecipeTagLinks { get; set; }
+
+    // AI recipe import (issue #602): the household's imports, their sources and draft recipes.
+    public DbSet<RecipeImport> RecipeImports { get; set; }
+    public DbSet<RecipeImportSource> RecipeImportSources { get; set; }
+    public DbSet<RecipeImportDraft> RecipeImportDrafts { get; set; }
 
     // Calendar (issue #330), merged in.
     public DbSet<Calendar> Calendars { get; set; }

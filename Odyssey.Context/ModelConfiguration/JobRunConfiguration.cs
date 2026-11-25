@@ -20,6 +20,8 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
             .HasValue<RecurrenceKeyBackfillJobRun>(JobType.RecurrenceKeyBackfill)
             .HasValue<PodcastAudioDownloadJobRun>(JobType.PodcastAudioDownload)
             .HasValue<PodcastAudioRetentionJobRun>(JobType.PodcastAudioRetention)
+            .HasValue<RecipeImportJobRun>(JobType.RecipeImport)
+            .HasValue<RecipeImportRetentionJobRun>(JobType.RecipeImportRetention)
             .IsComplete();
 
         entity.Property(run => run.OpenHeldGuard)
@@ -33,7 +35,7 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
         entity.ToTable(tb =>
         {
             // 5 and 7 (the two file moves) are retired ordinals: never stored again.
-            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
             tb.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
             tb.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
             tb.HasCheckConstraint(
@@ -67,7 +69,10 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
                 + " AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0"
                 + " AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0"
                 + " AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0"
-                + " AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                + " AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0"
+                + " AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0"
+                + " AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0"
+                + " AND COALESCE(`ImportFilesReleased`, 0) >= 0");
             // FinishedAtUtc is NULL only on a Running row or an open held period, and always NULL on a Running one.
             tb.HasCheckConstraint(
                 "CK_JobRuns_FinishedMatchesStatus",
@@ -86,6 +91,6 @@ internal sealed class JobHeartbeatConfiguration : IEntityTypeConfiguration<JobHe
 {
     public void Configure(EntityTypeBuilder<JobHeartbeat> entity)
     {
-        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)"));
+        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)"));
     }
 }

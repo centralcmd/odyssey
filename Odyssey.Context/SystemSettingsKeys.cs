@@ -249,6 +249,16 @@ public static class SystemSettingsKeys
     public const string JobRunRetentionDays = "JobRunRetentionDays";
 
     // ---------------------------------------------------------------------------------------------
+    // AI recipe import (issue #602). RecipeImportEnabled is an integration switch (settings.md): it stops
+    // recipe sources leaving the deployment for the AI processor, independently of FileAnalysisEnabled,
+    // and is read LIVE and uncached, on create and again by the worker right before it sends.
+    // RecipeImportRetentionDays is how long a finished import keeps what was sent and its draft recipe.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string RecipeImportEnabled = "RecipeImportEnabled";
+    public const string RecipeImportRetentionDays = "RecipeImportRetentionDays";
+
+    // ---------------------------------------------------------------------------------------------
     // News reader (issue #470 §11.1): the feed defaults and caps, the image and text quotas, the per-feed
     // daily caps, and the private-host allow-list the worker's egress policy reads (security claim).
     // ---------------------------------------------------------------------------------------------
@@ -368,6 +378,8 @@ public static class SystemSettingsKeys
         PodcastAudioMaxEpisodeMb,
         PodcastAutoDownloadsPerFeedPerDay,
         PodcastAutoDownloadMaxUnfetchedPerFeed,
+        RecipeImportEnabled,
+        RecipeImportRetentionDays,
     ];
 
     /// <summary>

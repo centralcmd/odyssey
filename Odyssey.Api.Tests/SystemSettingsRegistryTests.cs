@@ -311,7 +311,10 @@ public class SystemSettingsRegistryTests
         //
         // +1 in the design-system sync of November 2026: NewsImageMaxSizeKb, the largest image the worker
         // downloads and keeps from an untrusted feed host — a decoding-surface bound, not a plain count.
-        Assert.Equal(34, audited.Count);
+        //
+        // +1 in issue #602: RecipeImportEnabled, the on/off switch for sending recipe sources to an outside processor,
+        // on the security claim like FileAnalysisEnabled.
+        Assert.Equal(35, audited.Count);
         Assert.All(SystemSettingsRegistry.All, descriptor =>
             Assert.Equal(
                 descriptor.RequiredClaim == PermissionClaims.SystemSettingsSecurityUpdate,

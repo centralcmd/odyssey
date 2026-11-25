@@ -551,6 +551,19 @@ public sealed class BackgroundJobsService(
                 AudioBytesReleased = retention.AudioBytesReleased,
             },
             PodcastAudioRetentionJobRun => new PodcastAudioRetentionJobRunDetail(),
+            RecipeImportJobRun imports when canRead => new RecipeImportJobRunDetail
+            {
+                ImportsCompleted = imports.ImportsCompleted,
+                ImportsFailed = imports.ImportsFailed,
+                ImportsRefused = imports.ImportsRefused,
+            },
+            RecipeImportJobRun => new RecipeImportJobRunDetail(),
+            RecipeImportRetentionJobRun purge when canRead => new RecipeImportRetentionJobRunDetail
+            {
+                ImportsPurged = purge.ImportsPurged,
+                ImportFilesReleased = purge.ImportFilesReleased,
+            },
+            RecipeImportRetentionJobRun => new RecipeImportRetentionJobRunDetail(),
             RecurrenceKeyBackfillJobRun keys when canRead => new RecurrenceKeyBackfillJobRunDetail
             {
                 SeriesKeyed = keys.SeriesKeyed,

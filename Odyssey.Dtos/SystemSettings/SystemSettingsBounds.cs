@@ -324,6 +324,13 @@ public static class SystemSettingsBounds
 
     public const int JobRunRetentionDaysMax = 730;
 
+    // ── AI recipe import (issue #602) ────────────────────────────────────────────────────────────
+
+    /// <summary>At least a day, so a draft recipe never vanishes before anyone could review it.</summary>
+    public const int RecipeImportRetentionDaysMin = 1;
+
+    public const int RecipeImportRetentionDaysMax = 365;
+
     // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
 
     /// <summary>The per-feed interval's own range (<see cref="NewsLimits"/>), so the default can name any value a feed can.</summary>

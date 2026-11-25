@@ -364,6 +364,17 @@ public static class SystemSettingsDefaults
     /// <summary>Ninety days of finished runs: a quarter of history, well under 20 000 rows with two workers (§10).</summary>
     public const int JobRunRetentionDays = 90;
 
+    // ── AI recipe import (issue #602) ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The AI recipe import integration switch. <strong>Fail closed:</strong> ships off and a failed read
+    /// resolves to off, because it is the switch that stops recipe sources leaving the deployment.
+    /// </summary>
+    public const bool RecipeImportEnabled = false;
+
+    /// <summary>Thirty days after an import finishes, what was sent and its draft recipe are removed.</summary>
+    public const int RecipeImportRetentionDays = 30;
+
     // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
 
     /// <summary>Minutes between fetches of a feed that names no interval of its own.</summary>
