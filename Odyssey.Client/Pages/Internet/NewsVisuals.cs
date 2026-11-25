@@ -110,10 +110,6 @@ public static class NewsVisuals
         [.. tags.OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
 
     /// <summary>
-    /// A tag picker's options: the active tags, plus any archived one already chosen — so an existing link stays
-    /// visible and removable, while no archived tag can be newly added (the server refuses it, §7.2).
-    /// </summary>
-    /// <summary>
     /// The <c>CreateBlocked</c> sentence for a news Tags field: news tag names are unique across active and archived
     /// tags, and a tag just minted in the same field counts too.
     /// </summary>
@@ -123,6 +119,10 @@ public static class NewsVisuals
                 .Concat(created.Select(o => new TagNameEntry(o.Label, false))),
             text, TagNameRule.Pages.News);
 
+    /// <summary>
+    /// A tag picker's options: the active tags, plus any archived one already chosen — so an existing link stays
+    /// visible and removable, while no archived tag can be newly added (the server refuses it, §7.2).
+    /// </summary>
     public static IReadOnlyList<OdsOption> TagPickerOptions(IEnumerable<ExistingNewsTag> tags, IEnumerable<Guid> chosen)
     {
         var keep = chosen.ToHashSet();
