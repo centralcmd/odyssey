@@ -557,6 +557,13 @@ public partial class BooksPage
 
     private async Task OnBookSaved(ExistingBook saved)
     {
+        // A tag created inline in the dialog is not in the page's list yet: reload so the filter, the By tag
+        // tile and the next dialog see it.
+        if (_canReadTags && saved.TagIds.Any(id => !_tagById.ContainsKey(id)))
+        {
+            await LoadTagsAsync();
+        }
+
         var summary = ToSummary(saved, _canReadPhotos, _canReadFiles);
         var index = _books.FindIndex(b => b.BookId == saved.BookId);
         if (index >= 0)

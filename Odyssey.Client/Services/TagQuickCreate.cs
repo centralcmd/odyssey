@@ -2,6 +2,7 @@ using MudBlazor;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Internet;
 
 namespace Odyssey.Client.Services;
 
@@ -51,6 +52,7 @@ public interface ITagQuickCreate<TTag>
 public sealed class TagQuickCreate<TTag>(
     ITagsApiClient<TTag> tags,
     IReferenceDataCache referenceData,
+    INewsCatalogueCache newsCatalogue,
     ISnackbar snackbar) : ITagQuickCreate<TTag>
 {
     private readonly QuickCreateLedger ledger = new();
@@ -103,13 +105,18 @@ public sealed class TagQuickCreate<TTag>(
 
     // Transaction tags are cached for the whole session (issue #372), so a tag minted here would be
     // missing from every later picker and the Transactions filter until a reload — and the picker
-    // would offer to create it again (issue #251). The other tag resources aren't cached; this is the
-    // same type test OdsTagAdmin makes, so the two write paths into the vocabulary agree.
+    // would offer to create it again (issue #251). News tags are cached the same way by the news
+    // catalogue (the News tags page drops that cache on every write). The other tag resources aren't
+    // cached.
     private void InvalidateCachedTags()
     {
         if (typeof(TTag) == typeof(ExistingTransactionTag))
         {
             referenceData.InvalidateTransactionTags();
+        }
+        else if (typeof(TTag) == typeof(ExistingNewsTag))
+        {
+            newsCatalogue.InvalidateTags();
         }
     }
 }

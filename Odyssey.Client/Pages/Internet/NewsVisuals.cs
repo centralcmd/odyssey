@@ -1,4 +1,5 @@
 using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
 using Odyssey.Dtos.Internet;
 
@@ -112,6 +113,16 @@ public static class NewsVisuals
     /// A tag picker's options: the active tags, plus any archived one already chosen — so an existing link stays
     /// visible and removable, while no archived tag can be newly added (the server refuses it, §7.2).
     /// </summary>
+    /// <summary>
+    /// The <c>CreateBlocked</c> sentence for a news Tags field: news tag names are unique across active and archived
+    /// tags, and a tag just minted in the same field counts too.
+    /// </summary>
+    public static string? BlockedTagName(IEnumerable<ExistingNewsTag> tags, IEnumerable<OdsOption> created, string text) =>
+        TagNameRule.Blocked(
+            tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null))
+                .Concat(created.Select(o => new TagNameEntry(o.Label, false))),
+            text, TagNameRule.Pages.News);
+
     public static IReadOnlyList<OdsOption> TagPickerOptions(IEnumerable<ExistingNewsTag> tags, IEnumerable<Guid> chosen)
     {
         var keep = chosen.ToHashSet();

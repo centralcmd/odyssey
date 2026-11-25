@@ -6,6 +6,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Internet;
 using Odyssey.Dtos.Journal;
 using System.Net;
 using Xunit;
@@ -214,11 +215,46 @@ public class QuickCreateServiceTests
     private static (TagQuickCreate<TTag> Creator, Mock<ITagsApiClient<TTag>> Api, Mock<IReferenceDataCache> Cache)
         TagCreator<TTag>(Func<TagWrite, ApiResult> respond)
     {
+        var (creator, api, cache, _) = TagCreatorWithNews<TTag>(respond);
+        return (creator, api, cache);
+    }
+
+    private static (TagQuickCreate<TTag> Creator, Mock<ITagsApiClient<TTag>> Api, Mock<IReferenceDataCache> Cache, Mock<INewsCatalogueCache> News)
+        TagCreatorWithNews<TTag>(Func<TagWrite, ApiResult> respond)
+    {
         var api = new Mock<ITagsApiClient<TTag>>();
         api.Setup(a => a.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((TagWrite t, CancellationToken _) => respond(t));
         var cache = new Mock<IReferenceDataCache>();
-        return (new TagQuickCreate<TTag>(api.Object, cache.Object, Snackbar()), api, cache);
+        var news = new Mock<INewsCatalogueCache>();
+        return (new TagQuickCreate<TTag>(api.Object, cache.Object, news.Object, Snackbar()), api, cache, news);
+    }
+
+    /// <summary>
+    /// News tags are cached by the news catalogue, so a tag minted from a feed or article Tags field has to drop
+    /// that cache too, or the News and Feeds pages keep offering to create it again.
+    /// </summary>
+    [Fact]
+    public async Task A_created_news_tag_invalidates_the_cached_news_tags_only()
+    {
+        var (creator, _, cache, news) = TagCreatorWithNews<ExistingNewsTag>(_ => Ok());
+
+        creator.Begin("Climate");
+        await creator.WhenSettledAsync();
+
+        news.Verify(n => n.InvalidateTags(), Times.Once);
+        cache.Verify(c => c.InvalidateTransactionTags(), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_failed_news_tag_create_leaves_the_news_cache_alone()
+    {
+        var (creator, _, _, news) = TagCreatorWithNews<ExistingNewsTag>(_ => Fail(HttpStatusCode.Conflict, "no"));
+
+        creator.Begin("Climate");
+        await creator.WhenSettledAsync();
+
+        news.Verify(n => n.InvalidateTags(), Times.Never);
     }
 
     /// <summary>

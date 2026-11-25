@@ -3,6 +3,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Odyssey.ApiClient;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Internet;
 using Odyssey.Dtos;
@@ -192,6 +193,31 @@ public class NewsPageHeaderAndDialogsTests
         context.News.Verify(n => n.AddArticleTagAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         cut.WaitForAssertion(() => Assert.DoesNotContain("Drop", cut.Find($"#nwa-{article.Id} .odc-record-namerow").TextContent, StringComparison.Ordinal));
         cut.WaitForAssertion(() => Assert.Contains("Tags saved for Story", Polite(cut), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_tag_created_inline_in_the_tags_dialog_is_saved_with_its_real_id()
+    {
+        var tagId = Guid.NewGuid();
+        var article = Article("Story");
+        IReadOnlyCollection<Guid>? sent = null;
+        await using var context = Context([article]);
+        context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/news-tags/{tagId}")));
+        context.News.Setup(n => n.SetArticleTagsAsync(article.Id, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, IReadOnlyCollection<Guid> ids, CancellationToken _) => sent = ids)
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        var cut = Rendered(context);
+        ClickMenu(cut, article, "Tags…");
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsTagMultiSelect>()));
+
+        cut.FindComponent<OdsTagMultiSelect>().Find("button.odc-tagms-trigger").Click();
+        cut.WaitForElement(".odc-tagms-search input").Input("Climate");
+        cut.Find("button.odc-tagms-create").Click();
+        cut.FindAll(".ods-modal button").Single(b => b.TextContent.Contains("Save", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([tagId], sent));
+        context.NewsTags.Verify(t => t.CreateAsync(It.Is<TagWrite>(w => w.Name == "Climate"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

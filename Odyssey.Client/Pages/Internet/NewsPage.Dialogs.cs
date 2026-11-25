@@ -2,7 +2,10 @@ using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 
@@ -38,6 +41,36 @@ public partial class NewsPage
     private Guid _tagsKey;
     private bool _tagsOpen;
     private IReadOnlyCollection<string> _tagsDraft = [];
+
+    /// <summary>Tags minted from the article Tags field, under their temporary ids until Save resolves them.</summary>
+    private readonly List<OdsOption> _createdTags = [];
+
+    private IReadOnlyList<OdsOption> ArticleTagOptions(NewsArticleSummary article)
+    {
+        var known = NewsVisuals.TagPickerOptions(_tags, article.TagIds);
+        return [.. _createdTags.Where(c => known.All(o => o.Value != c.Value)), .. known];
+    }
+
+    private OdsOption? CreateTagOption(string text, string? kind)
+    {
+        var option = TagCreator.Begin(text);
+        if (option is not null)
+        {
+            _createdTags.Add(option);
+            StateHasChanged();
+        }
+
+        return option;
+    }
+
+    private void OnTagCreateFailed(string tempId)
+    {
+        _createdTags.RemoveAll(o => o.Value == tempId);
+        _tagsDraft = [.. _tagsDraft.Where(id => id != tempId)];
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string? BlockedTagName(string text) => NewsVisuals.BlockedTagName(_tags, _createdTags, text);
     private string? _tagsError;
 
     private IEnumerable<ExistingNewsTag> InheritedTagsOf(NewsArticleSummary article) =>
@@ -53,6 +86,8 @@ public partial class NewsPage
         _tagsArticle = article;
         _tagsDraft = [.. article.TagIds.Select(id => id.ToString())];
         _tagsError = null;
+        _createdTags.Clear();
+        TagCreator.OnCreateFailed = OnTagCreateFailed;
         _tagsKey = Guid.NewGuid();
         _tagsOpen = true;
     }
@@ -80,10 +115,23 @@ public partial class NewsPage
             return false;
         }
 
+        if (_createdTags.Count > 0)
+        {
+            // Inline-created tags hand the picker a temporary id; wait for their POSTs, then map to the real ids.
+            await TagCreator.WhenSettledAsync();
+            _tagsDraft = [.. _tagsDraft.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
+        }
+
         var ids = _tagsDraft.Select(v => Guid.TryParse(v, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty).ToList();
         var result = await News.SetArticleTagsAsync(article.Id, ids);
         if (result.IsSuccess)
         {
+            if (ids.Any(id => !_tagsById.ContainsKey(id)))
+            {
+                // A tag created inline: the chips, the Tag filter and the next dialog need it.
+                SetTags((await Catalogue.GetTagsAsync()).ItemsOrToast(Snackbar, "news tags"));
+            }
+
             article.TagIds = ids;
             Say($"Tags saved for {NewsArticleCard.TitleOf(article)}");
             _tagsArticle = null;

@@ -111,6 +111,9 @@
     }
     <OdsTagMultiSelect Label="Tags" Value="_tagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
                        Noun="news tag" NounPlural="news tags" Error="@_tagsError"
+                       OnCreate="@(CanCreateTags ? CreateTagOption : null)"
+                       CreateKinds="OdsTypeRegistries.TagCreateKinds.News"
+                       CreateBlocked="BlockedTagName"
                        Help="@(IsPodcast ? "Every episode from this podcast carries these tags too." : "Every article from this feed carries these tags too.")" />
 </OdsFormDialog>
 

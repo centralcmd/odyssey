@@ -18,6 +18,7 @@ public partial class BookDialog
     [Inject] private IReferenceDataCache ReferenceData { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationState { get; set; } = default!;
+    [Inject] private ITagQuickCreate<ExistingBookTag> TagCreator { get; set; } = default!;
 
     [Parameter] public bool Open { get; set; }
 
@@ -57,6 +58,12 @@ public partial class BookDialog
     /// <summary><c>books.tags.read</c>, taken once at open: it decides whether <c>tagIds</c> is sent at all.</summary>
     private bool _tagsSnapshot;
 
+    /// <summary><c>books.tags.create</c>, taken once at open: whether the Tags field offers its inline create row.</summary>
+    private bool _canCreateTags;
+
+    /// <summary>Tags minted from the field in this dialog, under their temporary ids until the save resolves them.</summary>
+    private readonly List<OdsOption> _createdTags = [];
+
     private readonly Dictionary<string, string> _errors = new(StringComparer.OrdinalIgnoreCase);
 
     private IReadOnlyList<ExistingContact> _contacts = [];
@@ -78,6 +85,7 @@ public partial class BookDialog
 
     protected override async Task OnInitializedAsync()
     {
+        TagCreator.OnCreateFailed = OnTagCreateFailed;
         Seed(Book);
         if (!OperatingSystem.IsBrowser())
         {
@@ -86,13 +94,15 @@ public partial class BookDialog
 
         var user = await AuthenticationState.GetUserAsync();
         _tagsSnapshot = user.HasPermission(PermissionClaims.BookTagsRead);
+        _canCreateTags = _tagsSnapshot && user.HasPermission(PermissionClaims.BookTagsCreate);
         UseContacts(await ReferenceData.ContactsAsync());
     }
 
     /// <summary>Test seam: the claim snapshot and the contacts, without an auth state or a cache.</summary>
-    internal void UseContext(bool canReadTags, IEnumerable<ExistingContact> contacts)
+    internal void UseContext(bool canReadTags, IEnumerable<ExistingContact> contacts, bool canCreateTags = false)
     {
         _tagsSnapshot = canReadTags;
+        _canCreateTags = canReadTags && canCreateTags;
         UseContacts(contacts);
     }
 
@@ -174,12 +184,45 @@ public partial class BookDialog
             ? $"Saved as {saved}."
             : "Hyphens and spaces are fine; it is saved as digits.";
 
-    private IReadOnlyList<OdsOption> TagOptions =>
-        BookVisuals.TagOptions(Tags, t => _tagIds.Contains(t.BookTagId.ToString()));
+    private IReadOnlyList<OdsOption> TagOptions
+    {
+        get
+        {
+            var known = BookVisuals.TagOptions(Tags, t => _tagIds.Contains(t.BookTagId.ToString()));
+            return [.. _createdTags.Where(c => known.All(o => o.Value != c.Value)), .. known];
+        }
+    }
 
     // An archived or unknown tag the book already carries survives Clear: the picker cannot offer it again.
+    // A tag minted here is neither — it is in the options, so it can be removed like any other.
     private bool PreserveTag(string id) =>
-        !Tags.Any(t => t.BookTagId.ToString() == id && t.Archived is null);
+        _createdTags.All(c => c.Value != id) && !Tags.Any(t => t.BookTagId.ToString() == id && t.Archived is null);
+
+    private OdsOption? CreateTagOption(string text, string? kind)
+    {
+        var option = TagCreator.Begin(text);
+        if (option is not null)
+        {
+            _createdTags.Add(option);
+            StateHasChanged();
+        }
+
+        return option;
+    }
+
+    private void OnTagCreateFailed(string tempId)
+    {
+        _createdTags.RemoveAll(o => o.Value == tempId);
+        _tagIds = [.. _tagIds.Where(id => id != tempId)];
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // A book tag name is unique across active and archived tags (the book-tag service refuses either).
+    private string? BlockedTagName(string text) =>
+        TagNameRule.Blocked(
+            Tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null))
+                .Concat(_createdTags.Select(o => new TagNameEntry(o.Label, false))),
+            text, TagNameRule.Pages.Book);
 
     private string? TagHelp =>
         _tagIds.Count >= BookLimits.MaxTags * 4 / 5 ? $"{_tagIds.Count} of {BookLimits.MaxTags} tags." : null;
@@ -273,6 +316,13 @@ public partial class BookDialog
         {
             StateHasChanged();
             return false;
+        }
+
+        if (_createdTags.Count > 0)
+        {
+            // Inline-created tags hand the picker a temporary id; wait for their POSTs, then map to the real ids.
+            await TagCreator.WhenSettledAsync();
+            _tagIds = [.. _tagIds.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
         }
 
         ApiResult<ExistingBook> result = IsEdit

@@ -88,6 +88,7 @@ public partial class NewsFeedsPage
     private bool _canDelete;
     private bool _canReadSettings;
     private bool _canReadFileStorage;
+    private bool _canCreateTags;
 
     /// <summary>The storage status, for the Attention panel's quota rows (a <c>file-storage.read</c> holder only).</summary>
     private NewsStatus? _status;
@@ -328,6 +329,7 @@ public partial class NewsFeedsPage
     private void ReadClaims(System.Security.Claims.ClaimsPrincipal user)
     {
         _canCreate = user.HasPermission(PermissionClaims.NewsFeedsCreate);
+        _canCreateTags = user.HasPermission(PermissionClaims.NewsTagsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.NewsFeedsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.NewsFeedsDelete);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
@@ -788,6 +790,11 @@ public partial class NewsFeedsPage
         _dialogOpen = false;
         Replace(saved);
         Catalogue.Invalidate();
+        if (saved.TagIds.Any(id => !_tagsById.ContainsKey(id)))
+        {
+            // A tag created inline in the dialog: the page's filter, chips and next dialog need it.
+            SetTags((await Catalogue.GetTagsAsync()).ItemsOrToast(Snackbar, "news tags"));
+        }
 
         if (created)
         {
