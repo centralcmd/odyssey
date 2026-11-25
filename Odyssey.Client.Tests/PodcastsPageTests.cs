@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Internet;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -171,6 +172,21 @@ public class PodcastsPageTests
         var byTags = cut.FindAll(".odc-summary-grid > *").Single(t => t.TextContent.Contains("By tags", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Local", byTags.TextContent, StringComparison.Ordinal);
         Assert.Contains("No tag", byTags.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task By_podcast_lists_every_active_podcast_by_its_episodes_and_totals_them()
+    {
+        var big = Podcast("Tidewater Talks", f => f.Podcast!.EpisodeCount = 30);
+        var small = Podcast("Garden Hour");
+        var paused = Podcast("Quiet Show", f => { f.IsActive = false; f.Health = NewsFeedHealth.Paused; f.Podcast!.EpisodeCount = 99; });
+        await using var page = new Harness([small, big, paused], [Episode(big, "One")]);
+
+        var cut = page.Render();
+
+        var tile = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "By podcast");
+        Assert.Equal([("Tidewater Talks", 30), ("Garden Hour", 10)], tile.Instance.Rows.Select(r => (r.Label, (int)r.Count)));
+        Assert.Contains("40", tile.Find(".odc-breakdown-total").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]

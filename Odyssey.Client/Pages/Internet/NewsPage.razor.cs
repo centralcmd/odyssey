@@ -210,6 +210,10 @@ public partial class NewsPage : IDisposable
     /// <summary>The header's ⋯ menu offers Mark all read… to a news.update holder with feeds, while something unread is in view.</summary>
     private bool CanMarkAll => _canUpdate && _catalogue.Count > 0 && !StatusExcludesUnread;
 
+    /// <summary>By feed: the stored articles of each active feed (the maintained <c>ArticleCount</c>); the rows partition them, so the tile sums them.</summary>
+    private IReadOnlyList<OdsBreakdownRow> ByFeedRows => NewsVisuals.CountByFeedRows(
+        _catalogue.Where(f => f.State == NewsFeedState.Active).Select(f => new FeedCount(f.Id, f.DisplayTitle, f.ArticleCount, "rss_feed")));
+
     private IReadOnlyList<OdsBreakdownRow> FeedRows =>
     [
         new() { Key = "ok", Label = "Healthy or pending", Icon = "check_circle", IconColor = OdsBreakdown.Tone("income"),
