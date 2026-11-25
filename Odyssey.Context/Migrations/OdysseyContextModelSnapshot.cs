@@ -5463,6 +5463,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<bool?>("Explicit")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<DateTime?>("LastListenedAtUtc")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime?>("LastPlayedAtUtc")
                         .HasColumnType("datetime(6)");
 
@@ -5498,7 +5501,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_PodcastEpisodes_EpisodeType", "`EpisodeType` IN (0, 1, 2)");
 
-                            t.HasCheckConstraint("CK_PodcastEpisodes_Ranges", "(`DurationSeconds` IS NULL OR `DurationSeconds` BETWEEN 0 AND 604800) AND (`SeasonNumber` IS NULL OR `SeasonNumber` BETWEEN 0 AND 100000) AND (`EpisodeNumber` IS NULL OR `EpisodeNumber` BETWEEN 0 AND 100000) AND (`EnclosureDeclaredLength` IS NULL OR `EnclosureDeclaredLength` >= 0) AND (`PlaybackPositionSeconds` IS NULL OR `PlaybackPositionSeconds` >= 0)");
+                            t.HasCheckConstraint("CK_PodcastEpisodes_Ranges", "(`DurationSeconds` IS NULL OR `DurationSeconds` BETWEEN 0 AND 604800) AND (`SeasonNumber` IS NULL OR `SeasonNumber` BETWEEN 0 AND 100000) AND (`EpisodeNumber` IS NULL OR `EpisodeNumber` BETWEEN 0 AND 100000) AND (`EnclosureDeclaredLength` IS NULL OR `EnclosureDeclaredLength` >= 0) AND (`PlaybackPositionSeconds` IS NULL OR `PlaybackPositionSeconds` BETWEEN 0 AND 604800)");
                         });
                 });
 

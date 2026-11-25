@@ -13,6 +13,7 @@ using Odyssey.Core.Internet.News.Jobs;
 using Odyssey.Core.Internet.News.Podcasts;
 using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Core.Journal.Thumbnails;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 using Odyssey.Testing.FileStorage;
 using Odyssey.Testing.Fixtures;
@@ -213,6 +214,116 @@ public sealed class PodcastRelationalTests(MariaDbFixture fixture) : IAsyncDispo
         clock.Advance(TimeSpan.FromDays(2));
         Assert.Equal(1, (await retention.PassAsync(CancellationToken.None)).Released);
         Assert.Equal(PodcastAudioState.None, await harness.WithContextAsync(c => c.PodcastEpisodeAudio.Select(a => a.State).SingleAsync()));
+    }
+
+    private PodcastEpisodeService EpisodeService(IServiceProvider services)
+    {
+        var context = services.GetRequiredService<OdysseyContext>();
+        var volumes = services.GetRequiredService<FileStorageVolumeRegistry>();
+        var protection = DataProtectionProvider.Create("odyssey-it-podcasts");
+        var search = new NewsArticleSearch(context);
+        var articles = new NewsArticleService(context, search, new NewsListCursor(protection), new NewsCounterWriter(), null!, volumes,
+            clock, NullLogger<NewsArticleService>.Instance);
+        return new PodcastEpisodeService(context, articles, search, new PodcastEpisodeCursor(protection), new PodcastAudioRequests(),
+            new NewsCounterWriter(), services.GetRequiredService<INewsSettingsLookup>(), null!, volumes, clock,
+            NullLogger<PodcastEpisodeService>.Instance);
+    }
+
+    private async Task<NewsJobHarness> StoredEpisodeAsync()
+    {
+        var harness = await HarnessAsync();
+        harness.Server.Bytes(Audio, PodcastAudioFixtures.Mp3(), "audio/mpeg");
+        await PodcastAsync(harness, Audio);
+        await QueueAllAsync(harness);
+        await harness.Host.Services.GetRequiredService<PodcastAudioDownloadJob>().RunOnceAsync(CancellationToken.None);
+        Assert.Equal(PodcastAudioState.Stored, await harness.WithContextAsync(c => c.PodcastEpisodeAudio.Select(a => a.State).SingleAsync()));
+        return harness;
+    }
+
+    /// <summary>
+    /// Issue #593 AC 13 on MariaDB: the consumption rule's <c>CASE</c> agrees with the in-memory form for every stamp
+    /// combination — the case <c>GREATEST</c> would get wrong is one stamp <c>NULL</c>.
+    /// </summary>
+    [SkippableFact]
+    public async Task Playback_the_consumption_rule_translates_and_agrees_with_its_in_memory_form()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var harness = await StoredEpisodeAsync();
+        var stored = await harness.WithContextAsync(c => c.PodcastEpisodeAudio.Select(a => a.StoredAtUtc).SingleAsync());
+        DateTime?[] stamps = [null, stored!.Value.AddDays(-1), stored.Value, stored.Value.AddDays(1), stored.Value.AddDays(2)];
+        foreach (var played in stamps)
+        {
+            foreach (var listened in stamps)
+            {
+                await harness.WithContextAsync(c => c.Database.ExecuteSqlInterpolatedAsync(
+                    $"UPDATE `PodcastEpisodes` SET `LastPlayedAtUtc` = {played}, `LastListenedAtUtc` = {listened}"));
+                var queried = await harness.WithContextAsync(c =>
+                    PodcastConsumption.Rows(c.PodcastEpisodeAudio.AsNoTracking(), c.PodcastEpisodes.AsNoTracking()).Select(r => r.ConsumedAtUtc).SingleAsync());
+                Assert.Equal(PodcastConsumption.ConsumedAt(played, listened, stored), queried);
+            }
+        }
+    }
+
+    /// <summary>Issue #593 AC 14 on MariaDB: saved on day 0 and listened on day 20 releases on day 50, not day 30.</summary>
+    [SkippableFact]
+    public async Task Playback_retention_counts_from_the_later_of_saved_and_listened()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var harness = await StoredEpisodeAsync();
+        var start = clock.GetUtcNow().UtcDateTime;
+        var listened = start.AddDays(20);
+        await harness.WithContextAsync(c => c.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE `PodcastEpisodes` SET `LastPlayedAtUtc` = {start}, `LastListenedAtUtc` = {listened}"));
+        var retention = harness.Host.Services.GetRequiredService<PodcastAudioRetentionJob>();
+
+        clock.Advance(TimeSpan.FromDays(31));
+        Assert.Equal(0, (await retention.PassAsync(CancellationToken.None)).Released);
+        clock.Advance(TimeSpan.FromDays(20));
+        Assert.Equal(1, (await retention.PassAsync(CancellationToken.None)).Released);
+    }
+
+    /// <summary>
+    /// Issue #593 AC 8–11 on MariaDB: the conditional updates translate. A repeated identical save is still saved (not a
+    /// 404 from zero changed rows), a finish stamps and clears, and a save inside the guard window is ignored.
+    /// </summary>
+    [SkippableFact]
+    public async Task Playback_saves_finishes_and_guards_through_the_relational_updates()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var harness = await StoredEpisodeAsync();
+        var id = await harness.WithContextAsync(c => c.PodcastEpisodes.Select(e => e.NewsArticleId).SingleAsync());
+        await using var scope = harness.Scope();
+        var service = EpisodeService(scope.ServiceProvider);
+        Task<PodcastEpisode> RowAsync() => harness.WithContextAsync(c => c.PodcastEpisodes.AsNoTracking().SingleAsync());
+
+        Assert.Equal(PodcastPlaybackOutcome.Saved, await service.SavePlaybackAsync(id, new PodcastPlaybackUpdate { PositionSeconds = 1234 }, CancellationToken.None));
+        Assert.Equal(PodcastPlaybackOutcome.Saved, await service.SavePlaybackAsync(id, new PodcastPlaybackUpdate { PositionSeconds = 1234 }, CancellationToken.None));
+        Assert.Equal(1234, (await RowAsync()).PlaybackPositionSeconds);
+        Assert.Equal(PodcastPlaybackOutcome.NotFound, await service.SavePlaybackAsync(Guid.NewGuid(), new PodcastPlaybackUpdate { PositionSeconds = 1 }, CancellationToken.None));
+
+        Assert.Equal(PodcastPlaybackOutcome.Saved, await service.SavePlaybackAsync(id, new PodcastPlaybackUpdate { Completed = true }, CancellationToken.None));
+        var finished = await RowAsync();
+        Assert.Equal((clock.GetUtcNow().UtcDateTime, (int?)null), (finished.LastListenedAtUtc!.Value, finished.PlaybackPositionSeconds));
+
+        clock.Advance(TimeSpan.FromSeconds(30));
+        await service.SavePlaybackAsync(id, new PodcastPlaybackUpdate { PositionSeconds = 3000 }, CancellationToken.None);
+        Assert.Null((await RowAsync()).PlaybackPositionSeconds);
+        clock.Advance(TimeSpan.FromSeconds(PodcastLimits.PlaybackCompletionGuardSeconds));
+        await service.SavePlaybackAsync(id, new PodcastPlaybackUpdate { PositionSeconds = 3000 }, CancellationToken.None);
+        Assert.Equal(3000, (await RowAsync()).PlaybackPositionSeconds);
+    }
+
+    /// <summary>Issue #593 AC 19: the migrated CHECK bounds the shared position at 0 … one week.</summary>
+    [SkippableTheory]
+    [InlineData(-1)]
+    [InlineData(604_801)]
+    public async Task Playback_the_check_constraint_bounds_the_position(int position)
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var harness = await StoredEpisodeAsync();
+        var failure = await Assert.ThrowsAnyAsync<Exception>(() => harness.WithContextAsync(c =>
+            c.Database.ExecuteSqlInterpolatedAsync($"UPDATE `PodcastEpisodes` SET `PlaybackPositionSeconds` = {position}")));
+        Assert.Contains("CK_PodcastEpisodes_Ranges", failure.ToString(), StringComparison.Ordinal);
     }
 
     /// <summary>§5.2 #6 on MariaDB: the list's joins, the audio-state filter and the keyset translate.</summary>

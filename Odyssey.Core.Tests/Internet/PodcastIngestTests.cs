@@ -168,6 +168,41 @@ public sealed class PodcastIngestTests : IAsyncLifetime
         Assert.Equal(1, await news.WithContextAsync(c => c.PodcastEpisodeAudio.CountAsync(a => a.State == PodcastAudioState.Queued)));
     }
 
+    /// <summary>
+    /// Issue #593 AC 15: the unfetched cap counts an auto download as consumed once a finished in-browser listen made
+    /// after it was stored is on the episode — exactly like a device download.
+    /// </summary>
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 0)]
+    public async Task Playback_AC15_A_listened_auto_download_frees_its_unfetched_slot(bool listened, int queuedAfter)
+    {
+        await SetSettingAsync(SystemSettingsKeys.PodcastAutoDownloadMaxUnfetchedPerFeed, "1");
+        news.Server.Feed(FeedUrl, Show(1));
+        var feedId = await PodcastAsync(autoDownload: true);
+        await TickAsync();
+        var stored = news.Clock.GetUtcNow().UtcDateTime;
+        await news.WithContextAsync(async c =>
+        {
+            var audio = await c.PodcastEpisodeAudio.SingleAsync();
+            // The first fetch only sets the baseline, so the stored copy is made an automatic one by hand.
+            audio.State = PodcastAudioState.Stored;
+            audio.RequestedBy = PodcastAudioRequestedBy.Auto;
+            audio.StoredAtUtc = stored;
+            if (listened)
+            {
+                (await c.PodcastEpisodes.SingleAsync(e => e.NewsArticleId == audio.NewsArticleId)).LastListenedAtUtc = stored.AddMinutes(1);
+            }
+
+            await c.SaveChangesAsync();
+        });
+
+        news.Server.Feed(FeedUrl, Show(1, 2));
+        await NextFetchAsync(feedId);
+
+        Assert.Equal(queuedAfter, await news.WithContextAsync(c => c.PodcastEpisodeAudio.CountAsync(a => a.State == PodcastAudioState.Queued)));
+    }
+
     [Fact]
     public async Task AC9_A_first_fetch_cut_short_by_the_daily_article_cap_sets_no_baseline_so_its_leftovers_are_not_queued()
     {

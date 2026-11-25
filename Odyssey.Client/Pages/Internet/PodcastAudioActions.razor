@@ -4,10 +4,12 @@
     ui_kits/web/Podcasts.jsx, PodcastAudioActions; podcasts.css .pod-audio). One outlined card: a status line (<p>,
     text), then the actions the state allows. An action the caller lacks the claim for is ABSENT.
 
+      • While the page's playback session holds this episode, the OdsPodcastPlayer renders under the status line
+        (issue #594) and Play / Resume is absent; Save to device is outlined, Play is the filled lead.
       • Every action keeps its visible label first and adds the episode to its accessible name (WCAG 2.5.3).
       • While the server's re-request cooldown runs, Download to server / Try again are aria-disabled (focusable, not
         activatable) and "Available again at 14:32." describes them.
-      • Pending: the pressed action shows Loading and stays focusable (aria-disabled); the others are aria-disabled, except Save to device, which is never
+      • Pending: the pressed action shows Loading and stays focusable (aria-disabled); the others are aria-disabled, except Play and Save to device, which are never
         locked and so never changes under focus.
       • After three failed polls an in-flight episode says "Couldn't refresh the download status." in a <p>, with Check
         again beside it, outside the <p>; the page announces that once.
@@ -16,12 +18,29 @@
 <div class="pod-audio">
     <div class="pod-audio-head">
         <span class="material-icons pod-audio-ic" aria-hidden="true">graphic_eq</span>
-        <p class="pod-audio-line">@StatusText</p>
+        <p class="pod-audio-line" id="@StatusId(Episode.Id)" tabindex="-1">@StatusText</p>
         @if (Episode.Audio.State == PodcastAudioState.Downloading)
         {
             <span class="pod-audio-spin"><OdsSpinner Size="OdsSize.Sm" Decorative="true" /></span>
         }
     </div>
+    @if (PlayerHere && Session is { } session)
+    {
+        <OdsPodcastPlayer @key="Episode.Id" Title="@Title" Lang="@Lang" State="session.State" CurrentSeconds="session.CurrentSeconds"
+                          DurationSeconds="session.DurationSeconds" Volume="session.Volume" Muted="session.Muted"
+                          Status="@session.Status" SaveNote="session.SaveNote" Error="session.Error"
+                          ContentTypeLabel="@PodcastFormat.Type(Episode.Audio.ContentType)"
+                          ToggleId="@PlayerToggleId(Episode.Id)" RetryId="@PlayerRetryId(Episode.Id)" AlertId="@PlayerAlertId(Episode.Id)"
+                          OnToggle="session.ToggleAsync" OnSeek="session.SeekAsync" OnVolume="session.SetVolumeAsync"
+                          OnMute="session.ToggleMuteAsync" OnRetry="session.RetryAsync" />
+    }
+    @if (Unsupported && Episode.Audio.State == PodcastAudioState.Stored)
+    {
+        <div class="odc-alert info" id="@UnsupportedId(Episode.Id)" tabindex="-1">
+            <span class="material-icons" aria-hidden="true">info</span>
+            <div class="odc-alert-body">@OdsPodcastPlayback.ErrorText(OdsPodcastPlayerError.Unsupported, PodcastFormat.Type(Episode.Audio.ContentType))</div>
+        </div>
+    }
     @if (Actions.Count > 0)
     {
         <div class="pod-audio-actions">

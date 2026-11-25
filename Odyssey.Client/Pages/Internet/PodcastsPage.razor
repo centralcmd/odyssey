@@ -145,7 +145,8 @@
                                         Pending="@(_pending.TryGetValue(episode.Id, out var pending) ? pending : null)"
                                         PollTrouble="_poller.Trouble" WaitStopped="_poller.WaitStopped" Now="Now" TimeZone="LocalZone"
                                         OnAction="action => OnActionAsync(episode, action)" OnCheckAgain="CheckAgainAsync"
-                                        OnRetryDetail="LoadDetailAsync" />
+                                        OnRetryDetail="LoadDetailAsync"
+                                        Session="_session" Unsupported="@_unsupported.Contains(episode.Id)" />
                 </RenderItem>
             </OdsInfiniteList>
         </div>

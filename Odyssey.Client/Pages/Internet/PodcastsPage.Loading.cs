@@ -175,6 +175,7 @@ public partial class PodcastsPage
     {
         var seen = new HashSet<Guid>();
         _rows = [.. page.Items.Where(e => seen.Add(e.Id))];
+        await StopIfGoneAsync();
         _total = page.TotalCount;
         _totalCapped = page.TotalCountCapped == true;
         _cursor = page.NextCursor;
@@ -351,6 +352,7 @@ public partial class PodcastsPage
     private void RemoveEpisode(Guid id)
     {
         _rows.RemoveAll(r => r.Id == id);
+        _ = StopIfGoneAsync();
         _details.Remove(id);
         _alerts.Remove(id);
         if (_openId == id)

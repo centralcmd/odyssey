@@ -51,6 +51,24 @@ public interface IPodcastsApiClient
     /// <summary>The audio content URL, loaded by the browser as a download (it carries the session cookie itself).</summary>
     string AudioUrl(Guid episodeId);
 
+    /// <summary>
+    /// The in-browser playback URL (<c>GET …/audio/stream</c>, issue #593), resolved against the same API base as
+    /// <see cref="AudioUrl"/>. Inline and ranged; it never counts as saved to a device.
+    /// </summary>
+    string AudioStreamUrl(Guid episodeId);
+
+    /// <summary>
+    /// The same-origin path pattern every <see cref="AudioStreamUrl"/> matches, so the player script can refuse any
+    /// other source without restating the route.
+    /// </summary>
+    string AudioStreamPathPattern { get; }
+
+    /// <summary>
+    /// Saves the shared playback position, or (<paramref name="completed"/>) marks the listen finished
+    /// (<c>PUT …/playback</c>). <c>204</c>; <c>409 podcast-audio-not-stored</c> for a finish without stored audio.
+    /// </summary>
+    Task<ApiResult> SavePlaybackAsync(Guid id, int? positionSeconds, bool completed, CancellationToken ct = default);
+
     string ArtworkUrl(Guid artworkId, PodcastArtworkSize size = PodcastArtworkSize.Medium);
 }
 
@@ -96,6 +114,14 @@ public sealed class PodcastsApiClient(IOdysseyApi api) : IPodcastsApiClient
         api.SendAsync(HttpMethod.Delete, $"{Episodes}/{id}/audio", null, ct);
 
     public string AudioUrl(Guid episodeId) => new Uri(api.BaseAddress!, $"{Episodes}/{episodeId}/audio/content").ToString();
+
+    public string AudioStreamUrl(Guid episodeId) => new Uri(api.BaseAddress!, $"{Episodes}/{episodeId}/audio/stream").ToString();
+
+    public string AudioStreamPathPattern =>
+        $"^{System.Text.RegularExpressions.Regex.Escape(new Uri(api.BaseAddress!, Episodes).AbsolutePath)}/[0-9a-fA-F]{{8}}-[0-9a-fA-F]{{4}}-[0-9a-fA-F]{{4}}-[0-9a-fA-F]{{4}}-[0-9a-fA-F]{{12}}/audio/stream$";
+
+    public Task<ApiResult> SavePlaybackAsync(Guid id, int? positionSeconds, bool completed, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, $"{Episodes}/{id}/playback", new PodcastPlaybackUpdate { PositionSeconds = positionSeconds, Completed = completed }, ct);
 
     public string ArtworkUrl(Guid artworkId, PodcastArtworkSize size = PodcastArtworkSize.Medium) =>
         new Uri(api.BaseAddress!, $"{Artwork}/{artworkId}/content?size={size}").ToString();
