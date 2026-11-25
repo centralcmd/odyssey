@@ -49,6 +49,9 @@ next one going ahead, runs never overlapping. Rules:
   `Failed / not_started`. `DocumentSent` is derived from that stamp alone. The sweep also runs inline in the API
   for the one file or job a request touches, and under `Testing` the API runs the job inline. It has no manual
   run (`ManualRunSupported: false` → `409 job-run.manual-run-unsupported`). Match and import stay synchronous.
+  **AI recipe import has its own queue with the same shape** (`RecipeImportQueueJob`, `JobType` 13, issue #602) and its own
+  named client and circuit breaker, so neither flow waits behind or trips the other; `RecipeImportRetentionJob` (14) purges
+  finished imports hourly and may be run on demand by a `recipes.import` holder. See [recipes.md](recipes.md).
 - **Settings reach the worker within the cache TTL, not instantly.** A `/settings` save evicts the API's
   `IMemoryCache`, not the worker's, so a changed value applies to jobs on the next read after the 30 s TTL.
   A setting that must bind on the very next job run is read uncached, as `FileAnalysisEnabled` is.

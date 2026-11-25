@@ -30,3 +30,27 @@ Part of the architecture rules split out of the root [`CLAUDE.md`](../../CLAUDE.
 - **Demo data** (`RecipeGenerator`, issue #525 §11): six tags (one archived) and five recipes (one archived) covering
   sections, `ToTaste`, `Pinch`, a servings label and a recipe with no times. `DemoDataSeeder` writes the
   recipe rows; the worker's `DemoFileSeeder` writes the photos, the Library-area files and their links.
+
+**AI recipe import drafts a recipe from text and files, and nothing is a recipe until a person creates it** (issues
+#602, #604; `Odyssey.Core/Recipes/Import/`, `/recipe-imports`). An import (`RecipeImports`, with its ordered
+`RecipeImportSources` and its `RecipeImportDrafts`) is household-shared under `recipes.import`; the worker's
+`RecipeImportQueueJob` sends it and `RecipeImportRetentionJob` purges finished imports after `RecipeImportRetentionDays`.
+Rules that are easy to get backwards:
+
+- **The draft lives on the import, never in `Recipes`.** Accept (`POST …/drafts/{id}/accept`) creates the recipe through
+  `RecipeService.StageCreateAsync` — the same validation as `POST /api/recipes` — and marks the draft in **one**
+  transaction fenced by the draft's `Version` and the import's `Generation`, so a parallel accept, purge or delete loses
+  cleanly. `RecipeService.CreateAsync` keeps its own behaviour.
+- **Only Library-area files can be sources** (a Finance or Journal id is the same `404` as a missing one), and images go
+  through `StillImageValidator`: the stripped bytes are what is stored and what is sent. The worker strips an existing
+  image again before sending and fails `source_invalid` rather than send unstripped bytes.
+- **Every pre-send check runs in the worker, from an uncached read, before `TransferStartedAt`**: the requester's claims
+  (read from the database, not a cookie), the files, the destination origin, the disclosure version (per caller: it
+  covers whether tag names are sent), the credential, then `RecipeImportEnabled` last. `DocumentSent` derives from the
+  stamp alone. A claimed import is never re-sent; the recipe-import HTTP client retries once, only on 429/503/529.
+- **Delete is a tombstone and never touches a recipe.** It purges the content, nulls the source file links and releases
+  only import-owned files nothing else references (`RecipeImportContentPurge`); the row and its audit columns stay.
+- **`tagIds: null` on a draft `PUT` keeps the stored suggestions** and needs no tag claim; reads return `null` to a caller
+  without `recipes.tags.read`.
+- **The provider's tool schema is a verbatim JSON element**, because the request serializer's snake_case policy would
+  rename JSON Schema keywords such as `maxItems`.

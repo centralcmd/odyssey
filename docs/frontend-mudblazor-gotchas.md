@@ -64,7 +64,10 @@ Until then, treat **v9** as the truth.
   hands each file to the host's `Attach` callback; the host owns the link, its request shape and
   its failure toast. A surface's differences are parameters (`Kinds`, `GuessKind`, `Validity`,
   `RestrictToDocumentTypes` for the server-enforced `DocumentContentTypes`, `SurfaceMaxMegabytes`),
-  and the tabs follow the caller's claims (`files.create` / `files.read`, `photos.read`).
+  and the tabs follow the caller's claims (`files.create` / `files.read`, `photos.read`). The Attach documents
+  dialog's body is `DocumentSourcePanel` (DS `AttachDocumentsModal.jsx` · DocumentSourcePanel): a surface that already
+  is a dialog — the AI recipe import composer — shows that panel inline with its own `Pool`, `Cap` and `Counts`
+  instead of opening a dialog on top of a dialog.
 - **A field shows its help and its error together, and its control is described by both.**
   `OdsFieldShell` renders the help line, then the error line on its own `{id}-help-error` id when
   help is present (on `{id}-help` when it is not), so a wrapper that owns its input lists both ids in
