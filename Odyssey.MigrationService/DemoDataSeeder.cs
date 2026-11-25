@@ -59,6 +59,7 @@ public sealed class DemoDataSeeder(
         await SeedCalendarAsync(context, data, cancellationToken);
         // After the users: a recipe records who created and last edited it (SET NULL keys).
         await SeedRecipesAsync(context, data, cancellationToken);
+        await SeedRecipeImportsAsync(context, data, cancellationToken);
         // Last, and not part of the demo DATASET: the one settings row a dev stack cannot function
         // without and cannot be seeded with a fixed value. See its own remarks.
         await SeedClientBaseUrlAsync(context, cancellationToken);
@@ -492,6 +493,25 @@ public sealed class DemoDataSeeder(
         logger.LogInformation(
             "Seeded {Entries} journal entries, {Tasks} tasks, {JournalTags} journal tags, {JournalTaskTags} task tags.",
             data.JournalEntries.Count, data.JournalTasks.Count, data.JournalTags.Count, data.JournalTaskTags.Count);
+    }
+
+    /// <summary>The finished AI recipe imports (issue #602), after the recipes their accepted draft names.</summary>
+    private async Task SeedRecipeImportsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
+    {
+        if (data.RecipeImports.Count == 0)
+        {
+            return;
+        }
+
+        var sentinelId = data.RecipeImports[0].RecipeImportId;
+        if (await context.RecipeImports.AnyAsync(import => import.RecipeImportId == sentinelId, cancellationToken))
+        {
+            return;
+        }
+
+        await context.RecipeImports.AddRangeAsync(data.RecipeImports, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Seeded {Imports} recipe imports.", data.RecipeImports.Count);
     }
 
     private async Task SeedRecipesAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
