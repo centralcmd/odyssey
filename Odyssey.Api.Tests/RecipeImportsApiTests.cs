@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Odyssey.Api;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
@@ -464,6 +465,69 @@ public class RecipeImportsApiTests(RecipeImportsApiTests.Host host) : SharedApiH
             ["contentType", "fileId", "fileName", "sizeBytes", "uploadedAt"],
             item.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
         Assert.Equal(HttpStatusCode.Forbidden, (await withoutFiles.GetAsync($"{Base}/library-files")).StatusCode);
+    }
+
+    // ── Review round 1 (PR #611) ────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Reusing_the_request_id_of_a_deleted_import_is_a_409_not_a_500()
+    {
+        var factory = await ReadyAsync();
+        using var client = factory.CreateClient();
+        var body = await NewTextImportAsync(client);
+        var created = await Read<RecipeImportDetail>(await client.PostAsJsonAsync(Base, body));
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Base}/{created.Summary.Id}")).StatusCode);
+
+        var again = await client.PostAsJsonAsync(Base, body);
+
+        await AssertProblem(again, HttpStatusCode.Conflict, RecipeImportErrorCodes.RequestIdUsed);
+    }
+
+    [Fact]
+    public async Task Text_at_the_length_cap_is_accepted_and_one_character_over_is_400()
+    {
+        var factory = await ReadyAsync();
+        using var client = factory.CreateClient();
+        var atCap = await NewTextImportAsync(client);
+        atCap.Text = new string('a', RecipeImportLimits.MaxSourceTextLength);
+        var overCap = await NewTextImportAsync(client);
+        overCap.Text = new string('a', RecipeImportLimits.MaxSourceTextLength + 1);
+
+        Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsJsonAsync(Base, atCap)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Base, overCap)).StatusCode);
+    }
+
+    [Fact]
+    public async Task One_file_over_the_per_import_cap_is_400_and_sends_nothing()
+    {
+        var factory = await ReadyAsync();
+        using var client = factory.CreateClient();
+        var body = await NewTextImportAsync(client, [.. Enumerable.Range(0, RecipeImportLimits.MaxFilesPerImport + 1).Select(_ => Guid.NewGuid())]);
+
+        var response = await client.PostAsJsonAsync(Base, body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, Factory.Provider.Calls);
+    }
+
+    [Fact]
+    public async Task Past_the_per_user_create_limit_a_create_is_a_429_with_retry_after()
+    {
+        await using var factory = new OdysseyApiFactory(Full, actorUserId: Actor, configuration: new Dictionary<string, string?>
+        {
+            [$"{RecipeImportCreateRateLimitOptions.SectionName}:PermitLimit"] = "2",
+            [$"{RecipeImportCreateRateLimitOptions.SectionName}:WindowSeconds"] = "600",
+        });
+        using var client = factory.CreateClient();
+        var body = new { clientRequestId = Guid.NewGuid() };
+
+        // A refused create still spends a permit: the limit is on attempts, before the body is read.
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync(Base, body)).StatusCode);
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync(Base, body)).StatusCode);
+        var third = await client.PostAsJsonAsync(Base, body);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+        Assert.NotNull(third.Headers.RetryAfter);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────────────────────────────
