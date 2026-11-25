@@ -202,6 +202,9 @@ public class NewsPageHeaderAndDialogsTests
         var article = Article("Story");
         IReadOnlyCollection<Guid>? sent = null;
         await using var context = Context([article]);
+        var lists = 0;
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++lists == 1 ? Ok(new List<ExistingNewsTag>()) : Ok(new List<ExistingNewsTag> { new() { NewsTagId = tagId, Name = "Climate" } }));
         context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/news-tags/{tagId}")));
         context.News.Setup(n => n.SetArticleTagsAsync(article.Id, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
@@ -218,6 +221,8 @@ public class NewsPageHeaderAndDialogsTests
 
         cut.WaitForAssertion(() => Assert.Equal([tagId], sent));
         context.NewsTags.Verify(t => t.CreateAsync(It.Is<TagWrite>(w => w.Name == "Climate"), It.IsAny<CancellationToken>()), Times.Once);
+        // The page re-read its tags, so the card's chips show the new tag by name.
+        cut.WaitForAssertion(() => Assert.Contains("Climate", cut.Find($"#nwa-{article.Id} .odc-record-namerow").TextContent, StringComparison.Ordinal));
     }
 
     [Fact]

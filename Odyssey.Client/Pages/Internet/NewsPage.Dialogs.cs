@@ -43,7 +43,7 @@ public partial class NewsPage
     private IReadOnlyCollection<string> _tagsDraft = [];
 
     /// <summary>Tags minted from the article Tags field, under their temporary ids until Save resolves them.</summary>
-    private readonly List<OdsOption> _createdTags = [];
+    private List<OdsOption> _createdTags = [];
 
     private IReadOnlyList<OdsOption> ArticleTagOptions(NewsArticleSummary article)
     {
@@ -86,7 +86,7 @@ public partial class NewsPage
         _tagsArticle = article;
         _tagsDraft = [.. article.TagIds.Select(id => id.ToString())];
         _tagsError = null;
-        _createdTags.Clear();
+        _createdTags = [];
         TagCreator.OnCreateFailed = OnTagCreateFailed;
         _tagsKey = Guid.NewGuid();
         _tagsOpen = true;
@@ -120,16 +120,22 @@ public partial class NewsPage
             // Inline-created tags hand the picker a temporary id; wait for their POSTs, then map to the real ids.
             await TagCreator.WhenSettledAsync();
             _tagsDraft = [.. _tagsDraft.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
+            _createdTags = TagCreator.ResolveCreated(_createdTags);
         }
 
         var ids = _tagsDraft.Select(v => Guid.TryParse(v, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty).ToList();
         var result = await News.SetArticleTagsAsync(article.Id, ids);
         if (result.IsSuccess)
         {
-            if (ids.Any(id => !_tagsById.ContainsKey(id)))
+            if (TagQuickCreateHost.NeedsTagReload(ids, _tagsById))
             {
-                // A tag created inline: the chips, the Tag filter and the next dialog need it.
-                SetTags((await Catalogue.GetTagsAsync()).ItemsOrToast(Snackbar, "news tags"));
+                // A tag created inline: the chips, the Tag filter and the next dialog need it. A failed re-read
+                // keeps the list the page has rather than blanking every chip.
+                var tags = await Catalogue.GetTagsAsync();
+                if (tags.IsSuccess)
+                {
+                    SetTags(tags.Value ?? []);
+                }
             }
 
             article.TagIds = ids;

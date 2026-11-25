@@ -207,6 +207,22 @@ public class PodcastsPageTests
         }
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task The_new_podcast_dialog_offers_tag_create_only_with_the_news_tags_create_claim(bool canCreateTags)
+    {
+        string[] claims = canCreateTags
+            ? Listener
+            : [.. Listener.Where(c => c != PermissionClaims.NewsTagsCreate)];
+        await using var page = new Harness([], [], claims);
+        var cut = page.Render();
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("New podcast", StringComparison.Ordinal)).Click();
+
+        Assert.Equal(canCreateTags, cut.FindComponent<NewsFeedDialog>().Instance.CanCreateTags);
+    }
+
     // ── Cards ──────────────────────────────────────────────────────────────────────────────────────
 
     [Fact]

@@ -195,19 +195,48 @@ public class NewsFeedDialogTests
     }
 
     [Fact]
-    public async Task Without_the_create_claim_the_feed_tags_field_only_picks_and_an_archived_name_is_refused()
+    public async Task Without_the_create_claim_the_feed_tags_field_only_picks()
+    {
+        await using var context = new NewsPageTestContext();
+        var (cut, _) = Render(context, canCreateTags: false);
+
+        SearchTags(cut, "Climate");
+
+        Assert.Empty(cut.FindAll("button.odc-tagms-create"));
+    }
+
+    [Fact]
+    public async Task A_name_held_by_an_archived_news_tag_is_refused_at_the_feed_tags_field()
     {
         var archived = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Old", Archived = DateTime.UtcNow };
         await using var context = new NewsPageTestContext();
-        var (without, _) = Render(context, canCreateTags: false, tags: [archived]);
-        SearchTags(without, "Climate");
-        Assert.Empty(without.FindAll("button.odc-tagms-create"));
+        var (cut, _) = Render(context, canCreateTags: true, tags: [archived]);
 
-        await using var other = new NewsPageTestContext();
-        var (with, _) = Render(other, canCreateTags: true, tags: [archived]);
-        SearchTags(with, "old");
-        Assert.Empty(with.FindAll("button.odc-tagms-create"));
-        Assert.Contains("Restore it on the News tags page", with.Find(".odc-tagms-blocked").TextContent, StringComparison.Ordinal);
+        SearchTags(cut, "old");
+
+        Assert.Empty(cut.FindAll("button.odc-tagms-create"));
+        Assert.Contains("“Old” is an archived tag. Restore it on the News tags page to use it.",
+            cut.Find(".odc-tagms-blocked").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_failed_inline_create_is_dropped_and_the_new_feed_carries_no_phantom_id()
+    {
+        await using var context = new NewsPageTestContext();
+        context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" }));
+        NewNewsFeed? sent = null;
+        context.News.Setup(n => n.CreateFeedAsync(It.IsAny<NewNewsFeed>(), It.IsAny<CancellationToken>()))
+            .Callback((NewNewsFeed f, CancellationToken _) => sent = f)
+            .ReturnsAsync(Ok(NewsFeedsPageTests.Feed("Example")));
+        var (cut, _) = Render(context, canCreateTags: true);
+        Input(cut, NewsFeedDialog.UrlId).Input("https://example.com/feed.xml");
+
+        SearchTags(cut, "Climate");
+        cut.Find("button.odc-tagms-create").Click();
+
+        Assert.True(await Submit(cut));
+        Assert.Null(sent!.TagIds);
     }
 
     // ── Edit and the version (AC 36, 41) ─────────────────────────────────────────────────────────

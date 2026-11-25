@@ -790,10 +790,15 @@ public partial class NewsFeedsPage
         _dialogOpen = false;
         Replace(saved);
         Catalogue.Invalidate();
-        if (saved.TagIds.Any(id => !_tagsById.ContainsKey(id)))
+        if (TagQuickCreateHost.NeedsTagReload(saved.TagIds, _tagsById))
         {
-            // A tag created inline in the dialog: the page's filter, chips and next dialog need it.
-            SetTags((await Catalogue.GetTagsAsync()).ItemsOrToast(Snackbar, "news tags"));
+            // A tag created inline in the dialog: the page's filter, chips and next dialog need it. A failed
+            // re-read keeps the list the page has rather than blanking every chip.
+            var tags = await Catalogue.GetTagsAsync();
+            if (tags.IsSuccess)
+            {
+                SetTags(tags.Value ?? []);
+            }
         }
 
         if (created)

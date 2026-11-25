@@ -161,7 +161,15 @@ public partial class BooksPage
             return;
         }
 
-        _tags = (await BookTags.ListAllAsync()).ItemsOrToast(Snackbar, "book tags");
+        var result = await BookTags.ListAllAsync();
+        var tags = result.ItemsOrToast(Snackbar, "book tags");
+        if (!result.IsSuccess && _tags.Count > 0)
+        {
+            // A failed re-read after an inline create keeps the list the page has rather than blanking every chip.
+            return;
+        }
+
+        _tags = tags;
         _tagById = _tags.ToDictionary(t => t.BookTagId);
         _tagOptions = BookVisuals.TagOptions(_tags);
         _tagFilter = [.. _tagFilter.Where(id => _tagOptions.Any(o => o.Value == id))];
@@ -559,7 +567,7 @@ public partial class BooksPage
     {
         // A tag created inline in the dialog is not in the page's list yet: reload so the filter, the By tag
         // tile and the next dialog see it.
-        if (_canReadTags && saved.TagIds.Any(id => !_tagById.ContainsKey(id)))
+        if (_canReadTags && TagQuickCreateHost.NeedsTagReload(saved.TagIds, _tagById))
         {
             await LoadTagsAsync();
         }

@@ -178,7 +178,7 @@ public partial class NewsFeedDialog
     private bool _reloading;
 
     /// <summary>Tags minted from the field in this dialog, under their temporary ids until the save resolves them.</summary>
-    private readonly List<OdsOption> _createdTags = [];
+    private List<OdsOption> _createdTags = [];
 
     private IReadOnlyList<OdsOption> TagOptions
     {
@@ -221,6 +221,7 @@ public partial class NewsFeedDialog
 
         await TagCreator.WhenSettledAsync();
         _tagIds = [.. _tagIds.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
+        _createdTags = TagCreator.ResolveCreated(_createdTags);
     }
 
     internal string ReloadedText => _updatedFields.Count == 0

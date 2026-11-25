@@ -223,11 +223,54 @@ public class QuickCreateServiceTests
         TagCreatorWithNews<TTag>(Func<TagWrite, ApiResult> respond)
     {
         var api = new Mock<ITagsApiClient<TTag>>();
+        // Answers after a yield, as an HTTP call does: the create is still in flight when Begin returns.
         api.Setup(a => a.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((TagWrite t, CancellationToken _) => respond(t));
+            .Returns(async (TagWrite t, CancellationToken _) =>
+            {
+                await Task.Yield();
+                return respond(t);
+            });
         var cache = new Mock<IReferenceDataCache>();
         var news = new Mock<INewsCatalogueCache>();
         return (new TagQuickCreate<TTag>(api.Object, cache.Object, news.Object, Snackbar()), api, cache, news);
+    }
+
+    [Fact]
+    public async Task Resolve_created_rekeys_each_settled_option_to_its_real_id_and_drops_a_failed_one()
+    {
+        var calls = 0;
+        var (creator, _) = TagCreator(_ => ++calls == 1 ? Ok() : Fail(HttpStatusCode.BadRequest, "no"));
+        var made = creator.Begin("Made")!;
+        var failed = creator.Begin("Failed")!;
+        await creator.WhenSettledAsync();
+
+        var resolved = creator.ResolveCreated([made, failed]);
+
+        Assert.Equal([new OdsOption(CreatedId.ToString(), "Made")], resolved);
+    }
+
+    [Fact]
+    public void A_create_refused_before_begin_returns_hands_out_no_option()
+    {
+        var api = new Mock<ITagsApiClient<ExistingTransactionTag>>();
+        api.Setup(a => a.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Fail(HttpStatusCode.BadRequest, "no"));
+        var creator = new TagQuickCreate<ExistingTransactionTag>(api.Object, Mock.Of<IReferenceDataCache>(), Mock.Of<INewsCatalogueCache>(), Snackbar());
+        var dropped = new List<string>();
+        creator.OnCreateFailed = dropped.Add;
+
+        Assert.Null(creator.Begin("Groceries"));
+        Assert.Single(dropped);
+    }
+
+    [Fact]
+    public void A_tag_reload_is_needed_only_for_an_id_the_page_does_not_hold()
+    {
+        var known = new Dictionary<Guid, string> { [CreatedId] = "Known" };
+
+        Assert.False(TagQuickCreateHost.NeedsTagReload([CreatedId], known));
+        Assert.False(TagQuickCreateHost.NeedsTagReload([], known));
+        Assert.True(TagQuickCreateHost.NeedsTagReload([CreatedId, Guid.NewGuid()], known));
     }
 
     /// <summary>

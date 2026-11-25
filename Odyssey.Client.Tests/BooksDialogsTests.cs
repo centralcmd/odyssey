@@ -50,16 +50,19 @@ public class BooksDialogsTests
     };
 
     private static (IRenderedComponent<BookDialogHost> Cut, Mock<IBooksApiClient> Books) Render(
-        ExistingBook? book, bool canReadTags, ApiResult<ExistingBook>? updateResult = null) =>
-        RenderWithTags(book, canReadTags, canCreateTags: false, tags: [], updateResult).Pick();
+        ExistingBook? book, bool canReadTags, ApiResult<ExistingBook>? updateResult = null)
+    {
+        var (cut, books, _) = RenderWithTags(book, canReadTags, canCreateTags: false, tags: [], updateResult);
+        return (cut, books);
+    }
 
     private static (IRenderedComponent<BookDialogHost> Cut, Mock<IBooksApiClient> Books, Mock<ITagsApiClient<ExistingBookTag>> Tags)
         RenderWithTags(ExistingBook? book, bool canReadTags, bool canCreateTags, IReadOnlyList<ExistingBookTag> tags,
-            ApiResult<ExistingBook>? updateResult = null)
+            ApiResult<ExistingBook>? updateResult = null, ApiResult? createTagResult = null)
     {
         var bookTags = new Mock<ITagsApiClient<ExistingBookTag>>();
         bookTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/book-tags/{CreatedTagId}")));
+            .ReturnsAsync(createTagResult ?? ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/book-tags/{CreatedTagId}")));
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
@@ -90,8 +93,6 @@ public class BooksDialogsTests
 
     private static void OpenTags(IRenderedComponent<BookDialogHost> cut, string search)
     {
-        // UseContext swaps the claim snapshot without a render of its own.
-        cut.FindComponent<BookDialog>().Render();
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsTagMultiSelect>()));
         cut.FindComponent<OdsTagMultiSelect>().Find("button.odc-tagms-trigger").Click();
         cut.WaitForElement(".odc-tagms-search input").Input(search);
@@ -115,6 +116,57 @@ public class BooksDialogsTests
         cut.WaitForAssertion(() => books.Verify(b => b.UpdateAsync(book.BookId,
             It.Is<UpdateBook>(u => u.TagIds!.Count == 1 && u.TagIds[0] == CreatedTagId), It.IsAny<CancellationToken>()), Times.Once));
         tags.Verify(t => t.CreateAsync(It.Is<TagWrite>(w => w.Name == "Signed copy"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void A_failed_inline_create_drops_the_chip_and_the_save_sends_no_phantom_id()
+    {
+        var book = Existing();
+        book.TagIds = [];
+        var refused = ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" });
+        var (cut, books, _) = RenderWithTags(book, canReadTags: true, canCreateTags: true, tags: [], createTagResult: refused);
+
+        OpenTags(cut, "Signed copy");
+        cut.Find("button.odc-tagms-create").Click();
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Signed copy", cut.FindComponent<OdsTagMultiSelect>().Find(".odc-tagms-chips").TextContent, StringComparison.Ordinal));
+
+        Submit(cut, "Save");
+
+        cut.WaitForAssertion(() => books.Verify(b => b.UpdateAsync(book.BookId,
+            It.Is<UpdateBook>(u => u.TagIds!.Count == 0), It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    [Fact]
+    public void After_a_failed_save_a_tag_created_inline_still_reads_by_name_and_can_be_removed()
+    {
+        var book = Existing();
+        book.TagIds = [];
+        var refused = ApiResult<ExistingBook>.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" });
+        var (cut, _, _) = RenderWithTags(book, canReadTags: true, canCreateTags: true, tags: [], updateResult: refused);
+
+        OpenTags(cut, "Signed copy");
+        cut.Find("button.odc-tagms-create").Click();
+        Submit(cut, "Save");
+
+        // The selection now carries the real id: the picker still offers it under its name, not "Unavailable tag",
+        // and the chip keeps its remove control.
+        cut.WaitForAssertion(() =>
+        {
+            var picker = cut.FindComponent<OdsTagMultiSelect>();
+            Assert.Equal([CreatedTagId.ToString()], picker.Instance.Value);
+            Assert.Contains("Signed copy", picker.Find(".odc-tagms-chips").TextContent, StringComparison.Ordinal);
+            Assert.DoesNotContain("Unavailable tag", picker.Markup, StringComparison.Ordinal);
+            Assert.Single(picker.FindAll("button.odc-tagms-x"));
+        });
+    }
+
+    [Fact]
+    public void The_create_claim_without_the_read_claim_shows_no_tags_field_and_no_create()
+    {
+        var (cut, _, _) = RenderWithTags(Existing(), canReadTags: false, canCreateTags: true, tags: []);
+
+        Assert.Empty(cut.FindComponents<OdsTagMultiSelect>());
+        Assert.False(cut.FindComponent<BookDialog>().Instance.OffersTagCreate);
     }
 
     [Fact]
@@ -329,9 +381,4 @@ public class BooksDialogsTests
             builder.CloseComponent();
         }
     }
-}
-
-internal static class BooksDialogsTestExtensions
-{
-    public static (T1, T2) Pick<T1, T2, T3>(this (T1 A, T2 B, T3 C) t) => (t.A, t.B);
 }

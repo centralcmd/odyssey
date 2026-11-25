@@ -62,7 +62,7 @@ public partial class BookDialog
     private bool _canCreateTags;
 
     /// <summary>Tags minted from the field in this dialog, under their temporary ids until the save resolves them.</summary>
-    private readonly List<OdsOption> _createdTags = [];
+    private List<OdsOption> _createdTags = [];
 
     private readonly Dictionary<string, string> _errors = new(StringComparer.OrdinalIgnoreCase);
 
@@ -93,18 +93,27 @@ public partial class BookDialog
         }
 
         var user = await AuthenticationState.GetUserAsync();
-        _tagsSnapshot = user.HasPermission(PermissionClaims.BookTagsRead);
-        _canCreateTags = _tagsSnapshot && user.HasPermission(PermissionClaims.BookTagsCreate);
+        UseClaims(user.HasPermission(PermissionClaims.BookTagsRead), user.HasPermission(PermissionClaims.BookTagsCreate));
         UseContacts(await ReferenceData.ContactsAsync());
     }
 
     /// <summary>Test seam: the claim snapshot and the contacts, without an auth state or a cache.</summary>
     internal void UseContext(bool canReadTags, IEnumerable<ExistingContact> contacts, bool canCreateTags = false)
     {
+        UseClaims(canReadTags, canCreateTags);
+        UseContacts(contacts);
+        StateHasChanged();
+    }
+
+    // The one place the two claims combine: create is offered only on a field that is shown, i.e. with books.tags.read.
+    private void UseClaims(bool canReadTags, bool canCreateTags)
+    {
         _tagsSnapshot = canReadTags;
         _canCreateTags = canReadTags && canCreateTags;
-        UseContacts(contacts);
     }
+
+    /// <summary>Whether the Tags field offers its inline create row — for tests.</summary>
+    internal bool OffersTagCreate => _canCreateTags;
 
     private void UseContacts(IEnumerable<ExistingContact> contacts)
     {
@@ -323,6 +332,7 @@ public partial class BookDialog
             // Inline-created tags hand the picker a temporary id; wait for their POSTs, then map to the real ids.
             await TagCreator.WhenSettledAsync();
             _tagIds = [.. _tagIds.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
+            _createdTags = TagCreator.ResolveCreated(_createdTags);
         }
 
         ApiResult<ExistingBook> result = IsEdit

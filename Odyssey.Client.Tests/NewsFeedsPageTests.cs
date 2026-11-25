@@ -582,6 +582,75 @@ public class NewsFeedsPageTests
         Assert.Equal(string.Empty, cut.Find($"input#{NewsFeedDialog.UrlId}, #{NewsFeedDialog.UrlId} input").GetAttribute("value") ?? string.Empty);
     }
 
+    // ── Inline tag create from the feed dialog ─────────────────────────────────────────────────────
+
+    private static readonly string[] FeedsWithoutTagCreate =
+    [
+        PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate, PermissionClaims.NewsFeedsUpdate,
+    ];
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task The_feed_dialog_offers_tag_create_only_with_the_news_tags_create_claim(bool canCreateTags)
+    {
+        await using var context = Context([Feed("Other")], canCreateTags ? null : FeedsWithoutTagCreate);
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+
+        Assert.Equal(canCreateTags, cut.FindComponent<NewsFeedDialog>().Instance.CanCreateTags);
+    }
+
+    [Fact]
+    public async Task A_saved_feed_carrying_a_tag_the_page_lacks_reloads_the_tags_and_a_known_one_does_not()
+    {
+        var known = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Known" };
+        var minted = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Minted" };
+        var lists = 0;
+        await using var context = Context([Feed("Other")]);
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++lists == 1 ? Ok(new List<ExistingNewsTag> { known }) : Ok(new List<ExistingNewsTag> { known, minted }));
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        await SaveThroughDialog(cut, Feed("Uses known", f => f.TagIds = [known.NewsTagId]));
+        Assert.Equal(1, lists);
+
+        await SaveThroughDialog(cut, Feed("Uses minted", f => f.TagIds = [minted.NewsTagId]));
+        cut.WaitForAssertion(() => Assert.Equal(2, lists));
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+        Assert.Contains(cut.FindComponent<NewsFeedDialog>().Instance.Tags, t => t.NewsTagId == minted.NewsTagId);
+    }
+
+    [Fact]
+    public async Task A_failed_tag_reload_after_a_save_keeps_the_tags_the_page_had()
+    {
+        var known = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Known" };
+        var lists = 0;
+        await using var context = Context([Feed("Other")]);
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++lists == 1
+                ? Ok(new List<ExistingNewsTag> { known })
+                : ApiResult<List<ExistingNewsTag>>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        await SaveThroughDialog(cut, Feed("Uses minted", f => f.TagIds = [Guid.NewGuid()]));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, lists));
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+        Assert.Contains(cut.FindComponent<NewsFeedDialog>().Instance.Tags, t => t.NewsTagId == known.NewsTagId);
+    }
+
+    private static async Task SaveThroughDialog(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, ExistingNewsFeed saved)
+    {
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+        var dialog = cut.FindComponent<NewsFeedDialog>();
+        await cut.InvokeAsync(() => dialog.Instance.Saved.InvokeAsync(saved));
+    }
+
     private static void CheckAgain(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, ExistingNewsFeed feed) =>
         cut.FindAll($"#nf-{feed.Id} button").First(b => b.TextContent.Contains("Check again", StringComparison.Ordinal)).Click();
 
