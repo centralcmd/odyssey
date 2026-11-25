@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
+using Odyssey.Core.Ai;
 
 namespace Odyssey.Core.Finance;
 
@@ -26,6 +27,9 @@ public static class FileAnalysisServiceCollectionExtensions
 
         services.AddSingleton<IFileAnalysisPromptTemplate, EmbeddedFileAnalysisPromptTemplate>();
         services.AddScoped<IFileAnalysisSettingsLookup, FileAnalysisSettingsLookup>();
+        // The neutral view every other Claude flow reads (#602 §3.1): the same rows, no Finance types.
+        services.AddScoped<IAiProcessorSettingsLookup, FileAnalysisAiProcessorSettingsLookup>();
+        services.AddSingleton(sp => new AiTransportOptions(sp.GetRequiredService<IOptions<FileAnalysisOptions>>().Value.TimeoutSeconds));
         services.AddScoped<FileAnalysisJobQueue>();
         services.AddScoped<FileAnalysisExtractionRunner>();
 
