@@ -551,6 +551,7 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
     [InlineData("FileStorageMaintenance")]
     [InlineData("PhotoThumbnails")]
     [InlineData("ExchangeRateSync")]
+    [InlineData("PodcastAudioRetention")]
     public async Task A_run_with_nothing_to_do_is_skipped_at_once(string jobType)
     {
         var factory = Factory;
@@ -561,6 +562,26 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var run = await response.Content.ReadFromJsonAsync<ExistingJobRun>();
         Assert.Equal((Enum.Parse<JobType>(jobType), JobRunStatus.Skipped, JobRunTrigger.Manual), (run!.JobType, run.Status, run.Trigger));
+    }
+
+    /// <summary>Every catalogued job with a manual run, so the next one cannot repeat issue #615's 500.</summary>
+    public static TheoryData<JobType> ManualRunJobs => [.. JobCatalogue.Entries.Where(e => e.ManualRunSupported).Select(e => e.JobType)];
+
+    /// <summary>
+    /// Issue #615: the catalogue offered Podcast audio retention a manual run that <c>NewManualRun</c> could not build,
+    /// so Run now was a 500. A job the catalogue lets someone run by hand must start (202) or finish Skipped (200).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ManualRunJobs))]
+    public async Task Every_job_with_a_manual_run_can_start_one(JobType jobType)
+    {
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
+
+        var response = await client.PostAsync($"{Base}/{jobType}/runs", null);
+
+        Assert.True(response.StatusCode is HttpStatusCode.OK or HttpStatusCode.Accepted,
+            $"{jobType}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
     }
 
     [Fact]
