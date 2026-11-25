@@ -162,11 +162,11 @@ public partial class PodcastsPage : IDisposable
         Row("none", "No tag", _feeds.Count(f => f.TagIds.Count == 0), "label_off", "outline"),
     ];
 
-    /// <summary>Saved to a device or not, over every episode of every podcast (§3.2.1 as amended by the design).</summary>
     /// <summary>By podcast: the episodes of each active podcast (<c>Podcast.EpisodeCount</c>); the rows partition them, so the tile sums them.</summary>
     private IReadOnlyList<OdsBreakdownRow> ByPodcastRows => NewsVisuals.CountByFeedRows(
-        _feeds.Where(f => StateOf(f) == NewsFeedStatus.Active).Select(f => (f.Id, f.DisplayTitle, f.Podcast?.EpisodeCount ?? 0, "podcasts")));
+        _feeds.Where(f => StateOf(f) == NewsFeedStatus.Active).Select(f => new FeedCount(f.Id, f.DisplayTitle, f.Podcast?.EpisodeCount ?? 0, "podcasts")));
 
+    /// <summary>Saved to a device or not, over every episode of every podcast (§3.2.1 as amended by the design).</summary>
     private IReadOnlyList<OdsBreakdownRow> EpisodeRows =>
     [
         Row(SavedKey, "Saved to a device", SavedTotal, "phone_iphone", "outline"),

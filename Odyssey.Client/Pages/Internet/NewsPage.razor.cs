@@ -212,7 +212,7 @@ public partial class NewsPage : IDisposable
 
     /// <summary>By feed: the stored articles of each active feed (the maintained <c>ArticleCount</c>); the rows partition them, so the tile sums them.</summary>
     private IReadOnlyList<OdsBreakdownRow> ByFeedRows => NewsVisuals.CountByFeedRows(
-        _catalogue.Where(f => f.State == NewsFeedState.Active).Select(f => (f.Id, f.DisplayTitle, f.ArticleCount, "rss_feed")));
+        _catalogue.Where(f => f.State == NewsFeedState.Active).Select(f => new FeedCount(f.Id, f.DisplayTitle, f.ArticleCount, "rss_feed")));
 
     private IReadOnlyList<OdsBreakdownRow> FeedRows =>
     [

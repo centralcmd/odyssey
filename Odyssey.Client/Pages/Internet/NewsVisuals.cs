@@ -122,18 +122,24 @@ public static class NewsVisuals
     /// <summary>
     /// The Overview's "By feed" / "By podcast" rows (Odyssey Design System · ui_kits/web/News.jsx, NewsFeeds.jsx,
     /// Podcasts.jsx): one row per feed the caller passes — the pages pass only active ones — with what it holds,
-    /// most first, then by name. Every feed is listed: no cap and no "Other" row. Display only.
+    /// most first, then by name. Every feed is listed: no cap and no "Other" row. Display only. A feed with a
+    /// <see cref="FeedCount.Unit"/> shows its count as text ("5 articles"): the glyph is aria-hidden, so where the
+    /// units differ within one tile the text must carry them (WCAG 1.3.1).
     /// </summary>
-    public static IReadOnlyList<OdsBreakdownRow> CountByFeedRows(IEnumerable<(Guid Id, string Title, int Count, string Icon)> feeds) =>
+    public static IReadOnlyList<OdsBreakdownRow> CountByFeedRows(IEnumerable<FeedCount> feeds) =>
     [
-        .. feeds.OrderByDescending(f => f.Count).ThenBy(f => f.Title, StringComparer.CurrentCultureIgnoreCase)
+        .. feeds.Select(f => f with { Count = Math.Max(0, f.Count) })
+            .OrderByDescending(f => f.Count).ThenBy(f => f.Title, StringComparer.CurrentCultureIgnoreCase)
             .Select(f => new OdsBreakdownRow
             {
                 Key = f.Id,
                 Label = f.Title,
                 Icon = f.Icon,
                 IconColor = OdsBreakdown.Tone("outline"),
-                Count = Math.Max(0, f.Count),
+                Count = f.Unit is { } unit ? NewsFeedback.Count(f.Count, unit.One, unit.Many) : f.Count,
             }),
     ];
 }
+
+/// <summary>One feed's row in a "By feed" tile: what it holds, its glyph and, where a tile mixes kinds, the unit's words.</summary>
+public sealed record FeedCount(Guid Id, string Title, int Count, string Icon, (string One, string Many)? Unit = null);

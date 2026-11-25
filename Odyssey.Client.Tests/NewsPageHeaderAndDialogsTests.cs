@@ -71,6 +71,20 @@ public class NewsPageHeaderAndDialogsTests
     }
 
     [Fact]
+    public async Task By_feed_says_so_when_no_feed_is_active()
+    {
+        await using var context = Context([Article("A")], catalogue:
+        [
+            CatalogueFeed("Resting", f => { f.State = NewsFeedState.Paused; f.Health = NewsFeedHealth.Paused; f.ArticleCount = 3; }, FeedId),
+        ]);
+
+        var cut = Rendered(context);
+
+        var tile = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "By feed");
+        Assert.Equal("No active feeds.", tile.Find(".odc-breakdown-empty").TextContent.Trim());
+    }
+
+    [Fact]
     public async Task Attention_lists_exactly_the_feeds_that_need_it_with_their_severity_and_a_review_link()
     {
         await using var context = Context([Article("A")], catalogue:

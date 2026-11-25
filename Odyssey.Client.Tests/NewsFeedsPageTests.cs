@@ -292,7 +292,7 @@ public class NewsFeedsPageTests
 
         cut.WaitForAssertion(() => Assert.NotEmpty(CardNames(cut)));
         var tile = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "By feed");
-        Assert.Equal([("Show", 12, "podcasts"), ("Articles feed", 5, "rss_feed")], tile.Instance.Rows.Select(r => (r.Label, (int)r.Count, r.Icon)));
+        Assert.Equal([("Show", "12 episodes", "podcasts"), ("Articles feed", "5 articles", "rss_feed")], tile.Instance.Rows.Select(r => (r.Label, (string)r.Count, r.Icon)));
         Assert.Empty(tile.FindAll(".odc-breakdown-total"));
     }
 
