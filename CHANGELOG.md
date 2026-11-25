@@ -8,6 +8,33 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 Entries start at 0.16.0; releases before it are recorded only in the
 [GitHub tags](https://github.com/centralcmd/odyssey/tags).
 
+## [0.54.0](https://github.com/centralcmd/odyssey/compare/v0.53.0...v0.54.0) (2026-11-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* recipe ingredient requests and reads no longer carry amountMax or preparation. Existing values are folded into the ingredient name by the migration, which only a backup restore undoes.
+
+### Features
+
+* add ai recipe import ([#611](https://github.com/centralcmd/odyssey/issues/611)) ([ad28c12](https://github.com/centralcmd/odyssey/commit/ad28c125dd868821d9b1aba5d4af65e052dd003d))
+* **client:** count articles per feed in the news overviews ([#608](https://github.com/centralcmd/odyssey/issues/608)) ([8b09f5f](https://github.com/centralcmd/odyssey/commit/8b09f5fd3624fdf011dd69d7401380d4a6cd3868))
+* **client:** create tags inline from the book, feed and article tag fields ([#607](https://github.com/centralcmd/odyssey/issues/607)) ([0b83b08](https://github.com/centralcmd/odyssey/commit/0b83b08c9a9c70302832d7f5dd9187e6f848beca))
+* **client:** page the recipe imports list from the server as it scrolls ([#616](https://github.com/centralcmd/odyssey/issues/616)) ([c6b5054](https://github.com/centralcmd/odyssey/commit/c6b5054813a8d8624dc8aa3af1146141d7b9c413))
+* play stored podcast episodes in the browser ([#600](https://github.com/centralcmd/odyssey/issues/600)) ([baaad05](https://github.com/centralcmd/odyssey/commit/baaad05aa3a6aaf016accdfbd4edc78a0d849f3f))
+* sync the client with the design system at 1795477868-c9a2 and simplify recipe ingredients ([#598](https://github.com/centralcmd/odyssey/issues/598)) ([32c8717](https://github.com/centralcmd/odyssey/commit/32c8717d1b2f6eb2ec70be13fbabcad36328e83f))
+
+
+### Bug Fixes
+
+* **client:** open the new feed dialog with an empty feed url ([#609](https://github.com/centralcmd/odyssey/issues/609)) ([ff9fce3](https://github.com/centralcmd/odyssey/commit/ff9fce3d1b373b20285ca0c5b39c3f800a94438d))
+* **core:** let podcast audio retention start a manual run ([#617](https://github.com/centralcmd/odyssey/issues/617)) ([244bb4f](https://github.com/centralcmd/odyssey/commit/244bb4f653cc26834a41dbf4c65ac1844e055b33)), closes [#615](https://github.com/centralcmd/odyssey/issues/615)
+
+
+### Documentation
+
+* allow on/off switches for third-party integrations ([#601](https://github.com/centralcmd/odyssey/issues/601)) ([961956a](https://github.com/centralcmd/odyssey/commit/961956a9227fedc28107f6f938502b9b85c4b033))
+
 ## [0.53.0](https://github.com/centralcmd/odyssey/compare/v0.52.0...v0.53.0) (2026-11-23)
 
 
