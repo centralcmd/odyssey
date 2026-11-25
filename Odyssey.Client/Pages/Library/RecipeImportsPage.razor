@@ -6,7 +6,8 @@
 @*
     /recipe-imports (issue #604; design system components-recipes.md · The page, ui_kits/web/RecipeImports.jsx) — the
     Analysis log / Recipes pattern: PageHeader (a running tally, a server-backed Show filter, sort, How it works) with
-    Import with AI as its primary, and an expandable OdsRecordCard list, one open at a time. The open card IS the
+    Import with AI as its primary, and an expandable OdsRecordCard list, one open at a time,
+    server-paged: OdsInfiniteList in its remote mode appends the next page as the list scrolls. The open card IS the
     import: why it is in its state (alert), its details, its sources in order, and a pending draft recipe with Things
     to check. Every action is in the card's ⋯ menu, by state; each destructive one confirms first and says, for that
     import, what goes and what stays. A Waiting or Reading import is re-read every few seconds while it is open.
@@ -47,9 +48,11 @@
     }
 
     <div class="acct-list">
-        <OdsInfiniteList TItem="RecipeImportSummary" Items="_rows" Noun="imports"
-                         ItemKey="@(r => (object)r.Id)" BatchSize="25"
-                         Loading="_isLoading" Error="_loadError" OnRetry="LoadAsync"
+        <OdsInfiniteList TItem="RecipeImportSummary" Items="_rows" Noun="imports" Remote="true"
+                         ItemKey="@(r => (object)r.Id)" BatchSize="BatchSize"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="ResetAsync"
+                         RemoteTotal="_listTotal" HasMoreRemote="HasMore" LoadMore="LoadMoreAsync"
+                         LoadingMore="_loadingMore" LoadMoreFailed="_loadMoreFailed" ResetKey="_resetKey"
                          ErrorDescription="Something went wrong reaching Odyssey. Your recipes are unaffected."
                          HasFilters="@(_show != ShowAll)" OnClearFilters="@(() => OnShowChanged(ShowAll))"
                          FilteredEmptyTitle="No imports match this filter"

@@ -17,8 +17,8 @@ public partial class RecipeImportsPage
     internal const string ShowProgress = "progress";
     internal const string ShowFailed = "failed";
 
-    /// <summary>The list holds every import in one window: the server's largest page.</summary>
-    internal const int Window = 100;
+    /// <summary>One request's worth of cards: the list is server-paged and appends the next page as it scrolls.</summary>
+    internal const int BatchSize = 25;
 
     /// <summary>How often an open Waiting or Reading import is re-read.</summary>
     internal static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
@@ -64,7 +64,14 @@ public partial class RecipeImportsPage
     private List<RecipeImportSummary> _rows = [];
     private readonly Dictionary<Guid, RecipeImportDetail> _details = [];
     private bool _isLoading = true;
+    private bool _refetching;
     private bool _loadError;
+    private int? _listTotal;
+    private int _page = 1;
+    private bool _loadingMore;
+    private bool _loadMoreFailed;
+    private object _resetKey = 0;
+    private CancellationTokenSource? _moreCts;
     private Guid? _openId;
     private string _show = ShowAll;
     private OdsTableSort _sort = DefaultSort;
@@ -124,7 +131,7 @@ public partial class RecipeImportsPage
 
         var options = Imports.GetOptionsAsync();
         var tags = _canTags ? RecipeTags.ListAllAsync() : null;
-        await LoadAsync();
+        await Task.WhenAll(ResetAsync(), LoadCountsAsync());
         var optionsResult = await options;
         _options = optionsResult.IsSuccess ? optionsResult.Value : null;
         if (tags is not null)
@@ -155,7 +162,7 @@ public partial class RecipeImportsPage
         }
 
         _appliedLink = link;
-        if (OpenQuery is { } id && _rows.FirstOrDefault(r => r.Id == id) is { } row)
+        if (OpenQuery is { } id && await RowForLinkAsync(id) is { } row)
         {
             await ToggleAsync(row, true);
             if (ReviewQuery && _canCreate)
@@ -186,16 +193,18 @@ public partial class RecipeImportsPage
         SortDir = _sort.Dir == OdsSortDirection.Asc ? SortDirection.Asc : SortDirection.Desc,
     };
 
-    private async Task LoadAsync()
+    private bool HasMore => _listTotal is { } total && _rows.Count < total;
+
+    /// <summary>A fresh first page, on load and on any filter, sort or new import (OdsInfiniteList remote mode).</summary>
+    private async Task ResetAsync()
     {
+        _moreCts?.Cancel();
         var generation = ++_loadGeneration;
-        _isLoading = _rows.Count == 0;
-        _loadError = false;
-        var list = Imports.ListAsync(Filter, 1, Window);
-        var ready = Imports.ListAsync(new RecipeImportListFilter { HasPendingDraft = true }, 1, 1);
-        var progress = Imports.ListAsync(new RecipeImportListFilter { Status = [RecipeImportStatus.Queued, RecipeImportStatus.Running] }, 1, 1);
-        var all = Imports.ListAsync(new RecipeImportListFilter { IncludePurged = true }, 1, 1);
-        var result = await list;
+        _refetching = !_isLoading;
+        _loadingMore = false;
+        _loadMoreFailed = false;
+        StateHasChanged();
+        var result = await Imports.ListAsync(Filter, 1, BatchSize);
         if (generation != _loadGeneration)
         {
             return;
@@ -203,23 +212,116 @@ public partial class RecipeImportsPage
 
         _loadError = !result.IsSuccess;
         _rows = [.. result.ValueOr(new()).Items];
+        _listTotal = result.IsSuccess ? result.Value?.TotalCount : null;
+        _page = 1;
+        _resetKey = generation;
+        _isLoading = false;
+        _refetching = false;
+        StateHasChanged();
+    }
+
+    /// <summary>The next page, appended. Never concurrent: the list asks only when no append is in flight.</summary>
+    private async Task LoadMoreAsync(bool pressed)
+    {
+        if (_loadingMore || !HasMore)
+        {
+            return;
+        }
+
+        var generation = _loadGeneration;
+        _moreCts?.Cancel();
+        var cts = _moreCts = new CancellationTokenSource();
+        _loadingMore = true;
+        _loadMoreFailed = false;
+        StateHasChanged();
+        var result = await Imports.ListAsync(Filter, _page + 1, BatchSize, cts.Token);
+        if (generation != _loadGeneration || cts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _loadingMore = false;
+        if (result.IsSuccess && result.Value is { } page)
+        {
+            // An import created or re-sorted between pages may come round again; it is shown once.
+            var known = _rows.Select(r => r.Id).ToHashSet();
+            var added = page.Items.Where(r => known.Add(r.Id)).ToList();
+            _rows.AddRange(added);
+            _listTotal = page.TotalCount;
+            _page++;
+            await AnnounceAsync($"{added.Count} more {(added.Count == 1 ? "import" : "imports")} loaded.");
+        }
+        else
+        {
+            _loadMoreFailed = true;
+        }
+
+        StateHasChanged();
+    }
+
+    /// <summary>The sub-line's tallies, independent of the Show filter and of how many pages are loaded.</summary>
+    private async Task LoadCountsAsync()
+    {
+        var ready = Imports.ListAsync(new RecipeImportListFilter { HasPendingDraft = true }, 1, 1);
+        var progress = Imports.ListAsync(new RecipeImportListFilter { Status = [RecipeImportStatus.Queued, RecipeImportStatus.Running] }, 1, 1);
+        var all = Imports.ListAsync(new RecipeImportListFilter { IncludePurged = true }, 1, 1);
         _readyCount = (await ready).ValueOr(new()).TotalCount;
         _progressCount = (await progress).ValueOr(new()).TotalCount;
         _total = (await all).ValueOr(new()).TotalCount;
-        _isLoading = false;
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// After an action on one import: re-read that card in place (or drop it) and the tallies, so the pages already
+    /// scrolled in stay where they are. A card that no longer matches the Show filter goes at the next filter or sort.
+    /// </summary>
+    private async Task RefreshImportAsync(Guid id, bool deleted)
+    {
+        if (deleted)
+        {
+            _details.Remove(id);
+            if (_rows.RemoveAll(r => r.Id == id) > 0 && _listTotal is { } total)
+            {
+                _listTotal = Math.Max(0, total - 1);
+            }
+        }
+        else
+        {
+            await LoadDetailAsync(id);
+        }
+
+        await LoadCountsAsync();
+    }
+
+    /// <summary>A linked import may be on a page not loaded yet: read it and show it first.</summary>
+    private async Task<RecipeImportSummary?> RowForLinkAsync(Guid id)
+    {
+        if (_rows.FirstOrDefault(r => r.Id == id) is { } loaded)
+        {
+            return loaded;
+        }
+
+        var result = await Imports.GetAsync(id);
+        if (!result.IsSuccess || result.Value is not { } detail)
+        {
+            return null;
+        }
+
+        _details[id] = detail;
+        _rows.Insert(0, detail.Summary);
+        return detail.Summary;
     }
 
     private async Task OnShowChanged(string? show)
     {
         _show = show ?? ShowAll;
-        await LoadAsync();
+        await ResetAsync();
     }
 
     private async Task OnSortChanged(OdsTableSort sort)
     {
         _sort = sort;
-        await LoadAsync();
+        await ResetAsync();
     }
 
     private async Task ToggleAsync(RecipeImportSummary row, bool open)
@@ -281,7 +383,7 @@ public partial class RecipeImportsPage
                     if (before is not null && _details.GetValueOrDefault(id) is { } done)
                     {
                         await InvokeAsync(() => AnnounceAsync(DoneAnnouncement(done.Summary)));
-                        await InvokeAsync(LoadAsync);
+                        await InvokeAsync(LoadCountsAsync);
                     }
 
                     return;
@@ -311,6 +413,8 @@ public partial class RecipeImportsPage
     public ValueTask DisposeAsync()
     {
         StopPolling();
+        _moreCts?.Cancel();
+        _moreCts?.Dispose();
         GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }
@@ -349,7 +453,7 @@ public partial class RecipeImportsPage
     private async Task OnImportSentAsync(RecipeImportDetail created)
     {
         _show = ShowAll;
-        await LoadAsync();
+        await Task.WhenAll(ResetAsync(), LoadCountsAsync());
         _details[created.Summary.Id] = created;
         _openId = created.Summary.Id;
         StopPolling();
@@ -404,10 +508,9 @@ public partial class RecipeImportsPage
             _acceptedTitles[acceptedId] = accepted.Title;
         }
 
-        await LoadAsync();
         if (id is { } importId)
         {
-            await LoadDetailAsync(importId);
+            await RefreshImportAsync(importId, deleted: false);
         }
 
         var files = accepted.AttachedSources && accepted.Result.AttachedFileCount > 0
@@ -534,13 +637,7 @@ public partial class RecipeImportsPage
             return false;
         }
 
-        _details.Remove(id);
-        await LoadAsync();
-        if (confirm.Kind != "delete" && _openId == id)
-        {
-            await LoadDetailAsync(id);
-        }
-
+        await RefreshImportAsync(id, deleted: confirm.Kind == "delete");
         if (confirm.Kind == "delete")
         {
             _openId = null;

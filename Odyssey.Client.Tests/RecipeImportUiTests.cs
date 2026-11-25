@@ -342,6 +342,37 @@ public class RecipeImportUiTests
     }
 
     [Fact]
+    public async Task The_list_is_server_paged_and_load_more_appends_the_next_page()
+    {
+        await using var ctx = PageTestContext.Create(Importer);
+        var api = new Mock<IRecipeImportsApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
+        var all = Enumerable.Range(0, RecipeImportsPage.BatchSize + 5).Select(_ => Row(RecipeImportStatus.Failed)).ToList();
+        var pages = new List<(int Page, int Size)>();
+        api.Setup(a => a.ListAsync(It.IsAny<RecipeImportListFilter?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((RecipeImportListFilter? _, int page, int size, CancellationToken _) =>
+            {
+                if (size > 1)
+                {
+                    pages.Add((page, size));
+                }
+
+                return Ok(new PagedResult<RecipeImportSummary> { Items = [.. all.Skip((page - 1) * size).Take(size)], TotalCount = all.Count });
+            });
+        api.Setup(a => a.GetOptionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(Options()));
+        ctx.Services.AddSingleton(api.Object);
+        ctx.Render<MudPopoverProvider>();
+        ctx.Render<MudDialogProvider>();
+        var page = ctx.Render<RecipeImportsPage>();
+        page.WaitForAssertion(() => Assert.Equal(RecipeImportsPage.BatchSize, page.FindAll(".ods-record-card, [id^='ri-card-']").Count(e => e.Id?.StartsWith("ri-card-", StringComparison.Ordinal) == true)));
+
+        await page.InvokeAsync(() => page.Find("button.odc-infinite-pill").Click());
+
+        page.WaitForAssertion(() => Assert.Equal(all.Count, page.FindAll("[id^='ri-card-']").Count));
+        Assert.Equal([(1, RecipeImportsPage.BatchSize), (2, RecipeImportsPage.BatchSize)], pages);
+        Assert.Empty(page.FindAll("button.odc-infinite-pill"));
+    }
+
+    [Fact]
     public async Task Discarding_from_a_closed_card_loads_the_import_and_sends_its_real_draft_id()
     {
         await using var ctx = PageTestContext.Create(Importer);
