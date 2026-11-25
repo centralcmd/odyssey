@@ -29,71 +29,59 @@ public sealed class ClaudeRecipeExtractionProvider(HttpClient httpClient, ILogge
         RecipeImportWarningCodes.Illegible, RecipeImportWarningCodes.MultipleRecipesFound,
     };
 
-    private static readonly string[] NullableString = ["string", "null"];
-    private static readonly string[] NullableInteger = ["integer", "null"];
-    private static readonly string[] NullableNumber = ["number", "null"];
+    /// <summary>
+    /// The <c>store_recipes</c> input schema (§13), built as a JSON element so the request's snake_case naming policy
+    /// cannot rename JSON Schema keywords such as <c>maxItems</c>.
+    /// </summary>
+    internal static readonly JsonElement Schema = BuildSchema();
 
-    internal static readonly object Schema = new
+    private static JsonElement BuildSchema()
     {
-        type = "object",
-        required = new[] { "recipes" },
-        properties = new
-        {
-            recipes = new
+        var units = string.Join(",", UnitNames.Select(u => $"\"{u}\""));
+        var warnings = string.Join(",", ModelWarnings.Order(StringComparer.Ordinal).Select(w => $"\"{w}\""));
+        var json = $$"""
             {
-                type = "array",
-                minItems = 0,
-                maxItems = RecipeImportLimits.MaxRecipesPerImport,
-                items = new
-                {
-                    type = "object",
-                    required = new[] { "title", "ingredients", "steps" },
-                    properties = new
-                    {
-                        title = new { type = "string" },
-                        description = new { type = NullableString },
-                        notes = new { type = NullableString },
-                        source = new { type = NullableString, description = "Where the recipe comes from, as written in the sources" },
-                        servings = new { type = NullableInteger },
-                        servings_label = new { type = NullableString, description = "What a serving is, e.g. portions or buns" },
-                        prep_minutes = new { type = NullableInteger },
-                        cook_minutes = new { type = NullableInteger },
-                        ingredients = new
-                        {
-                            type = "array",
-                            items = new
-                            {
-                                type = "object",
-                                required = new[] { "name", "unit" },
-                                properties = new
-                                {
-                                    section = new { type = NullableString },
-                                    amount = new { type = NullableNumber },
-                                    amount_max = new { type = NullableNumber, description = "The upper bound when a range is given" },
-                                    unit = new { @enum = UnitNames },
-                                    unit_text = new { type = NullableString, description = "The unit as written when unit is None" },
-                                    name = new { type = "string" },
-                                    optional = new { type = "boolean" },
-                                },
-                            },
-                        },
-                        steps = new
-                        {
-                            type = "array",
-                            items = new
-                            {
-                                type = "object",
-                                required = new[] { "text" },
-                                properties = new { section = new { type = NullableString }, text = new { type = "string" } },
-                            },
-                        },
-                        tag_refs = new { type = "array", items = new { type = "string" }, description = "Ref tokens from the tag vocabulary only" },
-                        warnings = new { type = "array", items = new { @enum = ModelWarnings.Order(StringComparer.Ordinal).ToArray() } },
-                    },
-                },
-            },
-        },
-    };
+              "type": "object",
+              "required": ["recipes"],
+              "properties": {
+                "recipes": {
+                  "type": "array", "minItems": 0, "maxItems": {{RecipeImportLimits.MaxRecipesPerImport}},
+                  "items": {
+                    "type": "object",
+                    "required": ["title", "ingredients", "steps"],
+                    "properties": {
+                      "title": { "type": "string" },
+                      "description": { "type": ["string", "null"] },
+                      "notes": { "type": ["string", "null"] },
+                      "source": { "type": ["string", "null"], "description": "Where the recipe comes from, as written in the sources" },
+                      "servings": { "type": ["integer", "null"] },
+                      "servings_label": { "type": ["string", "null"], "description": "What a serving is, e.g. portions or buns" },
+                      "prep_minutes": { "type": ["integer", "null"] },
+                      "cook_minutes": { "type": ["integer", "null"] },
+                      "ingredients": { "type": "array", "items": {
+                        "type": "object", "required": ["name", "unit"],
+                        "properties": {
+                          "section": { "type": ["string", "null"] },
+                          "amount": { "type": ["number", "null"] },
+                          "amount_max": { "type": ["number", "null"], "description": "The upper bound when a range is given" },
+                          "unit": { "enum": [{{units}}] },
+                          "unit_text": { "type": ["string", "null"], "description": "The unit as written when unit is None" },
+                          "name": { "type": "string" },
+                          "optional": { "type": "boolean" } } } },
+                      "steps": { "type": "array", "items": {
+                        "type": "object", "required": ["text"],
+                        "properties": { "section": { "type": ["string", "null"] }, "text": { "type": "string" } } } },
+                      "tag_refs": { "type": "array", "items": { "type": "string" }, "description": "Ref tokens from the tag vocabulary only" },
+                      "warnings": { "type": "array", "items": { "enum": [{{warnings}}] } }
+                    }
+                  }
+                }
+              }
+            }
+            """;
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
 
     internal const string Instructions =
         """
