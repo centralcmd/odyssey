@@ -226,8 +226,11 @@ public class RecipeDialogTests
         Assert.True(Path(cut)[2].Current);
         Assert.Contains("Write the step, or remove it.", cut.Markup, StringComparison.Ordinal);
         cut.WaitForAssertion(() => Assert.True(Focused(ctx, FieldId("steps[0].text"))));
+        // The summary opens its list only once it holds the problems (aria-expanded present); before
+        // that a press is a "review" — wait for it, then for the list it renders.
+        cut.WaitForAssertion(() => Assert.Equal("false", cut.Find("button.odc-errsum").GetAttribute("aria-expanded")));
         cut.Find("button.odc-errsum").Click();
-        var list = cut.Find(".odc-errsum-list").TextContent;
+        var list = cut.WaitForElement(".odc-errsum-list").TextContent;
         Assert.Contains("Details", list, StringComparison.Ordinal);
         Assert.Contains("Ingredient 1", list, StringComparison.Ordinal);
         Assert.Contains("Step 1", list, StringComparison.Ordinal);

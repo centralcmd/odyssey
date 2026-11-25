@@ -34,6 +34,7 @@
                     <OdsBreakdownTile Label="Podcasts" Rows="PodcastRows" Empty="No podcasts." />
                     <OdsBreakdownTile Label="By tags" Rows="TagRows" Empty="No tagged podcasts." TotalValue="@_feeds.Count" TotalLabel="Podcasts" />
                     <OdsBreakdownTile Label="Episodes" Rows="EpisodeRows" Empty="No episodes." TotalValue="@EpisodeTotalText" />
+                    <OdsBreakdownTile Label="By podcast" Rows="ByPodcastRows" Empty="No active podcasts." TotalLabel="Episodes" />
                     <OdsBreakdownTile Label="On the server" Rows="ServerRows" Empty="Nothing on the server." Total="false" />
                 </div>
             }
@@ -167,7 +168,7 @@
 @if (_feedDialogKey != Guid.Empty)
 {
     <NewsFeedDialog @key="_feedDialogKey" Open="_feedDialogOpen" OpenChanged="v => _feedDialogOpen = v"
-                    Tags="_tags" InitialKind="NewsFeedKind.Podcast" Saved="OnPodcastCreatedAsync" />
+                    Tags="_tags" CanCreateTags="_canCreateTags" InitialKind="NewsFeedKind.Podcast" Saved="OnPodcastCreatedAsync" />
 }
 
 @code {

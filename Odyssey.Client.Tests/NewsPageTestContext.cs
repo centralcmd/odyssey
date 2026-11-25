@@ -53,6 +53,8 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
         Ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims ?? AllNewsClaims));
         Ctx.Services.AddScoped<INewsCatalogueCache, NewsCatalogueCache>();
         Ctx.Services.AddScoped<NewsStoreGate>();
+        // The real inline-create path, so a Tags field's "Create …" row posts through NewsTags.
+        Ctx.Services.AddTransient(typeof(ITagQuickCreate<>), typeof(TagQuickCreate<>));
         Clipboard.Setup(c => c.CopyAsync(It.IsAny<string>(), It.IsAny<string?>())).ReturnsAsync(true);
         Ctx.Services.AddSingleton(Clipboard.Object);
         Limits.Setup(l => l.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => CurrentLimits);

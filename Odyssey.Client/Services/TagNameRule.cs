@@ -66,5 +66,7 @@ public static class TagNameRule
         public const string Task = "Task tags";
         public const string Photo = "Photo tags";
         public const string Recipe = "Recipe tags";
+        public const string Book = "Book tags";
+        public const string News = "News tags";
     }
 }

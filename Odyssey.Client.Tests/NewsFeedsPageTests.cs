@@ -279,6 +279,24 @@ public class NewsFeedsPageTests
     }
 
     [Fact]
+    public async Task By_feed_lists_active_feeds_with_articles_or_episodes_and_no_total()
+    {
+        await using var context = Context(
+        [
+            Feed("Articles feed", f => f.ArticleCount = 5),
+            Feed("Show", f => { f.Kind = NewsFeedKind.Podcast; f.ArticleCount = 99; f.Podcast = new NewsFeedPodcast { EpisodeCount = 12 }; }),
+            Feed("Paused feed", f => { f.IsActive = false; f.ArticleCount = 50; }),
+            Feed("Archived feed", f => { f.ArchivedAtUtc = DateTime.UtcNow; f.IsActive = false; f.ArticleCount = 60; }),
+        ]);
+        var cut = context.Render<NewsFeedsPage>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(CardNames(cut)));
+        var tile = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "By feed");
+        Assert.Equal([("Show", "12 episodes", "podcasts"), ("Articles feed", "5 articles", "rss_feed")], tile.Instance.Rows.Select(r => (r.Label, (string)r.Count, r.Icon)));
+        Assert.Empty(tile.FindAll(".odc-breakdown-total"));
+    }
+
+    [Fact]
     public async Task Search_matches_the_name_or_the_site_host()
     {
         await using var context = Context([Feed("Fjord Weather", f => f.SiteUrl = "https://yr.no/"), Feed("Tech Daily")]);
@@ -548,6 +566,89 @@ public class NewsFeedsPageTests
         cut.WaitForAssertion(() => Assert.Contains("Example News: Healthy.", Polite(cut), StringComparison.Ordinal));
         Assert.Equal(2, reads);
         Assert.Contains("Healthy", cut.Find($"#nf-{created.Id} .odc-newshealth").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task New_feed_opens_with_an_empty_feed_url()
+    {
+        // A bare InitialUrl="_dialogUrl" binds the literal text "_dialogUrl" to a string parameter.
+        await using var context = Context([Feed("Other")]);
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+
+        Assert.Null(cut.FindComponent<NewsFeedDialog>().Instance.InitialUrl);
+        Assert.Equal(string.Empty, cut.Find($"input#{NewsFeedDialog.UrlId}, #{NewsFeedDialog.UrlId} input").GetAttribute("value") ?? string.Empty);
+    }
+
+    // ── Inline tag create from the feed dialog ─────────────────────────────────────────────────────
+
+    private static readonly string[] FeedsWithoutTagCreate =
+    [
+        PermissionClaims.NewsRead, PermissionClaims.NewsFeedsCreate, PermissionClaims.NewsFeedsUpdate,
+    ];
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task The_feed_dialog_offers_tag_create_only_with_the_news_tags_create_claim(bool canCreateTags)
+    {
+        await using var context = Context([Feed("Other")], canCreateTags ? null : FeedsWithoutTagCreate);
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+
+        Assert.Equal(canCreateTags, cut.FindComponent<NewsFeedDialog>().Instance.CanCreateTags);
+    }
+
+    [Fact]
+    public async Task A_saved_feed_carrying_a_tag_the_page_lacks_reloads_the_tags_and_a_known_one_does_not()
+    {
+        var known = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Known" };
+        var minted = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Minted" };
+        var lists = 0;
+        await using var context = Context([Feed("Other")]);
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++lists == 1 ? Ok(new List<ExistingNewsTag> { known }) : Ok(new List<ExistingNewsTag> { known, minted }));
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        await SaveThroughDialog(cut, Feed("Uses known", f => f.TagIds = [known.NewsTagId]));
+        Assert.Equal(1, lists);
+
+        await SaveThroughDialog(cut, Feed("Uses minted", f => f.TagIds = [minted.NewsTagId]));
+        cut.WaitForAssertion(() => Assert.Equal(2, lists));
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+        Assert.Contains(cut.FindComponent<NewsFeedDialog>().Instance.Tags, t => t.NewsTagId == minted.NewsTagId);
+    }
+
+    [Fact]
+    public async Task A_failed_tag_reload_after_a_save_keeps_the_tags_the_page_had()
+    {
+        var known = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Known" };
+        var lists = 0;
+        await using var context = Context([Feed("Other")]);
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++lists == 1
+                ? Ok(new List<ExistingNewsTag> { known })
+                : ApiResult<List<ExistingNewsTag>>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+        var cut = context.Render<NewsFeedsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        await SaveThroughDialog(cut, Feed("Uses minted", f => f.TagIds = [Guid.NewGuid()]));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, lists));
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+        Assert.Contains(cut.FindComponent<NewsFeedDialog>().Instance.Tags, t => t.NewsTagId == known.NewsTagId);
+    }
+
+    private static async Task SaveThroughDialog(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, ExistingNewsFeed saved)
+    {
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "New feed").Click();
+        var dialog = cut.FindComponent<NewsFeedDialog>();
+        await cut.InvokeAsync(() => dialog.Instance.Saved.InvokeAsync(saved));
     }
 
     private static void CheckAgain(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, ExistingNewsFeed feed) =>

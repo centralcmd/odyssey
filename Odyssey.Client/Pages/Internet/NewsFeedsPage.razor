@@ -35,6 +35,7 @@
                     <OdsBreakdownTile Label="By tags" Rows="TagRows" Empty="No tagged feeds." />
                     <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No feeds." TotalValue="@_feeds.Count" />
                     <OdsBreakdownTile Label="By type" Rows="KindRows" Empty="No feeds." />
+                    <OdsBreakdownTile Label="By feed" Rows="ByFeedRows" Empty="No active feeds." Total="false" />
                 </div>
             }
         </OverviewContent>
@@ -126,7 +127,7 @@
 @if (_dialogKey != Guid.Empty)
 {
     <NewsFeedDialog @key="_dialogKey" Open="_dialogOpen" OpenChanged="OnDialogOpenChanged"
-                    Feed="_dialogFeed" Tags="_tags" InitialConflict="_dialogConflict" InitialUrl="_dialogUrl"
+                    Feed="_dialogFeed" Tags="_tags" CanCreateTags="_canCreateTags" InitialConflict="_dialogConflict" InitialUrl="@_dialogUrl"
                     Saved="OnFeedSavedAsync" GoToFeed="GoToFeedAsync" Deleted="OnFeedGoneInDialog"
                     Refreshed="Replace" />
 }

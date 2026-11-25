@@ -1,4 +1,5 @@
 using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
 using Odyssey.Dtos.Internet;
 
@@ -109,6 +110,16 @@ public static class NewsVisuals
         [.. tags.OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
 
     /// <summary>
+    /// The <c>CreateBlocked</c> sentence for a news Tags field: news tag names are unique across active and archived
+    /// tags, and a tag just minted in the same field counts too.
+    /// </summary>
+    public static string? BlockedTagName(IEnumerable<ExistingNewsTag> tags, IEnumerable<OdsOption> created, string text) =>
+        TagNameRule.Blocked(
+            tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null))
+                .Concat(created.Select(o => new TagNameEntry(o.Label, false))),
+            text, TagNameRule.Pages.News);
+
+    /// <summary>
     /// A tag picker's options: the active tags, plus any archived one already chosen — so an existing link stays
     /// visible and removable, while no archived tag can be newly added (the server refuses it, §7.2).
     /// </summary>
@@ -118,4 +129,28 @@ public static class NewsVisuals
         return [.. tags.Where(t => t.Archived is null || keep.Contains(t.NewsTagId))
             .OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
     }
+
+    /// <summary>
+    /// The Overview's "By feed" / "By podcast" rows (Odyssey Design System · ui_kits/web/News.jsx, NewsFeeds.jsx,
+    /// Podcasts.jsx): one row per feed the caller passes — the pages pass only active ones — with what it holds,
+    /// most first, then by name. Every feed is listed: no cap and no "Other" row. Display only. A feed with a
+    /// <see cref="FeedCount.Unit"/> shows its count as text ("5 articles"): the glyph is aria-hidden, so where the
+    /// units differ within one tile the text must carry them (WCAG 1.3.1).
+    /// </summary>
+    public static IReadOnlyList<OdsBreakdownRow> CountByFeedRows(IEnumerable<FeedCount> feeds) =>
+    [
+        .. feeds.Select(f => f with { Count = Math.Max(0, f.Count) })
+            .OrderByDescending(f => f.Count).ThenBy(f => f.Title, StringComparer.CurrentCultureIgnoreCase)
+            .Select(f => new OdsBreakdownRow
+            {
+                Key = f.Id,
+                Label = f.Title,
+                Icon = f.Icon,
+                IconColor = OdsBreakdown.Tone("outline"),
+                Count = f.Unit is { } unit ? NewsFeedback.Count(f.Count, unit.One, unit.Many) : f.Count,
+            }),
+    ];
 }
+
+/// <summary>One feed's row in a "By feed" tile: what it holds, its glyph and, where a tile mixes kinds, the unit's words.</summary>
+public sealed record FeedCount(Guid Id, string Title, int Count, string Icon, (string One, string Many)? Unit = null);

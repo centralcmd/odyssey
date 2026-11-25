@@ -76,6 +76,8 @@ public partial class NewsPage : IDisposable
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
 
+    [Inject] private ITagQuickCreate<ExistingNewsTag> TagCreator { get; set; } = default!;
+
     /// <summary><c>?feedId=</c> preselects that one feed and clears the other filters except Status (§3.1).</summary>
     [SupplyParameterFromQuery(Name = "feedId")] public Guid? FeedIdQuery { get; set; }
 
@@ -105,6 +107,7 @@ public partial class NewsPage : IDisposable
     private bool _canCreateFeeds;
     private bool _canReadSettings;
     private bool _canReadFileStorage;
+    private bool _canCreateTags;
 
     // ── Reference data ─────────────────────────────────────────────────────────────────────────────
     private List<NewsFeedCatalogueEntry> _catalogue = [];
@@ -210,6 +213,10 @@ public partial class NewsPage : IDisposable
     /// <summary>The header's ⋯ menu offers Mark all read… to a news.update holder with feeds, while something unread is in view.</summary>
     private bool CanMarkAll => _canUpdate && _catalogue.Count > 0 && !StatusExcludesUnread;
 
+    /// <summary>By feed: the stored articles of each active feed (the maintained <c>ArticleCount</c>); the rows partition them, so the tile sums them.</summary>
+    private IReadOnlyList<OdsBreakdownRow> ByFeedRows => NewsVisuals.CountByFeedRows(
+        _catalogue.Where(f => f.State == NewsFeedState.Active).Select(f => new FeedCount(f.Id, f.DisplayTitle, f.ArticleCount, "rss_feed")));
+
     private IReadOnlyList<OdsBreakdownRow> FeedRows =>
     [
         new() { Key = "ok", Label = "Healthy or pending", Icon = "check_circle", IconColor = OdsBreakdown.Tone("income"),
@@ -311,6 +318,7 @@ public partial class NewsPage : IDisposable
         var user = await Auth.GetUserAsync();
         _canUpdate = user.HasPermission(PermissionClaims.NewsUpdate);
         _canCreateFeeds = user.HasPermission(PermissionClaims.NewsFeedsCreate);
+        _canCreateTags = user.HasPermission(PermissionClaims.NewsTagsCreate);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
         _canReadFileStorage = user.HasPermission(PermissionClaims.FileStorageRead);
 

@@ -88,6 +88,7 @@ public partial class NewsFeedsPage
     private bool _canDelete;
     private bool _canReadSettings;
     private bool _canReadFileStorage;
+    private bool _canCreateTags;
 
     /// <summary>The storage status, for the Attention panel's quota rows (a <c>file-storage.read</c> holder only).</summary>
     private NewsStatus? _status;
@@ -126,6 +127,15 @@ public partial class NewsFeedsPage
             Count = _feeds.Count(f => KindKey(f) == d.Key),
         }),
     ];
+
+    /// <summary>
+    /// By feed: what each active feed holds — articles for an article feed, episodes for a podcast — with the
+    /// kind's glyph and the unit in text ("5 articles", "12 episodes"). The units differ, so the tile has no total.
+    /// </summary>
+    private IReadOnlyList<OdsBreakdownRow> ByFeedRows => NewsVisuals.CountByFeedRows(
+        _feeds.Where(f => NewsVisuals.StatusOf(f) == NewsFeedStatus.Active).Select(f => f.Kind == NewsFeedKind.Podcast
+            ? new FeedCount(f.Id, f.DisplayTitle, f.Podcast?.EpisodeCount ?? 0, "podcasts", ("episode", "episodes"))
+            : new FeedCount(f.Id, f.DisplayTitle, f.ArticleCount, "rss_feed", ("article", "articles"))));
 
     private string? ArtworkFor(ExistingNewsFeed feed) =>
         feed.Podcast?.ArtworkId is { } art ? Podcasts.ArtworkUrl(art, PodcastArtworkSize.Small) : null;
@@ -319,6 +329,7 @@ public partial class NewsFeedsPage
     private void ReadClaims(System.Security.Claims.ClaimsPrincipal user)
     {
         _canCreate = user.HasPermission(PermissionClaims.NewsFeedsCreate);
+        _canCreateTags = user.HasPermission(PermissionClaims.NewsTagsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.NewsFeedsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.NewsFeedsDelete);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
@@ -779,6 +790,16 @@ public partial class NewsFeedsPage
         _dialogOpen = false;
         Replace(saved);
         Catalogue.Invalidate();
+        if (TagQuickCreateHost.NeedsTagReload(saved.TagIds, _tagsById))
+        {
+            // A tag created inline in the dialog: the page's filter, chips and next dialog need it. A failed
+            // re-read keeps the list the page has rather than blanking every chip.
+            var tags = await Catalogue.GetTagsAsync();
+            if (tags.IsSuccess)
+            {
+                SetTags(tags.Value ?? []);
+            }
+        }
 
         if (created)
         {
