@@ -359,6 +359,7 @@ public static class RecipeImportFailureCodes
     public static readonly IReadOnlySet<string> BeforeSend = new HashSet<string>(StringComparer.Ordinal)
     {
         NotStarted, Disabled, DestinationChanged, DisclosureChanged, RequesterRevoked, SourceMissing, SourceInvalid, CredentialUnavailable,
+        PreparationFailed,
     };
 }
 
