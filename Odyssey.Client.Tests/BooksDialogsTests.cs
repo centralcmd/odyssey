@@ -58,11 +58,21 @@ public class BooksDialogsTests
 
     private static (IRenderedComponent<BookDialogHost> Cut, Mock<IBooksApiClient> Books, Mock<ITagsApiClient<ExistingBookTag>> Tags)
         RenderWithTags(ExistingBook? book, bool canReadTags, bool canCreateTags, IReadOnlyList<ExistingBookTag> tags,
-            ApiResult<ExistingBook>? updateResult = null, ApiResult? createTagResult = null)
+            ApiResult<ExistingBook>? updateResult = null, ApiResult? createTagResult = null, Task? createTagGate = null)
     {
         var bookTags = new Mock<ITagsApiClient<ExistingBookTag>>();
+        // With a gate the POST answers only once the test opens it, as an HTTP call does: the option is added
+        // first and a failure then rolls it back.
         bookTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createTagResult ?? ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/book-tags/{CreatedTagId}")));
+            .Returns(async (TagWrite _, CancellationToken _) =>
+            {
+                if (createTagGate is not null)
+                {
+                    await createTagGate;
+                }
+
+                return createTagResult ?? ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/book-tags/{CreatedTagId}"));
+            });
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
@@ -124,11 +134,16 @@ public class BooksDialogsTests
         var book = Existing();
         book.TagIds = [];
         var refused = ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" });
-        var (cut, books, _) = RenderWithTags(book, canReadTags: true, canCreateTags: true, tags: [], createTagResult: refused);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var (cut, books, _) = RenderWithTags(book, canReadTags: true, canCreateTags: true, tags: [], createTagResult: refused, createTagGate: gate.Task);
 
         OpenTags(cut, "Signed copy");
         cut.Find("button.odc-tagms-create").Click();
-        cut.WaitForAssertion(() => Assert.DoesNotContain("Signed copy", cut.FindComponent<OdsTagMultiSelect>().Find(".odc-tagms-chips").TextContent, StringComparison.Ordinal));
+        // The picker selects the option while the POST is in flight; the failure then takes it out.
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
+        gate.SetResult();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
+        Assert.DoesNotContain("Signed copy", cut.FindComponent<OdsTagMultiSelect>().Find(".odc-tagms-chips").TextContent, StringComparison.Ordinal);
 
         Submit(cut, "Save");
 

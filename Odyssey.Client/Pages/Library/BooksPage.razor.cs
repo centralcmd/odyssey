@@ -154,6 +154,9 @@ public partial class BooksPage
         _canReadTags = user.HasPermission(PermissionClaims.BookTagsRead);
     }
 
+    /// <summary>A failed tag re-read keeps a list the page already has; a failed first read leaves it empty.</summary>
+    internal static bool KeepsTagsOnFailedRead(bool readSucceeded, int heldCount) => !readSucceeded && heldCount > 0;
+
     private async Task LoadTagsAsync()
     {
         if (!_canReadTags)
@@ -163,7 +166,7 @@ public partial class BooksPage
 
         var result = await BookTags.ListAllAsync();
         var tags = result.ItemsOrToast(Snackbar, "book tags");
-        if (!result.IsSuccess && _tags.Count > 0)
+        if (KeepsTagsOnFailedRead(result.IsSuccess, _tags.Count))
         {
             // A failed re-read after an inline create keeps the list the page has rather than blanking every chip.
             return;

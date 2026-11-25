@@ -223,8 +223,13 @@ public class NewsFeedDialogTests
     public async Task A_failed_inline_create_is_dropped_and_the_new_feed_carries_no_phantom_id()
     {
         await using var context = new NewsPageTestContext();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" }));
+            .Returns(async (TagWrite _, CancellationToken _) =>
+            {
+                await release.Task;
+                return ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" });
+            });
         NewNewsFeed? sent = null;
         context.News.Setup(n => n.CreateFeedAsync(It.IsAny<NewNewsFeed>(), It.IsAny<CancellationToken>()))
             .Callback((NewNewsFeed f, CancellationToken _) => sent = f)
@@ -234,6 +239,10 @@ public class NewsFeedDialogTests
 
         SearchTags(cut, "Climate");
         cut.Find("button.odc-tagms-create").Click();
+        // The option is selected while the POST is in flight; the failure then rolls it back.
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
+        release.SetResult();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
 
         Assert.True(await Submit(cut));
         Assert.Null(sent!.TagIds);

@@ -223,13 +223,8 @@ public class QuickCreateServiceTests
         TagCreatorWithNews<TTag>(Func<TagWrite, ApiResult> respond)
     {
         var api = new Mock<ITagsApiClient<TTag>>();
-        // Answers after a yield, as an HTTP call does: the create is still in flight when Begin returns.
         api.Setup(a => a.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
-            .Returns(async (TagWrite t, CancellationToken _) =>
-            {
-                await Task.Yield();
-                return respond(t);
-            });
+            .ReturnsAsync((TagWrite t, CancellationToken _) => respond(t));
         var cache = new Mock<IReferenceDataCache>();
         var news = new Mock<INewsCatalogueCache>();
         return (new TagQuickCreate<TTag>(api.Object, cache.Object, news.Object, Snackbar()), api, cache, news);
@@ -239,9 +234,10 @@ public class QuickCreateServiceTests
     public async Task Resolve_created_rekeys_each_settled_option_to_its_real_id_and_drops_a_failed_one()
     {
         var calls = 0;
-        var (creator, _) = TagCreator(_ => ++calls == 1 ? Ok() : Fail(HttpStatusCode.BadRequest, "no"));
+        var (creator, gate) = GatedTagCreator(() => ++calls == 1 ? Ok() : Fail(HttpStatusCode.BadRequest, "no"));
         var made = creator.Begin("Made")!;
         var failed = creator.Begin("Failed")!;
+        gate.SetResult();
         await creator.WhenSettledAsync();
 
         var resolved = creator.ResolveCreated([made, failed]);
@@ -271,6 +267,23 @@ public class QuickCreateServiceTests
         Assert.False(TagQuickCreateHost.NeedsTagReload([CreatedId], known));
         Assert.False(TagQuickCreateHost.NeedsTagReload([], known));
         Assert.True(TagQuickCreateHost.NeedsTagReload([CreatedId, Guid.NewGuid()], known));
+    }
+
+    /// <summary>
+    /// A creator whose POST is still in flight when Begin returns — it answers only once the gate opens, as an
+    /// HTTP call does. Deterministic, unlike a yield, which can finish on the thread pool before Begin returns.
+    /// </summary>
+    private static (TagQuickCreate<ExistingTransactionTag> Creator, TaskCompletionSource Gate) GatedTagCreator(Func<ApiResult> respond)
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var api = new Mock<ITagsApiClient<ExistingTransactionTag>>();
+        api.Setup(a => a.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .Returns(async (TagWrite _, CancellationToken _) =>
+            {
+                await gate.Task;
+                return respond();
+            });
+        return (new TagQuickCreate<ExistingTransactionTag>(api.Object, Mock.Of<IReferenceDataCache>(), Mock.Of<INewsCatalogueCache>(), Snackbar()), gate);
     }
 
     /// <summary>
@@ -375,10 +388,11 @@ public class QuickCreateServiceTests
     public async Task A_conflicting_tag_resolves_to_null_and_reports_its_temporary_id()
     {
         string? failed = null;
-        var (creator, _) = TagCreator(_ => Fail(HttpStatusCode.Conflict, "taken"));
+        var (creator, gate) = GatedTagCreator(() => Fail(HttpStatusCode.Conflict, "taken"));
         creator.OnCreateFailed = id => failed = id;
 
         var option = creator.Begin("Groceries")!;
+        gate.SetResult();
         await creator.WhenSettledAsync();
 
         Assert.Null(creator.Resolve(option.Value));

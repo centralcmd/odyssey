@@ -262,6 +262,14 @@ public class BooksClientTests
     }
 
     [Theory]
+    [InlineData(true, 0, false)]
+    [InlineData(true, 3, false)]
+    [InlineData(false, 0, false)]
+    [InlineData(false, 3, true)]
+    public void A_failed_tag_reread_keeps_the_list_the_page_already_has(bool succeeded, int held, bool keeps) =>
+        Assert.Equal(keeps, BooksPage.KeepsTagsOnFailedRead(succeeded, held));
+
+    [Theory]
     [InlineData("title", nameof(BookSortBy.Title))]
     [InlineData("author", nameof(BookSortBy.Author))]
     [InlineData("year", nameof(BookSortBy.Year))]
