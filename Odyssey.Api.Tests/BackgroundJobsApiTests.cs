@@ -40,7 +40,7 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
         PermissionClaims.FileStorageRead,
         PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate,
         PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisCreate,
-        PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsRead,
+        PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsRead, PermissionClaims.RecipesImport,
         PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate,
     ];
 
@@ -116,14 +116,15 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
 
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
-                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload, JobType.PodcastAudioRetention],
+                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill, JobType.PodcastAudioDownload, JobType.PodcastAudioRetention,
+                JobType.RecipeImport, JobType.RecipeImportRetention],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
             Assert.Equal(JobHealth.NotTicking, job.Health);
             Assert.Equal(300, job.NotTickingAfterSeconds);
             // The file-analysis queue has no manual run (issue #444): it only runs work a user consented to.
-            Assert.Equal(job.JobType is not (JobType.FileAnalysis or JobType.PodcastAudioDownload), job.CanRunNow);
+            Assert.Equal(job.JobType is not (JobType.FileAnalysis or JobType.PodcastAudioDownload or JobType.RecipeImport), job.CanRunNow);
             Assert.True(job.CanReadDetail);
         });
         Assert.Null(overview.Jobs.Single(job => job.JobType == JobType.Weather).OverdueAfterSeconds);
@@ -550,6 +551,7 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
     [InlineData("FileStorageMaintenance")]
     [InlineData("PhotoThumbnails")]
     [InlineData("ExchangeRateSync")]
+    [InlineData("PodcastAudioRetention")]
     public async Task A_run_with_nothing_to_do_is_skipped_at_once(string jobType)
     {
         var factory = Factory;
@@ -560,6 +562,26 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var run = await response.Content.ReadFromJsonAsync<ExistingJobRun>();
         Assert.Equal((Enum.Parse<JobType>(jobType), JobRunStatus.Skipped, JobRunTrigger.Manual), (run!.JobType, run.Status, run.Trigger));
+    }
+
+    /// <summary>Every catalogued job with a manual run, so the next one cannot repeat issue #615's 500.</summary>
+    public static TheoryData<JobType> ManualRunJobs => [.. JobCatalogue.Entries.Where(e => e.ManualRunSupported).Select(e => e.JobType)];
+
+    /// <summary>
+    /// Issue #615: the catalogue offered Podcast audio retention a manual run that <c>NewManualRun</c> could not build,
+    /// so Run now was a 500. A job the catalogue lets someone run by hand must start (202) or finish Skipped (200).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ManualRunJobs))]
+    public async Task Every_job_with_a_manual_run_can_start_one(JobType jobType)
+    {
+        var factory = Factory;
+        using var client = factory.ClientFor(Admin);
+
+        var response = await client.PostAsync($"{Base}/{jobType}/runs", null);
+
+        Assert.True(response.StatusCode is HttpStatusCode.OK or HttpStatusCode.Accepted,
+            $"{jobType}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
     }
 
     [Fact]

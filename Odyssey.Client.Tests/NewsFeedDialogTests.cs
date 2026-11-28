@@ -3,6 +3,8 @@ using Bunit;
 using Moq;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Internet;
+using Odyssey.ApiClient;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 using Xunit;
@@ -23,7 +25,8 @@ public class NewsFeedDialogTests
         public List<Guid> Deleted { get; } = [];
     }
 
-    private static (IRenderedComponent<Bunit.Rendering.ContainerFragment> Cut, Probe Probe) Render(NewsPageTestContext context, ExistingNewsFeed? feed = null)
+    private static (IRenderedComponent<Bunit.Rendering.ContainerFragment> Cut, Probe Probe) Render(NewsPageTestContext context, ExistingNewsFeed? feed = null,
+        bool canCreateTags = false, IReadOnlyList<ExistingNewsTag>? tags = null)
     {
         var probe = new Probe();
         var cut = context.Ctx.Render(b =>
@@ -41,6 +44,8 @@ public class NewsFeedDialogTests
                 Microsoft.AspNetCore.Components.EventCallback.Factory.Create<Guid>(probe, id => probe.GoneTo.Add(id)));
             b.AddComponentParameter(7, nameof(NewsFeedDialog.Deleted),
                 Microsoft.AspNetCore.Components.EventCallback.Factory.Create<Guid>(probe, id => probe.Deleted.Add(id)));
+            b.AddComponentParameter(8, nameof(NewsFeedDialog.CanCreateTags), canCreateTags);
+            b.AddComponentParameter(9, nameof(NewsFeedDialog.Tags), tags ?? []);
             b.CloseComponent();
         });
         return (cut, probe);
@@ -155,6 +160,92 @@ public class NewsFeedDialogTests
         Assert.Equal(30, sent.FetchIntervalMinutes);
         Assert.Null(sent.CustomTitle);
         Assert.Equal([created], probe.Saved);
+    }
+
+    // ── Inline tag create ─────────────────────────────────────────────────────────────────────────
+
+    private static void SearchTags(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, string search)
+    {
+        cut.FindComponent<OdsTagMultiSelect>().Find("button.odc-tagms-trigger").Click();
+        cut.WaitForElement(".odc-tagms-search input").Input(search);
+    }
+
+    [Fact]
+    public async Task A_tag_created_inline_is_posted_and_the_new_feed_carries_its_real_id()
+    {
+        var tagId = Guid.NewGuid();
+        await using var context = new NewsPageTestContext();
+        context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created, new Uri($"http://localhost/api/news-tags/{tagId}")));
+        NewNewsFeed? sent = null;
+        context.News.Setup(n => n.CreateFeedAsync(It.IsAny<NewNewsFeed>(), It.IsAny<CancellationToken>()))
+            .Callback((NewNewsFeed f, CancellationToken _) => sent = f)
+            .ReturnsAsync(Ok(NewsFeedsPageTests.Feed("Example")));
+        var (cut, _) = Render(context, canCreateTags: true);
+        Input(cut, NewsFeedDialog.UrlId).Input("https://example.com/feed.xml");
+
+        SearchTags(cut, "Climate");
+        var create = cut.Find("button.odc-tagms-create");
+        Assert.Contains("News tag", create.TextContent, StringComparison.Ordinal);
+        create.Click();
+
+        Assert.True(await Submit(cut));
+        Assert.Equal([tagId], sent!.TagIds);
+        context.NewsTags.Verify(t => t.CreateAsync(It.Is<TagWrite>(w => w.Name == "Climate"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Without_the_create_claim_the_feed_tags_field_only_picks()
+    {
+        await using var context = new NewsPageTestContext();
+        var (cut, _) = Render(context, canCreateTags: false);
+
+        SearchTags(cut, "Climate");
+
+        Assert.Empty(cut.FindAll("button.odc-tagms-create"));
+    }
+
+    [Fact]
+    public async Task A_name_held_by_an_archived_news_tag_is_refused_at_the_feed_tags_field()
+    {
+        var archived = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Old", Archived = DateTime.UtcNow };
+        await using var context = new NewsPageTestContext();
+        var (cut, _) = Render(context, canCreateTags: true, tags: [archived]);
+
+        SearchTags(cut, "old");
+
+        Assert.Empty(cut.FindAll("button.odc-tagms-create"));
+        Assert.Contains("“Old” is an archived tag. Restore it on the News tags page to use it.",
+            cut.Find(".odc-tagms-blocked").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_failed_inline_create_is_dropped_and_the_new_feed_carries_no_phantom_id()
+    {
+        await using var context = new NewsPageTestContext();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.NewsTags.Setup(t => t.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
+            .Returns(async (TagWrite _, CancellationToken _) =>
+            {
+                await release.Task;
+                return ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400, Detail = "no" });
+            });
+        NewNewsFeed? sent = null;
+        context.News.Setup(n => n.CreateFeedAsync(It.IsAny<NewNewsFeed>(), It.IsAny<CancellationToken>()))
+            .Callback((NewNewsFeed f, CancellationToken _) => sent = f)
+            .ReturnsAsync(Ok(NewsFeedsPageTests.Feed("Example")));
+        var (cut, _) = Render(context, canCreateTags: true);
+        Input(cut, NewsFeedDialog.UrlId).Input("https://example.com/feed.xml");
+
+        SearchTags(cut, "Climate");
+        cut.Find("button.odc-tagms-create").Click();
+        // The option is selected while the POST is in flight; the failure then rolls it back.
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
+        release.SetResult();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindComponent<OdsTagMultiSelect>().Instance.Value));
+
+        Assert.True(await Submit(cut));
+        Assert.Null(sent!.TagIds);
     }
 
     // ── Edit and the version (AC 36, 41) ─────────────────────────────────────────────────────────

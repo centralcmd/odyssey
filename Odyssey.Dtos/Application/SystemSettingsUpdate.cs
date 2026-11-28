@@ -596,4 +596,17 @@ public sealed record SystemSettingsUpdate
 
     [Range(SystemSettingsBounds.JobRunRetentionDaysMin, SystemSettingsBounds.JobRunRetentionDaysMax)]
     public int? JobRunRetentionDays { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // AI recipe import (issue #602): the integration switch and the retention period.
+    // ---------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The AI recipe import integration switch. Null leaves it unchanged; a non-null value requires
+    /// <c>system-settings.security.update</c>, like the file-analysis switch.
+    /// </summary>
+    public bool? RecipeImportEnabled { get; set; }
+
+    [Range(SystemSettingsBounds.RecipeImportRetentionDaysMin, SystemSettingsBounds.RecipeImportRetentionDaysMax)]
+    public int? RecipeImportRetentionDays { get; set; }
 }

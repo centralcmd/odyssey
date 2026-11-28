@@ -3171,7 +3171,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobHeartbeats", t =>
                         {
-                            t.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
                         });
                 });
 
@@ -3258,7 +3258,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -3272,7 +3272,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -5966,6 +5966,251 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("RecipeAttachments");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.RecipeImport", b =>
+                {
+                    b.Property<Guid>("RecipeImportId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AnalyzerBaseUrlHost")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("AnalyzerBaseUrlOrigin")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("AnalyzerModel")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CancelledByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("ClientRequestId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ConsentMethod")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<bool>("ConsentRecorded")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ConsentText")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<DateTime?>("ContentPurgedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("DisclosureVersionInForce")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Generation")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("LawfulBasis")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("MaxTokensInForce")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProcessorInForce")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("ProcessorRegionInForce")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("PromptVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime>("QueuedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<Guid?>("RunId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("SendsTagNames")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TagVocabularyCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("TagVocabularyReduced")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("TransferStartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("RecipeImportId");
+
+                    b.HasIndex("CancelledByUserId");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("DeletedByUserId");
+
+                    b.HasIndex("RequestedByUserId", "ClientRequestId")
+                        .IsUnique();
+
+                    b.HasIndex("RequestedByUserId", "Status");
+
+                    b.HasIndex("Status", "QueuedAt");
+
+                    b.ToTable("RecipeImports");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeImportDraft", b =>
+                {
+                    b.Property<Guid>("RecipeImportDraftId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("AcceptedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<Guid?>("AcceptedRecipeId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("DiscardedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DiscardedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("DraftJson")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RecipeImportId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Warnings")
+                        .HasColumnType("text");
+
+                    b.HasKey("RecipeImportDraftId");
+
+                    b.HasIndex("AcceptedByUserId");
+
+                    b.HasIndex("AcceptedRecipeId");
+
+                    b.HasIndex("DiscardedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("RecipeImportId", "Ordinal")
+                        .IsUnique();
+
+                    b.HasIndex("RecipeImportId", "Status");
+
+                    b.ToTable("RecipeImportDrafts");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeImportSource", b =>
+                {
+                    b.Property<Guid>("RecipeImportSourceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<Guid?>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("ImportOwned")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RecipeImportId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Text")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("RecipeImportSourceId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("RecipeImportId", "Ordinal")
+                        .IsUnique();
+
+                    b.ToTable("RecipeImportSources");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecipeIngredient", b =>
                 {
                     b.Property<Guid>("RecipeIngredientId")
@@ -7016,6 +7261,18 @@ namespace Odyssey.Context.Migrations
                             Key = "JobRunRetentionDays",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "90"
+                        },
+                        new
+                        {
+                            Key = "RecipeImportEnabled",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "false"
+                        },
+                        new
+                        {
+                            Key = "RecipeImportRetentionDays",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "30"
                         });
                 });
 
@@ -8195,7 +8452,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8209,7 +8466,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8236,7 +8493,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8250,7 +8507,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8287,7 +8544,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8301,7 +8558,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8343,7 +8600,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8357,7 +8614,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8402,7 +8659,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8416,7 +8673,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8449,7 +8706,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8463,7 +8720,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8499,7 +8756,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8513,7 +8770,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8537,7 +8794,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8551,7 +8808,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8561,6 +8818,85 @@ namespace Odyssey.Context.Migrations
                         });
 
                     b.HasDiscriminator().HasValue((byte)12);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeImportJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("ImportsCompleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ImportsFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ImportsRefused")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)13);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeImportRetentionJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("ImportFilesReleased")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ImportsPurged")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)14);
                 });
 
             modelBuilder.Entity("Odyssey.Context.RecurrenceKeyBackfillJobRun", b =>
@@ -8578,7 +8914,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8592,7 +8928,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -8628,7 +8964,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("JobRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0");
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`InstrumentsDeferred`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0 AND COALESCE(`SeriesKeyed`, 0) >= 0 AND COALESCE(`SeriesKeyFailures`, 0) >= 0 AND COALESCE(`KeyRowsDetached`, 0) >= 0 AND COALESCE(`ArtworkStored`, 0) >= 0 AND COALESCE(`ArtworkFailed`, 0) >= 0 AND COALESCE(`ChaptersFetched`, 0) >= 0 AND COALESCE(`DownloadsStored`, 0) >= 0 AND COALESCE(`DownloadsFailed`, 0) >= 0 AND COALESCE(`DownloadsDeferred`, 0) >= 0 AND COALESCE(`DownloadsRecovered`, 0) >= 0 AND COALESCE(`ReservationsRefused`, 0) >= 0 AND COALESCE(`AudioBytesStored`, 0) >= 0 AND COALESCE(`AudioReleased`, 0) >= 0 AND COALESCE(`AudioBytesReleased`, 0) >= 0 AND COALESCE(`ImportsCompleted`, 0) >= 0 AND COALESCE(`ImportsFailed`, 0) >= 0 AND COALESCE(`ImportsRefused`, 0) >= 0 AND COALESCE(`ImportsPurged`, 0) >= 0 AND COALESCE(`ImportFilesReleased`, 0) >= 0");
 
                             t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
@@ -8642,7 +8978,7 @@ namespace Odyssey.Context.Migrations
 
                             t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
 
-                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12)");
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 6, 8, 9, 10, 11, 12, 13, 14)");
 
                             t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
 
@@ -9978,6 +10314,71 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Recipe");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.RecipeImport", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CancelledByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("DeletedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeImportDraft", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AcceptedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Recipe", null)
+                        .WithMany()
+                        .HasForeignKey("AcceptedRecipeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("DiscardedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.RecipeImport", "RecipeImport")
+                        .WithMany("Drafts")
+                        .HasForeignKey("RecipeImportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("RecipeImport");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeImportSource", b =>
+                {
+                    b.HasOne("Odyssey.Context.FileMetadata", null)
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.RecipeImport", "RecipeImport")
+                        .WithMany("Sources")
+                        .HasForeignKey("RecipeImportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RecipeImport");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecipeIngredient", b =>
                 {
                     b.HasOne("Odyssey.Context.Recipe", "Recipe")
@@ -10587,6 +10988,13 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Steps");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecipeImport", b =>
+                {
+                    b.Navigation("Drafts");
+
+                    b.Navigation("Sources");
                 });
 
             modelBuilder.Entity("Odyssey.Context.RecipeTag", b =>

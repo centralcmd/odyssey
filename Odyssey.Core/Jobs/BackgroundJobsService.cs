@@ -63,6 +63,7 @@ public sealed class BackgroundJobsService(
     JobRunSweeper sweeper,
     Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncService instrumentPriceSync,
     Odyssey.Core.Finance.Instruments.IInstrumentPriceSettingsLookup instrumentPriceSettings,
+    Odyssey.Core.Recipes.Import.IRecipeImportSettingsLookup recipeImportSettings,
     TimeProvider time)
 {
     private static readonly TimeSpan Day = TimeSpan.FromDays(1);
@@ -551,6 +552,19 @@ public sealed class BackgroundJobsService(
                 AudioBytesReleased = retention.AudioBytesReleased,
             },
             PodcastAudioRetentionJobRun => new PodcastAudioRetentionJobRunDetail(),
+            RecipeImportJobRun imports when canRead => new RecipeImportJobRunDetail
+            {
+                ImportsCompleted = imports.ImportsCompleted,
+                ImportsFailed = imports.ImportsFailed,
+                ImportsRefused = imports.ImportsRefused,
+            },
+            RecipeImportJobRun => new RecipeImportJobRunDetail(),
+            RecipeImportRetentionJobRun purge when canRead => new RecipeImportRetentionJobRunDetail
+            {
+                ImportsPurged = purge.ImportsPurged,
+                ImportFilesReleased = purge.ImportFilesReleased,
+            },
+            RecipeImportRetentionJobRun => new RecipeImportRetentionJobRunDetail(),
             RecurrenceKeyBackfillJobRun keys when canRead => new RecurrenceKeyBackfillJobRunDetail
             {
                 SeriesKeyed = keys.SeriesKeyed,
@@ -733,6 +747,11 @@ public sealed class BackgroundJobsService(
                 return await Odyssey.Core.Internet.News.Jobs.NewsFeedJob.HasWorkAsync(context, Now, cancellationToken);
             case JobType.RecurrenceKeyBackfill:
                 return await context.RecurrencePatterns.AnyAsync(p => p.KeysBackfilledAt == null, cancellationToken);
+            case JobType.PodcastAudioRetention:
+                return await Odyssey.Core.Internet.News.Podcasts.PodcastAudioRetentionJob.Eligible(context, Now).AnyAsync(cancellationToken);
+            case JobType.RecipeImportRetention:
+                var days = await recipeImportSettings.GetRetentionDaysAsync(cancellationToken);
+                return await Odyssey.Core.Recipes.Import.RecipeImportRetentionJob.Due(context, Now.AddDays(-days)).AnyAsync(cancellationToken);
             default:
                 return true;
         }
@@ -748,6 +767,8 @@ public sealed class BackgroundJobsService(
             JobType.InstrumentPriceSync => new InstrumentPriceSyncJobRun(),
             JobType.NewsFeedFetch => new NewsFeedJobRun(),
             JobType.RecurrenceKeyBackfill => new RecurrenceKeyBackfillJobRun(),
+            JobType.PodcastAudioRetention => new PodcastAudioRetentionJobRun(),
+            JobType.RecipeImportRetention => new RecipeImportRetentionJobRun(),
             _ => throw new ArgumentOutOfRangeException(nameof(jobType)),
         };
         run.JobRunId = Guid.NewGuid();

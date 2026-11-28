@@ -33,98 +33,19 @@
                 @* The dialog's one announcement while it is open (issue #449 §6): words only, re-keyed per batch. *@
                 <div @key="_noticeKey" id="@_noticeId" class="helper aam-err" role="alert">@_notice</div>
             }
-            @if (ShowTabs)
-            {
-                <OdsSegmentedControl Full="true" AriaLabel="Where the document comes from"
-                                     Options="Tabs" Value="@_tab" ValueChanged="OnTabChanged" />
-            }
-
-            @if (_tab == UploadTab)
-            {
-                <OdsFileUpload Files="_uploads" FilesChanged="OnUploadsChanged"
-                               Accept="@AcceptAttribute"
-                               Kinds="_fileKinds" ShowKinds="@(_fileKinds is not null)"
-                               GuessKind="GuessKindOrDefault" DefaultKind="@DefaultKind"
-                               Error="@_error"
-                               Hint="@UploadHint"
-                               RenderFileExtra="@(Validity ? ValidityEditor : null)" />
-            }
-            else
-            {
-                <div class="prop-lib">
-                    <OdsSearchField Value="@_query" ValueChanged="@(v => _query = v ?? string.Empty)"
-                                    Placeholder="Search files by name…" AriaLabel="Search files by name" />
-                    @if (_libraryLoading)
-                    {
-                        <div role="status" aria-live="polite" aria-busy="true">
-                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
-                            <span class="sr-only">Loading files…</span>
-                        </div>
-                    }
-                    else if (_libraryFailed)
-                    {
-                        <OdsEmptyLine>Couldn’t load your files. <OdsButton Variant="OdsButtonVariant.Text" OnClick="LoadLibraryAsync">Try again</OdsButton></OdsEmptyLine>
-                    }
-                    else
-                    {
-                        <div class="prop-lib-list" role="group" aria-label="Files">
-                            @if (LibraryRows.Count == 0)
-                            {
-                                <OdsEmptyLine>@EmptyLibraryText</OdsEmptyLine>
-                            }
-                            @foreach (var file in LibraryRows)
-                            {
-                                var state = StateOf(file);
-                                var picked = _picked.GetValueOrDefault(file.Id);
-                                var disabled = state != LibraryState.Available;
-                                <div class="prop-lib-row @(picked is not null ? "on" : null) @(disabled ? "off" : null)" @key="file.Id">
-                                    <button type="button" class="prop-lib-main" disabled="@disabled"
-                                            aria-pressed="@(picked is not null ? "true" : "false")"
-                                            @onclick="@(() => TogglePick(file))">
-                                        <span class="prop-lib-check"><OdsMIcon Name="@CheckIcon(state, picked is not null)" Size="20" /></span>
-                                        <span class="prop-lib-ic"><OdsMIcon Name="@ContentTypeIcon(file.ContentType)" Size="16" /></span>
-                                        <span class="prop-lib-text">
-                                            <span class="prop-lib-name">@file.FileName</span>
-                                            <span class="prop-lib-meta">@ContentTypeShort(file.ContentType) · @OdsFileUploadDefaults.FmtSize(file.SizeBytes) · uploaded @OdsDates.Long(file.UploadedAtUtc)</span>
-                                        </span>
-                                        @if (ReasonOf(state, file) is { } reason)
-                                        {
-                                            <span class="prop-lib-reason">@reason</span>
-                                        }
-                                    </button>
-                                    @if (picked is not null && (_kindOptions is not null || Validity))
-                                    {
-                                        <div class="prop-lib-extra">
-                                            @if (_kindOptions is not null)
-                                            {
-                                                <div class="prop-lib-type">
-                                                    <OdsSelect Label="Document type" Options="_kindOptions" Value="@picked.Kind"
-                                                               ValueChanged="@(v => picked.Kind = v ?? DefaultKind)" />
-                                                </div>
-                                            }
-                                            @if (Validity)
-                                            {
-                                                @ValidityEditor(new OdsUploadFileExtraContext(picked, EventCallback.Factory.Create(this, () => { })))
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                        @if (_error is not null)
-                        {
-                            <div class="helper aam-err" role="alert">@_error</div>
-                        }
-                    }
-                    @if (RestrictToDocumentTypes)
-                    {
-                        <div class="prop-lib-foot">
-                            <OdsMIcon Name="info" Size="14" />
-                            Only @DocumentContentTypes.Label files can be attached.
-                        </div>
-                    }
-                </div>
-            }
+            <DocumentSourcePanel Tab="@_tab" TabChanged="OnTabChanged"
+                                 ShowUpload="_canUpload" ShowLibrary="_canBrowse"
+                                 Uploads="_uploads" UploadsChanged="OnUploadsChanged"
+                                 Accept="@AcceptAttribute"
+                                 Kinds="_fileKinds" GuessKind="GuessKindOrDefault" DefaultKind="@DefaultKind"
+                                 Error="@_error" UploadHint="@UploadHint"
+                                 RenderFileExtra="@(Validity ? ValidityEditor : null)"
+                                 Pool="LibraryRows" LibraryLoading="_libraryLoading" LibraryFailed="_libraryFailed"
+                                 OnRetry="LoadLibraryAsync"
+                                 PickedIds="PickedIds" OnToggle="TogglePick" StateOf="PanelStateOf"
+                                 PickedExtra="@(_kindOptions is not null || Validity ? PickedExtra : null)"
+                                 EmptyLibraryText="@EmptyLibraryText"
+                                 Footnote="@(RestrictToDocumentTypes ? DocumentTypesFootnote : null)" />
         </div>
     </ChildContent>
     <Footer>
@@ -141,6 +62,29 @@
     private RenderFragment TitleFragment => @<text>@Title</text>;
 
     private RenderFragment SubtitleFragment => @<text>@Subtitle</text>;
+
+    private RenderFragment DocumentTypesFootnote => @<div class="prop-lib-foot">
+        <OdsMIcon Name="info" Size="14" />
+        Only @DocumentContentTypes.Label files can be attached.
+    </div>;
+
+    // A picked From Files row's own fields: its document type and, on a validity surface, the validity editor.
+    private RenderFragment<DocumentSourceFile> PickedExtra => file => @<text>
+        @if (_picked.GetValueOrDefault(file.Id) is { } picked)
+        {
+            @if (_kindOptions is not null)
+            {
+                <div class="prop-lib-type">
+                    <OdsSelect Label="Document type" Options="_kindOptions" Value="@picked.Kind"
+                               ValueChanged="@(v => picked.Kind = v ?? DefaultKind)" />
+                </div>
+            }
+            @if (Validity)
+            {
+                @ValidityEditor(new OdsUploadFileExtraContext(picked, EventCallback.Factory.Create(this, () => { })))
+            }
+        }
+    </text>;
 
     // One validity editor for both tabs — an upload row and a picked library row are both an
     // OdsUploadFile — so the two read identically on every surface that records validity.

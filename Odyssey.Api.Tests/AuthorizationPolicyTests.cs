@@ -79,11 +79,11 @@ public class AuthorizationPolicyTests
     /// <c>data.export</c> claim. 115 once issue #446 added the eight instrument claims, and 123 once issue
     /// #470 added the eight news-reader claims, 125 once issue #556 added <c>podcast-audio.create</c> and
     /// <c>podcast-audio.delete</c>, 133 once issue #527 added the eight book claims, and 141 once issue #525 added the
-    /// eight recipe claims.
+    /// eight recipe claims, and 142 once issue #602 added <c>recipes.import</c>.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(141, DeclaredClaims().Count());
+        Assert.Equal(142, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).

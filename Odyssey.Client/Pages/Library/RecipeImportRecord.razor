@@ -1,0 +1,148 @@
+@using Odyssey.Dtos.Recipes
+
+@*
+    One import's open card body on /recipe-imports (issue #604; design system · The open card IS the import): its
+    details, its sources in order, and — while it waits for review — its draft recipe with Things to check. Display
+    only: every action is the page's (the card's ⋯ menu and its alert).
+*@
+
+<OdsInfoTileGrid>
+    <OdsInfoTile Icon="@Display.Icon" Label="Status" ValueVariant="OdsInfoTileVariant.Text"><Value>@Display.Label</Value></OdsInfoTile>
+    <OdsInfoTile Icon="person" Label="Started by" ValueVariant="OdsInfoTileVariant.Text"><Value>@(Summary.RequestedByName ?? "A former member")</Value></OdsInfoTile>
+    <OdsInfoTile Icon="schedule" Label="Started"><Value>@When(Summary.QueuedAt)</Value></OdsInfoTile>
+    @if (Summary.FinishedAt is { } finished)
+    {
+        <OdsInfoTile Icon="event_available" Label="Finished"><Value>@When(finished)</Value></OdsInfoTile>
+    }
+    @if (Detail is { } sentDetail)
+    {
+        <OdsInfoTile Icon="@(sentDetail.DocumentSent ? "cloud_done" : "cloud_off")" Label="@($"Sent to {Processor}")" ValueVariant="OdsInfoTileVariant.Text">
+            <Value>@(sentDetail.DocumentSent ? "Yes" : "No")</Value>
+        </OdsInfoTile>
+    }
+    @if (Expires is { } expires && Options is { } kept)
+    {
+        <OdsInfoTile Icon="auto_delete" Label="Sources removed" ValueVariant="OdsInfoTileVariant.Text">
+            <Value>@expires</Value>
+            <Foot>@kept.RetentionDays days after it finished</Foot>
+        </OdsInfoTile>
+    }
+    @if (Summary.ContentPurged)
+    {
+        <OdsInfoTile Icon="auto_delete" Label="Sources removed" ValueVariant="OdsInfoTileVariant.Text">
+            <Value>@(Options is { } purged ? $"After {purged.RetentionDays} days" : "Removed")</Value>
+            <Foot>The record of what was sent stays.</Foot>
+        </OdsInfoTile>
+    }
+</OdsInfoTileGrid>
+
+@if (Detail is not { } detail)
+{
+    <div class="ri-section" aria-busy="true">
+        <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="var(--space-10)" />
+    </div>
+}
+else
+{
+    @if (!Summary.ContentPurged)
+    {
+        <div class="ri-section">
+            <OdsSectionDivider Label="Sources" Meta="@RecipeImportText.Count(detail.Sources.Count)" />
+            <ol class="ri-src-list">
+                @foreach (var source in detail.Sources)
+                {
+                    <li class="ri-src" @key="source.Ordinal">
+                        @if (source.Kind == RecipeImportSourceKind.Text)
+                        {
+                            <span class="ri-src-ic" aria-hidden="true"><OdsMIcon Name="notes" Size="16" /></span>
+                            <div class="ri-src-body"><div class="ri-src-t">Pasted text</div><div class="ri-src-text">@source.Text</div></div>
+                        }
+                        else if (source.File is { } file)
+                        {
+                            <span class="ri-src-ic" aria-hidden="true"><OdsMIcon Name="@RecipeImportText.ContentTypeIcon(file.ContentType)" Size="16" /></span>
+                            <div class="ri-src-body">
+                                <div class="ri-src-t">@file.FileName</div>
+                                <div class="ri-src-s">@RecipeImportText.TypeLabel(file.ContentType) · @RecipeImportText.Megabytes(file.Size)</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="ri-src-ic" aria-hidden="true"><OdsMIcon Name="draft" Size="16" /></span>
+                            <div class="ri-src-body"><div class="ri-src-t">A file that is no longer in Files</div></div>
+                        }
+                    </li>
+                }
+            </ol>
+            @if (!CanFiles && Summary.FileCount > 0)
+            {
+                <div class="ri-note"><OdsMIcon Name="lock" Size="14" />@Summary.FileCount @(Summary.FileCount == 1 ? "file" : "files") — file names need file access.</div>
+            }
+        </div>
+    }
+    @if (detail.Drafts.FirstOrDefault() is { Status: RecipeImportDraftStatus.Pending, Content: { } c } draft && !Summary.ContentPurged)
+    {
+        <div class="ri-section">
+            <OdsSectionDivider Label="Draft recipe" Meta="Not in Recipes yet" />
+            <OdsInfoTileGrid>
+                <OdsInfoTile Icon="soup_kitchen" Label="Title" ValueVariant="OdsInfoTileVariant.Text"><Value>@(c.Title ?? "Not found")</Value></OdsInfoTile>
+                <OdsInfoTile Icon="groups" Label="Servings" ValueVariant="OdsInfoTileVariant.Text"><Value>@(c.Servings is { } n ? RecipeFormat.YieldMeta(n, n, c.ServingsLabel) : "Not found")</Value></OdsInfoTile>
+                <OdsInfoTile Icon="timer" Label="Prep · Cook"><Value>@Minutes(c.PrepMinutes) · @Minutes(c.CookMinutes)</Value></OdsInfoTile>
+                @if (draft.UpdatedByName is { } editor && draft.UpdatedAt is { } edited)
+                {
+                    <OdsInfoTile Icon="edit" Label="Last edited" ValueVariant="OdsInfoTileVariant.Text">
+                        <Value>@editor · @RecipeImportText.Ago(edited, Now)</Value>
+                        <Foot>Saved with Save and finish later</Foot>
+                    </OdsInfoTile>
+                }
+                @if (SuggestedTags(c) is { Length: > 0 } tags)
+                {
+                    <OdsInfoTile Icon="local_offer" Label="Suggested tags" ValueVariant="OdsInfoTileVariant.Text"><Value>@tags</Value></OdsInfoTile>
+                }
+            </OdsInfoTileGrid>
+            @if (WarningTexts(draft) is { Count: > 0 } warnings)
+            {
+                <div class="ri-warn">
+                    <div class="ri-warn-t"><OdsMIcon Name="fact_check" Size="16" />Things to check</div>
+                    <ul>
+                        @foreach (var warning in warnings)
+                        {
+                            <li>@warning</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public RecipeImportSummary Summary { get; set; } = default!;
+
+    /// <summary>The import's detail; <c>null</c> while it loads.</summary>
+    [Parameter] public RecipeImportDetail? Detail { get; set; }
+
+    [Parameter] public RecipeImportOptions? Options { get; set; }
+
+    [Parameter] public bool CanFiles { get; set; }
+
+    [Parameter] public IReadOnlyList<ExistingRecipeTag> Tags { get; set; } = [];
+
+    [Parameter] public DateTime Now { get; set; }
+
+    private RecipeImportDisplay Display => RecipeImportText.Display(Summary);
+
+    private string Processor => Options?.Processor ?? "the processor";
+
+    private string? Expires => RecipeImportText.Expires(Summary.ExpiresAt, Now);
+
+    private string SuggestedTags(RecipeImportDraftContent c) =>
+        string.Join(", ", (c.TagIds ?? []).Select(id => Tags.FirstOrDefault(t => t.RecipeTagId == id)?.Name).OfType<string>());
+
+    internal static IReadOnlyList<string> WarningTexts(RecipeImportDraftItem draft) =>
+        [.. draft.Warnings.Select(RecipeImportText.Warning).OfType<(string Text, int? Step)>().Select(w => w.Text).Distinct()];
+
+    private static string Minutes(int? minutes) => minutes is { } m ? $"{m} min" : "—";
+
+    private static string When(DateTime utc) =>
+        DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime().ToString("d MMM, HH:mm", System.Globalization.CultureInfo.GetCultureInfo("en-GB"));
+}

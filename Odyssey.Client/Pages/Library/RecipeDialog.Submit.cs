@@ -123,6 +123,12 @@ public partial class RecipeDialog
             return;
         }
 
+        if (IsImport)
+        {
+            await AcceptImportAsync();
+            return;
+        }
+
         _saving = true;
         try
         {

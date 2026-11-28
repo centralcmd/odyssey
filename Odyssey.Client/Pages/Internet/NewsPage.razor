@@ -35,6 +35,7 @@
                 <div class="odc-summary-grid">
                     <OdsBreakdownTile Label="Articles" Rows="ArticleRows" Empty="No articles." TotalValue="@ArticleTotalText" />
                     <OdsBreakdownTile Label="Feeds" Rows="FeedRows" Empty="No feeds." />
+                    <OdsBreakdownTile Label="By feed" Rows="ByFeedRows" Empty="No active feeds." TotalLabel="Articles" />
                 </div>
             }
         </OverviewContent>
@@ -173,8 +174,11 @@
                    Title="@($"Tags for “{NewsArticleCard.TitleOf(tagsArticle)}”")"
                    SubmitLabel="Save" SubmitIcon="check" OnSubmit="SaveArticleTagsAsync">
         <OdsTagMultiSelect Label="Tags" Value="_tagsDraft" ValueChanged="v => { _tagsDraft = v; _tagsError = null; }"
-                           Options="@NewsVisuals.TagPickerOptions(_tags, tagsArticle.TagIds)"
-                           Noun="news tag" NounPlural="news tags" Error="@_tagsError" />
+                           Options="@ArticleTagOptions(tagsArticle)"
+                           Noun="news tag" NounPlural="news tags" Error="@_tagsError"
+                           OnCreate="@(_canCreateTags ? CreateTagOption : null)"
+                           CreateKinds="OdsTypeRegistries.TagCreateKinds.News"
+                           CreateBlocked="BlockedTagName" />
         @if (InheritedTagsOf(tagsArticle).ToList() is { Count: > 0 } inherited)
         {
             <div class="nw-inherited-block">

@@ -154,6 +154,9 @@ public partial class BooksPage
         _canReadTags = user.HasPermission(PermissionClaims.BookTagsRead);
     }
 
+    /// <summary>A failed tag re-read keeps a list the page already has; a failed first read leaves it empty.</summary>
+    internal static bool KeepsTagsOnFailedRead(bool readSucceeded, int heldCount) => !readSucceeded && heldCount > 0;
+
     private async Task LoadTagsAsync()
     {
         if (!_canReadTags)
@@ -161,7 +164,15 @@ public partial class BooksPage
             return;
         }
 
-        _tags = (await BookTags.ListAllAsync()).ItemsOrToast(Snackbar, "book tags");
+        var result = await BookTags.ListAllAsync();
+        var tags = result.ItemsOrToast(Snackbar, "book tags");
+        if (KeepsTagsOnFailedRead(result.IsSuccess, _tags.Count))
+        {
+            // A failed re-read after an inline create keeps the list the page has rather than blanking every chip.
+            return;
+        }
+
+        _tags = tags;
         _tagById = _tags.ToDictionary(t => t.BookTagId);
         _tagOptions = BookVisuals.TagOptions(_tags);
         _tagFilter = [.. _tagFilter.Where(id => _tagOptions.Any(o => o.Value == id))];
@@ -557,6 +568,13 @@ public partial class BooksPage
 
     private async Task OnBookSaved(ExistingBook saved)
     {
+        // A tag created inline in the dialog is not in the page's list yet: reload so the filter, the By tag
+        // tile and the next dialog see it.
+        if (_canReadTags && TagQuickCreateHost.NeedsTagReload(saved.TagIds, _tagById))
+        {
+            await LoadTagsAsync();
+        }
+
         var summary = ToSummary(saved, _canReadPhotos, _canReadFiles);
         var index = _books.FindIndex(b => b.BookId == saved.BookId);
         if (index >= 0)

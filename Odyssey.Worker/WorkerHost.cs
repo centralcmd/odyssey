@@ -80,6 +80,11 @@ public static class WorkerHost
         // process at a time. This container therefore needs egress to the provider host (docs/deployment.md).
         services.AddFileAnalysis(builder.Configuration);
         services.AddPeriodicJob<FileAnalysisQueueJob>();
+        // AI recipe import (issue #602): its own queue and named client beside statement analysis, plus the retention
+        // job that purges finished imports' content. Same egress need as file analysis.
+        Odyssey.Core.Recipes.Import.RecipeImportServiceCollectionExtensions.AddRecipeImport(services);
+        services.AddPeriodicJob<Odyssey.Core.Recipes.Import.RecipeImportQueueJob>();
+        services.AddPeriodicJob<Odyssey.Core.Recipes.Import.RecipeImportRetentionJob>();
         // The shared run log's upkeep (issue #409 §3.4, §3.6): the stale-run sweep every 5 minutes, the retention
         // prune once an hour. Infrastructure, not a catalogue job: it records no runs of its own.
         services.AddJobRunRecording();

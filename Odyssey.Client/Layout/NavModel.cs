@@ -99,6 +99,8 @@ public static class NavModel
             [
                 new("books", "Books", "auto_stories", "books", PermissionClaims.BooksRead),
                 new("recipes", "Recipes", "soup_kitchen", "recipes", PermissionClaims.RecipesRead),
+                // AI recipe import (issue #604): where imports and their draft recipes live, never in Recipes itself.
+                new("recipe-imports", "Recipe imports", "auto_awesome", "recipe-imports", PermissionClaims.RecipesImport),
             ]),
             new("Reference",
             [

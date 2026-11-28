@@ -168,8 +168,8 @@ public class SystemSettingsApiTests(SystemSettingsApiTests.Host host) : SharedAp
         // for the background-job run retention (issue #409), then -1 for the retired match vocabulary cap
         // and +2 for the extraction and match prompt guidance (issue #433), then +3 for the instrument-price
         // settings (issue #446), then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508),
-        // then +1 for the calendar link cap (issue #521), then +4 for podcasts (issue #556).
-        Assert.Equal(93, rows.Count);
+        // then +1 for the calendar link cap (issue #521), then +4 for podcasts (issue #556), then +2 for AI recipe import (issue #602).
+        Assert.Equal(95, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

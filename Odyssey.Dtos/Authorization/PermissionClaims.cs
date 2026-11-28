@@ -171,6 +171,11 @@ public static class PermissionClaims
     public const string RecipeTagsUpdate = "recipes.tags.update";
     public const string RecipeTagsDelete = "recipes.tags.delete";
 
+    // AI recipe import (issue #602): queue, read, edit, accept, discard and delete the household's recipe
+    // imports. Admin, Owner and User; never Guest. Its own claim rather than recipes.create because it
+    // sends data to a third-party processor and costs money per call, so it needs its own revocation lever.
+    public const string RecipesImport = "recipes.import";
+
     // Calendar module (issue #323). A single claim group covers Calendar, CalendarEvent and
     // RecurrencePattern uniformly — they're always accessed in the context of calendar read/write and
     // don't warrant their own sub-resource claims. Guest is granted none of these — the whole module

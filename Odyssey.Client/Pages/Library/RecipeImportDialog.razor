@@ -1,0 +1,171 @@
+@using Odyssey.Client.Pages.Attachments
+@using Odyssey.Dtos.Recipes
+
+@*
+    RecipeImportDialog — Import a recipe with AI (issue #604; design system components-recipes.md · The composer,
+    ui_kits/web/RecipeImports.jsx RecipeImportDialog). A wizard OdsModal: 1 Recipe · 2 Send. Step 1 is the recipe text
+    and the Attach documents dialog's own body inline (DocumentSourcePanel, with counts); step 2 is the statement
+    gate's consent frame (.fan-*), with the server's consentText verbatim. Send & draft is disabled until the box is
+    ticked, aria-disabled while it posts. Before posting the dialog re-reads /options and never posts a disclosure
+    version it did not show. Every number in a message comes from /options or the problem details.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" ReturnFocusToId="@ReturnFocusToId"
+          Icon="auto_awesome" TitleLevel="2" Class="rc-dialog ri-dialog" Title="@TitleFragment" RequiredLegend="false">
+    <Steps>
+        <OdsWizardSteps Steps="WizardSteps" Current="_step" OnStep="GoToAsync" AriaLabel="Import steps" />
+    </Steps>
+    <ChildContent>
+        <OdsLiveAnnouncer @ref="_announcer" />
+        <div class="ods-modal-body ri-wiz-body">
+            @if (_options is { Enabled: false })
+            {
+                <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.Status">AI recipe import is turned off by an administrator. You can still create a recipe by hand.</OdsAlert>
+            }
+            @if (_refusal is { } refusal)
+            {
+                <OdsAlert Severity="@refusal.Severity" Live="OdsAlertLive.Alert">
+                    <span class="rc-alert-line">
+                        <span>@refusal.Text</span>
+                        @if (refusal.ToList)
+                        {
+                            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Href="/recipe-imports">Open recipe imports</OdsButton>
+                        }
+                    </span>
+                </OdsAlert>
+            }
+
+            @if (_step == 0)
+            {
+                <section class="ri-compose rc-wiz-panel" aria-label="Recipe">
+                    <OdsNoteField Id="@TextId" Label="Recipe text" Value="@_text" ValueChanged="OnTextChanged"
+                                  CounterMax="@_options?.MaxSourceTextLength" Rows="6" Error="@(ErrorOf("text") ?? (_canReadFiles ? null : ErrorOf("sources")))"
+                                  Placeholder="Paste the recipe — the ingredients, the steps, any notes. Or add the recipe as files below."
+                                  Help="Everyone in your household who can import recipes can read this text." />
+
+                    @if (_canReadFiles)
+                    {
+                        <div class="ri-files" id="@FilesId" tabindex="-1" role="group" aria-labelledby="@FilesLabelId">
+                            <div class="ri-files-t" id="@FilesLabelId">Recipe files</div>
+                            <DocumentSourcePanel Tab="@_fileTab" TabChanged="@(t => _fileTab = t)" Counts="true"
+                                                 ShowUpload="_canUpload" ShowLibrary="true"
+                                                 Uploads="_uploads" UploadsChanged="OnUploadsChanged"
+                                                 Accept="@AcceptAttribute" UploadHint="@UploadHint"
+                                                 Error="@(ErrorOf("upload") ?? ErrorOf("sources"))"
+                                                 Pool="_library" LibraryLoading="_libraryLoading" LibraryFailed="_libraryFailed"
+                                                 OnRetry="LoadLibraryAsync"
+                                                 PickedIds="_picked" OnToggle="TogglePick" StateOf="LibraryStateOf"
+                                                 Cap="@LibraryCap" CapReason="@CapReason" TypeLabel="RecipeImportText.TypeLabel"
+                                                 EmptyLibraryText="No recipe files in the Library area of Files."
+                                                 DescribedBy="@PhotoNoteId" />
+                            <div id="@PhotoNoteId" class="ri-note"><OdsMIcon Name="location_off" Size="14" />Photos are sent and attached without their location or camera details. From Files shows the Library area only.</div>
+                            @if (!_canUpload)
+                            {
+                                <div class="ri-note"><OdsMIcon Name="lock" Size="14" />Uploading new files needs file access.</div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="ri-note"><OdsMIcon Name="lock" Size="14" />Adding files needs file access. You can paste text, or ask an administrator.</div>
+                    }
+
+                    @if (Summary is { Length: > 0 } summary)
+                    {
+                        <div class="ri-summary"><OdsMIcon Name="send" Size="14" /><span>@summary — sent in this order.</span></div>
+                    }
+                </section>
+            }
+            else
+            {
+                <section class="fan-consent ri-consent" aria-labelledby="@ConsentHeadingId">
+                    <h3 class="ri-consent-h" id="@ConsentHeadingId" tabindex="-1">What happens to your recipe</h3>
+                    @if (_stale)
+                    {
+                        <div class="fan-degraded" role="alert">
+                            <OdsMIcon Name="info_outline" Size="18" />
+                            <div class="fan-degraded-text"><b>The processor details changed while this dialog was open.</b> Read them again and confirm — nothing has been sent, and your consent was cleared because it was given for different details.</div>
+                        </div>
+                    }
+                    @if (_options is not { } o)
+                    {
+                        <div class="fan-degraded" role="alert">
+                            <OdsMIcon Name="cloud_off" Size="18" />
+                            <div class="fan-degraded-text"><b>The processor details couldn’t be loaded.</b> Nothing can be sent until they load.</div>
+                            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" Loading="_loadingOptions" OnClick="ReloadOptionsAsync">Try again</OdsButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fan-xfer">
+                            <div class="fan-xfer-node">
+                                <span class="fan-xfer-ic in"><OdsMIcon Name="lock" Size="17" /></span>
+                                <div class="fan-xfer-meta"><div class="fan-xfer-t">Odyssey</div><div class="fan-xfer-s">Your workspace</div></div>
+                            </div>
+                            <span class="fan-xfer-arrow"><OdsMIcon Name="arrow_forward" Size="18" /></span>
+                            <div class="fan-xfer-node">
+                                <div class="fan-xfer-meta"><div class="fan-xfer-t">@o.Processor</div><div class="fan-xfer-s mono">@o.Model · @o.ProcessorRegion</div></div>
+                                <span class="fan-xfer-ic out"><OdsMIcon Name="auto_awesome" Size="17" /></span>
+                            </div>
+                        </div>
+                        <ul class="fan-facts">
+                            <li><OdsMIcon Name="cloud_upload" Size="18" /><div><b>Everything you added is sent in full.</b> @(Summary is { Length: > 0 } s ? s : "Your recipe") — the model reads all of it, in this order.</div></li>
+                            @if (o.SendsTagNames)
+                            {
+                                <li><OdsMIcon Name="local_offer" Size="18" /><div><b>Your recipe tag names are sent too,</b> so it can suggest tags you already use.</div></li>
+                            }
+                            <li><OdsMIcon Name="replay" Size="18" /><div><b>One automatic retry</b> if @o.Processor is busy — the same files, to the same place.</div></li>
+                            <li><OdsMIcon Name="description" Size="18" /><div><b>It may refuse a document it can’t read</b> — a PDF over @RecipeImportText.Count(o.MaxPdfPages) pages, a password-protected or damaged file.</div></li>
+                            <li><OdsMIcon Name="edit_note" Size="18" /><div><b>Nothing is added to Recipes yet.</b> You get a draft recipe on this import to check and edit; it becomes a recipe only when you select Create recipe. What you sent is kept on the import for @RecipeImportText.Count(o.RetentionDays) days.</div></li>
+                            <li>
+                                <OdsMIcon Name="verified_user" Size="18" />
+                                <div>
+                                    <b>Not used to train models.</b> @o.Processor keeps the data for a limited period under its
+                                    @if (IsHttps(o.PrivacyNoticeUrl))
+                                    {
+                                        <a href="@o.PrivacyNoticeUrl" class="fan-link" target="_blank" rel="noopener noreferrer">privacy policy</a>
+                                    }
+                                    else
+                                    {
+                                        <span>privacy policy</span>
+                                    }.
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="fan-consent-check">
+                            <OdsCheckbox Checked="_agree" CheckedChanged="@(v => _agree = v)">
+                                <span class="fan-consent-text">@o.ConsentText It is sent in the background shortly after you confirm; closing this window won’t stop it.</span>
+                            </OdsCheckbox>
+                        </div>
+                        <div class="fan-consent-basis"><OdsMIcon Name="gavel" Size="14" /><span>Lawful basis recorded: <b>@o.LawfulBasis</b></span></div>
+                    }
+                </section>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @if (Problems.Count > 0)
+        {
+            <OdsErrorSummary Problems="Problems" OnJump="JumpAsync" />
+        }
+        <OdsButton Variant="OdsButtonVariant.Text" AriaDisabled="_sending" OnClick="CloseAsync">Cancel</OdsButton>
+        @if (_step > 0)
+        {
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="arrow_back" AriaDisabled="_sending" OnClick="@(() => GoToAsync(0))">Back</OdsButton>
+        }
+        @if (_step == 0)
+        {
+            <OdsButton Variant="OdsButtonVariant.Filled" IconRight="arrow_forward" AriaDisabled="@(!CanProceed)" OnClick="NextAsync">Next</OdsButton>
+        }
+        else
+        {
+            @* One button across the send, so focus stays on it while the request runs (WCAG 2.4.3). *@
+            <OdsButton Variant="OdsButtonVariant.Filled" Icon="cloud_upload" Loading="_sending"
+                       Disabled="@(!CanSend)" AriaDisabled="_sending" OnClick="SendAsync">@(_sending ? "Sending…" : "Send & draft")</OdsButton>
+        }
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleFragment => @<text>Import a recipe with AI</text>;
+}

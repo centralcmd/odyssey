@@ -191,6 +191,20 @@ public sealed class RecipeService(
         NewRecipe request, string userId, bool canReadPhotos, bool canReadTags, bool canReadFiles,
         CancellationToken cancellationToken = default)
     {
+        var recipe = await StageCreateAsync(request, userId, canReadPhotos, canReadTags, canReadFiles, cancellationToken);
+        await SaveAsync(cancellationToken);
+
+        return await ToResultAsync(recipe, canReadPhotos, canReadFiles, cancellationToken);
+    }
+
+    /// <summary>
+    /// <see cref="CreateAsync"/> without the save (issue #602 §5 item 7): the same claim checks, validation and links,
+    /// staged on the caller's context so the recipe-import accept commits the recipe with its own writes in one save.
+    /// </summary>
+    public async Task<Recipe> StageCreateAsync(
+        NewRecipe request, string userId, bool canReadPhotos, bool canReadTags, bool canReadFiles,
+        CancellationToken cancellationToken = default)
+    {
         var photoIds = request.PhotoIds ?? [];
         var fileIds = request.AttachmentFileIds ?? [];
         var tagIds = request.TagIds ?? [];
@@ -249,9 +263,7 @@ public sealed class RecipeService(
         }
 
         context.Recipes.Add(recipe);
-        await SaveAsync(cancellationToken);
-
-        return await ToResultAsync(recipe, canReadPhotos, canReadFiles, cancellationToken);
+        return recipe;
     }
 
     /// <summary>A full replacement guarded by <see cref="UpdateRecipe.Version"/>; <c>null</c> when the recipe does not exist.</summary>

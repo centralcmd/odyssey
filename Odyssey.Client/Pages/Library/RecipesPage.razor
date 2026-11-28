@@ -21,8 +21,22 @@
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
                 PrimaryActionText="New recipe"
                 OnPrimaryAction="NewClicked"
-                ShowPrimaryAction="_canCreate">
+                ShowPrimaryAction="_canCreate"
+                Problems="ImportSignal" ProblemsLabel="Draft recipes ready" ProblemsOpenByDefault="false">
         <SubLine>@SubLineText</SubLine>
+        <LeadActions>
+            @if (_canImport && _canCreate)
+            {
+                <OdsButton Variant="OdsButtonVariant.Outlined" Icon="auto_awesome" AriaDisabled="@(!ImportEnabled)"
+                           aria-describedby="@(ImportEnabled ? null : "rc-import-off")" OnClick="StartImport">Import with AI</OdsButton>
+            }
+        </LeadActions>
+        <ActionMenu>
+            @if (_canImport)
+            {
+                <MudMenuItem Icon="@Icons.Material.Filled.AutoAwesome" Href="/recipe-imports">Recipe imports</MudMenuItem>
+            }
+        </ActionMenu>
 
         <SearchContent>
             <div class="ph-filter-bar">
@@ -57,6 +71,11 @@
             </div>
         </SearchContent>
     </PageHeader>
+
+    @if (_canImport && _canCreate && _importOptions is { Enabled: false })
+    {
+        <div id="rc-import-off" class="ri-note"><OdsMIcon Name="info_outline" Size="14" />Import with AI is turned off by an administrator.</div>
+    }
 
     <div class="acct-list">
         <OdsInfiniteList TItem="RecipeSummary" Items="_rows" Noun="recipes" Remote="true"
@@ -95,6 +114,11 @@
                   CanReadTags="_canTags" CanCreateTags="_canCreateTags" Tags="_tags"
                   ReturnFocusToId="@(_dialogRecipe is { } d ? MenuId(d.RecipeId) : null)"
                   OnSaved="OnRecipeSaved" />
+}
+
+@if (_importKey != Guid.Empty)
+{
+    <RecipeImportDialog @key="_importKey" Open="_importOpen" OpenChanged="v => _importOpen = v" OnSent="OnImportSentAsync" />
 }
 
 @if (_servingsFor is { } servingsRecipe && Cook(servingsRecipe.RecipeId).Detail is { } servingsDetail)

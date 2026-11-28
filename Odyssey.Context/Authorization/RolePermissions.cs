@@ -72,6 +72,8 @@ public static class RolePermissions
         RecipeTagsRead,
         RecipeTagsUpdate,
         RecipeTagsDelete,
+        // AI recipe import (issue #602) — not in GuestClaims.
+        RecipesImport,
     ];
 
     public static readonly string[] JournalModuleClaims =

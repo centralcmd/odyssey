@@ -22,6 +22,8 @@ public static class JobRunDetailRegistry
         [typeof(RecurrenceKeyBackfillJobRunDetail)] = typeof(JobRunDetailRecurrenceKeyBackfill),
         [typeof(PodcastAudioDownloadJobRunDetail)] = typeof(JobRunDetailPodcastAudioDownload),
         [typeof(PodcastAudioRetentionJobRunDetail)] = typeof(JobRunDetailPodcastAudioRetention),
+        [typeof(RecipeImportJobRunDetail)] = typeof(JobRunDetailRecipeImport),
+        [typeof(RecipeImportRetentionJobRunDetail)] = typeof(JobRunDetailRecipeImportRetention),
     };
 
     public static Type BodyFor(JobRunDetail detail) => Bodies.GetValueOrDefault(detail.GetType(), typeof(JobRunDetailBase));

@@ -1,0 +1,15 @@
+@*
+    A recipe-import retention pass's detail (issue #602): the imports whose content was purged and the import-owned
+    files released. Counts only — never an import, recipe or file.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Imports purged")">@N(Retention.ImportsPurged)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Files released")">@N(Retention.ImportFilesReleased)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private RecipeImportRetentionJobRunDetail Retention => (RecipeImportRetentionJobRunDetail)Run;
+}
