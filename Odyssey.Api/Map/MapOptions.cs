@@ -34,6 +34,21 @@ public sealed class MapOptions
             ["/maps/odyssey-dark.json"] = [new Uri("https://tiles.openfreemap.org")],
         };
 
+    /// <summary>
+    /// The shipped styles that draw from the self-hosted basemap file (issue #384) rather than from a tile
+    /// host. Selecting either one turns on the <see cref="BasemapFilePath"/> checks in
+    /// <see cref="MapOptionsValidator"/>, which is what lets the start-up check know every file a selected
+    /// style depends on.
+    /// </summary>
+    public static readonly IReadOnlySet<string> SelfHostedStyles =
+        new HashSet<string>(StringComparer.Ordinal) { "/maps/self-hosted-light.json", "/maps/self-hosted-dark.json" };
+
+    /// <summary>
+    /// The one path the client container serves the basemap file at. Styles may not live under it: it
+    /// serves the tile file and nothing else.
+    /// </summary>
+    public const string BasemapPathPrefix = "/basemap";
+
     /// <summary>An absolute https URL whose origin is in <see cref="AllowedOrigins"/>, or a root-relative path.</summary>
     [Required]
     [StringLength(2048)]
@@ -61,4 +76,12 @@ public sealed class MapOptions
     /// </summary>
     [StringLength(2048)]
     public string AllowedOrigins { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Where the API finds the self-hosted basemap file to validate it at start-up (issue #384). Compose sets
+    /// it; the operator does not. Required only while a <see cref="SelfHostedStyles"/> entry is selected.
+    /// Never returned to the client.
+    /// </summary>
+    [StringLength(1024)]
+    public string BasemapFilePath { get; set; } = string.Empty;
 }

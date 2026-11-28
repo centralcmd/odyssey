@@ -199,7 +199,7 @@ contact delete runs under `Odyssey.Api.Tests`**; that coverage lives in `Odyssey
 | Calendar & `.ics` | [calendar-and-ics.md](docs/architecture/calendar-and-ics.md) | Inline attachments, streaming import/export, calendar links, recurring series |
 | Books | [books.md](docs/architecture/books.md) | Contact credits that block a delete, claim-before-existence links, diff-in-place `PUT`, EPUB |
 | Recipes | [recipes.md](docs/architecture/recipes.md) | Recipes, ingredients and steps, photo and file links, servings scaling, the version token |
-| Map | [maps.md](docs/architecture/maps.md) | Vendored MapLibre, the shipped dark basemap |
+| Map | [maps.md](docs/architecture/maps.md) | Vendored MapLibre, the shipped dark basemap, the self-hosted PMTiles basemap |
 | Settings | [settings.md](docs/architecture/settings.md) | Adding a setting or a secret, the email transport, what stays in config |
 
 ## Cross-cutting rules

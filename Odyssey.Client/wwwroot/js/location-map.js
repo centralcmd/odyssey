@@ -8,6 +8,7 @@
 // is Blazor's, under the frame).
 
 const LIB_DIR = new URL('../lib/maplibre-gl/', import.meta.url);
+const PMTILES_SCRIPT = new URL('../lib/pmtiles/pmtiles.js', import.meta.url);
 const STYLESHEETS = [new URL('maplibre-gl.css', LIB_DIR), new URL('../css/location-map.css', import.meta.url)];
 
 // The app's own English strings (§6.10, X11). MapLibre's built-in table is replaced through `locale`.
@@ -67,18 +68,61 @@ function loadStylesheet(href) {
     });
 }
 
+// pmtiles@4.5.0's ESM build imports the bare specifier "fflate", which a browser cannot resolve without an
+// import map the CSP forbids, so the self-contained classic build is loaded instead: a <script src> from
+// 'self', which defines the global `pmtiles` (lib/pmtiles/README.md).
+function loadClassicScript(href) {
+    if (globalThis.pmtiles) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = href;
+        script.async = true;
+        script.addEventListener('load', () => resolve(), { once: true });
+        script.addEventListener('error', () => { script.remove(); reject(new Error('pmtiles failed to load')); }, { once: true });
+        document.head.appendChild(script);
+    });
+}
+
+// The self-hosted basemap (issue #384): one PMTiles archive the client container serves at exactly
+// /basemap/basemap.pmtiles, behind nginx's auth_request. It is registered under that URL before any style can
+// name it, so the library never builds a default source of its own for it. Registered once per page.
+//
+// 'same-origin' sends the session cookie, and only to the deployment: the file is authorized by
+// auth_request (#384 §7.2), the one deliberate exception to "map requests carry no cookie". Styles, glyphs
+// and the sprite still go out without one (transformRequest in build()).
+function registerBasemapProtocol(lib) {
+    const protocol = new pmtiles.Protocol();
+    protocol.add(new pmtiles.PMTiles(new pmtiles.FetchSource('/basemap/basemap.pmtiles', new Headers(), 'same-origin')));
+    lib.addProtocol('pmtiles', protocol.tile);
+}
+
 function loadLibrary() {
     libPromise ??= (async () => {
         await Promise.all(STYLESHEETS.map(u => loadStylesheet(u.href)));
-        const lib = await import(new URL('maplibre-gl.js', LIB_DIR).href);
+        const [lib] = await Promise.all([import(new URL('maplibre-gl.js', LIB_DIR).href), loadClassicScript(PMTILES_SCRIPT.href)]);
         // Same-origin, so MapLibre starts it as `new Worker(url, { type: 'module' })`: worker-src 'self'
         // is enough and no blob: worker is ever created (#370 §7.7).
         lib.setWorkerUrl(new URL('maplibre-gl-worker.js', LIB_DIR).href);
+        registerBasemapProtocol(lib);
         return lib;
     })();
     // A failed load is not cached: Try again re-imports.
     libPromise.catch(() => { libPromise = null; });
     return libPromise;
+}
+
+// MapLibre 6 refuses a root-relative sprite URL ("must be absolute"), which the self-hosted styles (issue #384)
+// use so they name no host. Resolve a root-relative sprite and glyphs URL against the page's own origin when a
+// style loads: still same-origin, and a remote style's absolute URLs pass through untouched.
+function sameOriginStyle(_previous, next) {
+    // Joined, not new URL(): that would percent-encode the {fontstack} and {range} tokens MapLibre fills in.
+    const absolute = url => (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//')) ? location.origin + url : url;
+    // Only keys the style has: an added `glyphs: undefined` fails MapLibre's validation.
+    const style = { ...next };
+    if (typeof next.glyphs === 'string') style.glyphs = absolute(next.glyphs);
+    if (typeof next.sprite === 'string') style.sprite = absolute(next.sprite);
+    else if (Array.isArray(next.sprite)) style.sprite = next.sprite.map(entry => ({ ...entry, url: absolute(entry.url) }));
+    return style;
 }
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
@@ -138,9 +182,9 @@ function build(lib, h, element, options, dotnet, generation) {
     };
 
     const motion = reducedMotion();
+    // No style in the constructor: it cannot take a transformStyle, so the style is set right after (below).
     const map = new lib.Map({
         container: element,
-        style: options.styleUrl,
         center: h.lngLat,
         zoom: options.zoom,
         maxZoom: options.maxZoom,
@@ -155,6 +199,7 @@ function build(lib, h, element, options, dotnet, generation) {
         transformRequest: url => ({ url, credentials: 'omit' }),
     });
     h.map = map;
+    map.setStyle(options.styleUrl, { transformStyle: sameOriginStyle });
     map.keyboard.disableRotation();
     map.touchZoomRotate.disableRotation();
     if (motion) map.dragPan.enable({ maxSpeed: 0 });
@@ -227,6 +272,11 @@ function build(lib, h, element, options, dotnet, generation) {
     });
     map.on('error', e => {
         if (h.disposed) return;
+        // A source-level error (a sourceId, no tile) means the source's own index could not load — a TileJSON
+        // or, for the self-hosted basemap, the archive's header (a 401 after sign-out, a 429, a 404). Such a
+        // source draws nothing at all, and MapLibre still fires 'load' after it, so counting it as one tile
+        // error would leave a blank map reporting ready (issue #384 review). Fail at once, before or after ready.
+        if (e.sourceId && !e.tile) { fail('tiles'); return; }
         const isTile = !!(e.tile || e.sourceId);
         if (!h.ready) {
             if (!isTile) { fail('style'); return; }
@@ -368,7 +418,7 @@ export function setStyle(handle, styleUrl) {
     const h = live.get(handle);
     if (!h) return;
     h.styleSwapping = true;
-    h.map.setStyle(styleUrl);
+    h.map.setStyle(styleUrl, { transformStyle: sameOriginStyle });
 }
 
 /** Idempotent; safe on a handle whose map never loaded. */
