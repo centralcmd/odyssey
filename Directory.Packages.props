@@ -23,7 +23,7 @@
          migrations image (a source lint enforces it). Patch policy (§7.5.8): a critical or actively exploited
          ImageMagick or libwebp CVE within 72 h, other Magick.NET security releases within 14 days. 15.x ships the
          linux-musl-x64 native the Alpine worker image needs, but no linux-musl-arm64 one. -->
-    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.1.0" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.1.1" />
     <!-- News reader HTML (issue #470 §7.10, §7.11): AngleSharp (MIT), a managed HTML5 parser run on untrusted feed
          content with no loader, no scripting and no CSS, and only after the nesting pre-scan has accepted the fragment.
          Never below 1.5.0 (GHSA-pgww-w46g-26qg, the annotation-xml mXSS); nothing serialises its tree back to HTML. -->
